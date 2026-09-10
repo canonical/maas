@@ -906,8 +906,16 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     )
     tftp_bind = ConfigurationOption(
         "tftp_bind",
-        "Address the TFTP service binds to.",
-        UnicodeString(if_missing=""),
+        "Address(es) the TFTP service binds to; empty means all "
+        "interfaces. TFTP must serve every managed subnet, not just the "
+        "interface that reaches the API, so a specific address is "
+        "always required explicitly under hardening (no maas_url "
+        "derivation). May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
     )
     http_proxy_bind = ConfigurationOption(
         "http_proxy_bind",

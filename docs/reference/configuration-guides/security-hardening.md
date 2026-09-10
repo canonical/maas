@@ -123,12 +123,16 @@ subcommands:
 ```
 
 Keys: `hardening_enabled`, `api_bind`, `api_bind6`, `rpc_bind`,
-`syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`, and (snap installs
-only) `dns_bind`/`dns_bind6`. `api_bind`, `api_bind6`, `syslog_bind`,
-`http_proxy_bind`, and `http_proxy_bind6` derive a specific address from
-`maas_url` when left unset, the same as their region counterparts.
-`rpc_bind` has no such derivation on the rack: leaving it unset binds all
-interfaces and is flagged under hardening.
+`tftp_bind`, `syslog_bind`, `http_proxy_bind`, `http_proxy_bind6`, and
+(snap installs only) `dns_bind`/`dns_bind6`. `api_bind`, `api_bind6`,
+`syslog_bind`, `http_proxy_bind`, and `http_proxy_bind6` derive a
+specific address from `maas_url` when left unset, the same as their
+region counterparts. `rpc_bind`, `tftp_bind`, and `dns_bind`/`dns_bind6`
+have no such derivation: leaving `rpc_bind` unset binds all interfaces
+and is flagged under hardening; `tftp_bind` (like `dns_bind`) must
+serve every managed subnet rather than just the interface that reaches
+the API, so it takes a comma-separated list — one address per subnet —
+and is flagged under hardening when left unset.
 
 `maas-rack config-hardening validate` checks only bind-wildcard rules —
 the rack has no TLS certificate, DH parameters, or database to validate;

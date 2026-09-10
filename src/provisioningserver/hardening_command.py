@@ -35,6 +35,7 @@ _LIST_KEYS = frozenset(
         "syslog_bind",
         "http_proxy_bind",
         "http_proxy_bind6",
+        "tftp_bind",
     }
 )
 
@@ -44,9 +45,10 @@ _ALL_KEYS = _BIND_KEYS | frozenset({"hardening_enabled"})
 
 # Keys whose empty value derives a specific, non-wildcard address from
 # maas_url at rack startup (see `rackdservices/http.py`, `dns/config.py`,
-# and their tests). `rpc_bind` and `dns_bind`/`dns_bind6` have no such
-# derivation: an unset `rpc_bind` really does bind all interfaces, and DNS
-# must be explicitly picked to serve every managed subnet.
+# and their tests). `rpc_bind`, `tftp_bind`, and `dns_bind`/`dns_bind6`
+# have no such derivation: an unset `rpc_bind` really does bind all
+# interfaces, and TFTP/DNS must be explicitly picked to serve every
+# managed subnet (hence being list-valued, unlike `rpc_bind`).
 _AUTO_DERIVED_BIND_KEYS = frozenset(
     {
         "api_bind",
