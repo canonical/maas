@@ -2497,8 +2497,11 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.abort_deploying(admin)
         stop_workflow.assert_called_once_with(f"deploy:{node.system_id}")
-        abort_all_tests.assert_called_once_with(
-            node.current_installation_script_set_id
+        abort_all_tests.assert_has_calls(
+            [
+                call(node.current_installation_script_set_id),
+                call(node.current_deployment_script_set_id),
+            ]
         )
 
     def test_abort_deployment_clears_deployment_resources(self):
@@ -4420,12 +4423,14 @@ class TestNode(MAASServerTestCase):
         node.current_installation_script_set = factory.make_ScriptSet(
             node=node
         )
+        node.current_deployment_script_set = factory.make_ScriptSet(node=node)
         updated_script_results = []
         untouched_script_results = []
         for script_set in (
             node.current_commissioning_script_set,
             node.current_testing_script_set,
             node.current_installation_script_set,
+            node.current_deployment_script_set,
         ):
             script_result = factory.make_ScriptResult(script_set)
             if script_result.status in SCRIPT_STATUS_RUNNING_OR_PENDING:

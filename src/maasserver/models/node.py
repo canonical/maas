@@ -3023,6 +3023,11 @@ class Node(CleanSave, TimestampedModel):
                 Node._abort_all_tests,
                 self.current_installation_script_set_id,
             )
+            post_commit().addCallback(
+                callOutToDatabase,
+                Node._abort_all_tests,
+                self.current_deployment_script_set_id,
+            )
 
             if stopping is None:
                 stopping = post_commit()
@@ -4032,6 +4037,7 @@ class Node(CleanSave, TimestampedModel):
                 self.current_commissioning_script_set,
                 self.current_testing_script_set,
                 self.current_installation_script_set,
+                self.current_deployment_script_set,
             ],
             status__in=SCRIPT_STATUS_RUNNING_OR_PENDING,
         )
