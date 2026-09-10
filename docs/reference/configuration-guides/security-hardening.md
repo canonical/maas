@@ -208,3 +208,37 @@ Structured JSON events. View them with `journalctl -o json`.
 | `hardening_mode_determined` | INFO | Resolved hardening state (`setting`, `fips_enabled`, `hardening_active`). |
 | `hardening_violation` | ERROR | A prerequisite is unmet (`ident`, `code`, `config_key`, `file_path`, `message`). |
 | `hardening_notification_posted` | INFO | An admin notification was posted for a violation (`ident`, `code`). |
+
+## Content Security Policy (CSP)
+
+When hardening is active, the region controller's nginx configuration emits a
+strict `Content-Security-Policy` header on every response:
+
+```
+default-src 'self';
+script-src 'self' 'sha256-…';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data:;
+font-src 'self';
+connect-src 'self';
+frame-ancestors 'none'
+```
+
+The `script-src` directive includes a single SHA-256 hash that whitelists
+one static inline `<script>` block required by the documentation theme.
+Inline scripts are otherwise forbidden by `script-src 'self'`.
+
+The CSP header is defined in
+`src/maasserver/templates/http/regiond.nginx.conf.template` inside the
+`{{if hardening}}` block. It is only emitted when hardening is active.
+
+### Other directives
+
+| Directive | Value | Rationale |
+|-----------|-------|-----------|
+| `default-src` | `'self'` | Deny by default; every resource type must be same-origin unless overridden below. |
+| `style-src` | `'self' 'unsafe-inline'` | Sphinx and Furo emit inline `style` attributes on generated elements. Hashing every style is not tractable; `'unsafe-inline'` is accepted for styles only, which cannot execute code. |
+| `img-src` | `'self' data:` | `data:` allows inline SVG/PNG data URIs used by the theme's icons and diagrams. |
+| `font-src` | `'self'` | Fonts must be same-origin. The Ubuntu fonts referenced by the theme are vendored under `docs/_static/fonts/` and served from the region controller. See `docs/_static/fonts/README.md`. |
+| `connect-src` | `'self'` | `fetch()` / `XMLHttpRequest` restricted to same-origin. |
+| `frame-ancestors` | `'none'` | Prevents MAAS pages from being embedded in any frame (clickjacking defence). |
