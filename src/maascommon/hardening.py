@@ -29,6 +29,8 @@ CONF_KEYS = frozenset(
         "api_tls_dhparam",
         "api_bind",
         "api_bind6",
+        "api_int_bind",
+        "api_int_bind6",
         "prometheus_bind",
         "temporal_bind",
         "rpc_bind",
