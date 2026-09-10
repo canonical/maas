@@ -248,6 +248,28 @@ class cmd_init(Command):
         init_maas(options)
 
 
+class cmd_config_hardening_rack(Command):
+    """Manage this rack controller's hardening configuration parameters.
+
+    Scoped to the bind keys this rack controller owns in `rackd.conf`;
+    mirrors the region `config-hardening` command's `list`/`get`/`set`/
+    `validate` subcommands. Registered in place of the region command
+    when the snap runs in rack-only mode, which has no region database
+    or `regiond.conf` — and no separately runnable `maas-rack` command
+    to fall back on inside the snap.
+    """
+
+    def __init__(self, parser):
+        super().__init__(parser)
+        from provisioningserver import hardening_command
+
+        hardening_command.add_arguments(parser)
+        self._run = hardening_command.run
+
+    def __call__(self, options):
+        self._run(options)
+
+
 # Built-in commands to the maascli.
 COMMANDS = {
     "login": cmd_login,
@@ -270,12 +292,18 @@ REGIOND_COMMANDS = (
 )
 
 # All entries here must also be present in REGIOND_COMMANDS above.
-# These commands require the region database and have no rack-side
-# equivalent. Hidden on a rack-only snap, which has no local database.
+# These commands require the region database and/or regiond.conf (which
+# only exists for a running regiond) — neither is present on a rack-only
+# snap, so they are hidden there. Most have no rack-side equivalent at
+# all; `config-hardening` is the exception — a rack-only snap instead
+# registers `cmd_config_hardening_rack` under the same name (see
+# `register_cli_commands`), since there is no separately runnable
+# `maas-rack` command inside the snap to point operators at.
 DB_ONLY_REGIOND_COMMANDS = frozenset(
     {
         "apikey",
         "configauth",
+        "config-hardening",
         "config-tls",
         "config-vault",
         "msm",
@@ -317,13 +345,20 @@ def register_cli_commands(parser):
             ("status", snap.cmd_status),
             ("migrate", snap.cmd_migrate),
         ]
-        # A rack-only snap has no local database, so DB-only regiond
-        # commands (which have no rack-side equivalent) must be hidden.
+        # A rack-only snap has no local database or regiond.conf, so the
+        # region-only regiond commands must be hidden; `config-hardening`
+        # is replaced with the rack-side implementation instead of being
+        # dropped, since there is no separately runnable `maas-rack`
+        # command inside the snap.
+        is_rack_only = (
+            "SNAP_COMMON" in os.environ and snap.get_current_mode() == "rack"
+        )
+        if is_rack_only:
+            extra_commands.append(
+                ("config-hardening", cmd_config_hardening_rack)
+            )
         skip_regiond_commands = (
-            DB_ONLY_REGIOND_COMMANDS
-            if "SNAP_COMMON" in os.environ
-            and snap.get_current_mode() == "rack"
-            else frozenset()
+            DB_ONLY_REGIOND_COMMANDS if is_rack_only else frozenset()
         )
     elif is_maasserver_available():
         extra_commands = [("init", cmd_init)]
