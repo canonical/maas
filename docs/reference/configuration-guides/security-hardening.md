@@ -61,12 +61,14 @@ automatically.
 
 `enable` is a convenience shortcut for
 `maas config-hardening set hardening_enabled on`: it writes only the DB
-`Config` store. No bind key is seeded. `api_bind`, `temporal_bind`,
-`rpc_bind`, `agent_api_bind`, `syslog_bind`, and `http_proxy_bind`
-derive a specific address per family from `maas_url` at startup when
-left unset; `prometheus_bind` instead defaults to loopback
-(`127.0.0.1`) when left unset, since it's scraped locally rather than
-reached via `maas_url` (see the parameter table below).
+`Config` store. No bind key is seeded. `api_bind`, `agent_api_bind`,
+and `http_proxy_bind` each derive a specific address **per family**
+from `maas_url` at startup when left unset; `temporal_bind`,
+`rpc_bind`, and `syslog_bind` derive a single address matching
+whichever family `maas_url` resolves to. `prometheus_bind` instead
+defaults to loopback (`127.0.0.1`) when left unset, since it's scraped
+locally rather than reached via `maas_url` (see the parameter table
+below).
 
 ## Parameters and stores
 
@@ -118,14 +120,15 @@ subcommands:
 
 Keys: `hardening_enabled`, `api_bind`, `rpc_bind`, `tftp_bind`,
 `syslog_bind`, `http_proxy_bind`, and (snap installs only) `dns_bind`.
-`api_bind`, `syslog_bind`, and `http_proxy_bind` derive a specific
-address per family from `maas_url` when left unset, the same as their
-region counterparts. `rpc_bind`, `tftp_bind`, and `dns_bind` have no
-such derivation: leaving `rpc_bind` unset binds all interfaces and is
-flagged under hardening; `tftp_bind` and `dns_bind` must serve every
-managed subnet rather than just the interface that reaches the API, so
-each takes a comma-separated list — one address per subnet/family —
-and is flagged under hardening when left unset.
+`api_bind` and `http_proxy_bind` each derive a specific address per
+family from `maas_url` when left unset, the same as their region
+counterparts; `syslog_bind` derives a single address matching
+whichever family `maas_url` resolves to. `rpc_bind`, `tftp_bind`, and
+`dns_bind` have no such derivation: leaving `rpc_bind` unset binds all
+interfaces and is flagged under hardening; `tftp_bind` and `dns_bind`
+must serve every managed subnet rather than just the interface that
+reaches the API, so each takes a comma-separated list — one address
+per subnet/family — and is flagged under hardening when left unset.
 
 `maas-rack config-hardening validate` checks only bind-wildcard rules —
 the rack has no TLS certificate, DH parameters, or database to validate;

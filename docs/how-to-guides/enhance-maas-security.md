@@ -235,10 +235,12 @@ A value of `1` means FIPS mode is active.
 Run `maas config-hardening enable`. This sets `hardening_enabled=on` in the
 MAAS database; it is a pure database operation and does not touch
 `regiond.conf`. `api_bind`, `temporal_bind`, and `rpc_bind` are all left
-unset: MAAS derives a specific, non-wildcard address for each family
-from `maas_url` at startup. `prometheus_bind` is also left unset, but
-defaults to loopback (`127.0.0.1`) instead, since it's scraped locally
-rather than reached via `maas_url`.
+unset: MAAS derives a non-wildcard address at startup from `maas_url`
+for each of them (`api_bind` derives one address per family;
+`temporal_bind`/`rpc_bind` derive a single address matching whichever
+family `maas_url` resolves to). `prometheus_bind` is also left unset,
+but defaults to loopback (`127.0.0.1`) instead, since it's scraped
+locally rather than reached via `maas_url`.
 
 ```text
 sudo maas config-hardening enable
@@ -320,14 +322,17 @@ maas config-hardening list
 ```
 
 For a bind key that's left unset but auto-derives from `maas_url`
-(`api_bind`, `agent_api_bind`, `rpc_bind`, `temporal_bind`,
-`syslog_bind`, `http_proxy_bind`), `list` appends the address(es) MAAS
+(`api_bind`, `agent_api_bind`, `http_proxy_bind`, `rpc_bind`,
+`temporal_bind`, `syslog_bind`), `list` appends the address(es) MAAS
 would actually bind to right now, e.g. `api_bind [conf ]  (effective:
-10.0.0.5,fd00::5)` — one address per family. `prometheus_bind` gets the
-same treatment but with a loopback default instead of a `maas_url`-
-derived one. Nothing is appended when the key is explicitly set for
-every family, or when no derivation is possible (e.g. hardening is
-inactive for the keys that only derive under hardening).
+10.0.0.5,fd00::5)`. `api_bind`, `agent_api_bind`, and `http_proxy_bind`
+show one address per family; `rpc_bind`, `temporal_bind`, and
+`syslog_bind` show a single address matching whichever family
+`maas_url` resolves to. `prometheus_bind` gets the same treatment but
+with a loopback default instead of a `maas_url`-derived one. Nothing
+is appended when the key is explicitly set for every derivable
+family, or when no derivation is possible (e.g. hardening is inactive
+for the keys that only derive under hardening).
 
 Run validation on demand. It prints every violation and exits non-zero when any exist, so it doubles as audit evidence:
 

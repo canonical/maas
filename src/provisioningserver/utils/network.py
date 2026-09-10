@@ -1230,12 +1230,24 @@ def partition_by_family(
     consumer of a mixed-family bind key (dual-stack derivation, nginx
     ``listen`` directives, squid ``http_port`` directives, BIND9
     ``listen-on``/``listen-on-v6``) so the family classification lives
-    in one place.
+    in one place. This runs at service-config render time, not
+    validation time (see `check_bind_violations` for that), so a
+    malformed address (e.g. a typo in a conf file) is skipped with a
+    warning rather than raising -- it must not crash nginx/squid/BIND9
+    config generation.
     """
     v4: List[str] = []
     v6: List[str] = []
     for addr in addresses:
-        (v6 if IPAddress(addr).version == 6 else v4).append(addr)
+        try:
+            family = IPAddress(addr).version
+        except AddrFormatError:
+            maaslog.warning(
+                f"Ignoring malformed bind address {addr!r}: not a "
+                f"valid IP address."
+            )
+            continue
+        (v6 if family == 6 else v4).append(addr)
     return v4, v6
 
 
@@ -1256,7 +1268,7 @@ def resolve_dual_stack_bind_addresses(
     """
     addrs = [addr for addr in configured if addr]
     v4, v6 = partition_by_family(addrs)
-    result = list(addrs)
+    result = v4 + v6
     if not v4:
         result += resolve_bind_addresses(
             [], maas_url, hardening_active=hardening_active, family=AF_INET

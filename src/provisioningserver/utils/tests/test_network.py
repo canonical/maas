@@ -74,6 +74,7 @@ from provisioningserver.utils.network import (
     MAASIPRange,
     make_network,
     parse_integer,
+    partition_by_family,
     preferred_hostnames_sort_key,
     resolve_bind_address,
     resolve_bind_addresses,
@@ -2532,6 +2533,25 @@ class TestResolveServiceBind(MAASTestCase):
         self.assertEqual(True, warning.call_args.kwargs.get("exc_info"))
 
 
+class TestPartitionByFamily(MAASTestCase):
+    def test_splits_mixed_addresses_by_family(self):
+        v4, v6 = partition_by_family(["10.0.0.1", "fd00::1", "10.0.0.2"])
+        self.assertEqual(["10.0.0.1", "10.0.0.2"], v4)
+        self.assertEqual(["fd00::1"], v6)
+
+    def test_empty_input_returns_empty_lists(self):
+        self.assertEqual(([], []), partition_by_family([]))
+
+    def test_malformed_address_is_dropped_with_a_warning(self):
+        warning = self.patch(network_module.maaslog, "warning")
+
+        v4, v6 = partition_by_family(["10.0.0.1", "not-an-ip", "fd00::1"])
+
+        self.assertEqual(["10.0.0.1"], v4)
+        self.assertEqual(["fd00::1"], v6)
+        warning.assert_called_once()
+
+
 class TestResolveDualStackBindAddresses(MAASTestCase):
     def test_explicit_v4_only_still_backfills_v6_default(self):
         def fake_derive(maas_url, family=None):
@@ -2588,6 +2608,20 @@ class TestResolveDualStackBindAddresses(MAASTestCase):
             [], "http://10.0.0.5:5240/MAAS", hardening_active=False
         )
         self.assertEqual([], result)
+
+    def test_malformed_address_is_dropped_not_raised(self):
+        # partition_by_family runs at service-config render time, not
+        # validation time -- a typo in a conf file must not crash
+        # nginx/squid/BIND9 config generation.
+        warning = self.patch(network_module.maaslog, "warning")
+
+        result = resolve_dual_stack_bind_addresses(
+            ["10.0.0.9", "not-an-ip"],
+            "http://10.0.0.5:5240/MAAS",
+            hardening_active=False,
+        )
+        self.assertEqual(["10.0.0.9"], result)
+        warning.assert_called_once()
 
 
 class TestResolveDualStackServiceBind(MAASTestCase):
