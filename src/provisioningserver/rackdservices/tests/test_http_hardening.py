@@ -6,7 +6,7 @@
 The rack HTTP server never requires TLS: rack clients (enlisting/commissioning
 machines, bootloaders) cannot be assumed to support it. Hardening only adds
 security response headers, rate limiting is applied regardless of hardening,
-and binding is driven by api_bind/api_bind6.
+and binding is driven by the merged api_bind key.
 """
 
 import tempita
@@ -32,13 +32,10 @@ def _render(extra: dict | None = None) -> str:
     }
     if extra:
         base.update(extra)
-    api_bind = base.pop("api_bind", "")
-    api_bind6 = base.pop("api_bind6", "")
-    base["api_listen"] = compose_listen_addresses(
-        5248,
-        [api_bind] if api_bind else [],
-        [api_bind6] if api_bind6 else [],
-    )
+    api_bind = base.pop("api_bind", [])
+    if isinstance(api_bind, str):
+        api_bind = [api_bind] if api_bind else []
+    base["api_listen"] = compose_listen_addresses(5248, api_bind)
     tpl = tempita.Template.from_filename(
         locate_template("http", "rackd.nginx.conf.template"),
         encoding="UTF-8",
@@ -49,15 +46,14 @@ def _render(extra: dict | None = None) -> str:
 HARDENING_VARS = {
     "hardening": True,
     "api_bind": "10.0.0.5",
-    "api_bind6": "",
     "api_rate_limit_rate": "10r/s",
     "api_rate_limit_burst": 20,
     "api_conn_limit": 100,
 }
 
-# Same as HARDENING_VARS but with wildcard binding (empty api_bind/api_bind6),
+# Same as HARDENING_VARS but with wildcard binding (empty api_bind),
 # producing listen [::]:5248 + listen 5248 instead of a specific address.
-HARDENING_VARS_WILDCARD = {**HARDENING_VARS, "api_bind": "", "api_bind6": ""}
+HARDENING_VARS_WILDCARD = {**HARDENING_VARS, "api_bind": ""}
 
 
 class TestNginxTemplateNeverTLS(MAASTestCase):
@@ -82,27 +78,27 @@ class TestNginxTemplateNeverTLS(MAASTestCase):
 
 
 class TestNginxTemplateBinding(MAASTestCase):
-    """Binding is driven by api_bind / api_bind6."""
+    """Binding is driven by the merged api_bind key."""
 
     def test_wildcard_when_no_bind(self):
-        rendered = _render({"api_bind": "", "api_bind6": ""})
+        rendered = _render({"api_bind": ""})
         self.assertIn("listen [::]:5248;", rendered)
         self.assertIn("listen 5248;", rendered)
 
     def test_ipv4_bind_only(self):
-        rendered = _render({"api_bind": "10.0.0.5", "api_bind6": ""})
+        rendered = _render({"api_bind": "10.0.0.5"})
         self.assertIn("listen 10.0.0.5:5248;", rendered)
         self.assertNotIn("listen 5248;", rendered)
         self.assertNotIn("listen [::]:5248;", rendered)
 
     def test_ipv6_bind_only(self):
-        rendered = _render({"api_bind": "", "api_bind6": "fd00::5"})
+        rendered = _render({"api_bind": "fd00::5"})
         self.assertIn("listen [fd00::5]:5248;", rendered)
         self.assertNotIn("listen 5248;", rendered)
         self.assertNotIn("listen [::]:5248;", rendered)
 
     def test_dual_stack_bind(self):
-        rendered = _render({"api_bind": "10.0.0.5", "api_bind6": "fd00::5"})
+        rendered = _render({"api_bind": ["10.0.0.5", "fd00::5"]})
         self.assertIn("listen 10.0.0.5:5248;", rendered)
         self.assertIn("listen [fd00::5]:5248;", rendered)
 

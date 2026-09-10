@@ -103,15 +103,6 @@ class TestConfigHardeningSnapOnlyKeys(_Base):
                 self._cmd(command="set", key="dns_bind", value="10.0.0.1")
         self.assertEqual(1, ctx.exception.code)
 
-    def test_set_dns_bind6_refused_outside_snap(self):
-        with patch(
-            "maasserver.management.commands.config_hardening.running_in_snap",
-            return_value=False,
-        ):
-            with self.assertRaises(SystemExit) as ctx:
-                self._cmd(command="set", key="dns_bind6", value="fd00::1")
-        self.assertEqual(1, ctx.exception.code)
-
     def test_set_dns_bind_allowed_in_snap(self):
         with (
             patch(
@@ -162,7 +153,6 @@ class TestConfigHardeningSnapOnlyKeys(_Base):
             MockConfig.objects.db_manager.return_value.get_config.return_value = None
             cmd = self._cmd(command="list")
         self.assertNotIn("dns_bind ", cmd.stdout.getvalue())
-        self.assertNotIn("dns_bind6", cmd.stdout.getvalue())
 
     def test_list_includes_dns_bind_in_snap(self):
         with (
@@ -188,7 +178,7 @@ class TestConfigHardeningSnapOnlyKeys(_Base):
             )
             MockConfig.objects.db_manager.return_value.get_config.return_value = None
             cmd = self._cmd(command="list")
-        self.assertIn("dns_bind6", cmd.stdout.getvalue())
+        self.assertIn("dns_bind ", cmd.stdout.getvalue())
 
 
 class TestConfigHardeningGet(_Base):
@@ -198,13 +188,11 @@ class TestConfigHardeningGet(_Base):
         ) as MockRegionCfg:
             mock_cfg = MagicMock()
             mock_cfg.api_bind = ["10.0.0.1"]
-            mock_cfg.api_bind6 = []
             mock_cfg.api_tls_dhparam = ""
             mock_cfg.prometheus_bind = "127.0.0.1"
             mock_cfg.temporal_bind = "127.0.0.1"
             mock_cfg.rpc_bind = ["127.0.0.1"]
             mock_cfg.dns_bind = []
-            mock_cfg.dns_bind6 = []
             mock_cfg.database_sslmode = "prefer"
             mock_cfg.database_sslcert = ""
             mock_cfg.database_sslkey = ""
@@ -231,12 +219,10 @@ class TestConfigHardeningGet(_Base):
             mock_cfg = MagicMock()
             mock_cfg.prometheus_bind = "127.0.0.1"
             mock_cfg.api_bind = []
-            mock_cfg.api_bind6 = []
             mock_cfg.api_tls_dhparam = ""
             mock_cfg.temporal_bind = ""
             mock_cfg.rpc_bind = []
             mock_cfg.dns_bind = []
-            mock_cfg.dns_bind6 = []
             mock_cfg.database_sslmode = ""
             mock_cfg.database_sslcert = ""
             mock_cfg.database_sslkey = ""
@@ -267,12 +253,14 @@ class TestConfigHardeningValidate(_Base):
         return MagicMock(
             api_tls_dhparam="",
             api_bind=[],
-            api_bind6=[],
+            api_int_bind=[],
             prometheus_bind="",
             temporal_bind="",
             rpc_bind=[],
+            agent_api_bind=[],
             dns_bind=[],
-            dns_bind6=[],
+            syslog_bind=[],
+            http_proxy_bind=[],
             database_sslmode="",
         )
 
@@ -415,17 +403,14 @@ class TestConfigHardeningListEffectiveBinds(_Base):
         defaults = dict(
             api_tls_dhparam="",
             api_bind=[],
-            api_bind6=[],
+            api_int_bind=[],
             prometheus_bind="",
             temporal_bind="",
             rpc_bind=[],
             agent_api_bind=[],
-            agent_api_bind6=[],
             dns_bind=[],
-            dns_bind6=[],
             syslog_bind=[],
             http_proxy_bind=[],
-            http_proxy_bind6=[],
             database_sslmode="prefer",
             database_sslcert="",
             database_sslkey="",
@@ -485,26 +470,29 @@ class TestConfigHardeningListEffectiveBinds(_Base):
             output = self._run_list(self._mock_cfg(), hardening_active=False)
         for key in (
             "api_bind",
-            "api_bind6",
             "agent_api_bind",
-            "agent_api_bind6",
             "http_proxy_bind",
-            "http_proxy_bind6",
             "syslog_bind",
         ):
             self.assertNotIn("effective", self._line_for(output, key))
 
     def test_api_bind_shows_effective_value_under_hardening(self):
+        import socket
+
         import provisioningserver.utils.network as network_module
+
+        def fake_source(url, family=None):
+            return "10.0.0.9" if family == socket.AF_INET else "fd00::9"
 
         with patch.object(
             network_module,
             "get_source_address_for_url",
-            return_value="10.0.0.9",
+            side_effect=fake_source,
         ):
             output = self._run_list(self._mock_cfg(), hardening_active=True)
         self.assertIn(
-            "(effective: 10.0.0.9)", self._line_for(output, "api_bind")
+            "(effective: 10.0.0.9,fd00::9)",
+            self._line_for(output, "api_bind"),
         )
 
     def test_explicit_bind_not_annotated_as_effective(self):

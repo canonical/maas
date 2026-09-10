@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Django management command: config-hardening."""
 
-from socket import AF_INET, AF_INET6
-
 from django.core.management.base import BaseCommand
 from django.db import DEFAULT_DB_ALIAS
 
@@ -17,27 +15,23 @@ from maasservicelayer.services.hardening import (
     AUTO_DERIVED_BIND_KEYS,
     configure_and_validate_hardening,
 )
+from provisioningserver.utils.network import resolve_dual_stack_bind_addresses
 from provisioningserver.utils.snap import running_in_snap
 
 _CONFIG_KEYS = frozenset({"hardening_enabled", "fips_enabled"})
 
 # Only meaningful in snap deployments: MAAS owns the whole named.conf
 # there. On Debian-packaged installs MAAS does not own the base
-# named.conf.options, so these keys are refused entirely.
-_SNAP_ONLY_KEYS = frozenset({"dns_bind", "dns_bind6"})
+# named.conf.options, so this key is refused entirely.
+_SNAP_ONLY_KEYS = frozenset({"dns_bind"})
 
-# Family to derive for keys resolved via `resolve_bind_addresses`
-# (list-valued, per-family binds). Keys absent here (`rpc_bind`,
-# `temporal_bind`, `syslog_bind`, `prometheus_bind`) are single mixed-family
-# binds resolved differently -- see `_effective_bind_value`.
-_BIND_FAMILY_FOR_KEY = {
-    "api_bind": AF_INET,
-    "api_bind6": AF_INET6,
-    "agent_api_bind": AF_INET,
-    "agent_api_bind6": AF_INET6,
-    "http_proxy_bind": AF_INET,
-    "http_proxy_bind6": AF_INET6,
-}
+# Keys resolved as single mixed-family lists via
+# `resolve_dual_stack_bind_addresses`. Keys absent here (`rpc_bind`,
+# `temporal_bind`, `syslog_bind`, `prometheus_bind`) are resolved
+# differently -- see `_effective_bind_value`.
+_DUAL_STACK_BIND_KEYS = frozenset(
+    {"api_bind", "agent_api_bind", "http_proxy_bind"}
+)
 
 
 def _effective_bind_value(
@@ -72,14 +66,13 @@ def _effective_bind_value(
         )
     if key == "prometheus_bind":
         return "127.0.0.1" if hardening_active else ""
-    family = _BIND_FAMILY_FOR_KEY.get(key)
-    if family is None:
-        return ""
-    return ",".join(
-        resolve_bind_addresses(
-            [], maas_url, hardening_active=hardening_active, family=family
+    if key in _DUAL_STACK_BIND_KEYS:
+        return ",".join(
+            resolve_dual_stack_bind_addresses(
+                [], maas_url, hardening_active=hardening_active
+            )
         )
-    )
+    return ""
 
 
 _ALL_KNOWN_KEYS = _CONFIG_KEYS | _CONF_KEYS
@@ -307,19 +300,14 @@ class Command(BaseCommandWithConnection):
                     api_tls_key_pem=key_pem,
                     api_tls_dhparam=str(cfg.api_tls_dhparam),
                     api_bind=list(cfg.api_bind),
-                    api_bind6=list(cfg.api_bind6),
-                    api_int_bind=str(cfg.api_int_bind),
-                    api_int_bind6=str(cfg.api_int_bind6),
+                    api_int_bind=list(cfg.api_int_bind),
                     prometheus_bind=str(cfg.prometheus_bind),
                     temporal_bind=str(cfg.temporal_bind),
                     rpc_bind=list(cfg.rpc_bind),
                     agent_api_bind=list(cfg.agent_api_bind),
-                    agent_api_bind6=list(cfg.agent_api_bind6),
                     dns_bind=list(cfg.dns_bind),
-                    dns_bind6=list(cfg.dns_bind6),
                     syslog_bind=list(cfg.syslog_bind),
                     http_proxy_bind=list(cfg.http_proxy_bind),
-                    http_proxy_bind6=list(cfg.http_proxy_bind6),
                     database_host=str(cfg.database_host),
                     database_sslmode=str(cfg.database_sslmode),
                     fips_declared=fips_declared,

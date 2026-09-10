@@ -24,7 +24,7 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
     """Verify _configure forwards binding/hardening context to the template."""
 
     def _run_configure(
-        self, hardening_active, api_bind="", maas_url="", **extra
+        self, hardening_active, api_bind=None, maas_url="", **extra
     ):
         """Run _configure and return the dict passed to template.substitute."""
         captured = {}
@@ -40,9 +40,7 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
         def fake_cluster_open():
             m = MagicMock(spec=ClusterConfiguration)
             m.hardening_enabled = "on" if hardening_active else "auto"
-            m.api_bind = [api_bind] if api_bind else []
-            api_bind6 = extra.get("api_bind6", "")
-            m.api_bind6 = [api_bind6] if api_bind6 else []
+            m.api_bind = api_bind or []
             m.maas_url = [maas_url] if maas_url else []
             m.api_upstream_port = extra.get("api_upstream_port", 5240)
             m.api_rate_limit_rate = extra.get("api_rate_limit_rate", "10r/s")
@@ -80,12 +78,23 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
     def test_hardening_on_passes_hardening_true_and_binds(self):
         captured = self._run_configure(
             hardening_active=True,
-            api_bind="127.0.0.1",
-            api_bind6="fd00::5",
+            api_bind=["127.0.0.1", "fd00::5"],
         )
         assert captured.get("hardening") is True
         assert "127.0.0.1:5248" in captured.get("api_listen")
         assert "[fd00::5]:5248" in captured.get("api_listen")
+
+    def test_hardening_on_ipv4_only_backfills_ipv6(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "fd00::9"
+        captured = self._run_configure(
+            hardening_active=True,
+            api_bind=["10.0.0.5"],
+            maas_url="http://10.0.0.1:5240/MAAS",
+        )
+        assert "10.0.0.5:5248" in captured.get("api_listen")
+        assert "[fd00::9]:5248" in captured.get("api_listen")
 
     def test_hardening_off_unset_stays_wildcard(self):
         captured = self._run_configure(

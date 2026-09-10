@@ -3,6 +3,7 @@
 
 """Tests for `provisioningserver.rackdservices.external`."""
 
+from socket import AF_INET, AF_INET6
 from unittest.mock import Mock
 
 import attr
@@ -24,6 +25,15 @@ from provisioningserver.utils.service_monitor import SERVICE_STATE
 from provisioningserver.utils.testing import MAASIDFixture, MAASUUIDFixture
 
 TIMEOUT = get_testing_timeout()
+
+
+def _fake_dual_stack_source_address(v4="10.0.0.9", v6="fd00::9"):
+    """Return a `get_source_address_for_url` stub keyed by address family."""
+
+    def fake_source_address(maas_url, family=None):
+        return {AF_INET: v4, AF_INET6: v6}[family]
+
+    return fake_source_address
 
 
 def prepareRegion(
@@ -492,7 +502,6 @@ class TestRackProxy(MAASTestCase):
             prefer_v4_proxy=proxy_prefer_v4_proxy,
             maas_proxy_port=proxy_port,
             http_proxy_bind=[],
-            http_proxy_bind6=[],
         )
         service_monitor.reloadService.assert_called_once_with("proxy_rack")
         # If the configuration has not changed then a second call to
@@ -504,7 +513,6 @@ class TestRackProxy(MAASTestCase):
             prefer_v4_proxy=proxy_prefer_v4_proxy,
             maas_proxy_port=proxy_port,
             http_proxy_bind=[],
-            http_proxy_bind6=[],
         )
         service_monitor.reloadService.assert_called_once_with("proxy_rack")
 
@@ -528,7 +536,6 @@ class TestRackProxy(MAASTestCase):
         mock_open = self.patch(ClusterConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
         mock_cfg.http_proxy_bind = []
-        mock_cfg.http_proxy_bind6 = []
         mock_cfg.maas_url = ["http://10.0.0.9:5240/MAAS"]
         mock_open.return_value.__exit__.return_value = False
         write_config = self.patch_autospec(
@@ -538,20 +545,20 @@ class TestRackProxy(MAASTestCase):
         external.RackProxy()._configure(self._make_proxy_configuration())
 
         self.assertEqual([], write_config.call_args.kwargs["http_proxy_bind"])
-        self.assertEqual([], write_config.call_args.kwargs["http_proxy_bind6"])
 
-    def test_configure_hardening_on_unset_derives_from_maas_url(self):
+    def test_configure_hardening_on_unset_derives_both_families(self):
         from provisioningserver.config import ClusterConfiguration
         import provisioningserver.utils.network as network_module
+
+        fake_source_address = _fake_dual_stack_source_address()
 
         self.patch(external, "is_hardening_enabled").return_value = True
         self.patch(
             network_module, "get_source_address_for_url"
-        ).return_value = "10.0.0.9"
+        ).side_effect = fake_source_address
         mock_open = self.patch(ClusterConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
         mock_cfg.http_proxy_bind = []
-        mock_cfg.http_proxy_bind6 = []
         mock_cfg.maas_url = ["http://10.0.0.9:5240/MAAS"]
         mock_open.return_value.__exit__.return_value = False
         write_config = self.patch_autospec(
@@ -561,17 +568,23 @@ class TestRackProxy(MAASTestCase):
         external.RackProxy()._configure(self._make_proxy_configuration())
 
         self.assertEqual(
-            ["10.0.0.9"], write_config.call_args.kwargs["http_proxy_bind"]
+            ["10.0.0.9", "fd00::9"],
+            write_config.call_args.kwargs["http_proxy_bind"],
         )
 
-    def test_configure_explicit_bind_wins_over_derivation(self):
+    def test_configure_explicit_v4_backfills_v6_under_hardening(self):
         from provisioningserver.config import ClusterConfiguration
+        import provisioningserver.utils.network as network_module
+
+        fake_source_address = _fake_dual_stack_source_address()
 
         self.patch(external, "is_hardening_enabled").return_value = True
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).side_effect = fake_source_address
         mock_open = self.patch(ClusterConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
         mock_cfg.http_proxy_bind = ["10.0.0.5"]
-        mock_cfg.http_proxy_bind6 = []
         mock_cfg.maas_url = ["http://10.0.0.9:5240/MAAS"]
         mock_open.return_value.__exit__.return_value = False
         write_config = self.patch_autospec(
@@ -581,7 +594,8 @@ class TestRackProxy(MAASTestCase):
         external.RackProxy()._configure(self._make_proxy_configuration())
 
         self.assertEqual(
-            ["10.0.0.5"], write_config.call_args.kwargs["http_proxy_bind"]
+            ["10.0.0.5", "fd00::9"],
+            write_config.call_args.kwargs["http_proxy_bind"],
         )
 
     @inlineCallbacks

@@ -78,6 +78,8 @@ from provisioningserver.utils.network import (
     resolve_bind_address,
     resolve_bind_addresses,
     resolve_connect_address,
+    resolve_dual_stack_bind_addresses,
+    resolve_dual_stack_service_bind,
     resolve_host_to_addrinfo,
     resolve_hostname,
     resolve_service_bind,
@@ -2528,6 +2530,98 @@ class TestResolveServiceBind(MAASTestCase):
         self.assertEqual([], result)
         warning.assert_called_once()
         self.assertEqual(True, warning.call_args.kwargs.get("exc_info"))
+
+
+class TestResolveDualStackBindAddresses(MAASTestCase):
+    def test_explicit_v4_only_still_backfills_v6_default(self):
+        def fake_derive(maas_url, family=None):
+            return {AF_INET: "10.0.0.5", AF_INET6: "fd00::5"}[family]
+
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).side_effect = fake_derive
+
+        result = resolve_dual_stack_bind_addresses(
+            ["10.0.0.9"], "http://10.0.0.5:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual(["10.0.0.9", "fd00::5"], result)
+
+    def test_explicit_v6_only_still_backfills_v4_default(self):
+        def fake_derive(maas_url, family=None):
+            return {AF_INET: "10.0.0.5", AF_INET6: "fd00::5"}[family]
+
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).side_effect = fake_derive
+
+        result = resolve_dual_stack_bind_addresses(
+            ["fd00::9"], "http://10.0.0.5:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual(["fd00::9", "10.0.0.5"], result)
+
+    def test_explicit_both_families_returned_unchanged(self):
+        derive = self.patch(network_module, "get_source_address_for_url")
+
+        result = resolve_dual_stack_bind_addresses(
+            ["10.0.0.9", "fd00::9"],
+            "http://10.0.0.5:5240/MAAS",
+            hardening_active=True,
+        )
+        self.assertEqual(["10.0.0.9", "fd00::9"], result)
+        derive.assert_not_called()
+
+    def test_empty_configured_derives_both_families(self):
+        def fake_derive(maas_url, family=None):
+            return {AF_INET: "10.0.0.5", AF_INET6: "fd00::5"}[family]
+
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).side_effect = fake_derive
+
+        result = resolve_dual_stack_bind_addresses(
+            [], "http://10.0.0.5:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual(["10.0.0.5", "fd00::5"], result)
+
+    def test_empty_configured_outside_hardening_stays_empty(self):
+        result = resolve_dual_stack_bind_addresses(
+            [], "http://10.0.0.5:5240/MAAS", hardening_active=False
+        )
+        self.assertEqual([], result)
+
+
+class TestResolveDualStackServiceBind(MAASTestCase):
+    def test_reads_configured_list_and_backfills_missing_family(self):
+        config = Mock(
+            bind_key=["10.0.0.9"],
+            maas_url="http://10.0.0.5:5240/MAAS",
+        )
+
+        @contextmanager
+        def open_config():
+            yield config
+
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "fd00::5"
+
+        result = resolve_dual_stack_service_bind(
+            open_config, "bind_key", hardening_active=True
+        )
+        self.assertEqual(["10.0.0.9", "fd00::5"], result)
+
+    def test_open_config_error_is_logged_and_falls_back(self):
+        def open_config():
+            raise OSError("no such file")
+
+        warning = self.patch(network_module.maaslog, "warning")
+
+        result = resolve_dual_stack_service_bind(
+            open_config, "bind_key", hardening_active=False
+        )
+
+        self.assertEqual([], result)
+        warning.assert_called_once()
 
 
 class TestResolveConnectAddress(MAASTestCase):
