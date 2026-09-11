@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the GNU
+# Copyright 2017-2026 Canonical Ltd.  This software is licensed under the GNU
 # Affero General Public License version 3 (see the file LICENSE).
 
 """Snap management commands."""
@@ -22,9 +22,7 @@ from psycopg2.extensions import parse_dsn
 from maascli.command import Command, CommandError
 from maascli.configfile import MAASConfiguration
 from maascli.init import (
-    add_candid_options,
     add_create_admin_options,
-    add_rbac_options,
     print_msg,
     prompt_for_choices,
     read_input,
@@ -620,8 +618,6 @@ class cmd_init(SnapCommand):
                 ),
             )
         for for_mode in ["region+rack", "region"]:
-            add_candid_options(subparsers_map[for_mode], suppress_help=True)
-            add_rbac_options(subparsers_map[for_mode], suppress_help=True)
             subparsers_map[for_mode].add_argument(
                 "--skip-admin", action="store_true", help=argparse.SUPPRESS
             )
@@ -725,12 +721,7 @@ class cmd_init(SnapCommand):
                     """\
                     MAAS has been set up.
 
-                    If you want to configure external authentication or use
-                    MAAS with Canonical RBAC, please run
-
-                      sudo maas configauth
-
-                    To create admins when not using external authentication, run
+                    To create an admin, run
 
                       sudo maas createadmin
 

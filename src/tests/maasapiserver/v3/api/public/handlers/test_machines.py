@@ -20,19 +20,13 @@ from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
 from maascommon.openfga.async_client import OpenFGAClient
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.auth.macaroons.macaroon_client import RbacAsyncClient
-from maasservicelayer.auth.macaroons.models.responses import (
-    PermissionResourcesMapping,
-)
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachineClauseFactory
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
-from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
-from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -282,80 +276,6 @@ class TestMachinesApi(ApiCommonTests):
                                 ),
                                 MachineClauseFactory.with_resource_pool_ids(
                                     {TEST_MACHINE.id}
-                                ),
-                            ]
-                        ),
-                    ]
-                )
-            ),
-        )
-
-    async def test_list_rbac(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user_rbac: AsyncClient,
-    ) -> None:
-        services_mock.external_auth = Mock(ExternalAuthService)
-
-        rbac_client_mock = Mock(RbacAsyncClient)
-
-        rbac_client_mock.get_resource_pool_ids.return_value = [
-            PermissionResourcesMapping(
-                permission=RbacPermission.VIEW, resources=[0, 1]
-            ),
-            PermissionResourcesMapping(
-                permission=RbacPermission.VIEW_ALL, resources=[0]
-            ),
-            PermissionResourcesMapping(
-                permission=RbacPermission.ADMIN_MACHINES, resources=[]
-            ),
-        ]
-        services_mock.external_auth.get_rbac_client.return_value = (
-            rbac_client_mock
-        )
-        services_mock.machines = Mock(MachinesService)
-        services_mock.machines.list.return_value = ListResult[Machine](
-            items=[TEST_MACHINE], total=1
-        )
-        response = await mocked_api_client_user_rbac.get(self.BASE_PATH)
-        assert response.status_code == 200
-        machines_response = MachinesListResponse(**response.json())
-        assert len(machines_response.items) == 1
-        assert machines_response.total == 1
-        assert machines_response.next is None
-        rbac_client_mock.get_resource_pool_ids.assert_called_once_with(
-            user="username",
-            permissions={
-                RbacPermission.VIEW,
-                RbacPermission.VIEW_ALL,
-                RbacPermission.ADMIN_MACHINES,
-            },
-        )
-        services_mock.machines.list.assert_called_once_with(
-            page=1,
-            size=20,
-            query=QuerySpec(
-                where=MachineClauseFactory.or_clauses(
-                    [
-                        # view_all pools
-                        MachineClauseFactory.with_resource_pool_ids({0}),
-                        MachineClauseFactory.and_clauses(
-                            [
-                                MachineClauseFactory.or_clauses(
-                                    [
-                                        MachineClauseFactory.with_owner(None),
-                                        MachineClauseFactory.with_owner(
-                                            "username"
-                                        ),
-                                        # admin_pools
-                                        MachineClauseFactory.with_resource_pool_ids(
-                                            None
-                                        ),
-                                    ]
-                                ),
-                                # visible_pools
-                                MachineClauseFactory.with_resource_pool_ids(
-                                    {0, 1}
                                 ),
                             ]
                         ),

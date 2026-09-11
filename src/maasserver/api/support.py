@@ -226,15 +226,6 @@ def check_permission(permission_method_name):
     def decorator(func):
         @wraps(func)
         def wrapper(self, request, *args, **kwargs):
-            from maasserver.rbac import rbac
-
-            if rbac.is_enabled():
-                if request.user.is_superuser:
-                    return func(self, request, *args, **kwargs)
-                raise PermissionDenied(
-                    f"User does not have permission to perform this operation. The user should have permission '{permission_method_name}'"
-                )
-
             client = openfga.get_openfga_client()
 
             permission_func = getattr(client, permission_method_name)

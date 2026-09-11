@@ -178,7 +178,7 @@ paths.source = [ "src", "*/maas/src" ]
 
 [tool.pyright]
 include = [ "src/maascommon", "src/maasservicelayer", "src/maasapiserver", "src/maastemporalworker" ]
-exclude = [ "src/maasservicelayer/auth/macaroons", "src/maasservicelayer/services/machines_v2.py" ]
+exclude = [ "src/maasservicelayer/services/machines_v2.py" ]
 executionEnvironments = [
   { root = "src", reportMissingImports = "none", reportMissingModuleSource = "none" },
 ]

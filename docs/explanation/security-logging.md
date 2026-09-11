@@ -85,7 +85,7 @@ Logged when a login attempt fails due to invalid credentials.
 
 #### AUTHN_authentication_successful
 
-Logged when a request is successfully authenticated using tokens, macaroons, or other methods.
+Logged when a request is successfully authenticated using tokens or other methods.
 
 **Example**:
 

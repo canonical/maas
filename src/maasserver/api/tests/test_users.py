@@ -1,4 +1,4 @@
-# Copyright 2013-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the user accounts API."""
@@ -11,12 +11,10 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 
 from maascommon.events import AUDIT
-import maasserver.api.auth
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models import Node, SSHKey, SSLKey, StaticIPAddress
 from maasserver.models.event import Event
-from maasserver.secrets import SecretManager
 from maasserver.testing import get_data
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -29,13 +27,6 @@ def get_user_uri(user):
 
 
 class TestUsers(APITestCase.ForUser):
-    def setUp(self):
-        self.mock_validate = self.patch(
-            maasserver.api.auth, "validate_user_external_auth"
-        )
-        self.mock_validate.return_value = True
-        super().setUp()
-
     def test_handler_path(self):
         self.assertEqual("/MAAS/api/2.0/users/", reverse("users_handler"))
 
@@ -69,26 +60,6 @@ class TestUsers(APITestCase.ForUser):
             (email, False), (created_user.email, created_user.is_superuser)
         )
         self.assertTrue(created_user.userprofile.is_local)
-
-    def test_POST_creates_user_external_auth_not_local(self):
-        SecretManager().set_composite_secret(
-            "external-auth", {"url": "http://auth.example.com"}
-        )
-        self.become_admin()
-        username = factory.make_name("user")
-        email = factory.make_email_address()
-        password = factory.make_string()
-        self.client.post(
-            reverse("users_handler"),
-            {
-                "username": username,
-                "email": email,
-                "password": password,
-                "is_superuser": "0",
-            },
-        )
-        created_user = User.objects.get(username=username)
-        self.assertFalse(created_user.userprofile.is_local)
 
     def test_POST_creates_admin(self):
         self.become_admin()
@@ -198,45 +169,6 @@ class TestUsers(APITestCase.ForUser):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(event.description, "Created admin '%s'." % username)
-
-    def test_POST_password_required_without_external_auth(self):
-        self.become_admin()
-        username = factory.make_name("user")
-        response = self.client.post(
-            reverse("users_handler"),
-            {
-                "username": username,
-                "email": factory.make_email_address(),
-                "is_superuser": "0",
-            },
-        )
-        self.assertEqual(
-            http.client.BAD_REQUEST, response.status_code, response.content
-        )
-        self.assertEqual(
-            response.content.decode("utf8"), "No provided password!"
-        )
-
-    def test_POST_password_optional_with_external_auth(self):
-        SecretManager().set_composite_secret(
-            "external-auth", {"url": "http://auth.example.com"}
-        )
-        self.become_admin()
-        username = factory.make_name("user")
-        response = self.client.post(
-            reverse("users_handler"),
-            {
-                "username": username,
-                "email": factory.make_email_address(),
-                "is_superuser": "0",
-            },
-        )
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content
-        )
-
-        created_user = User.objects.get(username=username)
-        self.assertFalse(created_user.has_usable_password())
 
     def test_GET_lists_users(self):
         users = [factory.make_User() for counter in range(2)]

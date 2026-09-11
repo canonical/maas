@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """CLI management commands."""
@@ -22,12 +22,7 @@ from maascli.auth import (
 )
 from maascli.command import Command, CommandError
 from maascli.config import ProfileConfig
-from maascli.init import (
-    add_candid_options,
-    add_create_admin_options,
-    add_rbac_options,
-    init_maas,
-)
+from maascli.init import add_create_admin_options, init_maas
 from maascli.utils import api_url, parse_docstring, safe_name
 
 CERTS_DIR = Path("~/.maascli.certs").expanduser()
@@ -241,8 +236,6 @@ class cmd_init(Command):
             help="Skip the admin creation.",
         )
         add_create_admin_options(parser)
-        add_candid_options(parser)
-        add_rbac_options(parser)
 
     def __call__(self, options):
         init_maas(options)
@@ -260,7 +253,6 @@ COMMANDS = {
 # python3-maasserver.
 REGIOND_COMMANDS = (
     ("apikey", "maasserver"),
-    ("configauth", "maasserver"),
     ("config-tls", "maasserver"),
     ("config-vault", "maasserver"),
     ("msm", "maasserver"),

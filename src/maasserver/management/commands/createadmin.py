@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django command: create an administrator account."""
@@ -140,7 +140,6 @@ class Command(BaseCommandWithConnection):
     def handle(self, *args, **options):
         from django.contrib.auth.models import User
 
-        from maasserver.macaroon_auth import external_auth_enabled
         from maasserver.models import SSHKey
         from maasserver.models.sshkey import ImportSSHKeysError
 
@@ -155,7 +154,7 @@ class Command(BaseCommandWithConnection):
             prompt_ssh_import = True
         if username is None:
             username = prompt_for_username()
-        if password is None and not external_auth_enabled():
+        if password is None:
             password = prompt_for_password()
         if email is None:
             email = prompt_for_email()

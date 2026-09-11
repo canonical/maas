@@ -26,7 +26,6 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachineClauseFactory
-from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
@@ -52,11 +51,6 @@ class MachinesHandler(Handler):
             Depends(
                 check_permissions(
                     openfga_permission=None,  # Permissions are handled in the handler.
-                    rbac_permissions={
-                        RbacPermission.VIEW,
-                        RbacPermission.VIEW_ALL,
-                        RbacPermission.ADMIN_MACHINES,
-                    },
                 )
             )
         ],
@@ -69,65 +63,40 @@ class MachinesHandler(Handler):
             get_authenticated_user
         ),
     ) -> MachinesListResponse:
-        if authenticated_user.rbac_permissions:
-            where_clause = MachineClauseFactory.or_clauses(
-                [
-                    MachineClauseFactory.with_resource_pool_ids(
-                        authenticated_user.rbac_permissions.view_all_pools
-                    ),
-                    MachineClauseFactory.and_clauses(
-                        [
-                            MachineClauseFactory.or_clauses(
-                                [
-                                    MachineClauseFactory.with_owner(None),
-                                    MachineClauseFactory.with_owner(
-                                        authenticated_user.username
-                                    ),
-                                    MachineClauseFactory.with_resource_pool_ids(
-                                        authenticated_user.rbac_permissions.admin_pools
-                                    ),
-                                ]
-                            ),
-                            MachineClauseFactory.with_resource_pool_ids(
-                                authenticated_user.rbac_permissions.visible_pools
-                            ),
-                        ]
-                    ),
-                ]
-            )
-        else:
-            # The user can view all the machines in the visible pools and all the machines owned by them or unassigned in the view_available pools. For the way the OpenFGA model is designed, list_pools_with_view_available_machines_access will return all the pools with edit/deploy/view-all/view access.
-            fga_client = services.openfga_tuples.get_client()
-            view_access_pools = (
-                await fga_client.list_pools_with_view_machines_access(
-                    authenticated_user.id
-                )
-            )
-            available_access_pools = await fga_client.list_pools_with_view_available_machines_access(
+        # The user can view all the machines in the visible pools and all the machines owned by them or unassigned in the view_available pools. For the way the OpenFGA model is designed, list_pools_with_view_available_machines_access will return all the pools with edit/deploy/view-all/view access.
+        fga_client = services.openfga_tuples.get_client()
+        view_access_pools = (
+            await fga_client.list_pools_with_view_machines_access(
                 authenticated_user.id
             )
-            where_clause = MachineClauseFactory.or_clauses(
-                [
-                    MachineClauseFactory.with_resource_pool_ids(
-                        set(view_access_pools)
-                    ),
-                    MachineClauseFactory.and_clauses(
-                        [
-                            MachineClauseFactory.or_clauses(
-                                [
-                                    MachineClauseFactory.with_owner(None),
-                                    MachineClauseFactory.with_owner(
-                                        authenticated_user.username
-                                    ),
-                                ]
-                            ),
-                            MachineClauseFactory.with_resource_pool_ids(
-                                set(available_access_pools)
-                            ),
-                        ]
-                    ),
-                ]
+        )
+        available_access_pools = (
+            await fga_client.list_pools_with_view_available_machines_access(
+                authenticated_user.id
             )
+        )
+        where_clause = MachineClauseFactory.or_clauses(
+            [
+                MachineClauseFactory.with_resource_pool_ids(
+                    set(view_access_pools)
+                ),
+                MachineClauseFactory.and_clauses(
+                    [
+                        MachineClauseFactory.or_clauses(
+                            [
+                                MachineClauseFactory.with_owner(None),
+                                MachineClauseFactory.with_owner(
+                                    authenticated_user.username
+                                ),
+                            ]
+                        ),
+                        MachineClauseFactory.with_resource_pool_ids(
+                            set(available_access_pools)
+                        ),
+                    ]
+                ),
+            ]
+        )
 
         query = QuerySpec(where=where_clause)
 

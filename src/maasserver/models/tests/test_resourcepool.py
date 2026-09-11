@@ -1,4 +1,4 @@
-# Copyright 2013-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test ResourcePool objects."""
@@ -11,8 +11,6 @@ from maasserver.models.resourcepool import (
     ResourcePool,
 )
 from maasserver.permissions import ResourcePoolPermission
-from maasserver.rbac import FakeRBACClient, rbac
-from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -114,41 +112,10 @@ class TestResourcePoolManagerGetResourcePoolOr404(MAASServerTestCase):
 
 
 class TestResourcePoolManagerGetResourcePools(MAASServerTestCase):
-    def enable_rbac(self):
-        SecretManager().set_composite_secret(
-            "external-auth", {"rbac-url": "http://rbac.example.com"}
-        )
-        client = FakeRBACClient()
-        rbac._store.client = client
-        rbac._store.cleared = False  # Prevent re-creation of the client
-        self.rbac_store = client.store
-
     def test_user_returns_all(self):
         user = factory.make_User()
         factory.make_ResourcePool()
         self.assertCountEqual(
             ResourcePool.objects.all(),
             ResourcePool.objects.get_resource_pools(user),
-        )
-
-    def test_user_rbac_returns_viewable(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        pool = factory.make_ResourcePool()
-        factory.make_ResourcePool()
-        self.rbac_store.add_pool(pool)
-        self.rbac_store.allow(user.username, pool, "view")
-        self.assertCountEqual(
-            [pool], ResourcePool.objects.get_resource_pools(user)
-        )
-
-    def test_user_rbac_returns_view_all(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        pool = factory.make_ResourcePool()
-        factory.make_ResourcePool()
-        self.rbac_store.add_pool(pool)
-        self.rbac_store.allow(user.username, pool, "view-all")
-        self.assertCountEqual(
-            [pool], ResourcePool.objects.get_resource_pools(user)
         )

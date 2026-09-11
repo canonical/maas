@@ -67,15 +67,9 @@ ADMIN_PERMISSIONS = (
 class MAASAuthorizationBackend(ModelBackend):
     supports_object_permissions = True
 
-    def authenticate(self, request, username=None, password=None, **kwargs):
-        external_auth_info = getattr(request, "external_auth_info", None)
-        # use getattr so that tests that don't include the middleware don't
-        # explode
-        if external_auth_info:
-            # Don't allow username/password logins with external authentication
-            return
+    def authenticate(self, request, username=None, **kwargs):
         authenticated = super().authenticate(
-            request, username=username, password=password, **kwargs
+            request, username=username, **kwargs
         )
         if authenticated:
             user = User.objects.get(username=username)
@@ -86,89 +80,30 @@ class MAASAuthorizationBackend(ModelBackend):
     def has_perm(self, user, perm, obj=None):
         self._sanity_checks(perm, obj=obj)
         if not user.is_active:
-            # Deactivated users, and in particular the node-init user,
-            # are prohibited from accessing maasserver services.
             return False
 
-        from maasserver.rbac import rbac
-
-        rbac_enabled = rbac.is_enabled()
-        visible_pools, view_all_pools = [], []
-        deploy_pools, admin_pools = [], []
-        if rbac_enabled:
-            fetched_pools = rbac.get_resource_pool_ids(
-                user.username,
-                "view",
-                "view-all",
-                "deploy-machines",
-                "admin-machines",
-            )
-            visible_pools = fetched_pools["view"]
-            view_all_pools = fetched_pools["view-all"]
-            deploy_pools = fetched_pools["deploy-machines"]
-            admin_pools = fetched_pools["admin-machines"]
-
-        # Handle node permissions without objects.
         if perm == NodePermission.admin and obj is None:
-            # User wants to admin writes to all nodes (aka. create a node),
-            # must be superuser for those permissions.
             return can_edit_machines(user)
 
         elif perm == NodePermission.view and obj is None:
-            # XXX 2018-11-20 blake_r: View permission without an obj is used
-            # for device create as a standard user. Currently there is no
-            # specific DevicePermission and no way for this code path to know
-            # its for a device. So it is represented using this path.
-            #
-            # View is only used for the create action, modifying a created
-            # device uses the appropriate `NodePermission.edit` scoped to the
-            # device being editted.
-            if rbac_enabled:
-                # User must either be global admin or have access to deploy
-                # or admin some machines.
-                return user.is_superuser or (
-                    len(deploy_pools) > 0 or len(admin_pools) > 0
-                )
             return True
 
-        # ResourcePool permissions are handled specifically.
         if isinstance(perm, ResourcePoolPermission):
-            return self._perm_resource_pool(
-                user, perm, rbac, visible_pools, obj
-            )
+            return self._perm_resource_pool(user, perm, obj)
 
         if isinstance(obj, (Node, BlockDevice, FilesystemGroup)):
-            if isinstance(obj, BlockDevice) or isinstance(
-                obj, FilesystemGroup
-            ):
+            if isinstance(obj, (BlockDevice, FilesystemGroup)):
                 obj = obj.get_node()
             if perm == NodePermission.view:
-                return self._can_view(
-                    rbac_enabled,
-                    user,
-                    obj,
-                    visible_pools,
-                    view_all_pools,
-                    deploy_pools,
-                    admin_pools,
-                )
+                return self._can_view(user, obj)
             elif perm == NodePermission.edit:
-                can_edit = self._can_edit(
-                    rbac_enabled, user, obj, deploy_pools, admin_pools
-                )
-                return not obj.locked and can_edit
+                return not obj.locked and self._can_edit(user, obj)
             elif perm == NodePermission.lock:
-                # only machines can be locked
-                can_edit = self._can_edit(
-                    rbac_enabled, user, obj, deploy_pools, admin_pools
-                )
-                return obj.pool_id is not None and can_edit
+                return obj.pool_id is not None and self._can_edit(user, obj)
             elif perm == NodePermission.admin_read:
-                return self._can_admin(rbac_enabled, user, obj, admin_pools)
+                return self._can_admin(user, obj)
             elif perm == NodePermission.admin:
-                return not obj.locked and self._can_admin(
-                    rbac_enabled, user, obj, admin_pools
-                )
+                return not obj.locked and self._can_admin(user, obj)
             else:
                 raise NotImplementedError(
                     "Invalid permission check (invalid permission name: %s)."
@@ -177,50 +112,24 @@ class MAASAuthorizationBackend(ModelBackend):
         elif isinstance(obj, Interface):
             node = obj.get_node()
             if node is None:
-                # Doesn't matter the permission level if the interface doesn't
-                # have a node, the user must be a global admin.
                 return can_edit_machines(user)
             if perm == NodePermission.view:
-                return self._can_view(
-                    rbac_enabled,
-                    user,
-                    node,
-                    visible_pools,
-                    view_all_pools,
-                    deploy_pools,
-                    admin_pools,
-                )
+                return self._can_view(user, node)
             elif perm == NodePermission.edit:
-                # Machine interface can only be modified by an administrator
-                # of the machine. Even the owner of the machine cannot modify
-                # the interfaces on that machine, unless they have
-                # administrator rights.
                 if node.node_type == NODE_TYPE.MACHINE:
-                    return self._can_admin(
-                        rbac_enabled, user, node, admin_pools
-                    )
-                # Other node types must be editable by the user.
-                return self._can_edit(
-                    rbac_enabled, user, node, deploy_pools, admin_pools
-                )
+                    return self._can_admin(user, node)
+                return self._can_edit(user, node)
             elif perm == NodePermission.admin:
-                # Admin permission is solely granted to superusers.
-                return self._can_admin(rbac_enabled, user, node, admin_pools)
+                return self._can_admin(user, node)
             else:
                 raise NotImplementedError(
                     "Invalid permission check (invalid permission name: %s)."
                     % perm
                 )
         elif is_instance_or_subclass(obj, UNRESTRICTED_READ_MODELS):
-            # This model is classified under 'unrestricted read' for any
-            # logged-in user; so everyone can view, but only an admin can
-            # do anything else.
             if perm == NodePermission.view:
-                if rbac_enabled:
-                    return True
                 return get_openfga_client().can_view_global_entities(user)
             elif perm in ADMIN_PERMISSIONS:
-                # Admin permission is solely granted to superusers.
                 return can_edit_global_entities(user)
             else:
                 raise NotImplementedError(
@@ -228,7 +137,6 @@ class MAASAuthorizationBackend(ModelBackend):
                     % perm
                 )
         elif is_instance_or_subclass(obj, ADMIN_RESTRICTED_MODELS):
-            # Only administrators are allowed to read/write these objects.
             if perm in ADMIN_PERMISSIONS:
                 return can_edit_global_entities(user)
             else:
@@ -242,9 +150,6 @@ class MAASAuthorizationBackend(ModelBackend):
             )
 
     def _sanity_checks(self, perm, obj=None):
-        """Perform sanity checks to ensure that the perm matches the object."""
-        # Sanity check that a `ResourcePool` is being checked against
-        # `ResourcePoolPermission`.
         if (
             obj is not None
             and isinstance(obj, ResourcePool)
@@ -255,35 +160,9 @@ class MAASAuthorizationBackend(ModelBackend):
                 "against a `ResourcePoolPermission`."
             )
 
-    def _can_view(
-        self,
-        rbac_enabled,
-        user,
-        machine,
-        visible_pools,
-        view_all_pools,
-        deploy_pools,
-        admin_pools,
-    ):
+    def _can_view(self, user, machine):
         if machine.pool_id is None:
-            # Only machines are filtered for view access.
             return True
-        if rbac_enabled:
-            # Machine not owned by the user must be in the view_all_pools or
-            # admin_pools for the user to be able to view the machine.
-            if machine.owner_id is not None and machine.owner_id != user.id:
-                return (
-                    machine.pool_id in view_all_pools
-                    or machine.pool_id in admin_pools
-                )
-            # Machine is not owned or owned by the user so must be in either
-            # pool for the user to view it.
-            return (
-                machine.pool_id in visible_pools
-                or machine.pool_id in view_all_pools
-                or machine.pool_id in deploy_pools
-                or machine.pool_id in admin_pools
-            )
         return (
             machine.owner_id is None
             or machine.owner_id == user.id
@@ -292,46 +171,26 @@ class MAASAuthorizationBackend(ModelBackend):
             )
         )
 
-    def _can_edit(
-        self, rbac_enabled, user, machine, deploy_pools, admin_pools
-    ):
+    def _can_edit(self, user, machine):
         editable = machine.owner_id is None or machine.owner_id == user.id
-        if rbac_enabled:
-            can_admin = self._can_admin(
-                rbac_enabled, user, machine, admin_pools
-            )
-            can_edit = (
-                machine.pool_id in deploy_pools
-                or (machine.pool_id is None and machine.owner == user)
-                or can_admin
-            )
-            return (editable and can_edit) or can_admin
         return editable or get_openfga_client().can_edit_machines_in_pool(
             user, machine.pool_id
         )
 
-    def _can_admin(self, rbac_enabled, user, machine, admin_pools):
+    def _can_admin(self, user, machine):
         if machine.pool_id is None:
-            # Not a machine to be admin on this must have global admin.
             return get_openfga_client().can_edit_machines(user)
-        if rbac_enabled:
-            return machine.pool_id in admin_pools
         return get_openfga_client().can_edit_machines_in_pool(
             user, machine.pool_id
         )
 
-    def _perm_resource_pool(self, user, perm, rbac, visible_pools, obj=None):
-        # `create` permissions is called without an `obj`.
-        rbac_enabled = rbac.is_enabled()
+    def _perm_resource_pool(self, user, perm, obj=None):
         if (
             perm == ResourcePoolPermission.create
             or perm == ResourcePoolPermission.delete
         ):
-            if rbac_enabled:
-                return rbac.can_admin_resource_pool(user.username)
             return get_openfga_client().can_edit_machines(user)
 
-        # From this point forward the `obj` must be a `ResourcePool`.
         if not isinstance(obj, ResourcePool):
             raise ValueError(
                 "only `ResourcePoolPermission.(create|delete)` can be used "
@@ -339,17 +198,8 @@ class MAASAuthorizationBackend(ModelBackend):
             )
 
         if perm == ResourcePoolPermission.edit:
-            if rbac_enabled:
-                return (
-                    obj.id
-                    in rbac.get_resource_pool_ids(user.username, "edit")[
-                        "edit"
-                    ]
-                )
             return get_openfga_client().can_edit_machines_in_pool(user, obj.id)
         elif perm == ResourcePoolPermission.view:
-            if rbac_enabled:
-                return obj.id in visible_pools
             return get_openfga_client().can_view_available_machines_in_pool(
                 user, obj.id
             )
