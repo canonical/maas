@@ -232,6 +232,10 @@ Common = files("src/maascommon/**/*.py")
 CommonRule = Rule(
     Allow(StandardLibraries),
     Allow("apiclient.maas_client.MAASOAuth"),
+    # It's best to be selective about cryptography, so we're very specific.
+    Allow("cryptography.hazmat.primitives.asymmetric.dsa.DSAPublicKey"),
+    Allow("cryptography.hazmat.primitives.asymmetric.rsa.RSAPublicKey"),
+    Allow("cryptography.x509|cryptography.x509.**"),
     Allow("distro_info|distro_info.*"),
     Allow("httpx|httpx.**"),
     Allow("lxml|lxml.**"),
@@ -349,6 +353,8 @@ RegionControllerRule = Rule(
     Allow("attr|attr.**"),
     Allow("bson"),
     Allow("crochet|crochet.**"),
+    # It's best to be selective about cryptography, so we're very specific.
+    Allow("cryptography.x509|cryptography.x509.**"),
     Allow("curtin|curtin.**"),
     Allow("dateutil|dateutil.**"),
     Allow("dbus"),

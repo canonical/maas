@@ -349,3 +349,37 @@ def get_temporal_connect_address() -> str:
         maas_url,
         hardening_active=is_hardening_enabled(),
     )
+
+
+def build_hardening_validation_kwargs(
+    cfg: RegionConfiguration, cert=None
+) -> dict:
+    """Return the kwargs dict for
+    ``maasservicelayer.services.hardening.configure_and_validate_hardening``.
+
+    Reads the bind and database settings from an already-open
+    ``RegionConfiguration`` and the optional MAAS TLS certificate.
+    Callers should add process-specific flags such as ``fips_declared``
+    and ``snap_deployment`` before calling
+    ``configure_and_validate_hardening``. Lives here (not in
+    ``maasservicelayer``) because it reads ``RegionConfiguration``, a
+    ``maasserver``-only type.
+    """
+    cert_pem = cert.certificate_pem().encode() if cert else None
+    key_pem = cert.private_key_pem().encode() if cert else None
+    return {
+        "api_tls_cert_pem": cert_pem,
+        "api_tls_key_pem": key_pem,
+        "api_tls_dhparam": str(cfg.api_tls_dhparam),
+        "api_bind": list(cfg.api_bind),
+        "api_int_bind": list(cfg.api_int_bind),
+        "prometheus_bind": str(cfg.prometheus_bind),
+        "temporal_bind": str(cfg.temporal_bind),
+        "rpc_bind": list(cfg.rpc_bind),
+        "agent_api_bind": list(cfg.agent_api_bind),
+        "dns_bind": list(cfg.dns_bind),
+        "syslog_bind": list(cfg.syslog_bind),
+        "http_proxy_bind": list(cfg.http_proxy_bind),
+        "database_host": str(cfg.database_host),
+        "database_sslmode": str(cfg.database_sslmode),
+    }

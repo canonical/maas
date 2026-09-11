@@ -234,13 +234,9 @@ A value of `1` means FIPS mode is active.
 
 Run `maas config-hardening enable`. This sets `hardening_enabled=on` in the
 MAAS database; it is a pure database operation and does not touch
-`regiond.conf`. `api_bind`, `temporal_bind`, and `rpc_bind` are all left
-unset: MAAS derives a non-wildcard address at startup from `maas_url`
-for each of them (`api_bind` derives one address per family;
-`temporal_bind`/`rpc_bind` derive a single address matching whichever
-family `maas_url` resolves to). `prometheus_bind` is also left unset,
-but defaults to loopback (`127.0.0.1`) instead, since it's scraped
-locally rather than reached via `maas_url`.
+`regiond.conf`. Bind addresses are left unset by default; see [Security
+hardening reference](/reference/configuration-guides/security-hardening.md#bind-and-address-parameters)
+for the full derivation rule.
 
 ```text
 sudo maas config-hardening enable

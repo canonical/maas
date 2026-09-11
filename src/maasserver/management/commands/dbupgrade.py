@@ -21,6 +21,14 @@ from maasservicelayer.db import DatabaseConfig
 from provisioningserver.path import get_path
 
 
+def _get_dbname(conn_params: dict) -> str | None:
+    """Return the database name from connection parameters.
+
+    Temporal SQL tooling uses ``dbname``, while Django 3.x uses ``database``.
+    """
+    return conn_params.get("dbname") or conn_params.get("database")
+
+
 class Command(BaseCommand):
     help = "Upgrades database schema for MAAS regiond."
 
@@ -115,9 +123,7 @@ class Command(BaseCommand):
 
             # if port is empty, force set to 5432, otherwise Temporal sets it to 3306
             port = conn_params.get("port", "5432")
-            dbname = conn_params.get("dbname")
-            if dbname is None:
-                dbname = conn_params.get("database")  # Django 3.x
+            dbname = _get_dbname(conn_params)
 
             sslmode = conn_params.get("sslmode", "prefer")
             cmd = [
@@ -212,7 +218,7 @@ class Command(BaseCommand):
         password = conn_params.get("password") or ""
         host = conn_params.get("host") or "localhost"
         port = conn_params.get("port")
-        dbname = conn_params.get("dbname") or conn_params.get("database")
+        dbname = _get_dbname(conn_params)
 
         auth = f"{user}:{password}@" if password else f"{user}@"
 
@@ -224,7 +230,7 @@ class Command(BaseCommand):
 
     @classmethod
     def _build_alembic_connect_args(cls, conn_params):
-        dbname = conn_params.get("dbname") or conn_params.get("database")
+        dbname = _get_dbname(conn_params)
         return {
             "ssl": DatabaseConfig(
                 name=dbname,

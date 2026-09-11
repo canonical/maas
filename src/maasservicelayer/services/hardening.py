@@ -16,27 +16,18 @@ from pathlib import Path
 
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicKey
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import load_pem_parameters
-from cryptography.x509.oid import SignatureAlgorithmOID
 
-from maascommon.fips import is_fips_enabled
+from maascommon.fips import is_fips_enabled, validate_fips_tls_certificate
 from maascommon.hardening import BindViolation as HardeningViolation
-from maascommon.hardening import check_bind_violations, is_hardening_enabled
+from maascommon.hardening import (
+    check_bind_violations,
+    INSECURE_DB_SSLMODES,
+    is_hardening_enabled,
+)
 
 _log = logging.getLogger("maas.hardening")
 
-# `ObjectIdentifier` has no public human-readable name accessor (`._name`
-# is private); spell these out explicitly instead.
-_WEAK_SIGNATURE_ALGORITHM_NAMES = {
-    SignatureAlgorithmOID.RSA_WITH_SHA1: "RSA-SHA1",
-    SignatureAlgorithmOID.ECDSA_WITH_SHA1: "ECDSA-SHA1",
-    SignatureAlgorithmOID.DSA_WITH_SHA1: "DSA-SHA1",
-    SignatureAlgorithmOID.RSA_WITH_MD5: "RSA-MD5",
-}
-
-_INSECURE_SSLMODES = frozenset({"disable", "allow", "prefer", "require"})
 
 # Keys where an empty value is not a wildcard violation: the consuming
 # service derives a specific, non-wildcard address at runtime when unset
@@ -235,47 +226,21 @@ class HardeningValidator:
         if not self.fips_active:
             return []
 
-        weak_signature_algorithm = _WEAK_SIGNATURE_ALGORITHM_NAMES.get(
-            cert.signature_algorithm_oid
-        )
-        if weak_signature_algorithm is not None:
-            return [
-                _violation(
-                    code="WEAK_TLS_CERT_KEY",
-                    message=(
-                        f"TLS certificate is signed with "
-                        f"{weak_signature_algorithm}, which is "
-                        "not FIPS-compliant. Use SHA-256 or stronger."
-                    ),
-                    resolution="Run: maas config-tls enable <key> <cert> with a FIPS-compliant certificate",
-                    config_key="tls",
-                )
-            ]
-
-        pub_key = cert.public_key()
-        if isinstance(pub_key, DSAPublicKey):
-            return [
-                _violation(
-                    code="WEAK_TLS_CERT_KEY",
-                    message="TLS certificate key is DSA, which is not FIPS-compliant.",
-                    resolution="Run: maas config-tls enable <key> <cert> with an RSA or ECDSA key",
-                    config_key="tls",
-                )
-            ]
-        if isinstance(pub_key, RSAPublicKey) and pub_key.key_size < 2048:
-            return [
-                _violation(
-                    code="WEAK_TLS_CERT_KEY",
-                    message=(
-                        f"TLS certificate RSA key size {pub_key.key_size} "
-                        "bits is below the FIPS minimum of 2048 bits."
-                    ),
-                    resolution="Run: maas config-tls enable <key> <cert> with a key of at least 2048 bits",
-                    config_key="tls",
-                )
-            ]
-
-        return []
+        message = validate_fips_tls_certificate(cert)
+        if message is None:
+            return []
+        return [
+            _violation(
+                code="WEAK_TLS_CERT_KEY",
+                message=f"TLS certificate: {message}",
+                resolution=(
+                    "Run: maas config-tls enable <key> <cert> with a "
+                    "FIPS-compliant certificate (RSA >= 2048 bits or "
+                    "ECDSA, signed with SHA-256 or stronger, no DSA)"
+                ),
+                config_key="tls",
+            )
+        ]
 
     def _validate_dh_params(self) -> list[HardeningViolation]:
         if not self.api_tls_dhparam:
@@ -363,7 +328,7 @@ class HardeningValidator:
         # negotiates SSL over a Unix socket, so sslmode is moot there.
         if self.database_host and self.database_host.startswith("/"):
             return []
-        if self.database_sslmode.lower() in _INSECURE_SSLMODES:
+        if self.database_sslmode.lower() in INSECURE_DB_SSLMODES:
             return [
                 _violation(
                     code="INSECURE_DB_SSLMODE",

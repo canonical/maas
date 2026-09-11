@@ -40,6 +40,10 @@ def _make_bind_violation(config_key: str = "api_bind") -> HardeningViolation:
     )
 
 
+def _ctrl_ident(ctrl: str, config_key: str) -> str:
+    return f"{HARDENING_CTRL_IDENT_PREFIX}{ctrl}-{config_key}"
+
+
 class TestSyncHardeningNotifications(MAASServerTestCase):
     def test_empty_violations_no_notifications_created(self):
         sync_hardening_notifications([])
@@ -130,16 +134,13 @@ class TestSyncHardeningNotificationsWithControllerId(MAASServerTestCase):
     CTRL_A = "abc123"
     CTRL_B = "def456"
 
-    def _ctrl_ident(self, ctrl: str, config_key: str) -> str:
-        return f"{HARDENING_CTRL_IDENT_PREFIX}{ctrl}-{config_key}"
-
     def test_bind_violation_uses_controller_scoped_ident(self):
         v = _make_bind_violation()
         sync_hardening_notifications([v], controller_id=self.CTRL_A)
 
         self.assertTrue(
             Notification.objects.filter(
-                ident=self._ctrl_ident(self.CTRL_A, "api_bind")
+                ident=_ctrl_ident(self.CTRL_A, "api_bind")
             ).exists()
         )
         self.assertFalse(Notification.objects.filter(ident=v.ident).exists())
@@ -148,7 +149,7 @@ class TestSyncHardeningNotificationsWithControllerId(MAASServerTestCase):
         v = _make_bind_violation()
         sync_hardening_notifications([v], controller_id=self.CTRL_A)
         n = Notification.objects.get(
-            ident=self._ctrl_ident(self.CTRL_A, "api_bind")
+            ident=_ctrl_ident(self.CTRL_A, "api_bind")
         )
         self.assertIn(self.CTRL_A, n.message)
 
@@ -156,7 +157,7 @@ class TestSyncHardeningNotificationsWithControllerId(MAASServerTestCase):
         v = _make_bind_violation()
         sync_hardening_notifications([v], controller_id=self.CTRL_A)
         n = Notification.objects.get(
-            ident=self._ctrl_ident(self.CTRL_A, "api_bind")
+            ident=_ctrl_ident(self.CTRL_A, "api_bind")
         )
         self.assertEqual(self.CTRL_A, n.context["controller_id"])
 
@@ -175,7 +176,7 @@ class TestSyncHardeningNotificationsWithControllerId(MAASServerTestCase):
     def test_stale_bind_notification_cleared_on_resolution(self):
         v = _make_bind_violation()
         sync_hardening_notifications([v], controller_id=self.CTRL_A)
-        ctrl_ident = self._ctrl_ident(self.CTRL_A, "api_bind")
+        ctrl_ident = _ctrl_ident(self.CTRL_A, "api_bind")
         self.assertTrue(Notification.objects.filter(ident=ctrl_ident).exists())
         sync_hardening_notifications([], controller_id=self.CTRL_A)
         self.assertFalse(
@@ -187,7 +188,7 @@ class TestSyncHardeningNotificationsWithControllerId(MAASServerTestCase):
         sync_hardening_notifications([v], controller_id=self.CTRL_A)
         sync_hardening_notifications([v], controller_id=self.CTRL_B)
 
-        ctrl_b_ident = self._ctrl_ident(self.CTRL_B, "api_bind")
+        ctrl_b_ident = _ctrl_ident(self.CTRL_B, "api_bind")
         self.assertTrue(
             Notification.objects.filter(ident=ctrl_b_ident).exists()
         )
@@ -203,7 +204,7 @@ class TestSyncHardeningNotificationsWithControllerId(MAASServerTestCase):
         ]
         sync_hardening_notifications(violations, controller_id=self.CTRL_A)
         for config_key in ("api_bind", "agent_api_bind"):
-            ident = self._ctrl_ident(self.CTRL_A, config_key)
+            ident = _ctrl_ident(self.CTRL_A, config_key)
             self.assertTrue(
                 Notification.objects.filter(ident=ident).exists(),
                 f"Missing scoped notification: {ident}",
@@ -228,16 +229,13 @@ class TestHardeningIdentLength(MAASServerTestCase):
         "dns_bind",
     )
 
-    def _ctrl_ident(self, ctrl: str, config_key: str) -> str:
-        return f"{HARDENING_CTRL_IDENT_PREFIX}{ctrl}-{config_key}"
-
     def test_all_bind_idents_within_40_chars(self):
         """Every (system_id, config_key) pair produces an ident <= 40 chars."""
         # system_id is a base-24 znums string; empirically 6 chars for the
         # full 24^6 space.  Use the 6-char maximum to confirm the invariant.
         system_id = "abc123"  # representative 6-char system_id
         for config_key in self.BIND_CONFIG_KEYS:
-            ident = self._ctrl_ident(system_id, config_key)
+            ident = _ctrl_ident(system_id, config_key)
             self.assertLessEqual(
                 len(ident),
                 40,
@@ -251,7 +249,7 @@ class TestHardeningIdentLength(MAASServerTestCase):
         # (15 chars each); verify one of them persists.
         system_id = "abc123"
         config_key = "http_proxy_bind"
-        ident = self._ctrl_ident(system_id, config_key)
+        ident = _ctrl_ident(system_id, config_key)
         v = _make_bind_violation(config_key=config_key)
         sync_hardening_notifications([v], controller_id=system_id)
         self.assertTrue(

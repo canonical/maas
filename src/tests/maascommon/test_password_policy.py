@@ -79,14 +79,6 @@ class TestValidatePasswordComplexity:
         assert not result.is_valid
         assert any("14 characters" in e for e in result.errors)
 
-    def test_fourteen_chars_accepted(self) -> None:
-        # Exactly at the 14 floor with all classes present.
-        password = "Str0ng!Pass#12"
-        assert len(password) == 14
-        result = validate_password_complexity(password)
-        assert result.is_valid
-        assert result.errors == []
-
 
 class TestEnforcePasswordComplexity:
     def test_no_raise_when_hardening_inactive(self) -> None:

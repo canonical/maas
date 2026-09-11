@@ -59,6 +59,14 @@ CONF_LIST_KEYS = frozenset(
     }
 )
 
+#: Database ``sslmode`` values that don't verify the server certificate --
+#: rejected when hardening is active. Only ``verify-ca``/``verify-full``
+#: authenticate the server; ``require`` encrypts but does not verify, so
+#: it is rejected too. Shared by the region's async DB engine
+#: (``maasservicelayer.db``) and the startup hardening validator
+#: (``maasservicelayer.services.hardening``).
+INSECURE_DB_SSLMODES = frozenset({"disable", "allow", "prefer", "require"})
+
 
 def configure_hardening(hardening_enabled: HardeningMode | None) -> None:
     """Set the process-wide hardening state.

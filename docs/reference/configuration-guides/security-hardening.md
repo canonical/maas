@@ -61,14 +61,9 @@ automatically.
 
 `enable` is a convenience shortcut for
 `maas config-hardening set hardening_enabled on`: it writes only the DB
-`Config` store. No bind key is seeded. `api_bind`, `agent_api_bind`,
-and `http_proxy_bind` each derive a specific address **per family**
-from `maas_url` at startup when left unset; `temporal_bind`,
-`rpc_bind`, and `syslog_bind` derive a single address matching
-whichever family `maas_url` resolves to. `prometheus_bind` instead
-defaults to loopback (`127.0.0.1`) when left unset, since it's scraped
-locally rather than reached via `maas_url` (see
-[Bind and address parameters](#bind-and-address-parameters) below).
+`Config` store. No bind key is seeded. See
+[Bind and address parameters](#bind-and-address-parameters) for the
+full derivation rule.
 
 ## Parameters and stores
 
@@ -91,16 +86,19 @@ same requirement thereafter. It cannot be set via `config-hardening set`
 ### Bind and address parameters
 
 The remaining parameters configure where a service listens. Under
-hardening, a wildcard bind (`0.0.0.0`/`::`) is a violation; most of these
-keys instead derive a specific, non-wildcard address from `maas_url` when
-left unset. All are per-host, stored in `regiond.conf` unless noted.
+hardening, a wildcard bind (`0.0.0.0`/`::`) is a violation; when left
+unset, `api_bind`, `agent_api_bind`, and `http_proxy_bind` each derive a
+specific address **per family** from `maas_url` at startup;
+`temporal_bind`, `rpc_bind`, and `syslog_bind` derive a single address
+matching whichever family `maas_url` resolves to. `prometheus_bind`
+instead defaults to loopback (`127.0.0.1`) when left unset, since it's
+scraped locally rather than reached via `maas_url`. All are per-host,
+stored in `regiond.conf` unless noted.
 
 - **`api_bind`** — public API bind address(es); comma-separated list, may
-  mix IPv4 and IPv6. Left unset: each address family derives its own
-  address from `maas_url` when hardening is active (the same address
-  clients already use to reach the region), otherwise binds all
-  interfaces. Any family missing from an explicit value is still
-  auto-derived.
+  mix IPv4 and IPv6. Left unset: auto-derived from `maas_url` as
+  described above; otherwise binds all interfaces. Any family missing
+  from an explicit value is still auto-derived.
 - **`api_int_bind`** — internal (rack-facing) plain HTTP listener bind
   address(es), used whenever TLS is enabled; comma-separated list, may mix
   IPv4 and IPv6. **Not** derived from `maas_url` — binds all interfaces

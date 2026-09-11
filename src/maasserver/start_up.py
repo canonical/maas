@@ -14,7 +14,11 @@ from maascommon.osystem.ubuntu import UbuntuOS
 from maasserver import locks, security
 from maasserver.bootresources import initialize_image_storage
 from maasserver.certificates import get_maas_certificate
-from maasserver.config import get_db_creds_vault_path, RegionConfiguration
+from maasserver.config import (
+    build_hardening_validation_kwargs,
+    get_db_creds_vault_path,
+    RegionConfiguration,
+)
 from maasserver.deprecations import (
     log_deprecations,
     sync_deprecation_notifications,
@@ -351,28 +355,12 @@ def inner_start_up(master=False):
 
         # Validate hardening and post/clear violation Notifications.
         try:
-            _cert = get_maas_certificate()
-            _cert_pem = _cert.certificate_pem().encode() if _cert else None
-            _key_pem = _cert.private_key_pem().encode() if _cert else None
-            with RegionConfiguration.open() as _hcfg:
-                violations = configure_and_validate_hardening(
-                    api_tls_cert_pem=_cert_pem,
-                    api_tls_key_pem=_key_pem,
-                    api_tls_dhparam=str(_hcfg.api_tls_dhparam),
-                    api_bind=list(_hcfg.api_bind),
-                    api_int_bind=list(_hcfg.api_int_bind),
-                    prometheus_bind=str(_hcfg.prometheus_bind),
-                    temporal_bind=str(_hcfg.temporal_bind),
-                    rpc_bind=list(_hcfg.rpc_bind),
-                    agent_api_bind=list(_hcfg.agent_api_bind),
-                    dns_bind=list(_hcfg.dns_bind),
-                    syslog_bind=list(_hcfg.syslog_bind),
-                    http_proxy_bind=list(_hcfg.http_proxy_bind),
-                    database_host=str(_hcfg.database_host),
-                    database_sslmode=str(_hcfg.database_sslmode),
-                    fips_declared=read_fips_declared_from_db(),
-                    snap_deployment=running_in_snap(),
-                )
+            cert = get_maas_certificate()
+            with RegionConfiguration.open() as config:
+                kwargs = build_hardening_validation_kwargs(config, cert=cert)
+                kwargs["fips_declared"] = read_fips_declared_from_db()
+                kwargs["snap_deployment"] = running_in_snap()
+                violations = configure_and_validate_hardening(**kwargs)
         except Exception:
             logger.error(
                 "Hardening validation failed unexpectedly; treating as "

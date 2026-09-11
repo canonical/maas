@@ -71,11 +71,78 @@ class WebClientContextFactory(BrowserLikePolicyForHTTPS):
                 host,
                 OpenSSLCertificateOptions(verify=self._verify).getContext(),
             )
-        # Replace Twisted's default info callback (which does hostname
-        # verification) with our own.  On non-FIPS hosts this is a no-op,
-        # preserving the previous behaviour.  On FIPS hosts it emits a
-        # structured audit event at handshake completion.
+        # Install the FIPS-aware info callback; behaviour is described in
+        # ``_make_tls_info_callback``.
         opts._ctx.set_info_callback(
             _make_tls_info_callback(host, self._verify)
         )
         return opts
+
+
+def install_fips_tls_audit_logging(hmc_session, hostname: str) -> None:
+    """Emit a ``fips_tls_handshake`` audit event for every HTTPS connection
+    a zhmcclient :class:`~zhmcclient.Session` makes to ``hostname``.
+
+    Mirrors the audit logging already installed for Twisted-Agent-based
+    drivers (:class:`WebClientContextFactory` above) and for outbound
+    aiohttp/stdlib-``ssl`` connections elsewhere in MAAS
+    (``maasservicelayer.logging.tls``,
+    ``maastemporalworker.workflow.bootresource``). ``requests``-based
+    drivers (zhmcclient, used by ``hmcz.py``) have no equivalent
+    first-class hook.
+
+    ``hmc_session.session`` (the underlying ``requests.Session``) does
+    not exist yet at construction time -- zhmcclient creates it lazily,
+    on first logon, via its private ``_new_session()`` static method.
+    This wraps that method so every ``requests.Session`` it ever
+    creates (initial logon and any later re-logon) gets a custom HTTPS
+    connection pool mounted that logs the negotiated cipher/protocol
+    right after each TLS handshake, preserving the retry configuration
+    zhmcclient itself installs.
+
+    No-op outside FIPS mode, and a no-op (rather than raising) if a
+    future zhmcclient version removes ``_new_session`` -- this is
+    audit logging, not a security control, so it must never break a
+    power action.
+    """
+    from maascommon.fips import is_fips_enabled
+
+    if not is_fips_enabled():
+        return
+    original_new_session = getattr(hmc_session, "_new_session", None)
+    if original_new_session is None:
+        return
+
+    from requests.adapters import DEFAULT_RETRIES, HTTPAdapter
+    from urllib3.connection import HTTPSConnection
+    from urllib3.connectionpool import HTTPSConnectionPool
+
+    from maascommon.logging.security import log_fips_tls_handshake_from_sslobj
+
+    class _FIPSAuditHTTPSConnection(HTTPSConnection):
+        def connect(self):
+            super().connect()
+            log_fips_tls_handshake_from_sslobj(
+                self.sock, peer=f"{hostname}:{self.port}"
+            )
+
+    class _FIPSAuditHTTPSConnectionPool(HTTPSConnectionPool):
+        ConnectionCls = _FIPSAuditHTTPSConnection
+
+    class _FIPSAuditHTTPAdapter(HTTPAdapter):
+        def init_poolmanager(self, *args, **kwargs):
+            super().init_poolmanager(*args, **kwargs)
+            self.poolmanager.pool_classes_by_scheme["https"] = (
+                _FIPSAuditHTTPSConnectionPool
+            )
+
+    def _new_session_with_audit_logging(*args, **kwargs):
+        requests_session = original_new_session(*args, **kwargs)
+        existing_adapter = requests_session.adapters.get("https://")
+        max_retries = getattr(existing_adapter, "max_retries", DEFAULT_RETRIES)
+        requests_session.mount(
+            "https://", _FIPSAuditHTTPAdapter(max_retries=max_retries)
+        )
+        return requests_session
+
+    hmc_session._new_session = _new_session_with_audit_logging

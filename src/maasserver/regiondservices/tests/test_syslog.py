@@ -7,6 +7,7 @@ from netaddr import IPAddress
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
+from maasserver.config import RegionConfiguration
 from maasserver.models.config import Config
 from maasserver.regiondservices import syslog
 from maasserver.service_monitor import service_monitor
@@ -21,6 +22,7 @@ from maastesting.crochet import wait_for
 from maastesting.fixtures import MAASRootFixture
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
+import provisioningserver.utils.network as network_module
 from provisioningserver.utils.testing import MAASIDFixture
 
 wait_for_reactor = wait_for()
@@ -118,11 +120,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_syslog_bind_hardening_off_stays_wildcard(self):
-        import maascommon.hardening as hardening_module
-
-        self.patch(
-            hardening_module, "is_hardening_enabled"
-        ).return_value = False
+        self.patch(syslog, "is_hardening_enabled").return_value = False
         service = syslog.RegionSyslogService(reactor)
         port, _ = yield deferToDatabase(self.make_example_configuration)
         write_config = self.patch_autospec(syslog, "write_config")
@@ -133,13 +131,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_syslog_bind_derives_from_maas_url_under_hardening(self):
-        import maascommon.hardening as hardening_module
-        from maasserver.config import RegionConfiguration
-        import provisioningserver.utils.network as network_module
-
-        self.patch(
-            hardening_module, "is_hardening_enabled"
-        ).return_value = True
+        self.patch(syslog, "is_hardening_enabled").return_value = True
         self.patch(
             network_module, "get_source_address_for_url"
         ).return_value = "10.0.0.9"
@@ -158,12 +150,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_syslog_bind_explicit_value_used(self):
-        import maascommon.hardening as hardening_module
-        from maasserver.config import RegionConfiguration
-
-        self.patch(
-            hardening_module, "is_hardening_enabled"
-        ).return_value = True
+        self.patch(syslog, "is_hardening_enabled").return_value = True
         mock_open = self.patch(RegionConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
         mock_cfg.syslog_bind = ["10.0.0.5"]
