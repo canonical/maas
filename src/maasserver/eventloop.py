@@ -77,17 +77,12 @@ def make_RegionControllerService(postgresListener, dbtasks):
 def resolve_rpc_bind_addresses():
     """Return the addresses `RegionService`'s RPC listener should bind to.
 
-    An explicit ``rpc_bind`` list in regiond.conf wins verbatim. Otherwise,
-    derive a single address from ``maas_url`` instead of either extreme:
-    a hardcoded loopback default breaks rack connectivity out of the box
-    (rack controllers dial the region's real routable address regardless),
-    and a bare wildcard bind is avoidable in the common case where
-    ``maas_url`` already tells us which interface is reachable.
-
-    If ``maas_url`` itself cannot be resolved to a local address, this
-    falls back to loopback under hardening (a wildcard bind is not
-    allowed) or an empty list -- meaning "bind every interface" --
-    otherwise, mirroring `resolve_bind_address`.
+    Thin wrapper around `resolve_service_bind`, the same hardening-aware
+    bind-resolution helper every other region/rack service uses: an
+    explicit ``rpc_bind`` list in regiond.conf wins verbatim; otherwise,
+    under hardening, a single non-wildcard address is derived from
+    ``maas_url``; outside hardening, an empty list is returned, meaning
+    "bind every interface".
 
     :class:`~maasserver.ipc.IPCMasterService._getListenAddresses` calls
     this too, so whatever `RegionService` actually binds to is exactly
@@ -95,22 +90,13 @@ def resolve_rpc_bind_addresses():
     """
     from maascommon.hardening import is_hardening_enabled
     from maasserver.config import RegionConfiguration
-    from provisioningserver.utils.network import get_source_address_for_url
+    from provisioningserver.utils.network import resolve_service_bind
 
-    rpc_bind = []
-    maas_url = ""
-    try:
-        with RegionConfiguration.open() as config:
-            rpc_bind = [addr for addr in config.rpc_bind if addr]
-            maas_url = str(config.maas_url)
-    except Exception:
-        pass
-    if rpc_bind:
-        return rpc_bind
-    derived = get_source_address_for_url(maas_url)
-    if derived:
-        return [derived]
-    return ["127.0.0.1"] if is_hardening_enabled() else []
+    return resolve_service_bind(
+        RegionConfiguration.open,
+        "rpc_bind",
+        hardening_active=is_hardening_enabled(),
+    )
 
 
 def make_RegionService(ipcWorker):

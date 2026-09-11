@@ -10,6 +10,7 @@ from twisted.application.internet import TimerService
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.threads import deferToThread
 
+from maascommon.hardening import is_hardening_enabled
 from maasserver.config import RegionConfiguration
 from maasserver.models.config import Config
 from maasserver.models.node import RegionController
@@ -80,8 +81,6 @@ class RegionSyslogService(TimerService):
             if promtail_enabled
             else None
         )
-        from maascommon.hardening import is_hardening_enabled
-
         bind = resolve_service_bind(
             RegionConfiguration.open,
             "syslog_bind",

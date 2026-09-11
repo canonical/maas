@@ -9,6 +9,11 @@ from pathlib import Path
 import struct
 from typing import NamedTuple
 
+from cryptography import x509
+from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.x509.oid import SignatureAlgorithmOID
+
 from maascommon.logging.security import (
     FIPS_MODE_DETECTED,
     FIPS_MODE_UNREADABLE,
@@ -166,4 +171,49 @@ def validate_fips_ssh_public_key(normalized_key: str) -> str | None:
                 f"RSA key size {bits} bits is below the FIPS minimum "
                 f"of {FIPS_RSA_MIN_BITS}"
             )
+    return None
+
+
+# `ObjectIdentifier` has no public human-readable name accessor (`._name`
+# is private); spell these out explicitly instead.
+_WEAK_TLS_SIGNATURE_ALGORITHM_NAMES = {
+    SignatureAlgorithmOID.RSA_WITH_SHA1: "RSA-SHA1",
+    SignatureAlgorithmOID.ECDSA_WITH_SHA1: "ECDSA-SHA1",
+    SignatureAlgorithmOID.DSA_WITH_SHA1: "DSA-SHA1",
+    SignatureAlgorithmOID.RSA_WITH_MD5: "RSA-MD5",
+}
+
+
+def validate_fips_tls_certificate(cert: x509.Certificate) -> str | None:
+    """Return a FIPS-violation message for an x509 certificate, else None.
+
+    Rejects SHA-1/MD5-signed certificates, DSA keys, and RSA keys below
+    :data:`FIPS_RSA_MIN_BITS`. Shared by every caller that validates a
+    TLS/SSL certificate under FIPS mode (hardening's API TLS cert,
+    user-uploaded SSL keys in both the v3 service layer and the legacy
+    Django model), so the compliance rule lives in exactly one place.
+
+    Does NOT check whether FIPS is active -- the caller gates on
+    :func:`is_fips_enabled`.
+    """
+    weak_signature_algorithm = _WEAK_TLS_SIGNATURE_ALGORITHM_NAMES.get(
+        cert.signature_algorithm_oid
+    )
+    if weak_signature_algorithm is not None:
+        return (
+            f"Certificate signed with {weak_signature_algorithm} is not "
+            "FIPS-compliant. Use SHA-256 or stronger."
+        )
+
+    pub_key = cert.public_key()
+    if isinstance(pub_key, DSAPublicKey):
+        return "DSA keys are not FIPS-compliant."
+    if (
+        isinstance(pub_key, RSAPublicKey)
+        and pub_key.key_size < FIPS_RSA_MIN_BITS
+    ):
+        return (
+            f"RSA key size {pub_key.key_size} bits is below the FIPS "
+            f"minimum of {FIPS_RSA_MIN_BITS} bits."
+        )
     return None

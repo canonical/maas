@@ -403,11 +403,10 @@ class TestFactories(MAASServerTestCase):
             ["ipc-worker"], eventloop.loop.factories["rpc"]["requires"]
         )
 
-    def test_make_RegionService_unset_derives_from_maas_url(self):
-        # An unset rpc_bind derives a specific address from maas_url --
-        # the same address rack controllers already use to reach the
-        # region -- instead of a hardcoded loopback (which would break
-        # rack connectivity) or a bare wildcard bind.
+    def test_make_RegionService_unset_outside_hardening_binds_any(self):
+        # Outside hardening, an unset rpc_bind binds every interface,
+        # regardless of whether maas_url resolves to a local address --
+        # the same rule every other hardened service follows.
         from maasserver.config import RegionConfiguration
         import provisioningserver.utils.network as network_module
 
@@ -422,26 +421,33 @@ class TestFactories(MAASServerTestCase):
 
         service = eventloop.make_RegionService(sentinel.ipcWorker)
 
-        self.assertEqual(service.endpoints[0][0]._interface, "10.0.0.9")
+        self.assertEqual(service.endpoints[0][0]._interface, "")
 
-    def test_make_RegionService_unset_and_unresolvable_binds_any(self):
-        # Only when maas_url itself can't be resolved does the bind fall
-        # back to every interface.
+    def test_make_RegionService_unset_under_hardening_derives_from_maas_url(
+        self,
+    ):
+        # Under hardening, an unset rpc_bind derives a specific address
+        # from maas_url -- the same address rack controllers already use
+        # to reach the region -- instead of a bare wildcard bind.
+        import maascommon.hardening as hardening_module
         from maasserver.config import RegionConfiguration
         import provisioningserver.utils.network as network_module
 
         mock_open = self.patch(RegionConfiguration, "open")
         mock_cfg = mock_open.return_value.__enter__.return_value
         mock_cfg.rpc_bind = []
-        mock_cfg.maas_url = "http://unreachable.invalid:5240/MAAS"
+        mock_cfg.maas_url = "http://10.0.0.9:5240/MAAS"
         mock_open.return_value.__exit__.return_value = False
         self.patch(
             network_module, "get_source_address_for_url"
-        ).return_value = None
+        ).return_value = "10.0.0.9"
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = True
 
         service = eventloop.make_RegionService(sentinel.ipcWorker)
 
-        self.assertEqual(service.endpoints[0][0]._interface, "")
+        self.assertEqual(service.endpoints[0][0]._interface, "10.0.0.9")
 
     def test_make_RegionService_unresolvable_under_hardening_binds_loopback(
         self,

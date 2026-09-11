@@ -80,3 +80,24 @@ def validate_power_pass_complexity(power_parameters: dict) -> None:
             f"{requirements}",
             code="password_complexity",
         )
+
+
+def apply_fips_power_validation(
+    form, power_type: str, power_parameters: dict
+) -> None:
+    """Run FIPS power-params and password-complexity validation, adding
+    any violation as a non-field error on `form` instead of raising.
+
+    Shared by `AdminMachineForm.clean()` and `PodForm.clean()`: both
+    validate `power_type`/`power_parameters` the same way once their own
+    form-specific cleaning has produced those two values.
+    """
+    try:
+        validate_power_params_fips(power_type, power_parameters)
+    except ValidationError as exc:
+        form.add_error(None, exc)
+
+    try:
+        validate_power_pass_complexity(power_parameters)
+    except ValidationError as exc:
+        form.add_error(None, exc)

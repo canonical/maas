@@ -9,7 +9,10 @@ from maascommon.fips import is_fips_enabled
 from maascommon.hardening import CONF_KEYS as _CONF_KEYS
 from maascommon.hardening import CONF_LIST_KEYS as _LIST_KEYS
 from maascommon.hardening import configure_hardening, is_hardening_enabled
-from maasserver.config import RegionConfiguration
+from maasserver.config import (
+    build_hardening_validation_kwargs,
+    RegionConfiguration,
+)
 from maasserver.management.commands.base import BaseCommandWithConnection
 from maasservicelayer.services.hardening import (
     AUTO_DERIVED_BIND_KEYS,
@@ -286,33 +289,16 @@ class Command(BaseCommandWithConnection):
         try:
             from maasserver.certificates import get_maas_certificate
 
-            tls = get_maas_certificate()
-            cert_pem = tls.certificate_pem().encode() if tls else None
-            key_pem = tls.private_key_pem().encode() if tls else None
+            cert = get_maas_certificate()
         except Exception:
-            cert_pem = None
-            key_pem = None
+            cert = None
 
         try:
             with RegionConfiguration.open() as cfg:
-                violations = configure_and_validate_hardening(
-                    api_tls_cert_pem=cert_pem,
-                    api_tls_key_pem=key_pem,
-                    api_tls_dhparam=str(cfg.api_tls_dhparam),
-                    api_bind=list(cfg.api_bind),
-                    api_int_bind=list(cfg.api_int_bind),
-                    prometheus_bind=str(cfg.prometheus_bind),
-                    temporal_bind=str(cfg.temporal_bind),
-                    rpc_bind=list(cfg.rpc_bind),
-                    agent_api_bind=list(cfg.agent_api_bind),
-                    dns_bind=list(cfg.dns_bind),
-                    syslog_bind=list(cfg.syslog_bind),
-                    http_proxy_bind=list(cfg.http_proxy_bind),
-                    database_host=str(cfg.database_host),
-                    database_sslmode=str(cfg.database_sslmode),
-                    fips_declared=fips_declared,
-                    snap_deployment=running_in_snap(),
-                )
+                kwargs = build_hardening_validation_kwargs(cfg, cert=cert)
+                kwargs["fips_declared"] = fips_declared
+                kwargs["snap_deployment"] = running_in_snap()
+                violations = configure_and_validate_hardening(**kwargs)
         except Exception as exc:
             self.stderr.write(f"Could not read configuration: {exc}\n")
             raise SystemExit(2) from exc

@@ -91,7 +91,8 @@ class TestIPCMasterServiceGetListenAddresses(MAASTestCase):
             master._getListenAddresses(5250),
         )
 
-    def test_derives_from_maas_url_when_unset(self):
+    def test_derives_from_maas_url_under_hardening_when_unset(self):
+        import maascommon.hardening as hardening_module
         from maasserver.config import RegionConfiguration
         import provisioningserver.utils.network as network_module
 
@@ -106,6 +107,35 @@ class TestIPCMasterServiceGetListenAddresses(MAASTestCase):
         self.patch(
             network_module, "get_source_address_for_url"
         ).return_value = "10.0.0.9"
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = True
+
+        self.assertEqual(
+            {("10.0.0.9", 5250)},
+            master._getListenAddresses(5250),
+        )
+
+    def test_falls_back_to_discovery_when_hardening_inactive_and_unset(self):
+        # Outside hardening, `resolve_rpc_bind_addresses` returns an empty
+        # list for an unset `rpc_bind` without even attempting to derive
+        # from `maas_url` (the RPC listener itself binds every interface
+        # in that case); `_getListenAddresses` still needs *some* concrete
+        # address to advertise to racks, so it falls back to interface
+        # discovery.
+        from maasserver.config import RegionConfiguration
+
+        master = IPCMasterService(
+            reactor, socket_path=os.path.join(self.make_dir(), "ipc.sock")
+        )
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.rpc_bind = []
+        mock_cfg.maas_url = "http://10.0.0.9:5240/MAAS"
+        mock_open.return_value.__exit__.return_value = False
+        self.patch(ipc, "get_all_interface_source_addresses").return_value = {
+            "10.0.0.9"
+        }
 
         self.assertEqual(
             {("10.0.0.9", 5250)},
