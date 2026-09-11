@@ -3225,6 +3225,28 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.assertIsNone(node.current_deployment_script_set)
 
+    def test_release_aborts_pending_and_running_deployment_scripts(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User()
+        )
+        script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.DEPLOYMENT
+        )
+        node.current_deployment_script_set = script_set
+        node.save()
+        pending = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PENDING
+        )
+        running = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.RUNNING
+        )
+        self.patch(node, "_stop")
+        self.patch(node_module, "stop_workflow")
+        with post_commit_hooks:
+            node.release()
+        self.assertEqual(SCRIPT_STATUS.ABORTED, reload_object(pending).status)
+        self.assertEqual(SCRIPT_STATUS.ABORTED, reload_object(running).status)
+
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
         # If called on a node in New state, accept_enlistment()
         # changes the node's status, and returns the node.

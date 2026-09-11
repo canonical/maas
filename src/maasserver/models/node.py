@@ -3929,7 +3929,6 @@ class Node(CleanSave, TimestampedModel):
         self.distro_series = ""
         self.license_key = ""
         self.hwe_kernel = None
-        self.current_deployment_script_set = None
         self.enable_hw_sync = False
         self.sync_interval = None
         self.last_sync = None
@@ -3938,6 +3937,7 @@ class Node(CleanSave, TimestampedModel):
         # Create a status message for RELEASING.
         Event.objects.create_node_event(self, EVENT_TYPES.RELEASING)
 
+        Node._abort_all_tests(self.current_deployment_script_set_id)
         Node._clear_deployment_resources(self.id)
 
         # Clear the nodes acquired filesystems.
