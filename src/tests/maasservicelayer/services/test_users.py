@@ -657,24 +657,49 @@ class TestUsersService:
             user_id=1, builder=UserProfileBuilder(completed_intro=True)
         )
 
-    async def test_change_password(
+    async def test_change_password_checks_with_correct_password(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        users_repository.get_by_id.return_value = TEST_USER
+        user = TEST_USER.model_copy(
+            update={"password": UserBuilder.hash_password("foo")}
+        )
+        users_repository.get_by_id.return_value = user
         users_repository.get_user_profile.return_value = TEST_USER_PROFILE
-        users_repository.update_by_id.return_value = TEST_USER
-        await users_service.change_password(TEST_USER.id, "foo")
+        await users_service.change_password_checks(TEST_USER.id, "foo")
 
         users_repository.get_by_id.assert_called_once_with(id=TEST_USER.id)
         users_repository.get_user_profile.assert_called_once_with(
             TEST_USER.username
         )
 
-        # we cannot assert with which parameters the method has been called
-        # with because of the salt.
-        users_repository.update_by_id.assert_called_once()
+    async def test_change_password_checks_with_wrong_password(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        user = TEST_USER.model_copy(
+            update={"password": UserBuilder.hash_password("foo")}
+        )
+        users_repository.get_by_id.return_value = user
+        users_repository.get_user_profile.return_value = TEST_USER_PROFILE
 
-    async def test_change_password_system_user(
+        with pytest.raises(BadRequestException) as exc:
+            await users_service.change_password_checks(TEST_USER.id, "wrong")
+
+        assert exc.value.details[0].message == "Wrong password."
+
+    async def test_change_password_checks_without_current_password(
+        self, users_service: UsersService, users_repository: Mock
+    ) -> None:
+        users_repository.get_by_id.return_value = TEST_USER
+        users_repository.get_user_profile.return_value = TEST_USER_PROFILE
+
+        await users_service.change_password_checks(TEST_USER.id, None)
+
+        users_repository.get_by_id.assert_called_once_with(id=TEST_USER.id)
+        users_repository.get_user_profile.assert_called_once_with(
+            TEST_USER.username
+        )
+
+    async def test_change_password_checks_system_user(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
         system_user = TEST_USER.model_copy()
@@ -682,14 +707,14 @@ class TestUsersService:
         users_repository.get_by_id.return_value = system_user
 
         with pytest.raises(BadRequestException) as exc:
-            await users_service.change_password(TEST_USER.id, "foo")
+            await users_service.change_password_checks(TEST_USER.id, None)
 
         assert (
             exc.value.details[0].message
             == "Cannot change password for system users."
         )
 
-    async def test_change_password_external_user(
+    async def test_change_password_checks_external_user(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
         external_user_profile = TEST_USER_PROFILE.model_copy()
@@ -698,20 +723,20 @@ class TestUsersService:
         users_repository.get_user_profile.return_value = external_user_profile
 
         with pytest.raises(BadRequestException) as exc:
-            await users_service.change_password(TEST_USER.id, "foo")
+            await users_service.change_password_checks(TEST_USER.id, None)
 
         assert (
             exc.value.details[0].message
             == "Cannot change password for external users."
         )
 
-    async def test_change_password_not_found(
+    async def test_change_password_checks_not_found(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
         users_repository.get_by_id.return_value = None
 
         with pytest.raises(NotFoundException):
-            await users_service.change_password(TEST_USER.id, "foo")
+            await users_service.change_password_checks(TEST_USER.id, None)
 
     async def test_clear_all_sessions(
         self, users_service: UsersService, users_repository: Mock
