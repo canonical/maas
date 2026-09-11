@@ -5701,6 +5701,12 @@ class Node(CleanSave, TimestampedModel):
                 self.current_deployment_script_set = (
                     ScriptSet.objects.create_deployment_script_set(self)
                 )
+            else:
+                # A previously aborted standard deployment leaves the node in
+                # ALLOCATED without clearing current_deployment_script_set.
+                # Clear it so an ephemeral deployment doesn't point at a stale
+                # script set.
+                self.current_deployment_script_set = None
 
         # Bug #1630361: Make sure that there is a maas_facing_server_address in
         # the same address family as our configured interfaces.

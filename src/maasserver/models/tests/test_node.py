@@ -9391,13 +9391,23 @@ class TestNode_Start(MAASTransactionServerTestCase):
         )
         node.osystem = "ubuntu"
         node.distro_series = "focal"
+        # Simulate a leftover deployment script set from a previously aborted
+        # standard deployment to verify it gets cleared.
+        leftover_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.DEPLOYMENT
+        )
+        node.current_deployment_script_set = leftover_script_set
         node.start(admin)
 
         self.assertIsNone(node.current_deployment_script_set)
-        self.assertFalse(
-            ScriptSet.objects.filter(
-                node=node, result_type=RESULT_TYPE.DEPLOYMENT
-            ).exists()
+        # No new deployment script set is created; only the leftover remains.
+        self.assertEqual(
+            [leftover_script_set.id],
+            list(
+                ScriptSet.objects.filter(
+                    node=node, result_type=RESULT_TYPE.DEPLOYMENT
+                ).values_list("id", flat=True)
+            ),
         )
 
     def test_doesnt_raise_network_validation_when_all_dhcp(self):
