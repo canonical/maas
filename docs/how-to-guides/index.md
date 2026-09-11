@@ -32,6 +32,7 @@ This section covers how to enlist machines into MAAS, test and commission them, 
 * Special deployments
   * [Custom images: building, using, and maintaining](/how-to-guides/build-custom-images.md)
   * [Ephemeral deployments](/how-to-guides/manage-machines.md#deploy-machines)
+  * [Deploy DGX machines](/how-to-guides/deploy-dgx-machines.md)
   * DPU deployments
     * [Prepare a DPU](/how-to-guides/prepare-a-dpu.md)
     * [Deploy DPUs with BMC (BlueField 3)](/how-to-guides/deploy-dpus.md)
@@ -137,6 +138,7 @@ monitor-maas
 enhance-maas-security
 deploy-a-real-time-kernel
 deploy-a-fips-kernel
+deploy-dgx-machines
 set-up-air-gapped-maas
 script-maas-with-python
 prepare-a-dpu
