@@ -6,6 +6,7 @@ from json import dumps as _dumps
 from typing import Callable
 from unittest.mock import call, Mock, patch
 
+from django.contrib.auth.hashers import PBKDF2PasswordHasher
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
@@ -15,8 +16,8 @@ import pytest
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.users import (
     UserCreateRequest,
-    UserUpdateRequest,
     UserUpdateRequestAdmin,
+    UserUpdateRequestSelf,
 )
 from maasapiserver.v3.api.public.models.responses.entitlements import (
     EntitlementsListResponse,
@@ -29,6 +30,7 @@ from maasapiserver.v3.api.public.models.responses.users import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
+from maasservicelayer.builders.users import UserBuilder
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
@@ -45,7 +47,7 @@ from maasservicelayer.exceptions.constants import (
     PRECONDITION_FAILED,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
-from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.base import ListResult, UNSET
 from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroups import UserGroup, UserGroupsByUser
 from maasservicelayer.models.users import User, UserProfile, UserStatistics
@@ -761,7 +763,7 @@ class TestUsersApi(ApiCommonTests):
             UserGroupsByUser(groups_by_user={updated_user.id: [GROUP_1]})
         )
 
-        user_request = UserUpdateRequest(
+        user_request = UserUpdateRequestSelf(
             username="updated_username",
             first_name="Updated",
             last_name="Name",
@@ -788,11 +790,50 @@ class TestUsersApi(ApiCommonTests):
         # the test client uses authenticated user with id=0
         services_mock.users.update_by_id.assert_called_once()
         assert services_mock.users.update_by_id.call_args[0][0] == 0
+        services_mock.users.change_password_checks.assert_not_called()
+
+    async def test_put_user_me_changes_password(
+        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+    ) -> None:
+        updated_user = User(
+            id=0,
+            is_active=True,
+            is_superuser=False,
+            is_staff=False,
+            username="updated_username",
+            password="pass",
+            first_name="Updated",
+            last_name="Name",
+            email="updated@example.com",
+            date_joined=utcnow(),
+        )
+        services_mock.users = Mock(UsersService)
+        services_mock.users.update_by_id.return_value = updated_user
+        services_mock.users.get_groups_for_users.return_value = (
+            UserGroupsByUser(groups_by_user={updated_user.id: []})
+        )
+
+        response = await mocked_api_client_user.put(
+            f"{self.BASE_PATH}/me",
+            json={
+                "username": "updated_username",
+                "current_password": "old-password",
+                "new_password": "new-password",
+                "first_name": "Updated",
+                "last_name": "Name",
+            },
+        )
+
+        assert response.status_code == 200
+        services_mock.users.change_password_checks.assert_awaited_once_with(
+            user_id=0, current_password="old-password"
+        )
+        services_mock.users.update_by_id.assert_awaited_once()
 
     async def test_put_user_me_unauthorized(
         self, mocked_api_client: AsyncClient
     ) -> None:
-        user_request = UserUpdateRequest(
+        user_request = UserUpdateRequestSelf(
             username="updated_username",
             first_name="Updated",
             last_name="Name",
@@ -809,7 +850,7 @@ class TestUsersApi(ApiCommonTests):
     async def test_put_user_me_cannot_set_groups(
         self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
-        """PUT /users/me uses UserUpdateRequest which has no groups field."""
+        """PUT /users/me uses UserUpdateRequestSelf which has no groups field."""
         updated_user = User(
             id=0,
             is_active=True,
@@ -837,10 +878,20 @@ class TestUsersApi(ApiCommonTests):
                 "groups": [GROUP_1.id],
             },
         )
-        # groups is not a field on UserUpdateRequest; FastAPI ignores unknown fields,
+        # groups is not a field on UserUpdateRequestSelf; FastAPI ignores unknown fields,
         # so this should succeed and the groups field should simply be absent from the builder.
         assert response.status_code == 200
-        services_mock.users.update_by_id.assert_called_once()
+        services_mock.users.update_by_id.assert_called_once_with(
+            0,
+            UserBuilder(
+                username="updated_username",
+                first_name="Updated",
+                last_name="Name",
+                email=None,
+                is_staff=False,
+                is_active=True,
+            ),
+        )
 
     # PUT /users/{user_id}
     async def test_put_user(
@@ -869,7 +920,7 @@ class TestUsersApi(ApiCommonTests):
         )
         services_mock.usergroups = Mock(UserGroupsService)
 
-        user_request = UserUpdateRequest(
+        user_request = UserUpdateRequestAdmin(
             username="new_user",
             password="new_pass",
             first_name="new_first_name",
@@ -892,6 +943,9 @@ class TestUsersApi(ApiCommonTests):
         assert user_response.first_name == updated_user.first_name
         assert user_response.last_name == updated_user.last_name
         assert user_response.email == updated_user.email
+        services_mock.users.change_password_checks.assert_awaited_once_with(
+            user_id=1, current_password=None
+        )
 
     async def test_put_user_reconciles_groups(
         self,
@@ -1006,7 +1060,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.side_effect = NotFoundException()
 
-        user_request = UserUpdateRequest(
+        user_request = UserUpdateRequestAdmin(
             username="new_user",
             password="new_pass",
             first_name="new_first_name",
@@ -1038,7 +1092,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = None
 
-        user_request = UserUpdateRequest(
+        user_request = UserUpdateRequestAdmin(
             username="new_user",
             password="new_pass",
             first_name="new_first_name",
@@ -1304,9 +1358,10 @@ class TestUsersApi(ApiCommonTests):
         self, services_mock: ServiceCollectionV3, mocked_api_client_user
     ) -> None:
         services_mock.users = Mock(UsersService)
-        services_mock.users.change_password.return_value = None
+        services_mock.users.change_password_checks.return_value = None
+        services_mock.users.update_by_id.return_value = USER_1
 
-        json = {"password": "foo"}
+        json = {"current_password": "old-password", "new_password": "foo"}
 
         response = await mocked_api_client_user.post(
             f"{V3_API_PREFIX}/users/me:change_password", json=json
@@ -1314,9 +1369,13 @@ class TestUsersApi(ApiCommonTests):
         assert response.status_code == 204
 
         # the user we use in tests has the id=0
-        services_mock.users.change_password.assert_called_once_with(
-            user_id=0, password="foo"
+        services_mock.users.update_by_id.assert_awaited_once()
+        builder = services_mock.users.update_by_id.await_args.args[1]
+        services_mock.users.change_password_checks.assert_awaited_once_with(
+            user_id=0, current_password="old-password"
         )
+        assert builder.username == UNSET
+        assert PBKDF2PasswordHasher().verify("foo", builder.password)
 
     async def test_change_password_admin(
         self,
@@ -1327,7 +1386,8 @@ class TestUsersApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
         services_mock.users = Mock(UsersService)
-        services_mock.users.change_password.return_value = None
+        services_mock.users.change_password_checks.return_value = None
+        services_mock.users.update_by_id.return_value = USER_1
 
         json = {"password": "foo"}
 
@@ -1336,9 +1396,12 @@ class TestUsersApi(ApiCommonTests):
         )
         assert response.status_code == 204
 
-        services_mock.users.change_password.assert_called_once_with(
-            user_id=1, password="foo"
+        services_mock.users.change_password_checks.assert_awaited_once_with(
+            user_id=1, current_password=None
         )
+        services_mock.users.update_by_id.assert_awaited_once()
+        builder = services_mock.users.update_by_id.await_args.args[1]
+        assert PBKDF2PasswordHasher().verify("foo", builder.password)
 
     async def test_user_statistics(
         self, services_mock: ServiceCollectionV3, mocked_api_client_user

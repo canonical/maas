@@ -4,7 +4,7 @@
 import re
 
 from fastapi import Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from maasservicelayer.builders.users import UserBuilder
 from maasservicelayer.db.filters import Clause
@@ -81,13 +81,22 @@ class UserCreateRequest(BaseUserRequest):
         )
 
 
-class UserUpdateRequest(BaseUserRequest):
-    password: str | None = Field(min_length=1, default=None)
+class UserUpdateRequestSelf(BaseUserRequest):
+    current_password: str | None = Field(min_length=1, default=None)
+    new_password: str | None = Field(min_length=1, default=None)
+
+    @model_validator(mode="after")
+    def check_passwords(self):
+        if self.new_password is not None and self.current_password is None:
+            raise ValueError(
+                "The current password must be provided when changing password."
+            )
+        return self
 
     def to_builder(self) -> UserBuilder:
         password = (
-            UserBuilder.hash_password(self.password)
-            if self.password
+            UserBuilder.hash_password(self.new_password)
+            if self.new_password is not None
             else UNSET
         )
         return UserBuilder(
@@ -101,12 +110,42 @@ class UserUpdateRequest(BaseUserRequest):
         )
 
 
-class UserUpdateRequestAdmin(UserUpdateRequest):
+class UserUpdateRequestAdmin(BaseUserRequest):
+    password: str | None = Field(min_length=1, default=None)
     groups: list[int] = Field(
         default_factory=list,
         description="The IDs of the groups the user will be a member of.",
     )
 
+    def to_builder(self) -> UserBuilder:
+        password = (
+            UserBuilder.hash_password(self.password)
+            if self.password is not None
+            else UNSET
+        )
+        return UserBuilder(
+            username=self.username,
+            password=password,
+            is_staff=False,
+            is_active=True,
+            first_name=self.first_name,
+            last_name=self.last_name,
+            email=self.email,
+        )
+
 
 class UserChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=1)
+
+    def to_builder(self) -> UserBuilder:
+        password = UserBuilder.hash_password(self.new_password)
+        return UserBuilder(password=password)
+
+
+class UserChangePasswordRequestAdmin(BaseModel):
     password: str = Field(..., min_length=1)
+
+    def to_builder(self) -> UserBuilder:
+        password = UserBuilder.hash_password(self.password)
+        return UserBuilder(password=password)
