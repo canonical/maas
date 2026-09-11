@@ -386,7 +386,11 @@ class IPRangesHandler(Handler):
             )
 
         builder = await iprange_request.to_builder(
-            subnet, authenticated_user, services, iprange.id
+            subnet,
+            authenticated_user,
+            services,
+            existing_iprange_id=iprange.id,
+            existing_iprange=iprange,
         )
         iprange = await services.ipranges.update_one(
             query=QuerySpec(

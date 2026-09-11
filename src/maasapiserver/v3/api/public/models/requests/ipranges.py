@@ -21,6 +21,7 @@ from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.ipranges import IPRange as IPRangeModel
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -94,6 +95,7 @@ class IPRangeCreateRequest(BaseModel):
         authenticated_user: AuthenticatedUser,
         services: ServiceCollectionV3,
         existing_iprange_id: int | None = None,
+        existing_iprange: IPRangeModel | None = None,
     ) -> IPRangeBuilder:
         self._validate_addresses_in_subnet(subnet)
         if self.type == IPRangeType.DYNAMIC:
@@ -145,16 +147,17 @@ class IPRangeCreateRequest(BaseModel):
                 ]
             )
 
-        found = False
-        # Find unused range for start_ip
-        for unused_range in unused:
-            if IPAddress(str(self.start_ip)) in unused_range:
-                if IPAddress(str(self.end_ip)) in unused_range:
-                    # Success, start and end IP are in an unused range.
-                    found = True
-                    break
+        start_ip = IPAddress(str(self.start_ip))
+        end_ip = IPAddress(str(self.end_ip))
 
-        if not found:
+        found = any(
+            start_ip in unused_range and end_ip in unused_range
+            for unused_range in unused
+        )
+
+        if not found and not self._is_existing_dynamic_range_resize_allowed(
+            start_ip, end_ip, unused, existing_iprange
+        ):
             message = (
                 f"Requested {self.type} range conflicts with an existing "
             )
@@ -183,6 +186,51 @@ class IPRangeCreateRequest(BaseModel):
                 else authenticated_user.id
             ),
         )
+
+    def _is_existing_dynamic_range_resize_allowed(
+        self,
+        start_ip: IPAddress,
+        end_ip: IPAddress,
+        unused,
+        existing_iprange: IPRangeModel | None,
+    ) -> bool:
+        """Allow resizing a dynamic range despite existing in-range allocations."""
+        if (
+            self.type != IPRangeType.DYNAMIC
+            or existing_iprange is None
+            or existing_iprange.type != IPRangeType.DYNAMIC
+        ):
+            return False
+
+        existing_start = int(IPAddress(str(existing_iprange.start_ip)))
+        existing_end = int(IPAddress(str(existing_iprange.end_ip)))
+        start = int(start_ip)
+        end = int(end_ip)
+
+        added_segments = []
+
+        left_end = min(end, existing_start - 1)
+        if start <= left_end:
+            added_segments.append((start, left_end))
+
+        right_start = max(start, existing_end + 1)
+        if right_start <= end:
+            added_segments.append((right_start, end))
+
+        if not added_segments:
+            return True
+
+        version = start_ip.version
+        for segment_start, segment_end in added_segments:
+            added_start_ip = IPAddress(segment_start, version=version)
+            added_end_ip = IPAddress(segment_end, version=version)
+            if not any(
+                added_start_ip in unused_range and added_end_ip in unused_range
+                for unused_range in unused
+            ):
+                return False
+
+        return True
 
 
 class IPRangeUpdateRequest(IPRangeCreateRequest):
