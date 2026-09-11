@@ -123,6 +123,46 @@ class OperationsService(
         )
         return operation
 
+    async def create_accepted_bulk_operation(
+        self,
+        op_type: OperationType,
+        children: list[dict],
+        user_id: int | None = None,
+    ) -> Operation:
+        """Create an ACCEPTED bulk operation and schedule its workflow after commit."""
+        workflow_name = workflow_name_for_operation_type(op_type)
+        if workflow_name is None:
+            raise ValueError(
+                f"No workflow is mapped to operation type '{op_type}'."
+            )
+        operation = await self.create(
+            builder=OperationBuilder(
+                uuid=str(uuid4()),
+                op_type=op_type,
+                status=OperationStatus.ACCEPTED,
+                parameters={"children": children},
+                user_id=user_id,
+                is_bulk=True,
+            )
+        )
+        self.temporal_service.register_workflow_call(
+            workflow_name=workflow_name,
+            parameter=operation.parameters,
+            workflow_id=operation.uuid,
+            wait=False,
+            search_attributes=TypedSearchAttributes(
+                [
+                    SearchAttributePair(
+                        SearchAttributeKey.for_keyword(
+                            OPERATION_UUID_SEARCH_ATTRIBUTE
+                        ),
+                        operation.uuid,
+                    )
+                ]
+            ),
+        )
+        return operation
+
     async def list_stuck_accepted_operations(
         self, created_before: datetime
     ) -> list[Operation]:
@@ -135,6 +175,7 @@ class OperationsService(
                             OperationStatus.ACCEPTED
                         ),
                         OperationsClauseFactory.created_before(created_before),
+                        OperationsClauseFactory.without_parent_id(),
                     ]
                 )
             )
@@ -148,6 +189,70 @@ class OperationsService(
                     [OperationStatus.RUNNING, OperationStatus.CANCELLING]
                 )
             )
+        )
+
+    async def list_child_operations(self, parent_uuid: str) -> list[Operation]:
+        """Return operations whose ``parent_id`` is ``parent_uuid``."""
+        return await self.repository.get_many(
+            query=QuerySpec(
+                where=OperationsClauseFactory.with_parent_id(parent_uuid)
+            )
+        )
+
+    async def create_child_operation_row(
+        self,
+        op_type: OperationType,
+        parent_uuid: str,
+        resource_id: int | None = None,
+        resource_type: str | None = None,
+        parameters: dict | None = None,
+    ) -> str:
+        parent = await self.repository.get_by_uuid(parent_uuid)
+        if parent is None:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=(
+                            f"Operation with uuid '{parent_uuid}' was not found."
+                        ),
+                    )
+                ]
+            )
+        operation = await self.create(
+            builder=OperationBuilder(
+                uuid=str(uuid4()),
+                op_type=op_type,
+                status=OperationStatus.ACCEPTED,
+                resource_id=resource_id,
+                resource_type=resource_type,
+                parameters=parameters,
+                user_id=parent.user_id,
+                is_bulk=False,
+                parent_id=parent_uuid,
+            )
+        )
+        return operation.uuid
+
+    async def update_bulk_status_from_children(
+        self, parent_uuid: str
+    ) -> Operation:
+        """Set a bulk parent's status from its children's outcomes."""
+        children = await self.list_child_operations(parent_uuid)
+        if not children:
+            status = OperationStatus.FAILED
+        elif all(
+            child.status == OperationStatus.COMPLETED for child in children
+        ):
+            status = OperationStatus.COMPLETED
+        elif all(
+            child.status != OperationStatus.COMPLETED for child in children
+        ):
+            status = OperationStatus.FAILED
+        else:
+            status = OperationStatus.COMPLETED_WITH_ERRORS
+        return await self.update_status(
+            operation_uuid=parent_uuid, status=status
         )
 
     async def update_status(
@@ -164,6 +269,7 @@ class OperationsService(
             OperationStatus.COMPLETED,
             OperationStatus.FAILED,
             OperationStatus.CANCELLED,
+            OperationStatus.COMPLETED_WITH_ERRORS,
         ):
             builder.finished = utcnow()
         # On success the operation is no longer running any task; on failure we
@@ -269,6 +375,7 @@ class OperationsService(
             OperationStatus.CANCELLED,
             OperationStatus.COMPLETED,
             OperationStatus.FAILED,
+            OperationStatus.COMPLETED_WITH_ERRORS,
         ):
             raise ConflictException(
                 details=[

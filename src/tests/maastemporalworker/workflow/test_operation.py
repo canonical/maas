@@ -25,12 +25,17 @@ from maastemporalworker.worker import REGION_TASK_QUEUE
 import maastemporalworker.workflow.activity as activity_module
 import maastemporalworker.workflow.operation as operation_module
 from maastemporalworker.workflow.operation import (
+    BulkOperationWorkflow,
+    CREATE_CHILD_OPERATION_ACTIVITY_NAME,
+    CreateChildOperationParam,
     OperationActivity,
     RECONCILE_IN_PROGRESS_ACTIVITY_NAME,
     RECONCILE_STUCK_ACCEPTED_ACTIVITY_NAME,
     ReconcileOperationsWorkflow,
+    ROLLUP_BULK_STATUS_ACTIVITY_NAME,
     track_operation_status,
     update_current_task,
+    UPDATE_OPERATION_STATUS_ACTIVITY_NAME,
     UpdateCurrentTaskParam,
     UpdateOperationStatusParam,
 )
@@ -505,3 +510,157 @@ class TestReconcileOperationsWorkflow:
             RECONCILE_STUCK_ACCEPTED_ACTIVITY_NAME,
             RECONCILE_IN_PROGRESS_ACTIVITY_NAME,
         ]
+
+
+@pytest.mark.asyncio
+class TestBulkOperationActivities:
+    def _operation_activity(self) -> OperationActivity:
+        return OperationActivity(
+            Mock(Database),
+            CacheForServices(),
+            connection=Mock(AsyncConnection),
+            temporal_client=Mock(Client),
+        )
+
+    async def test_create_child_operation(
+        self, services_mock: ServiceCollectionV3, monkeypatch
+    ) -> None:
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.create_child_operation_row = AsyncMock(
+            return_value="child-uuid"
+        )
+        services_mock.produce.return_value = services_mock
+        monkeypatch.setattr(
+            activity_module, "ServiceCollectionV3", services_mock
+        )
+
+        activity = self._operation_activity()
+        param = CreateChildOperationParam(
+            op_type=OperationType.MACHINE_COMMISSION,
+            parent_uuid="parent-uuid",
+            resource_id=1,
+        )
+        result = await activity.create_child_operation(param)
+
+        assert result == "child-uuid"
+        services_mock.operations.create_child_operation_row.assert_awaited_once_with(
+            op_type=OperationType.MACHINE_COMMISSION,
+            parent_uuid="parent-uuid",
+            resource_id=1,
+            resource_type=None,
+            parameters=None,
+        )
+
+    async def test_rollup_bulk_operation_status(
+        self, services_mock: ServiceCollectionV3, monkeypatch
+    ) -> None:
+        services_mock.temporal = Mock(TemporalService)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.update_bulk_status_from_children = AsyncMock()
+        services_mock.produce.return_value = services_mock
+        monkeypatch.setattr(
+            activity_module, "ServiceCollectionV3", services_mock
+        )
+
+        activity = self._operation_activity()
+        await activity.rollup_bulk_operation_status("parent-uuid")
+
+        services_mock.operations.update_bulk_status_from_children.assert_awaited_once_with(
+            "parent-uuid"
+        )
+
+
+@pytest.mark.asyncio
+class TestBulkOperationWorkflow:
+    def _set_operation_uuid(self, monkeypatch, operation_uuid):
+        info = Mock()
+        info.workflow_type = "BulkOperationWorkflow"
+        info.typed_search_attributes.get.return_value = operation_uuid
+        monkeypatch.setattr(operation_module.workflow, "info", lambda: info)
+
+    async def test_run_schedules_children_then_rolls_up(
+        self, monkeypatch
+    ) -> None:
+        self._set_operation_uuid(monkeypatch, "parent-uuid")
+        local_activity = AsyncMock()
+        monkeypatch.setattr(
+            operation_module.workflow,
+            "execute_local_activity",
+            local_activity,
+        )
+        execute_activity = AsyncMock(
+            side_effect=["child-uuid-1", "child-uuid-2", None]
+        )
+        monkeypatch.setattr(
+            operation_module.workflow, "execute_activity", execute_activity
+        )
+        mock_handle = AsyncMock()
+        start_child_workflow = AsyncMock(return_value=mock_handle)
+        monkeypatch.setattr(
+            operation_module.workflow,
+            "start_child_workflow",
+            start_child_workflow,
+        )
+        gather = AsyncMock()
+        monkeypatch.setattr(operation_module.asyncio, "gather", gather)
+
+        children = [
+            {"op_type": OperationType.MACHINE_COMMISSION, "resource_id": 1},
+            {"op_type": OperationType.MACHINE_COMMISSION, "resource_id": 2},
+        ]
+        await BulkOperationWorkflow().run({"children": children})
+
+        running_param = local_activity.call_args.args[1]
+        assert running_param.operation_uuid == "parent-uuid"
+        assert running_param.status == OperationStatus.RUNNING
+
+        create_calls = [
+            call
+            for call in execute_activity.call_args_list
+            if call.args[0] == CREATE_CHILD_OPERATION_ACTIVITY_NAME
+        ]
+        assert len(create_calls) == 2
+
+        assert start_child_workflow.call_count == 2
+        gather.assert_awaited_once_with(
+            mock_handle, mock_handle, return_exceptions=True
+        )
+
+        rollup_call = execute_activity.call_args_list[-1]
+        assert rollup_call.args[0] == ROLLUP_BULK_STATUS_ACTIVITY_NAME
+        assert rollup_call.args[1] == "parent-uuid"
+
+    async def test_run_sets_parent_failed_on_orchestration_error(
+        self, monkeypatch
+    ) -> None:
+        self._set_operation_uuid(monkeypatch, "parent-uuid")
+        local_activity = AsyncMock()
+        monkeypatch.setattr(
+            operation_module.workflow,
+            "execute_local_activity",
+            local_activity,
+        )
+        monkeypatch.setattr(
+            operation_module.workflow,
+            "execute_activity",
+            AsyncMock(side_effect=ApplicationError("activity failed")),
+        )
+
+        with pytest.raises(ApplicationError):
+            await BulkOperationWorkflow().run(
+                {
+                    "children": [
+                        {
+                            "op_type": OperationType.MACHINE_COMMISSION,
+                            "resource_id": 1,
+                        }
+                    ]
+                }
+            )
+
+        failed_call = local_activity.call_args_list[-1]
+        assert failed_call.args[0] == UPDATE_OPERATION_STATUS_ACTIVITY_NAME
+        failed_param = failed_call.args[1]
+        assert failed_param.status == OperationStatus.FAILED
+        assert failed_param.operation_uuid == "parent-uuid"
