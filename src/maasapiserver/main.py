@@ -41,12 +41,20 @@ from maasapiserver.v3.middlewares.auth import (
 )
 from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
+from maascommon.hardening import configure_hardening, HardeningMode
 from maascommon.worker import set_max_workers_count
+from maasservicelayer.context import Context
 from maasservicelayer.db import Database
 from maasservicelayer.db.listeners import PostgresListenersTaskFactory
 from maasservicelayer.db.locks import wait_for_startup
+from maasservicelayer.db.repositories.database_configurations import (
+    DatabaseConfigurationsRepository,
+)
 from maasservicelayer.logging.configure import configure_logging
 from maasservicelayer.services import CacheForServices
+from maasservicelayer.services.database_configurations import (
+    DatabaseConfigurationsService,
+)
 from provisioningserver.certificates import get_maas_cluster_cert_paths
 
 logger = structlog.getLogger()
@@ -80,6 +88,24 @@ async def prepare_app(
 
     # In maasserver we have a startup lock. If it is set, we have to wait to start maasapiserver as well.
     await wait_for_startup(db)
+
+    _hardening_value: HardeningMode | None = None
+    try:
+        async with db.engine.connect() as conn:
+            async with conn.begin():
+                context = Context(connection=conn)
+                service = DatabaseConfigurationsService(
+                    context=context,
+                    database_configurations_repository=DatabaseConfigurationsRepository(
+                        context
+                    ),
+                )
+                val = await service.get("hardening_enabled")
+                if val is not None:
+                    _hardening_value = HardeningMode(str(val))
+    except Exception:
+        pass
+    configure_hardening(_hardening_value)
 
     services_cache = CacheForServices()
 
@@ -196,7 +222,6 @@ def run(app_config: Config | None = None):
     config_uvicorn_logging(
         logging.DEBUG if app_config.debug_http else logging.INFO
     )
-
     # User app
     user_app = loop.run_until_complete(create_app(config=app_config))
     user_server_config = uvicorn.Config(

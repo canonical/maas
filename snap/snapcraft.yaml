@@ -21,7 +21,6 @@ epoch: 4*
 package-repositories:
   - type: apt
     ppa: maas/3.7-next
-
 environment:
   PYTHONPATH: $SNAP/usr/lib/python3/dist-packages
   LD_PRELOAD: $SNAP/usr/lib/snap-preload.so
@@ -72,10 +71,23 @@ apps:
       - network
 
 parts:
+  go-deps:
+    plugin: nil
+    build-packages:
+      - golang-1.24-go
+    override-build: |
+      mkdir -p $CRAFT_PART_INSTALL/bin
+      printf '#!/bin/sh\nexec env GOROOT=/usr/lib/go-1.24 /usr/lib/go-1.24/bin/go "$@"\n' \
+        > $CRAFT_PART_INSTALL/bin/go
+      chmod +x $CRAFT_PART_INSTALL/bin/go
+    prime:
+      - -bin/go
+
   pebble:
     plugin: go
-    build-packages:
-      - golang-go
+    after: [go-deps]
+    build-environment:
+      - GOFIPS140: "latest"
     source-type: git
     source: https://github.com/canonical/pebble
     source-tag: v1.10.2
@@ -181,6 +193,7 @@ parts:
       - python3-temporalio
       - python3-twisted
       - python3-txtftp
+      - python3-typing-extensions
       - python3-tz
       - python3-urllib3 # for macaroonbakery
       - python3-uvicorn
@@ -306,14 +319,16 @@ parts:
   host-info:
     plugin: make
     source: src/host-info
-    build-packages:
-      - golang-go
+    after: [go-deps]
+    build-environment:
+      - GOFIPS140: "latest"
 
   maas-netmon:
     plugin: make
     source: src/maasagent
-    build-packages:
-      - golang-go
+    after: [go-deps]
+    build-environment:
+      - GOFIPS140: "latest"
     organize:
       bin/maas-netmon: usr/sbin/maas-netmon
     prime:
@@ -322,9 +337,9 @@ parts:
   maas-agent:
     plugin: make
     source: src/maasagent
-    build-packages:
-      - golang-go
-      - libdqlite1.17-dev
+    after: [go-deps]
+    build-environment:
+      - GOFIPS140: "latest"
     organize:
       bin/maas-agent: usr/sbin/maas-agent
     prime:

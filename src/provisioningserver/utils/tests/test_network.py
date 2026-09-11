@@ -1,6 +1,7 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from contextlib import contextmanager
 import itertools
 import json
 import socket
@@ -60,6 +61,7 @@ from provisioningserver.utils.network import (
     get_interface_children,
     get_mac_organization,
     get_source_address,
+    get_source_address_for_url,
     has_ipv4_address,
     hex_str_to_bytes,
     interface_children,
@@ -72,9 +74,16 @@ from provisioningserver.utils.network import (
     MAASIPRange,
     make_network,
     parse_integer,
+    partition_by_family,
     preferred_hostnames_sort_key,
+    resolve_bind_address,
+    resolve_bind_addresses,
+    resolve_connect_address,
+    resolve_dual_stack_bind_addresses,
+    resolve_dual_stack_service_bind,
     resolve_host_to_addrinfo,
     resolve_hostname,
+    resolve_service_bind,
     resolves_to_loopback_address,
     reverseResolve,
 )
@@ -2298,6 +2307,379 @@ class TestGetSourceAddress(MAASTestCase):
 
     def test_returns_appropriate_address_for_global_ip(self):
         self.assertIsNotNone(get_source_address("8.8.8.8"))
+
+
+class TestGetSourceAddressForUrl(MAASTestCase):
+    def test_returns_source_address_for_url_host(self):
+        mock_getaddrinfo = self.patch(network_module, "getaddrinfo")
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.0.0.5", 0))
+        ]
+        mock_get_source = self.patch(
+            network_module, "get_source_address_for_ipaddress"
+        )
+        mock_get_source.return_value = "10.0.0.1"
+
+        result = get_source_address_for_url("http://maas.example:5240/MAAS")
+
+        mock_getaddrinfo.assert_called_once_with(
+            "maas.example", None, proto=socket.IPPROTO_TCP
+        )
+        mock_get_source.assert_called_once_with(IPAddress("10.0.0.5"))
+        self.assertEqual("10.0.0.1", result)
+
+    def test_returns_source_address_for_ipv6_url_host(self):
+        """An IPv6-only hostname resolves via getaddrinfo, unlike the
+        IPv4-only socket.gethostbyname this used to call."""
+        mock_getaddrinfo = self.patch(network_module, "getaddrinfo")
+        mock_getaddrinfo.return_value = [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                0,
+                "",
+                ("fd00::1", 0, 0, 0),
+            )
+        ]
+        mock_get_source = self.patch(
+            network_module, "get_source_address_for_ipaddress"
+        )
+        mock_get_source.return_value = "fd00::5"
+
+        result = get_source_address_for_url("http://maas.example:5240/MAAS")
+
+        mock_get_source.assert_called_once_with(IPAddress("fd00::1"))
+        self.assertEqual("fd00::5", result)
+
+    def test_returns_none_when_url_has_no_hostname(self):
+        self.assertIsNone(get_source_address_for_url("not-a-url"))
+
+    def test_returns_none_when_hostname_does_not_resolve(self):
+        self.patch(network_module, "getaddrinfo").side_effect = gaierror()
+        self.assertIsNone(
+            get_source_address_for_url("http://nonexistent.invalid/MAAS")
+        )
+
+
+class TestResolveBindAddress(MAASTestCase):
+    def test_explicit_address_returned_unchanged(self):
+        result = resolve_bind_address(
+            "10.0.0.1", "http://10.0.0.1:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual("10.0.0.1", result)
+
+    def test_empty_derives_from_maas_url(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.5"
+
+        result = resolve_bind_address(
+            "", "http://10.0.0.5:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual("10.0.0.5", result)
+
+    def test_empty_hardening_active_falls_back_to_loopback(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        result = resolve_bind_address(
+            "", "http://unreachable:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual("127.0.0.1", result)
+
+    def test_empty_hardening_inactive_falls_back_to_any(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        result = resolve_bind_address(
+            "", "http://unreachable:5240/MAAS", hardening_active=False
+        )
+        self.assertEqual("0.0.0.0", result)
+
+    def test_empty_ipv6_hardening_active_falls_back_to_ipv6_loopback(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        result = resolve_bind_address(
+            "",
+            "http://unreachable:5240/MAAS",
+            hardening_active=True,
+            family=socket.AF_INET6,
+        )
+        self.assertEqual("::1", result)
+
+    def test_empty_ipv6_hardening_inactive_falls_back_to_any(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        result = resolve_bind_address(
+            "",
+            "http://unreachable:5240/MAAS",
+            hardening_active=False,
+            family=socket.AF_INET6,
+        )
+        self.assertEqual("::", result)
+
+    def test_empty_ipv6_derives_from_maas_url(self):
+        mock_derive = self.patch(network_module, "get_source_address_for_url")
+        mock_derive.return_value = "fd00::5"
+
+        result = resolve_bind_address(
+            "",
+            "http://[fd00::5]:5240/MAAS",
+            hardening_active=True,
+            family=socket.AF_INET6,
+        )
+        self.assertEqual("fd00::5", result)
+        mock_derive.assert_called_once_with(
+            "http://[fd00::5]:5240/MAAS", family=socket.AF_INET6
+        )
+
+
+class TestResolveBindAddresses(MAASTestCase):
+    def test_explicit_list_returned_unchanged(self):
+        result = resolve_bind_addresses(
+            ["10.0.0.1", "10.0.0.2"],
+            "http://10.0.0.1:5240/MAAS",
+            hardening_active=True,
+        )
+        self.assertEqual(["10.0.0.1", "10.0.0.2"], result)
+
+    def test_empty_hardening_inactive_stays_empty(self):
+        result = resolve_bind_addresses(
+            [], "http://10.0.0.1:5240/MAAS", hardening_active=False
+        )
+        self.assertEqual([], result)
+
+    def test_empty_hardening_active_derives_single_address(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.5"
+
+        result = resolve_bind_addresses(
+            [], "http://10.0.0.5:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual(["10.0.0.5"], result)
+
+    def test_empty_hardening_active_unresolvable_falls_back_to_loopback(
+        self,
+    ):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        result = resolve_bind_addresses(
+            [], "http://unreachable:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual(["127.0.0.1"], result)
+
+    def test_filters_out_blank_entries(self):
+        result = resolve_bind_addresses(
+            ["10.0.0.1", ""],
+            "http://10.0.0.1:5240/MAAS",
+            hardening_active=True,
+        )
+        self.assertEqual(["10.0.0.1"], result)
+
+
+class TestResolveServiceBind(MAASTestCase):
+    def test_reads_configured_list_and_maas_url(self):
+        config = Mock(
+            bind_key=["10.0.0.1", "10.0.0.2"],
+            maas_url="http://10.0.0.1:5240/MAAS",
+        )
+
+        @contextmanager
+        def open_config():
+            yield config
+
+        result = resolve_service_bind(
+            open_config, "bind_key", hardening_active=True
+        )
+        self.assertEqual(["10.0.0.1", "10.0.0.2"], result)
+
+    def test_list_valued_maas_url_uses_first_entry(self):
+        config = Mock(bind_key=[], maas_url=["http://10.0.0.5:5240/MAAS"])
+
+        @contextmanager
+        def open_config():
+            yield config
+
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "10.0.0.5"
+
+        result = resolve_service_bind(
+            open_config, "bind_key", hardening_active=True
+        )
+        self.assertEqual(["10.0.0.5"], result)
+
+    def test_open_config_error_is_logged_and_falls_back(self):
+        def open_config():
+            raise OSError("no such file")
+
+        warning = self.patch(network_module.maaslog, "warning")
+
+        result = resolve_service_bind(
+            open_config, "bind_key", hardening_active=False
+        )
+
+        self.assertEqual([], result)
+        warning.assert_called_once()
+        self.assertEqual(True, warning.call_args.kwargs.get("exc_info"))
+
+
+class TestPartitionByFamily(MAASTestCase):
+    def test_splits_mixed_addresses_by_family(self):
+        v4, v6 = partition_by_family(["10.0.0.1", "fd00::1", "10.0.0.2"])
+        self.assertEqual(["10.0.0.1", "10.0.0.2"], v4)
+        self.assertEqual(["fd00::1"], v6)
+
+    def test_empty_input_returns_empty_lists(self):
+        self.assertEqual(([], []), partition_by_family([]))
+
+    def test_malformed_address_is_dropped_with_a_warning(self):
+        warning = self.patch(network_module.maaslog, "warning")
+
+        v4, v6 = partition_by_family(["10.0.0.1", "not-an-ip", "fd00::1"])
+
+        self.assertEqual(["10.0.0.1"], v4)
+        self.assertEqual(["fd00::1"], v6)
+        warning.assert_called_once()
+
+
+class TestResolveDualStackBindAddresses(MAASTestCase):
+    def test_explicit_v4_only_still_backfills_v6_default(self):
+        def fake_derive(maas_url, family=None):
+            return {AF_INET: "10.0.0.5", AF_INET6: "fd00::5"}[family]
+
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).side_effect = fake_derive
+
+        result = resolve_dual_stack_bind_addresses(
+            ["10.0.0.9"], "http://10.0.0.5:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual(["10.0.0.9", "fd00::5"], result)
+
+    def test_explicit_v6_only_still_backfills_v4_default(self):
+        def fake_derive(maas_url, family=None):
+            return {AF_INET: "10.0.0.5", AF_INET6: "fd00::5"}[family]
+
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).side_effect = fake_derive
+
+        result = resolve_dual_stack_bind_addresses(
+            ["fd00::9"], "http://10.0.0.5:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual(["fd00::9", "10.0.0.5"], result)
+
+    def test_explicit_both_families_returned_unchanged(self):
+        derive = self.patch(network_module, "get_source_address_for_url")
+
+        result = resolve_dual_stack_bind_addresses(
+            ["10.0.0.9", "fd00::9"],
+            "http://10.0.0.5:5240/MAAS",
+            hardening_active=True,
+        )
+        self.assertEqual(["10.0.0.9", "fd00::9"], result)
+        derive.assert_not_called()
+
+    def test_empty_configured_derives_both_families(self):
+        def fake_derive(maas_url, family=None):
+            return {AF_INET: "10.0.0.5", AF_INET6: "fd00::5"}[family]
+
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).side_effect = fake_derive
+
+        result = resolve_dual_stack_bind_addresses(
+            [], "http://10.0.0.5:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual(["10.0.0.5", "fd00::5"], result)
+
+    def test_empty_configured_outside_hardening_stays_empty(self):
+        result = resolve_dual_stack_bind_addresses(
+            [], "http://10.0.0.5:5240/MAAS", hardening_active=False
+        )
+        self.assertEqual([], result)
+
+    def test_malformed_address_is_dropped_not_raised(self):
+        # partition_by_family runs at service-config render time, not
+        # validation time -- a typo in a conf file must not crash
+        # nginx/squid/BIND9 config generation.
+        warning = self.patch(network_module.maaslog, "warning")
+
+        result = resolve_dual_stack_bind_addresses(
+            ["10.0.0.9", "not-an-ip"],
+            "http://10.0.0.5:5240/MAAS",
+            hardening_active=False,
+        )
+        self.assertEqual(["10.0.0.9"], result)
+        warning.assert_called_once()
+
+
+class TestResolveDualStackServiceBind(MAASTestCase):
+    def test_reads_configured_list_and_backfills_missing_family(self):
+        config = Mock(
+            bind_key=["10.0.0.9"],
+            maas_url="http://10.0.0.5:5240/MAAS",
+        )
+
+        @contextmanager
+        def open_config():
+            yield config
+
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "fd00::5"
+
+        result = resolve_dual_stack_service_bind(
+            open_config, "bind_key", hardening_active=True
+        )
+        self.assertEqual(["10.0.0.9", "fd00::5"], result)
+
+    def test_open_config_error_is_logged_and_falls_back(self):
+        def open_config():
+            raise OSError("no such file")
+
+        warning = self.patch(network_module.maaslog, "warning")
+
+        result = resolve_dual_stack_service_bind(
+            open_config, "bind_key", hardening_active=False
+        )
+
+        self.assertEqual([], result)
+        warning.assert_called_once()
+
+
+class TestResolveConnectAddress(MAASTestCase):
+    def test_specific_bind_returned_unchanged(self):
+        result = resolve_connect_address(
+            "10.0.0.1", "http://10.0.0.1:5240/MAAS", hardening_active=True
+        )
+        self.assertEqual("10.0.0.1", result)
+
+    def test_wildcard_bind_maps_to_loopback(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+
+        result = resolve_connect_address(
+            "", "http://unreachable:5240/MAAS", hardening_active=False
+        )
+        self.assertEqual("127.0.0.1", result)
+
+    def test_ipv6_wildcard_bind_maps_to_ipv6_loopback(self):
+        result = resolve_connect_address(
+            "::", "http://unreachable:5240/MAAS", hardening_active=False
+        )
+        self.assertEqual("::1", result)
 
 
 class TestGenerateMACAddress(TestCase):

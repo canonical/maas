@@ -821,6 +821,131 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         "The size of a cache used by HTTP proxy",
         Number(min=1, if_missing=20 * 1000**3),
     )
+    temporal_server = ConfigurationOption(
+        "temporal_server",
+        "Address MAAS Agent dials to reach Temporal; empty derives it "
+        "from maas_url.",
+        UnicodeString(if_missing=""),
+    )
+
+    # Security hardening options.
+    hardening_enabled = ConfigurationOption(
+        "hardening_enabled",
+        "Security hardening activation: 'auto' (on when the host is in FIPS "
+        "mode), 'on' (force on), or 'off'.",
+        UnicodeString(if_missing="auto"),
+    )
+
+    # Service binding options.
+    api_bind = ConfigurationOption(
+        "api_bind",
+        "Address(es) the rack HTTP server binds to; empty means all "
+        "interfaces. A specific address per family is required when "
+        "hardening is active (each family derived from maas_url if "
+        "unset). May be a list mixing IPv4 and IPv6 addresses.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
+    )
+    dns_bind = ConfigurationOption(
+        "dns_bind",
+        "Address(es) the DNS (Bind9) service binds to. May be a list "
+        "mixing IPv4 and IPv6 addresses. Snap installs only: not "
+        "available (nor validated) on Debian-packaged installs, where "
+        "MAAS does not own the base named.conf.options.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
+    )
+    dns_allow_transfer = ConfigurationOption(
+        "dns_allow_transfer",
+        "BIND9 allow-transfer ACL value (e.g. 'none', 'trusted').  "
+        "Empty string means: use the hardening default ('none') when "
+        "hardening is active, otherwise omit the directive.",
+        UnicodeString(if_missing=""),
+    )
+    dns_fetches_per_zone = ConfigurationOption(
+        "dns_fetches_per_zone",
+        "BIND9 fetches-per-zone limit.  "
+        "0 means: use the hardening default (100) when hardening is "
+        "active, otherwise omit the directive.",
+        Number(min=0, if_missing=0),
+    )
+    dns_fetches_per_server = ConfigurationOption(
+        "dns_fetches_per_server",
+        "BIND9 fetches-per-server limit.  "
+        "0 means: use the hardening default (100) when hardening is "
+        "active, otherwise omit the directive.",
+        Number(min=0, if_missing=0),
+    )
+    tftp_bind = ConfigurationOption(
+        "tftp_bind",
+        "Address(es) the TFTP service binds to; empty means all "
+        "interfaces. TFTP must serve every managed subnet, not just the "
+        "interface that reaches the API, so a specific address is "
+        "always required explicitly under hardening (no maas_url "
+        "derivation). May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
+    )
+    http_proxy_bind = ConfigurationOption(
+        "http_proxy_bind",
+        "Address(es) the HTTP proxy service binds to; empty means all "
+        "interfaces. A specific address per family is required when "
+        "hardening is active. May be a list mixing IPv4 and IPv6 "
+        "addresses.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
+    )
+    syslog_bind = ConfigurationOption(
+        "syslog_bind",
+        "Address(es) the syslog service binds to; empty means all "
+        "interfaces. A specific address is required when hardening is "
+        "active (derived from maas_url if unset). May be a list.",
+        ForEach(
+            UnicodeString(accept_python=False),
+            convert_to_list=True,
+            if_missing=[],
+        ),
+    )
+    rpc_bind = ConfigurationOption(
+        "rpc_bind",
+        "Address the rack RPC client listener binds to; empty means all "
+        "interfaces. A specific address is required when hardening is active.",
+        UnicodeString(if_missing=""),
+    )
+
+    # Upstream region API port proxied by the rack HTTP server.
+    api_upstream_port = ConfigurationOption(
+        "api_upstream_port",
+        "Port of the upstream region API that the rack HTTP server proxies.",
+        Number(min=1, max=65535, if_missing=5240),
+    )
+    api_rate_limit_rate = ConfigurationOption(
+        "api_rate_limit_rate",
+        "NGINX rate limit (e.g. '20r/s') applied per client IP.",
+        UnicodeString(if_missing="20r/s"),
+    )
+    api_rate_limit_burst = ConfigurationOption(
+        "api_rate_limit_burst",
+        "NGINX rate limit burst size.",
+        Number(min=1, if_missing=60),
+    )
+    api_conn_limit = ConfigurationOption(
+        "api_conn_limit",
+        "NGINX concurrent connection limit per client IP.",
+        Number(min=1, if_missing=100),
+    )
 
 
 def is_dev_environment():

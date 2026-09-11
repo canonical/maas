@@ -65,10 +65,12 @@ async def run_async_migrations() -> None:
     """
 
     alembic_config = config.get_section(config.config_ini_section, {})
+    connect_args = config.attributes.get("connect_args", {})
     connectable = async_engine_from_config(
         alembic_config,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:

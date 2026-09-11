@@ -3,11 +3,23 @@ module(load="imuxsock" SysSock.Name="{{work_dir}}/log.sock")
 
 # Enable tcp.
 module(load="imtcp")
+{{if bind_addresses}}
+{{for addr in bind_addresses}}
+input(type="imtcp" port="{{port}}" address="{{addr}}")
+{{endfor}}
+{{else}}
 input(type="imtcp" port="{{port}}")
+{{endif}}
 
 # Enable udp.
 module(load="imudp")
+{{if bind_addresses}}
+{{for addr in bind_addresses}}
+input(type="imudp" port="{{port}}" address="{{addr}}")
+{{endfor}}
+{{else}}
 input(type="imudp" port="{{port}}")
+{{endif}}
 
 # Reduce message repetition.
 $RepeatedMsgReduction on
@@ -39,6 +51,13 @@ template(name="MAASjournal" type="list") {
   property(name="rawmsg-after-pri" outname="MESSAGE")
 }
 
+# FIPS audit records arrive tagged `maas.fips:` with a JSON payload. Emit the
+# message *without* the tag so the journal entry is standalone JSON.
+template(name="MAASfipsjournal" type="list") {
+  constant(value="maas-log" outname="SYSLOG_IDENTIFIER")
+  property(name="msg" outname="MESSAGE")
+}
+
 template(name="MAASnginxaccess" type="list") {
   constant(value="maas-http" outname="SYSLOG_IDENTIFIER")
   property(name="msg" outname="MESSAGE")
@@ -55,6 +74,8 @@ template(name="MAASremote" type="subtree" subtree="$!remote")
 
 if $programname == "maas_nginx" and $inputname == "imuxsock" then {
   action(type="omjournal" template="MAASnginxaccess")
+} else if $syslogtag contains "maas.fips" then {
+  action(type="omjournal" template="MAASfipsjournal")
 } else if $syslogtag contains "maas" then {
   action(type="omjournal" template="MAASjournal")
 } else {
@@ -110,6 +131,8 @@ if $programname == "maas_nginx" and $inputname == "imuxsock" then {
 # rack-only controller still logs to a local maas.log.
 if $programname == "maas_nginx" and $inputname == "imuxsock" then {
   action(type="omjournal" template="MAASnginxaccess")
+} else if $syslogtag contains "maas.fips" then {
+  action(type="omjournal" template="MAASfipsjournal")
 } else if $syslogtag contains "maas" then {
   action(type="omjournal" template="MAASjournal")
 }

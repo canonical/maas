@@ -180,6 +180,48 @@ class SshHostKeysHandler(Handler):
 
     @handler(
         path="/ssh-host-keys/{ssh_host_key_id}",
+        methods=["PUT"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": SshHostKeyResponse,
+                "headers": {"ETag": OPENAPI_ETAG_HEADER},
+            },
+            404: {"model": NotFoundBodyResponse},
+            412: {"model": PreconditionFailedBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def update_ssh_host_key(
+        self,
+        ssh_host_key_id: int,
+        ssh_host_key_request: SshHostKeyRequest,
+        response: Response,
+        etag_if_match: Union[str, None] = Header(
+            alias="if-match", default=None
+        ),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> SshHostKeyResponse:
+        builder = ssh_host_key_request.to_builder()
+        updated_ssh_host_key = (
+            await services.trusted_ssh_host_keys.update_by_id(
+                id=ssh_host_key_id,
+                builder=builder,
+                etag_if_match=etag_if_match,
+            )
+        )
+        response.headers["ETag"] = updated_ssh_host_key.etag()
+        return SshHostKeyResponse.from_model(
+            ssh_host_key=updated_ssh_host_key,
+            self_base_hyperlink=f"{V3_API_PREFIX}/ssh-host-keys",
+        )
+
+    @handler(
+        path="/ssh-host-keys/{ssh_host_key_id}",
         methods=["DELETE"],
         tags=TAGS,
         responses={

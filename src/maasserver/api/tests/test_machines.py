@@ -350,6 +350,26 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         self.assertEqual(power_id, machine.get_power_parameters()["power_id"])
 
+    def test_POST_rejects_non_fips_driver_when_fips_enabled(self):
+        from maasserver.forms import fips_power
+
+        self.patch(fips_power, "is_fips_enabled").return_value = True
+        self.become_admin()
+        response = self.client.post(
+            self.machines_url,
+            {
+                "architecture": make_usable_architecture(self),
+                "mac_addresses": ["aa:bb:cc:dd:ee:ff"],
+                "power_type": "apc",
+                "power_parameters_power_address": factory.make_ip_address(),
+                "power_parameters_node_outlet": "1",
+            },
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+        self.assertIn(b"FIPS", response.content)
+
     def test_POST_sets_description(self):
         # Regression test for LP1707562
         self.become_admin()

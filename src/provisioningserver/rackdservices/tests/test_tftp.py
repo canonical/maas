@@ -709,7 +709,10 @@ class TestTFTPBackend(MAASTestCase):
 class TestTFTPService(MAASTestCase):
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.
-        interfaces = [factory.make_ipv4_address(), factory.make_ipv6_address()]
+        interfaces = [
+            factory.make_ipv4_address(skip_link_local=True),
+            factory.make_ipv6_address(),
+        ]
         self.patch(
             tftp_module, "get_all_interface_addresses", lambda: interfaces
         )
@@ -815,6 +818,47 @@ class TestTFTPService(MAASTestCase):
         # Only the "normal" addresses have been used.
         self.assertEqual(
             normal_addresses,
+            {server.name for server in tftp_service.getServers()},
+        )
+
+    def test_tftp_service_binds_only_explicit_address(self):
+        interfaces = {"1.1.1.1", "2.2.2.2", "3.3.3.3"}
+        self.patch(
+            tftp_module, "get_all_interface_addresses", lambda: interfaces
+        )
+        tftp_service = TFTPService(
+            resource_root=self.make_dir(),
+            client_service=Mock(),
+            port=factory.pick_port(),
+            max_blksize=8196,
+            bind_addresses=["1.1.1.1"],
+        )
+        tftp_service.updateServers()
+
+        self.assertEqual(
+            {"1.1.1.1"}, {server.name for server in tftp_service.getServers()}
+        )
+
+    def test_tftp_service_binds_one_address_per_managed_subnet(self):
+        interfaces = {"1.1.1.1", "2.2.2.2", "3.3.3.3"}
+        self.patch(
+            tftp_module, "get_all_interface_addresses", lambda: interfaces
+        )
+        bind_addresses = ["1.1.1.1", "2.2.2.2", "fd00::5"]
+        tftp_service = TFTPService(
+            resource_root=self.make_dir(),
+            client_service=Mock(),
+            port=factory.pick_port(),
+            max_blksize=8196,
+            bind_addresses=bind_addresses,
+        )
+        tftp_service.updateServers()
+
+        # Every explicitly configured address gets its own server, on
+        # every managed subnet -- not just one address total, and not
+        # every discovered interface either.
+        self.assertEqual(
+            set(bind_addresses),
             {server.name for server in tftp_service.getServers()},
         )
 

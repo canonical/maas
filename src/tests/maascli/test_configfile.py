@@ -121,3 +121,11 @@ class TestMAASConfiguration(MAASTestCase):
         self.config_manager.update({"maas_url": None})
         self.assertEqual(self.read_config("regiond.conf"), {})
         self.assertEqual(self.read_config("rackd.conf"), {})
+
+    def test_update_with_temporal_server(self):
+        self.config_manager.update({"temporal_server": "127.0.0.1"})
+        # temporal_server is rack-only; it must not be written to regiond.conf
+        self.assertEqual(self.read_config("regiond.conf"), {})
+        self.assertEqual(
+            self.read_config("rackd.conf"), {"temporal_server": "127.0.0.1"}
+        )

@@ -74,11 +74,37 @@ def make_RegionControllerService(postgresListener, dbtasks):
     return RegionControllerService(postgresListener, dbtasks)
 
 
+def resolve_rpc_bind_addresses():
+    """Return the addresses `RegionService`'s RPC listener should bind to.
+
+    Thin wrapper around `resolve_service_bind`, the same hardening-aware
+    bind-resolution helper every other region/rack service uses: an
+    explicit ``rpc_bind`` list in regiond.conf wins verbatim; otherwise,
+    under hardening, a single non-wildcard address is derived from
+    ``maas_url``; outside hardening, an empty list is returned, meaning
+    "bind every interface".
+
+    :class:`~maasserver.ipc.IPCMasterService._getListenAddresses` calls
+    this too, so whatever `RegionService` actually binds to is exactly
+    what's advertised to rack controllers over IPC.
+    """
+    from maascommon.hardening import is_hardening_enabled
+    from maasserver.config import RegionConfiguration
+    from provisioningserver.utils.network import resolve_service_bind
+
+    return resolve_service_bind(
+        RegionConfiguration.open,
+        "rpc_bind",
+        hardening_active=is_hardening_enabled(),
+    )
+
+
 def make_RegionService(ipcWorker):
-    # Import here to avoid a circular import.
     from maasserver.rpc import regionservice
 
-    return regionservice.RegionService(ipcWorker)
+    return regionservice.RegionService(
+        ipcWorker, rpc_bind=resolve_rpc_bind_addresses()
+    )
 
 
 def make_NonceCleanupService():
@@ -222,11 +248,16 @@ def make_IPCWorkerService():
 
 def make_PrometheusExporterService():
     from maasserver.prometheus.service import (
-        create_prometheus_exporter_service,
+        PrometheusExporterService,
         REGION_PROMETHEUS_PORT,
     )
 
-    return create_prometheus_exporter_service(reactor, REGION_PROMETHEUS_PORT)
+    # Bind-address resolution (hardening-aware) happens lazily in
+    # `PrometheusExporterService.startService()`, not here: `populate()`
+    # constructs every factory before `start_up()` runs
+    # `configure_hardening()`, so resolving eagerly would always observe
+    # hardening as inactive.
+    return PrometheusExporterService(reactor, REGION_PROMETHEUS_PORT)
 
 
 def make_CertificateExpirationCheckService():

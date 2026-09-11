@@ -77,7 +77,7 @@ class TestRegisterCommands(MAASTestCase):
         parser = ArgumentParser()
         cli.register_cli_commands(parser)
         mock_load_regiond_commands.assert_called_once_with(
-            sentinel.management, parser, skip=frozenset()
+            sentinel.management, parser
         )
 
     def test_loads_all_regiond_commands(self):
@@ -127,7 +127,7 @@ class TestRegisterCommands(MAASTestCase):
         self.assertEqual(error.code, 0)
         self.assertNotIn("reconfigure-supervisord", stdout.getvalue())
 
-    def test_hides_db_only_regiond_commands_in_rack_mode(self):
+    def test_hides_regiond_commands_in_rack_mode(self):
         snap_common = self.make_dir()
         with open(os.path.join(snap_common, "snap_mode"), "w") as fp:
             fp.write("rack")
@@ -139,11 +139,40 @@ class TestRegisterCommands(MAASTestCase):
         self.patch(os, "environ", environ)
         parser = ArgumentParser()
         cli.register_cli_commands(parser)
-        for name in cli.DB_ONLY_REGIOND_COMMANDS:
+        for name in {
+            "apikey",
+            "configauth",
+            "config-tls",
+            "config-vault",
+            "msm",
+            "createadmin",
+            "changepassword",
+        }:
             self.assertNotIn(name, parser.subparsers.choices)
         self.assertIn("migrate", parser.subparsers.choices)
 
-    def test_keeps_db_only_regiond_commands_in_region_mode(self):
+    def test_replaces_config_hardening_with_rack_command_in_rack_mode(self):
+        snap_common = self.make_dir()
+        with open(os.path.join(snap_common, "snap_mode"), "w") as fp:
+            fp.write("rack")
+        environ = {
+            "SNAP": "snap-path",
+            "SNAP_COMMON": snap_common,
+            "SNAP_DATA": self.make_dir(),
+        }
+        self.patch(os, "environ", environ)
+        parser = ArgumentParser()
+        cli.register_cli_commands(parser)
+        subparser = parser.subparsers.choices.get("config-hardening")
+        self.assertIsInstance(
+            subparser.get_default("execute"), cli.cmd_config_hardening_rack
+        )
+        rack_subcommands = set(subparser.subparsers.choices)
+        self.assertEqual(rack_subcommands, {"list", "get", "set", "validate"})
+        self.assertNotIn("enable", rack_subcommands)
+        self.assertNotIn("disable", rack_subcommands)
+
+    def test_keeps_regiond_commands_in_region_mode(self):
         snap_common = self.make_dir()
         with open(os.path.join(snap_common, "snap_mode"), "w") as fp:
             fp.write("region")
@@ -155,7 +184,16 @@ class TestRegisterCommands(MAASTestCase):
         self.patch(os, "environ", environ)
         parser = ArgumentParser()
         cli.register_cli_commands(parser)
-        for name in cli.DB_ONLY_REGIOND_COMMANDS:
+        for name in {
+            "apikey",
+            "configauth",
+            "config-hardening",
+            "config-tls",
+            "config-vault",
+            "msm",
+            "createadmin",
+            "changepassword",
+        }:
             self.assertIn(name, parser.subparsers.choices)
         self.assertIn("migrate", parser.subparsers.choices)
 

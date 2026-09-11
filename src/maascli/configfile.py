@@ -20,14 +20,26 @@ class MAASConfiguration:
         """Return a dict with the current configuration."""
         return self._get_from_file("regiond.conf")
 
+    # Keys that propagate from regiond.conf settings into rackd.conf too.
+    RACKD_SHARED_KEYS = ("maas_url", "debug")
+    # Keys that only apply to rackd.conf and are never written to
+    # regiond.conf.
+    RACKD_ONLY_KEYS = ("temporal_server",)
+
     def update(self, configs):
         """Add or update specified configuration entries."""
-        rackd_config = {}
-        self._update_file(configs, "regiond.conf")
-        if "maas_url" in configs:
-            rackd_config["maas_url"] = configs["maas_url"]
-        if "debug" in configs:
-            rackd_config["debug"] = configs["debug"]
+        region_configs = {
+            key: value
+            for key, value in configs.items()
+            if key not in self.RACKD_ONLY_KEYS
+        }
+        self._update_file(region_configs, "regiond.conf")
+
+        rackd_config = {
+            key: configs[key]
+            for key in self.RACKD_SHARED_KEYS + self.RACKD_ONLY_KEYS
+            if key in configs
+        }
         if rackd_config:
             self._update_file(rackd_config, "rackd.conf")
 
