@@ -5371,7 +5371,10 @@ class Node(CleanSave, TimestampedModel):
                 subnet.gateway_ip IS NOT NULL AND
                 host(subnet.gateway_ip) != '' AND
                 staticip.alloc_type != 5 AND /* Ignore DHCP */
-                staticip.alloc_type != 6 /* Ignore DISCOVERED */
+                staticip.alloc_type != 6 AND /* Ignore DISCOVERED */
+                /* Ignore LINK_UP / Unconfigured (STICKY with no IP), but keep
+                   AUTO links that have no IP assigned yet (pre-deployment) */
+                NOT (staticip.alloc_type = 1 AND staticip.ip IS NULL)
             ORDER BY
                 family(subnet.gateway_ip),
                 vlan.dhcp_on DESC,
@@ -5440,17 +5443,26 @@ class Node(CleanSave, TimestampedModel):
         """
         all_gateways = self.get_gateways_by_priority()
 
-        # Get the set gateways on the node.
+        # Get the set gateways on the node. Links that are
+        # unconfigured (LINK_UP) should not be used as the gateway.
         gateway_ipv4 = None
         gateway_ipv6 = None
-        if self.gateway_link_ipv4 is not None:
+        if (
+            self.gateway_link_ipv4 is not None
+            and self.gateway_link_ipv4.get_interface_link_type()
+            != INTERFACE_LINK_TYPE.LINK_UP
+        ):
             subnet = self.gateway_link_ipv4.subnet
             if subnet is not None:
                 if subnet.gateway_ip:
                     gateway_ipv4 = self._get_gateway_tuple(
                         self.gateway_link_ipv4
                     )
-        if self.gateway_link_ipv6 is not None:
+        if (
+            self.gateway_link_ipv6 is not None
+            and self.gateway_link_ipv6.get_interface_link_type()
+            != INTERFACE_LINK_TYPE.LINK_UP
+        ):
             subnet = self.gateway_link_ipv6.subnet
             if subnet is not None:
                 if subnet.gateway_ip:
