@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import Field
 
@@ -22,6 +23,7 @@ class OAuthProviderBuilder(ResourceBuilder):
 
     client_id: str | Unset = Field(default=UNSET)
     client_secret: str | Unset = Field(default=UNSET)
+    config: dict[str, Any] | None | Unset = Field(default=UNSET)
     created: datetime | Unset = Field(default=UNSET)
     enabled: bool | Unset = Field(default=UNSET)
     issuer_url: str | Unset = Field(default=UNSET)
