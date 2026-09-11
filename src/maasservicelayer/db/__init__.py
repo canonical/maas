@@ -7,10 +7,7 @@ import ssl
 from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import create_async_engine
 
-# SSL modes considered insecure — rejected when hardening is active. Only
-# verify-ca / verify-full authenticate the server certificate; require
-# encrypts but does not verify, so it is rejected too.
-_INSECURE_SSL_MODES = frozenset({"disable", "allow", "prefer", "require"})
+from maascommon.hardening import INSECURE_DB_SSLMODES
 
 
 @dataclass
@@ -87,7 +84,7 @@ def build_database_config(
     ``allow``, ``prefer``, ``require``) are rejected with
     ``InsecureDBSSLModeError``; only ``verify-ca``/``verify-full`` are allowed.
     """
-    if hardening_active and sslmode in _INSECURE_SSL_MODES:
+    if hardening_active and sslmode in INSECURE_DB_SSLMODES:
         raise InsecureDBSSLModeError(
             f"Database SSL mode '{sslmode}' is insecure and not allowed "
             "when hardening is active. Use 'verify-full' or 'verify-ca'."

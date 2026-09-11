@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any, Optional, Protocol
 import uuid
 
 from temporalio import workflow
@@ -145,6 +145,28 @@ async def _apply_boot_order(param: PowerParam) -> None:
     )
 
 
+class _HasTrustedSshHostKeys(Protocol):
+    trusted_ssh_host_keys: list[TrustedSshHostKeyEntry] | None
+
+
+def _serialize_trusted_ssh_host_keys(
+    param: _HasTrustedSshHostKeys,
+) -> list[dict[str, str]] | None:
+    """Serialize trusted SSH host keys for an activity payload."""
+    return (
+        [
+            {
+                "host": k.host,
+                "key_type": k.key_type,
+                "public_key": k.public_key,
+            }
+            for k in param.trusted_ssh_host_keys
+        ]
+        if param.trusted_ssh_host_keys
+        else None
+    )
+
+
 @workflow.defn(name=POWER_ON_WORKFLOW_NAME, sandboxed=False)
 class PowerOnWorkflow:
     """
@@ -160,17 +182,8 @@ class PowerOnWorkflow:
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
                 "is_dpu": param.is_dpu,
-                "trusted_ssh_host_keys": (
-                    [
-                        {
-                            "host": k.host,
-                            "key_type": k.key_type,
-                            "public_key": k.public_key,
-                        }
-                        for k in param.trusted_ssh_host_keys
-                    ]
-                    if param.trusted_ssh_host_keys
-                    else None
+                "trusted_ssh_host_keys": _serialize_trusted_ssh_host_keys(
+                    param
                 ),
             },
             task_queue=param.task_queue,
@@ -196,17 +209,8 @@ class PowerOffWorkflow:
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
                 "is_dpu": param.is_dpu,
-                "trusted_ssh_host_keys": (
-                    [
-                        {
-                            "host": k.host,
-                            "key_type": k.key_type,
-                            "public_key": k.public_key,
-                        }
-                        for k in param.trusted_ssh_host_keys
-                    ]
-                    if param.trusted_ssh_host_keys
-                    else None
+                "trusted_ssh_host_keys": _serialize_trusted_ssh_host_keys(
+                    param
                 ),
             },
             task_queue=param.task_queue,
@@ -232,17 +236,8 @@ class PowerCycleWorkflow:
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
                 "is_dpu": param.is_dpu,
-                "trusted_ssh_host_keys": (
-                    [
-                        {
-                            "host": k.host,
-                            "key_type": k.key_type,
-                            "public_key": k.public_key,
-                        }
-                        for k in param.trusted_ssh_host_keys
-                    ]
-                    if param.trusted_ssh_host_keys
-                    else None
+                "trusted_ssh_host_keys": _serialize_trusted_ssh_host_keys(
+                    param
                 ),
             },
             task_queue=param.task_queue,
@@ -267,17 +262,8 @@ class PowerQueryWorkflow:
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
                 "is_dpu": param.is_dpu,
-                "trusted_ssh_host_keys": (
-                    [
-                        {
-                            "host": k.host,
-                            "key_type": k.key_type,
-                            "public_key": k.public_key,
-                        }
-                        for k in param.trusted_ssh_host_keys
-                    ]
-                    if param.trusted_ssh_host_keys
-                    else None
+                "trusted_ssh_host_keys": _serialize_trusted_ssh_host_keys(
+                    param
                 ),
             },
             task_queue=param.task_queue,
@@ -321,17 +307,8 @@ class PowerResetWorkflow:
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
                 "is_dpu": param.is_dpu,
-                "trusted_ssh_host_keys": (
-                    [
-                        {
-                            "host": k.host,
-                            "key_type": k.key_type,
-                            "public_key": k.public_key,
-                        }
-                        for k in param.trusted_ssh_host_keys
-                    ]
-                    if param.trusted_ssh_host_keys
-                    else None
+                "trusted_ssh_host_keys": _serialize_trusted_ssh_host_keys(
+                    param
                 ),
             },
             task_queue=param.task_queue,

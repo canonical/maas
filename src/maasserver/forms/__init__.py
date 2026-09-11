@@ -1281,10 +1281,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
             self.fields["deployed"] = forms.BooleanField(required=False)
 
     def clean(self):
-        from maasserver.forms.fips_power import (
-            validate_power_params_fips,
-            validate_power_pass_complexity,
-        )
+        from maasserver.forms.fips_power import apply_fips_power_validation
 
         cleaned_data = super().clean()
         cleaned_data = WithPowerTypeMixin.check_driver(self, cleaned_data)
@@ -1298,15 +1295,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
                 power_parameters = {}
 
         if power_type and power_parameters:
-            try:
-                validate_power_params_fips(power_type, power_parameters)
-            except ValidationError as exc:
-                self.add_error(None, exc)
-
-            try:
-                validate_power_pass_complexity(power_parameters)
-            except ValidationError as exc:
-                self.add_error(None, exc)
+            apply_fips_power_validation(self, power_type, power_parameters)
 
         return cleaned_data
 

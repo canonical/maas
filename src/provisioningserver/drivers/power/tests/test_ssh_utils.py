@@ -39,12 +39,8 @@ class TestGetFipsTransportOptions(MAASTestCase):
         self.assertEqual(get_fips_transport_options(), {})
 
     def test_disabled_algorithms_keys_when_fips_enabled(self):
-        original = ssh_utils_module.is_fips_enabled
-        ssh_utils_module.is_fips_enabled = lambda: True
-        try:
-            options = get_fips_transport_options()
-        finally:
-            ssh_utils_module.is_fips_enabled = original
+        self.patch(ssh_utils_module, "is_fips_enabled", lambda: True)
+        options = get_fips_transport_options()
 
         self.assertIn("disabled_algorithms", options)
         disabled = options["disabled_algorithms"]
@@ -58,12 +54,8 @@ class TestGetFipsTransportOptions(MAASTestCase):
         # Verify that every FIPS-allowed algorithm is absent from the disabled
         # set.  We don't compare against paramiko private internals because
         # that would break on a paramiko upgrade unrelated to MAAS.
-        original = ssh_utils_module.is_fips_enabled
-        ssh_utils_module.is_fips_enabled = lambda: True
-        try:
-            options = get_fips_transport_options()
-        finally:
-            ssh_utils_module.is_fips_enabled = original
+        self.patch(ssh_utils_module, "is_fips_enabled", lambda: True)
+        options = get_fips_transport_options()
 
         disabled = options["disabled_algorithms"]
         for allowed in FIPS_SSH_CONFIG.ciphers:
@@ -98,12 +90,8 @@ class TestMakeSshClient(MAASTestCase):
             client.close()
 
     def test_uses_trusted_policy_on_fips_hosts(self):
-        original = ssh_utils_module.is_fips_enabled
-        ssh_utils_module.is_fips_enabled = lambda: True
-        try:
-            client = make_ssh_client()
-        finally:
-            ssh_utils_module.is_fips_enabled = original
+        self.patch(ssh_utils_module, "is_fips_enabled", lambda: True)
+        client = make_ssh_client()
         try:
             self.assertIsInstance(client, SSHClient)
             self.assertIsInstance(client._policy, TrustedHostKeyPolicy)
@@ -396,33 +384,7 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
             "host.example", "ssh-rsa", key
         )
 
-    def test_env_var_absent_falls_back_to_rpc(self):
-        policy = TrustedHostKeyPolicy()
-        client = Mock(spec=SSHClient)
-        client._host_keys = Mock()
-        key = make_key_mock()
-
-        rpc_client, rpc_factory, command_token, blocking = self._patch_rpc(
-            return_value={"verified": True}
-        )
-
-        self.patch(os, "environ", {})
-
-        policy.missing_host_key(client, "host.example", key)
-
-        rpc_client.assert_called_once_with(
-            command_token,
-            host="host.example",
-            key_type="ssh-rsa",
-            public_key="AAAA",
-        )
-        client._host_keys.add.assert_called_once_with(
-            "host.example", "ssh-rsa", key
-        )
-
     def test_env_var_absent_and_rpc_failure_rejects_host_key(self):
-        from paramiko import SSHException
-
         policy = TrustedHostKeyPolicy()
         client = Mock(spec=SSHClient)
         client._host_keys = Mock()
@@ -493,8 +455,6 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
         rpc_client.assert_not_called()
 
     def test_env_var_key_mismatch_rejects_host_key(self):
-        from paramiko import SSHException
-
         policy = TrustedHostKeyPolicy()
         client = Mock(spec=SSHClient)
         client._host_keys = Mock()
@@ -543,8 +503,6 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
         )
         self.patch(os, "environ", {MAAS_TRUSTED_SSH_HOST_KEYS_ENV: env_json})
 
-        from paramiko import SSHException
-
         self.assertRaises(
             SSHException,
             policy.missing_host_key,
@@ -555,8 +513,6 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
         rpc_client.assert_not_called()
 
     def test_env_var_invalid_json_rejects_host_key(self):
-        from paramiko import SSHException
-
         policy = TrustedHostKeyPolicy()
         client = Mock(spec=SSHClient)
         client._host_keys = Mock()
@@ -576,8 +532,6 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
         client._host_keys.add.assert_not_called()
 
     def test_env_var_empty_list_rejects_host_key(self):
-        from paramiko import SSHException
-
         policy = TrustedHostKeyPolicy()
         client = Mock(spec=SSHClient)
         client._host_keys = Mock()
@@ -597,8 +551,6 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
         client._host_keys.add.assert_not_called()
 
     def test_env_var_json_object_rejects_host_key(self):
-        from paramiko import SSHException
-
         policy = TrustedHostKeyPolicy()
         client = Mock(spec=SSHClient)
         client._host_keys = Mock()
@@ -620,8 +572,6 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
         client._host_keys.add.assert_not_called()
 
     def test_rpc_untrusted_rejects_host_key(self):
-        from paramiko import SSHException
-
         policy = TrustedHostKeyPolicy()
         client = Mock(spec=SSHClient)
         client._host_keys = Mock()

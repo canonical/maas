@@ -99,14 +99,7 @@ class TrustedHostKeyPolicy(MissingHostKeyPolicy):
     def _lookup_trusted_key(
         self, hostname: str, key_type: str, key_b64: str
     ) -> bool:
-        """Return True iff the host key is trusted.
-
-        Tries the ``MAAS_TRUSTED_SSH_HOST_KEYS`` environment variable first
-        (cheap, local memory — available when running in the ``maas-power``
-        subprocess spawned by the agent). Falls back to RPC (network
-        round-trip — available when running in rackd). ``fail_open`` returns
-        True without any lookup.
-        """
+        """Return True iff the host key is trusted; see class docstring."""
         if self._fail_open:
             return True
         env_result = self._lookup_trusted_key_via_env(
