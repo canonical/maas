@@ -3023,6 +3023,11 @@ class Node(CleanSave, TimestampedModel):
                 Node._abort_all_tests,
                 self.current_installation_script_set_id,
             )
+            post_commit().addCallback(
+                callOutToDatabase,
+                Node._abort_all_tests,
+                self.current_deployment_script_set_id,
+            )
 
             if stopping is None:
                 stopping = post_commit()
@@ -3924,7 +3929,6 @@ class Node(CleanSave, TimestampedModel):
         self.distro_series = ""
         self.license_key = ""
         self.hwe_kernel = None
-        self.current_deployment_script_set = None
         self.enable_hw_sync = False
         self.sync_interval = None
         self.last_sync = None
@@ -3933,6 +3937,7 @@ class Node(CleanSave, TimestampedModel):
         # Create a status message for RELEASING.
         Event.objects.create_node_event(self, EVENT_TYPES.RELEASING)
 
+        Node._abort_all_tests(self.current_deployment_script_set_id)
         Node._clear_deployment_resources(self.id)
 
         # Clear the nodes acquired filesystems.
@@ -4032,6 +4037,7 @@ class Node(CleanSave, TimestampedModel):
                 self.current_commissioning_script_set,
                 self.current_testing_script_set,
                 self.current_installation_script_set,
+                self.current_deployment_script_set,
             ],
             status__in=SCRIPT_STATUS_RUNNING_OR_PENDING,
         )
