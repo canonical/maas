@@ -315,9 +315,11 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
         return url, node_id, headers
 
     @inlineCallbacks
-    def get_etag(self, url, node_id, headers):
-        """Get the system Etag suggested for PATCH calls"""
-        uri = join(url, REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
+    def get_etag(self, url, node_id, headers, endpoint=None):
+        """Get the system Etag suggested for PATCH calls."""
+        if endpoint is None:
+            endpoint = join(REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
+        uri = join(url, endpoint)
         node_data, node_headers = yield self.redfish_request(
             b"GET", uri, headers
         )
@@ -339,9 +341,38 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
         return basename(member).encode("utf-8")
 
     @inlineCallbacks
+    def get_boot_endpoint(self, url, node_id, headers):
+        """Discover the boot settings endpoint dynamically from the System object."""
+        system_endpoint = join(REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
+        system_uri = join(url, system_endpoint)
+
+        try:
+            node_data, _ = yield self.redfish_request(
+                b"GET", system_uri, headers
+            )
+        except PowerFatalError:
+            raise
+        except Exception:
+            return system_endpoint
+
+        if not isinstance(node_data, dict):
+            return system_endpoint
+        redfish_settings = node_data.get("@Redfish.Settings") or {}
+        if not isinstance(redfish_settings, dict):
+            return system_endpoint
+        settings_obj = redfish_settings.get("SettingsObject") or {}
+        if not isinstance(settings_obj, dict):
+            return system_endpoint
+        odata_id = settings_obj.get("@odata.id")
+
+        if isinstance(odata_id, str) and odata_id:
+            return odata_id.lstrip("/").encode("utf-8")
+
+        return system_endpoint
+
+    @inlineCallbacks
     def set_pxe_boot(self, url, node_id, headers):
         """Set the machine with node_id to PXE boot."""
-        endpoint = join(REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
 
         def _get_bodyProducer():
             return FileBodyProducer(
@@ -357,17 +388,24 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
                 )
             )
 
+        # 1. Discover the correct endpoint dynamically
+        target_endpoint = yield self.get_boot_endpoint(url, node_id, headers)
+
+        # 2. Retrieve context-aware ETag for our discovered target endpoint
         @inlineCallbacks
-        def _get_etag():
-            result = yield self.get_etag(url, node_id, headers)
+        def _get_target_etag():
+            result = yield self.get_etag(
+                url, node_id, headers, endpoint=target_endpoint
+            )
             return result
 
+        # 3. Perform the PATCH operation
         yield self.redfish_request(
             b"PATCH",
-            join(url, endpoint),
+            join(url, target_endpoint),
             headers,
             _get_bodyProducer,
-            _get_etag,
+            _get_target_etag,
         )
 
     @inlineCallbacks
