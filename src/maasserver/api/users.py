@@ -9,6 +9,7 @@ from piston3.handler import BaseHandler
 from piston3.models import Consumer
 from piston3.utils import rc
 
+from maascommon.password_policy import enforce_password_complexity
 from maasserver.api.ssh_keys import SSHKeysHandler
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import extract_bool, get_mandatory_param
@@ -97,6 +98,16 @@ class UsersHandler(OperationsHandler):
             get_mandatory_param(request.data, "is_superuser")
         )
 
+        # Reject weak passwords before hashing, matching every other
+        # creation entry point (createadmin, changepassword(s), 3.0 API).
+        # No-op when hardening is not active.
+        if password:
+            try:
+                enforce_password_complexity(password)
+            except ValueError as error:
+                raise MAASAPIValidationError(  # noqa: B904
+                    {"password": [str(error)]}
+                )
         create_audit_event(
             EVENT_TYPES.AUTHORISATION,
             ENDPOINT.API,

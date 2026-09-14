@@ -17,7 +17,16 @@ from django.core.management.base import BaseCommand
 from django.db import connections, DEFAULT_DB_ALIAS
 
 from maasserver.plugin import PGSQL_MIN_VERSION, UnsupportedDBException
+from maasservicelayer.db import DatabaseConfig
 from provisioningserver.path import get_path
+
+
+def _get_dbname(conn_params: dict) -> str | None:
+    """Return the database name from connection parameters.
+
+    Temporal SQL tooling uses ``dbname``, while Django 3.x uses ``database``.
+    """
+    return conn_params.get("dbname") or conn_params.get("database")
 
 
 class Command(BaseCommand):
@@ -114,28 +123,31 @@ class Command(BaseCommand):
 
             # if port is empty, force set to 5432, otherwise Temporal sets it to 3306
             port = conn_params.get("port", "5432")
-            dbname = conn_params.get("dbname")
-            if dbname is None:
-                dbname = conn_params.get("database")  # Django 3.x
+            dbname = _get_dbname(conn_params)
 
-            cmd = (
-                [
-                    get_path("/usr/bin/temporal-sql-tool"),
-                    "--plugin",
-                    "postgres12",
-                    "--endpoint",
-                    endpoint,
-                    "--port",
-                    port,
-                    "--database",
-                    dbname,
-                    "--ca",
-                    "&".join(attributes),
-                ]
-                + user
-                + password
-                + args
-            )
+            sslmode = conn_params.get("sslmode", "prefer")
+            cmd = [
+                get_path("/usr/bin/temporal-sql-tool"),
+                "--plugin",
+                "postgres12",
+                "--endpoint",
+                endpoint,
+                "--port",
+                port,
+                "--database",
+                dbname,
+            ]
+            if sslmode in ("require", "verify-ca", "verify-full"):
+                cmd += ["--tls"]
+                if sslmode == "require":
+                    cmd += ["--tls-disable-host-verification"]
+                if conn_params.get("sslcert"):
+                    cmd += ["--tls-cert-file", conn_params["sslcert"]]
+                    cmd += ["--tls-key-file", conn_params["sslkey"]]
+                    if conn_params.get("sslrootcert"):
+                        cmd += ["--tls-ca-file", conn_params["sslrootcert"]]
+            cmd += ["--ca", "&".join(attributes)]
+            cmd += user + password + args
 
             try:
                 subprocess.check_output(cmd, stderr=subprocess.PIPE)
@@ -201,12 +213,12 @@ class Command(BaseCommand):
         print("  Applied all migrations.")
 
     @classmethod
-    def _build_alembic_postgres_dsn(self, conn_params):
+    def _build_alembic_postgres_dsn(cls, conn_params):
         user = conn_params.get("user") or ""
         password = conn_params.get("password") or ""
         host = conn_params.get("host") or "localhost"
         port = conn_params.get("port")
-        dbname = conn_params["dbname"]
+        dbname = _get_dbname(conn_params)
 
         auth = f"{user}:{password}@" if password else f"{user}@"
 
@@ -215,6 +227,23 @@ class Command(BaseCommand):
         else:
             port_part = f":{port}" if port else ""
             return f"postgresql+asyncpg://{auth}{host}{port_part}/{dbname}"
+
+    @classmethod
+    def _build_alembic_connect_args(cls, conn_params):
+        dbname = _get_dbname(conn_params)
+        return {
+            "ssl": DatabaseConfig(
+                name=dbname,
+                host=conn_params.get("host") or "localhost",
+                port=conn_params.get("port"),
+                username=conn_params.get("user") or "",
+                password=conn_params.get("password") or "",
+                sslmode=conn_params.get("sslmode") or "prefer",
+                sslcert=conn_params.get("sslcert") or "",
+                sslkey=conn_params.get("sslkey") or "",
+                sslrootcert=conn_params.get("sslrootcert") or "",
+            ).build_ssl_param()
+        }
 
     @classmethod
     def _should_run_django_migrations(cls, database) -> bool:
@@ -274,8 +303,12 @@ class Command(BaseCommand):
         )
         alembic_cfg = config.Config(alembic_ini_path)
         alembic_cfg.set_main_option("run_migrations", "true")
-        dsn = self._build_alembic_postgres_dsn(conn.get_connection_params())
+        conn_params = conn.get_connection_params()
+        dsn = self._build_alembic_postgres_dsn(conn_params)
         alembic_cfg.set_main_option("sqlalchemy.url", dsn)
+        alembic_cfg.attributes["connect_args"] = (
+            self._build_alembic_connect_args(conn_params)
+        )
         command.upgrade(alembic_cfg, "head")
 
         # Make sure we're going to see the same database as the migrations

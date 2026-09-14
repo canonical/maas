@@ -5,11 +5,12 @@
 
 """:class:`SSLKey` and friends."""
 
+from cryptography import x509
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, ForeignKey, Manager, TextField
-from OpenSSL import crypto
 
+from maascommon.fips import is_fips_enabled, validate_fips_tls_certificate
 from maasserver import logger
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -26,14 +27,21 @@ class SSLKeyManager(Manager):
 def validate_ssl_key(value):
     """Validate that the given value contains a valid SSL key."""
     try:
-        crypto.load_certificate(crypto.FILETYPE_PEM, value)
-    except Exception:
-        # crypto.load_certificate raises all sorts of exceptions.
+        cert = x509.load_pem_x509_certificate(value.encode("utf-8"))
+    except (ValueError, UnicodeEncodeError):
+        # Loading raises all sorts of exceptions for malformed input.
         # Here, we catch them all and return a ValidationError since this
         # method only aims at validating keys and not return the exact cause of
         # the failure.
         logger.exception("Invalid SSL key.")
         raise ValidationError("Invalid SSL key.")  # noqa: B904
+
+    if not is_fips_enabled():
+        return
+
+    message = validate_fips_tls_certificate(cert)
+    if message is not None:
+        raise ValidationError(message, code="fips_violation")
 
 
 class SSLKey(CleanSave, TimestampedModel):

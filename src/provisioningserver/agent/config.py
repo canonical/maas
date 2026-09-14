@@ -33,6 +33,7 @@ class Configuration:
     controllers: list[str]
     httpproxy: HTTPProxyConfiguration
     log_level: str
+    temporal_server: str = ""
 
 
 @synchronous

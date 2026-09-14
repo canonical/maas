@@ -1,8 +1,9 @@
 # -*- mode: nginx -*-
 
 server {
-    listen [::]:{{http_port}};
-    listen {{http_port}};
+    {{for addr in internal_api_listen}}
+    listen {{addr}};
+    {{endfor}}
     proxy_pass unix:{{internalapiserver_socket_path}};
 }
 

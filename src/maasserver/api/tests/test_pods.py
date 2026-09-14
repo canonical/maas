@@ -196,6 +196,22 @@ class TestPodsAPIAdmin(PodAPITestForAdmin, PodMixin):
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(parsed_result["type"], pod_info["type"])
 
+    def test_create_rejects_weak_power_pass_when_hardening_enabled(self):
+        # When hardening is active, a virsh pod whose power_pass fails the
+        # complexity policy is rejected at the API boundary (PodForm.clean).
+        from maasserver.forms import fips_power
+
+        self.patch(pods, "post_commit_do")
+        self.patch(fips_power, "is_hardening_enabled").return_value = True
+        self.fake_pod_discovery()
+        pod_info = self.make_pod_info()
+        pod_info["power_pass"] = "weak"  # too short, no upper/digit/special
+        response = self.client.post(reverse("pods_handler"), pod_info)
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+        self.assertIn(b"complexity", response.content)
+
     def test_create_lxd_default_project(self):
         self.patch(pods, "post_commit_do")
         self.patch_autospec(

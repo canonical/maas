@@ -80,3 +80,37 @@ func TestCertificatesDir(t *testing.T) {
 		})
 	}
 }
+
+func TestTemporalHost(t *testing.T) {
+	testcases := map[string]struct {
+		in  *config
+		out string
+	}{
+		"explicit temporal_server wins": {
+			in: &config{
+				TemporalServer: "127.0.0.1",
+				Controllers:    []string{"10.0.0.5", "10.0.0.6"},
+			},
+			out: "127.0.0.1",
+		},
+		"falls back to first controller when unset": {
+			in: &config{
+				Controllers: []string{"10.0.0.5", "10.0.0.6"},
+			},
+			out: "10.0.0.5",
+		},
+		"returns empty string when neither is available": {
+			in:  &config{},
+			out: "",
+		},
+	}
+
+	for name, tc := range testcases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			res := temporalHost(tc.in)
+			assert.Equal(t, tc.out, res)
+		})
+	}
+}

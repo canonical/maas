@@ -12,7 +12,7 @@ ifeq ($(MAAS_PPA),)
 	MAAS_PPA = ppa:maas/3.7-next
 endif
 
-export PATH := $(PWD)/$(BIN_DIR):$(PATH)
+export PATH := $(PWD)/$(BIN_DIR):/usr/lib/go-1.24/bin:$(PATH)
 
 # pkg_resources makes some incredible noise about version numbers. They
 # are not indications of bugs in MAAS so we silence them everywhere.

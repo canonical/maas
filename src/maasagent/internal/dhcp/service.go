@@ -404,7 +404,10 @@ func (s *DHCPService) configureViaOMAPI(ctx context.Context, param ApplyConfigVi
 	runningV4 := s.runningV4.Load()
 	runningV6 := s.runningV6.Load()
 
-	authenticator := omapi.NewHMACMD5Authenticator("omapi_key", param.Secret)
+	authenticator, err := omapi.NewHMACSHA256Authenticator("omapi_key", param.Secret)
+	if err != nil {
+		return err
+	}
 
 	// TODO move opening/closing of the omapi client to the start/stop of dhcpd
 	// once the config file activity is in place

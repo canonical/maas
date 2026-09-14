@@ -25,6 +25,10 @@ def upgrade() -> None:
     # Current time with timezone info
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f") + "+00"
 
+    # pgcrypto provides digest(text, 'sha256'), used by the BMC unique index
+    # (maasserver_bmc_power_type_parameters_idx) to hash power_parameters.
+    op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
+
     op.execute("""
     CREATE TABLE maasserver_regioncontrollerprocess (
         id bigint NOT NULL,
@@ -4452,7 +4456,7 @@ def upgrade() -> None:
     """)
 
     op.execute("""
-    CREATE UNIQUE INDEX maasserver_bmc_power_type_parameters_idx ON maasserver_bmc USING btree (power_type, md5((power_parameters)::text)) WHERE ((power_type)::text <> 'manual'::text);
+    CREATE UNIQUE INDEX maasserver_bmc_power_type_parameters_idx ON maasserver_bmc USING btree (power_type, digest((power_parameters)::text, 'sha256')) WHERE ((power_type)::text <> 'manual'::text);
     """)
 
     op.execute("""

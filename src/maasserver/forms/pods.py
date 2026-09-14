@@ -260,6 +260,17 @@ class PodForm(MAASModelForm):
             cleaned_data["certificate"] = cert.certificate_pem()
             cleaned_data["key"] = cert.private_key_pem()
 
+        # FIPS validation for power type and parameters
+        from maasserver.forms.fips_power import apply_fips_power_validation
+
+        if power_type and hasattr(self, "param_fields"):
+            # collect power parameters from form fields
+            power_parameters = {
+                k: cleaned_data[k]
+                for k in self.param_fields
+                if k in cleaned_data
+            }
+            apply_fips_power_validation(self, power_type, power_parameters)
         return cleaned_data
 
     def save(self, *args, **kwargs):
