@@ -83,10 +83,6 @@ class UserCreateRequest(BaseUserRequest):
 
 class UserUpdateRequest(BaseUserRequest):
     password: str | None = Field(min_length=1, default=None)
-    groups: list[int] = Field(
-        default_factory=list,
-        description="The IDs of the groups the user will be a member of.",
-    )
 
     def to_builder(self) -> UserBuilder:
         password = (
@@ -103,6 +99,13 @@ class UserUpdateRequest(BaseUserRequest):
             last_name=self.last_name,
             email=self.email,
         )
+
+
+class UserUpdateRequestAdmin(UserUpdateRequest):
+    groups: list[int] = Field(
+        default_factory=list,
+        description="The IDs of the groups the user will be a member of.",
+    )
 
 
 class UserChangePasswordRequest(BaseModel):

@@ -9,6 +9,7 @@ from maasapiserver.v3.api.public.models.requests.users import (
     BaseUserRequest,
     UserCreateRequest,
     UserUpdateRequest,
+    UserUpdateRequestAdmin,
 )
 from maasservicelayer.models.base import UNSET
 
@@ -126,8 +127,10 @@ class TestUserUpdateRequest:
         assert b.is_active is True
         assert b.password == UNSET
 
+
+class TestUserUpdateRequestAdmin:
     def test_groups_default_empty(self) -> None:
-        u = UserUpdateRequest(
+        u = UserUpdateRequestAdmin(
             username="test",
             password=None,
             first_name="test",
@@ -137,7 +140,7 @@ class TestUserUpdateRequest:
         assert u.groups == []
 
     def test_groups(self) -> None:
-        u = UserUpdateRequest(
+        u = UserUpdateRequestAdmin(
             username="test",
             password=None,
             first_name="test",

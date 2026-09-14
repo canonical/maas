@@ -2,12 +2,10 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasapiserver.v3.api.public.models.responses.users import (
-    UserInfoResponse,
     UserResponse,
     UserStatisticsResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroups import UserGroup
 from maasservicelayer.models.users import User, UserStatistics
 from maasservicelayer.utils.date import utcnow
@@ -66,45 +64,6 @@ class TestUserResponse:
             user_response.hal_links.self.href
             == f"{V3_API_PREFIX}/users/{user.id}"
         )
-
-
-class TestUserInfoResponse:
-    def test_from_model(self) -> None:
-        user = User(
-            id=1,
-            username="test_username",
-            password="test_password",
-            is_superuser=False,
-            first_name="test_first_name",
-            last_name="test_last_name",
-            is_staff=False,
-            is_active=False,
-            date_joined=utcnow(),
-            email="testuser@example.com",
-        )
-        entitlements = [
-            OpenFGATuple(
-                object_id="1",
-                object_type="entitlement",
-                relation="member",
-                user_type="user",
-                user="user",
-            ),
-            OpenFGATuple(
-                object_id="2",
-                object_type="entitlement",
-                relation="member",
-                user_type="user",
-                user="user",
-            ),
-        ]
-        user_info_response = UserInfoResponse.from_model(
-            user,
-            entitlement_tuples=entitlements,
-        )
-        assert user_info_response.id == user.id
-        assert user_info_response.username == user.username
-        assert len(user_info_response.entitlements) == 2
 
 
 class TestUserStatisticsResponse:
