@@ -6126,11 +6126,6 @@ class Node(CleanSave, TimestampedModel):
         old_status=None,
         allow_power_cycle: bool = False,
         config=None,
-        install_kvm=None,
-        register_vmhost=None,
-        bridge_type=None,
-        bridge_stp=None,
-        bridge_fd=None,
     ) -> Deferred | None:
         """Request on given user's behalf that the node be started up.
 
