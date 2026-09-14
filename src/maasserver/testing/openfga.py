@@ -21,7 +21,6 @@ class OpenFGAClientMock(SyncOpenFGAClient):
         "can_edit_configurations",
         "can_edit_notifications",
         "can_view_notifications",
-        "can_view_boot_entities",
         "can_edit_boot_entities",
         "can_view_license_keys",
         "can_edit_license_keys",
@@ -35,6 +34,7 @@ class OpenFGAClientMock(SyncOpenFGAClient):
         "can_deploy_machines_in_pool",
         "can_view_available_machines_in_pool",
         "can_view_global_entities",
+        "can_view_boot_entities",
     ]
 
     # Methods returning pools ONLY for superusers

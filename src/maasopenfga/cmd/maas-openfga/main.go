@@ -17,14 +17,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -34,68 +32,26 @@ import (
 	openfgaServer "github.com/openfga/openfga/pkg/server"
 	"github.com/openfga/openfga/pkg/storage/postgres"
 	"github.com/openfga/openfga/pkg/storage/sqlcommon"
-	"gopkg.in/yaml.v3"
+
+	"maas.io/core/src/maasopenfga/internal/config"
+	"maas.io/core/src/maasopenfga/internal/dbcredentials"
 )
 
-const (
-	defaultMaxOpenConns = 3
-	defaultMaxIdleConns = 1
-)
+func getPostgresDSN(dbHost, user, pass, name string) string {
+	q := url.Values{}
+	q.Set("host", dbHost)
+	q.Set("search_path", "openfga")
 
-type regionConfig struct {
-	DatabaseHost        string `yaml:"database_host"`
-	DatabaseName        string `yaml:"database_name"`
-	DatabasePass        string `yaml:"database_pass"`
-	DatabaseUser        string `yaml:"database_user"`
-	OpenFGAMaxOpenConns int    `yaml:"openfga_max_open_conns"`
-	OpenFGAMaxIdleConns int    `yaml:"openfga_max_idle_conns"`
+	u := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(user, pass),
+		Path:     "/" + name,
+		RawQuery: q.Encode(),
+	}
+
+	return u.String()
 }
 
-func readRegionConfig() *regionConfig {
-	configDir := os.Getenv("SNAP_DATA")
-	if configDir == "" {
-		// Deb installation
-		configDir = "/etc/maas"
-	}
-
-	configPath := filepath.Join(configDir, "regiond.conf")
-
-	cfg, err := os.ReadFile(filepath.Clean(configPath))
-	if err != nil {
-		log.Fatalf("failed to read region config file: %v", err)
-	}
-
-	var regionCfg regionConfig
-
-	err = yaml.Unmarshal(cfg, &regionCfg)
-	if err != nil {
-		log.Fatalf("failed to parse region config file: %v", err)
-	}
-
-	if regionCfg.OpenFGAMaxOpenConns <= 0 {
-		regionCfg.OpenFGAMaxOpenConns = defaultMaxOpenConns
-	}
-
-	if regionCfg.OpenFGAMaxIdleConns <= 0 {
-		regionCfg.OpenFGAMaxIdleConns = defaultMaxIdleConns
-	}
-
-	return &regionCfg
-}
-
-func getPostgresDSN(cfg *regionConfig) string {
-	socketPath := url.QueryEscape(cfg.DatabaseHost)
-
-	return fmt.Sprintf(
-		"postgres://%s:%s@/%s?host=%s&search_path=openfga",
-		cfg.DatabaseUser,
-		cfg.DatabasePass,
-		cfg.DatabaseName,
-		socketPath,
-	)
-}
-
-// Tested in src/tests/e2e/test_openfga_integration.py
 func main() {
 	socketPath := os.Getenv("MAAS_OPENFGA_HTTP_SOCKET_PATH")
 
@@ -120,10 +76,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	regionCfg := readRegionConfig()
+	regionCfg, err := config.ReadRegionConfig()
+	if err != nil {
+		log.Fatalf("failed to read region configuration: %v", err)
+	}
+
+	dbCreds := dbcredentials.Resolve(ctx, regionCfg)
 
 	psqlDataStore, err := postgres.New(
-		getPostgresDSN(regionCfg),
+		getPostgresDSN(regionCfg.DatabaseHost, dbCreds.User, dbCreds.Pass, dbCreds.Name),
 		sqlcommon.NewConfig(
 			sqlcommon.WithMaxOpenConns(regionCfg.OpenFGAMaxOpenConns),
 			sqlcommon.WithMaxIdleConns(regionCfg.OpenFGAMaxIdleConns),

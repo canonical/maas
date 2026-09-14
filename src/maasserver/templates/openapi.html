@@ -1,19 +1,18 @@
 {# HTML for static distribution bundle build #}
-{% load asset_tags %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
     <title>MAAS API</title>
-    {% comment %} Gets the index css file from the asset manifest {% endcomment %}
-    <link href="{% get_index_css_path %}" rel="stylesheet"> 
+    <link href="/MAAS/swagger-ui/swagger-ui.css" rel="stylesheet">
     <style>
-      {% include "dist/swagger-ui.css" %}
-    </style>
-    <style>
-      html * {
-        font-family: ubuntu !important;
-        font-weight: 300 !important;
+      /* Use the same system font stack as Swagger UI (v3 docs) to keep
+         typography consistent across V2 and V3 API docs, and to avoid
+         loading fonts from external CDNs (which would violate the strict
+         FIPS/hardening Content-Security-Policy `font-src 'self'`). */
+      html, body {
+        margin: 0;
+        font-family: sans-serif;
         line-height: 1.5rem;
       }
       h3 {
@@ -24,7 +23,46 @@
         max-width: 100% !important;
       }
       .swagger-ui .parameters-col_description {
-        width: 85% !important
+        width: 85% !important;
+      }
+      /* Minimal header styling replacing the MAAS UI (Vanilla) classes
+         referenced below (p-navigation, p-navigation__*), so the header
+         still renders correctly without the MAAS UI stylesheet. */
+      header.p-navigation {
+        color: #fff;
+        padding: 0.5rem 1rem;
+      }
+      header.p-navigation a {
+        color: #fff;
+        text-decoration: none;
+      }
+      .p-navigation__row {
+        display: flex;
+        align-items: center;
+        width: 100%;
+      }
+      .p-navigation__banner {
+        display: flex;
+        align-items: center;
+      }
+      .p-navigation__tagged-logo,
+      .p-navigation__link {
+        display: flex;
+        align-items: center;
+      }
+      .p-navigation__logo-tag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0.5rem;
+      }
+      .p-navigation__logo-icon {
+        width: 1.5rem;
+        height: 1.5rem;
+      }
+      .p-navigation__logo-title {
+        font-size: 1rem;
+        font-weight: 400;
       }
     </style>
   </head>
@@ -57,20 +95,7 @@
         </div>
       </header>
     <div id="swagger-ui" style="max-width: 72rem; margin: auto;"></div>
-    <script>
-      {% include "dist/swagger-ui-bundle.js" %}
-    </script>
-    <script>
-      window.onload = function() {
-        window.ui = SwaggerUIBundle({
-          url: "/MAAS/api/2.0/openapi.yaml",
-          dom_id: '#swagger-ui',
-          deepLinking: true,
-          presets: [
-            SwaggerUIBundle.presets.apis,
-          ],
-        });
-      };
-    </script>
+    <script src="/MAAS/swagger-ui/swagger-ui-bundle.js"></script>
+    <script src="/MAAS/swagger-ui/swagger-ui-init.js" data-openapi-url="/MAAS/api/2.0/openapi.yaml"></script>
   </body>
 </html>

@@ -8,6 +8,7 @@ from typing import Any, Callable, Type
 
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import HTMLResponse
 import uvicorn
 from uvicorn.config import HTTPProtocolType
 
@@ -65,6 +66,51 @@ def custom_openapi(app: FastAPI):
     return app.openapi_schema
 
 
+# Swagger UI assets served locally from the snap
+# (see snap/snapcraft.yaml for build details). Serving them from the
+# same origin is required by the strict FIPS/hardening CSP
+# (script-src / style-src / font-src 'self').
+_SWAGGER_UI_CSS_URL = "/MAAS/swagger-ui/swagger-ui.css"
+_SWAGGER_UI_JS_URL = "/MAAS/swagger-ui/swagger-ui-bundle.js"
+_SWAGGER_UI_INIT_URL = "/MAAS/swagger-ui/swagger-ui-init.js"
+# Reuse the MAAS UI favicon which is already served locally via the
+# /MAAS/r/ static location. This avoids the default fastapi.tiangolo.com
+# favicon fetch.
+_SWAGGER_UI_FAVICON_URL = "/MAAS/r/maas-favicon-32px.png"
+
+
+def _render_swagger_ui_html(*, title: str, openapi_url: str) -> str:
+    """Render the Swagger UI HTML without any inline scripts.
+
+    FastAPI's built-in ``get_swagger_ui_html`` emits an inline ``<script>``
+    block to bootstrap Swagger UI, which is incompatible with a strict CSP
+    (``script-src 'self'``). This helper produces the same page but sources
+    the bootstrap from an external file, ``swagger-ui-init.js``, which is
+    also served locally.
+
+    The OpenAPI URL is passed to the bootstrap via a ``data-openapi-url``
+    attribute on the ``<script>`` tag, so no inline JS is needed to
+    configure it.
+    """
+    return f"""\
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{title}</title>
+    <link rel="icon" type="image/png" href="{_SWAGGER_UI_FAVICON_URL}">
+    <link rel="stylesheet" type="text/css" href="{_SWAGGER_UI_CSS_URL}">
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="{_SWAGGER_UI_JS_URL}"></script>
+    <script src="{_SWAGGER_UI_INIT_URL}" data-openapi-url="{openapi_url}"></script>
+  </body>
+</html>
+"""
+
+
 class App:
     def __init__(
         self,
@@ -91,10 +137,23 @@ class App:
         app = FastAPI(
             title=self._app_title,
             name=self._name,
-            docs_url=f"{API_PREFIX}/docs",
+            # Disable FastAPI's built-in Swagger UI page: it emits an
+            # inline <script> and pulls assets from the fastapi.tiangolo.com
+            # CDN, both of which violate the hardened CSP. We register a
+            # CSP-safe replacement below.
+            docs_url=None,
             openapi_url=f"{API_PREFIX}/openapi.json",
         )
         app.openapi = lambda: custom_openapi(app)
+
+        @app.get(f"{API_PREFIX}/docs", include_in_schema=False)
+        async def swagger_ui_html() -> HTMLResponse:
+            return HTMLResponse(
+                _render_swagger_ui_html(
+                    title="MAAS API V3 - Swagger UI",
+                    openapi_url=f"{API_PREFIX}/openapi.json",
+                )
+            )
 
         for api in self._api:
             api.register(app.router)
