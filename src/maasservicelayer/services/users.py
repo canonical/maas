@@ -1,12 +1,10 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-import asyncio
 import hashlib
 from time import time
 from typing import List
 
-from django.contrib.auth.hashers import PBKDF2PasswordHasher
 import structlog
 
 from maascommon.constants import (
@@ -392,8 +390,8 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
                 ]
             )
 
-        if current_password is not None and not await asyncio.to_thread(
-            PBKDF2PasswordHasher().verify, current_password, user.password
+        if current_password is not None and not await user.check_password(
+            current_password
         ):
             raise BadRequestException(
                 details=[
