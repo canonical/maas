@@ -151,17 +151,26 @@ def get_auth_config(secret_manager):
 def set_auth_config(secret_manager, auth_details: _AuthDetails):
     from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
 
-    secret_manager.set_composite_secret(
-        "external-auth",
-        {
-            "url": auth_details.url,
-            "domain": auth_details.domain,
-            "user": auth_details.user,
-            "key": auth_details.key,
-            "admin-group": auth_details.admin_group,
-            "rbac-url": auth_details.rbac_url,
-        },
+    external_auth_configured = bool(
+        auth_details.url or auth_details.rbac_url
     )
+    if external_auth_configured:
+        secret_manager.set_composite_secret(
+            "external-auth",
+            {
+                "url": auth_details.url,
+                "domain": auth_details.domain,
+                "user": auth_details.user,
+                "key": auth_details.key,
+                "admin-group": auth_details.admin_group,
+                "rbac-url": auth_details.rbac_url,
+            },
+        )
+    else:
+        # External authentication is being disabled: delete the secret
+        # entirely instead of storing empty values, so that its absence
+        # unambiguously means "not configured".
+        secret_manager.delete_secret("external-auth")
 
     # Clear the last sync, so if a new sync needs to occur it will do a full
     # sync with the RBAC service.
