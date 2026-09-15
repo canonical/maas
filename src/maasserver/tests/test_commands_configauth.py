@@ -71,9 +71,7 @@ class TestConfigAuthCommand(MAASServerTestCase):
         self.read_input.return_value = ""
         call_command("configauth")
         self.assertIsNone(
-            SecretManager().get_composite_secret(
-                "external-auth", default=None
-            )
+            SecretManager().get_composite_secret("external-auth", default=None)
         )
 
     def test_configauth_changes_auth_invalid_rbac_url(self):
@@ -396,9 +394,7 @@ class TestConfigAuthCommand(MAASServerTestCase):
         RBACSync.objects.create(resource_type="")
         call_command("configauth", rbac_url="none", candid_agent_file="none")
         self.assertIsNone(
-            SecretManager().get_composite_secret(
-                "external-auth", default=None
-            )
+            SecretManager().get_composite_secret("external-auth", default=None)
         )
         self.assertFalse(RBACLastSync.objects.all().exists())
         self.assertFalse(RBACSync.objects.all().exists())

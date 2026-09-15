@@ -151,9 +151,7 @@ def get_auth_config(secret_manager):
 def set_auth_config(secret_manager, auth_details: _AuthDetails):
     from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
 
-    external_auth_configured = bool(
-        auth_details.url or auth_details.rbac_url
-    )
+    external_auth_configured = bool(auth_details.url or auth_details.rbac_url)
     if external_auth_configured:
         secret_manager.set_composite_secret(
             "external-auth",
