@@ -91,3 +91,8 @@ class Secret(BaseModel):
     updated: datetime
     path: str
     value: Any
+
+
+class VaultSecret(BaseModel):
+    path: str
+    deleted: bool

@@ -9,7 +9,10 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.secrets import SecretsRepository
+from maasservicelayer.db.repositories.secrets import (
+    SecretsRepository,
+    VaultSecretsRepository,
+)
 from maasservicelayer.models.configurations import VaultEnabledConfig
 from maasservicelayer.models.secrets import (
     NodeDeployMetadataSecret,
@@ -17,6 +20,7 @@ from maasservicelayer.models.secrets import (
     Secret,
     SecretModel,
     TLSSecret,
+    VaultSecret,
     VCenterPasswordSecret,
 )
 from maasservicelayer.services.database_configurations import (
@@ -226,6 +230,24 @@ class AsyncVaultManagerMock(AsyncVaultManager):
         return f"/v1/{self._secrets_mount}/data/{path}"
 
 
+class VaultSecretsRepositoryMock(VaultSecretsRepository):
+    def __init__(self, context: Context):
+        super().__init__(context)
+        self.storage = {}
+
+    async def create_or_update(self, path: str) -> None:
+        self.storage[path] = False
+
+    async def get(self, path: str) -> VaultSecret | None:
+        if path not in self.storage:
+            return None
+        return VaultSecret(path=path, deleted=self.storage[path])
+
+    async def mark_deleted(self, path: str) -> None:
+        if path in self.storage:
+            self.storage[path] = True
+
+
 @pytest.mark.asyncio
 class TestVaultSecretService(SecretsServiceTestSuite):
     def get_secrets_service(self) -> SecretsService:
@@ -234,13 +256,48 @@ class TestVaultSecretService(SecretsServiceTestSuite):
         return VaultSecretsService(
             context=context,
             cache=SecretsServiceCache(vault_manager=AsyncVaultManagerMock()),
+            vault_secrets_repository=VaultSecretsRepositoryMock(context),
         )
+
+    # delete only marks the secret for deletion in the VaultSecret table: it
+    # is not removed from Vault immediately (a recurrent cleanup job does that
+    # asynchronously). Override the base test to reflect this behaviour.
+    @pytest.mark.parametrize(
+        "model",
+        [
+            NodeDeployMetadataSecret(id=1),
+            NodePowerParametersSecret(id=1),
+            VCenterPasswordSecret(),
+            TLSSecret(),
+        ],
+    )
+    async def test_delete(self, model: SecretModel) -> None:
+        secrets_service = self.get_secrets_service()
+        await secrets_service.set_composite_secret(
+            model, self.DEFAULT_COMPOSITE_SECRET
+        )
+        path = model.get_secret_path()
+        repository = secrets_service.vault_secrets_repository
+        assert repository.storage[path] is False
+
+        await secrets_service.delete(model)
+
+        # The secret is only marked for deletion in the VaultSecret table.
+        assert repository.storage[path] is True
+        # Even though the value is still physically in Vault, a secret marked
+        # for deletion is not returned anymore.
+        with pytest.raises(SecretNotFound):
+            await secrets_service.get_composite_secret(model)
 
     async def test_vault_manager_is_cached(self, mocker):
         connection = Mock(AsyncConnection)
         context = Context(connection=connection)
+        repository = VaultSecretsRepositoryMock(context)
+        await repository.create_or_update(self.DEFAULT_MODEL.get_secret_path())
         secrets_service = VaultSecretsService(
-            context=context, cache=SecretsServiceCache()
+            context=context,
+            cache=SecretsServiceCache(),
+            vault_secrets_repository=repository,
         )
 
         get_region_vault_manager_mock = mocker.patch(
