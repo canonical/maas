@@ -6,7 +6,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.secrets import SecretsRepository
+from maasservicelayer.db.repositories.secrets import (
+    SecretsRepository,
+    VaultSecretsRepository,
+)
 from maasservicelayer.models.configurations import VaultEnabledConfig
 from maasservicelayer.models.secrets import SecretModel
 from maasservicelayer.services.base import Service, ServiceCache
@@ -132,9 +135,17 @@ class LocalSecretsStorageService(SecretsService):
 
 class VaultSecretsService(SecretsService):
     def __init__(
-        self, context: Context, cache: SecretsServiceCache | None = None
+        self,
+        context: Context,
+        cache: SecretsServiceCache | None = None,
+        vault_secrets_repository: VaultSecretsRepository | None = None,
     ):
         super().__init__(context, cache)
+        self.vault_secrets_repository = (
+            vault_secrets_repository
+            if vault_secrets_repository
+            else VaultSecretsRepository(context)
+        )
 
     @Service.from_cache_or_execute(attr="vault_manager")
     def _get_vault_manager(self) -> AsyncVaultManager:
@@ -145,24 +156,38 @@ class VaultSecretsService(SecretsService):
         self, model: SecretModel, value: dict[str, Any]
     ) -> None:
         vault_manager = self._get_vault_manager()
-        await vault_manager.set(model.get_secret_path(), value)
+        path = model.get_secret_path()
+        await vault_manager.set(path, value)
+        await self.vault_secrets_repository.create_or_update(path)
 
     async def delete(self, model: SecretModel) -> None:
-        vault_manager = self._get_vault_manager()
-        await vault_manager.delete(model.get_secret_path())
+        # The secret is not removed from Vault immediately: it is only marked
+        # for deletion so that a recurrent cleanup job can remove it from
+        # Vault asynchronously. This avoids accidental data loss if a
+        # transaction fails after the secret has been removed from Vault.
+        # TODO: Currently, the job is defined in maasserver.regiondservices.vault_secrets_cleanup.VaultSecretsCleanupService
+        # and will need to be moved to maasapiserver or temporal, together with
+        # the other recurrent jobs.
+        await self.vault_secrets_repository.mark_deleted(
+            model.get_secret_path()
+        )
 
     async def get_composite_secret(
         self, model: SecretModel, default: Any = UNSET
     ) -> Any:
         path = model.get_secret_path()
-        try:
-            vault_manager = self._get_vault_manager()
-            secret = await vault_manager.get(path)
-        except VaultNotFoundException:
-            if default is UNSET:
-                raise SecretNotFound(path)  # noqa: B904
-            return default
-        return secret
+
+        vault_secret = await self.vault_secrets_repository.get(path)
+        if vault_secret and not vault_secret.deleted:
+            try:
+                vault_manager = self._get_vault_manager()
+                return await vault_manager.get(path)
+            except VaultNotFoundException:
+                pass
+
+        if default is UNSET:
+            raise SecretNotFound(path)
+        return default
 
 
 class SecretsServiceFactory:
