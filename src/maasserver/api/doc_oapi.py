@@ -125,7 +125,7 @@ def get_api_endpoint() -> dict[str, str | Any]:
         "paths": _render_oapi_paths(),
         "externalDocs": {
             "description": "MAAS API documentation",
-            "url": "/MAAS/docs/api.html",
+            "url": "/MAAS/docs/reference/api-reference/api-v2-generated/",
         },
     }
     return description

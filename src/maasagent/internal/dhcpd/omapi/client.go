@@ -40,6 +40,7 @@ type OMAPI interface {
 	AddHost(net.IP, net.HardwareAddr) error
 	GetHost(map[string][]byte) (Host, error)
 	DeleteHost(net.HardwareAddr) error
+	SyncHost(net.IP, net.HardwareAddr) error
 }
 
 type Client struct {
@@ -265,6 +266,29 @@ func (c *Client) DeleteHost(mac net.HardwareAddr) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed deleting host %s: %w", mac, err)
+	}
+
+	return nil
+}
+
+// SyncHost adds a host, deleting and adding the host again if it already exists,
+// since the binding could have been changed.
+func (c *Client) SyncHost(ip net.IP, mac net.HardwareAddr) error {
+	err := c.AddHost(ip, mac)
+	if err != nil {
+		if !errors.Is(err, ErrHostAlreadyExists) {
+			return err
+		}
+
+		err = c.DeleteHost(mac)
+		if err != nil {
+			return err
+		}
+
+		err = c.AddHost(ip, mac)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

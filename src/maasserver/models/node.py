@@ -82,11 +82,7 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
 )
 from maascommon.workflows.power import PowerParam
-from maasserver.clusterrpc.power import (
-    power_driver_check,
-    power_query_all,
-    set_boot_order,
-)
+from maasserver.clusterrpc.power import power_driver_check, power_query_all
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
@@ -2942,6 +2938,11 @@ class Node(CleanSave, TimestampedModel):
                 Node._abort_all_tests,
                 self.current_installation_script_set_id,
             )
+            post_commit().addCallback(
+                callOutToDatabase,
+                Node._abort_all_tests,
+                self.current_deployment_script_set_id,
+            )
 
             if stopping is None:
                 stopping = post_commit()
@@ -3257,31 +3258,6 @@ class Node(CleanSave, TimestampedModel):
             return interfaces + block_devices
         else:
             return block_devices + interfaces
-
-    def set_boot_order(self, network_boot=None):
-        """Remotely configure the Node to network or local boot.
-
-        If supported by the power driver this function will configure a
-        Node remotely to either boot from the network or boot locally.
-        This isn't done as part of self.set_netboot() as power commands
-        already use self._power_control_node() which figures out which
-        rack controller to issue power commands from.
-        """
-        power_info = self.get_effective_power_info()
-        # Only send RPC call to set boot order if power driver
-        # supports it.
-        if not power_info.can_set_boot_order:
-            return
-
-        boot_order = self._get_boot_order(network_boot)
-
-        @asynchronous
-        def configure_boot_order():
-            return self._power_control_node(
-                succeed(None), None, power_info, boot_order
-            )
-
-        configure_boot_order().wait(120)
 
     def get_effective_special_filesystems(self):
         """Return special filesystems for the node."""
@@ -3868,7 +3844,6 @@ class Node(CleanSave, TimestampedModel):
         self.distro_series = ""
         self.license_key = ""
         self.hwe_kernel = None
-        self.current_deployment_script_set = None
         self.enable_hw_sync = False
         self.sync_interval = None
         self.last_sync = None
@@ -3877,6 +3852,7 @@ class Node(CleanSave, TimestampedModel):
         # Create a status message for RELEASING.
         Event.objects.create_node_event(self, EVENT_TYPES.RELEASING)
 
+        Node._abort_all_tests(self.current_deployment_script_set_id)
         Node._clear_deployment_resources(self.id)
 
         # Clear the nodes acquired filesystems.
@@ -3976,6 +3952,7 @@ class Node(CleanSave, TimestampedModel):
                 self.current_commissioning_script_set,
                 self.current_testing_script_set,
                 self.current_installation_script_set,
+                self.current_deployment_script_set,
             ],
             status__in=SCRIPT_STATUS_RUNNING_OR_PENDING,
         )
@@ -5172,7 +5149,10 @@ class Node(CleanSave, TimestampedModel):
                 subnet.gateway_ip IS NOT NULL AND
                 host(subnet.gateway_ip) != '' AND
                 staticip.alloc_type != 5 AND /* Ignore DHCP */
-                staticip.alloc_type != 6 /* Ignore DISCOVERED */
+                staticip.alloc_type != 6 AND /* Ignore DISCOVERED */
+                /* Ignore LINK_UP / Unconfigured (STICKY with no IP), but keep
+                   AUTO links that have no IP assigned yet (pre-deployment) */
+                NOT (staticip.alloc_type = 1 AND staticip.ip IS NULL)
             ORDER BY
                 family(subnet.gateway_ip),
                 vlan.dhcp_on DESC,
@@ -5241,17 +5221,26 @@ class Node(CleanSave, TimestampedModel):
         """
         all_gateways = self.get_gateways_by_priority()
 
-        # Get the set gateways on the node.
+        # Get the set gateways on the node. Links that are
+        # unconfigured (LINK_UP) should not be used as the gateway.
         gateway_ipv4 = None
         gateway_ipv6 = None
-        if self.gateway_link_ipv4 is not None:
+        if (
+            self.gateway_link_ipv4 is not None
+            and self.gateway_link_ipv4.get_interface_link_type()
+            != INTERFACE_LINK_TYPE.LINK_UP
+        ):
             subnet = self.gateway_link_ipv4.subnet
             if subnet is not None:
                 if subnet.gateway_ip:
                     gateway_ipv4 = self._get_gateway_tuple(
                         self.gateway_link_ipv4
                     )
-        if self.gateway_link_ipv6 is not None:
+        if (
+            self.gateway_link_ipv6 is not None
+            and self.gateway_link_ipv6.get_interface_link_type()
+            != INTERFACE_LINK_TYPE.LINK_UP
+        ):
             subnet = self.gateway_link_ipv6.subnet
             if subnet is not None:
                 if subnet.gateway_ip:
@@ -5626,11 +5615,19 @@ class Node(CleanSave, TimestampedModel):
                 node=self,
                 status=NODE_STATUS.ALLOCATED,
             )
-            from maasserver.models import ScriptSet
+            # Ephemeral deployments don't involve deployment scripts.
+            if not self.ephemeral_deploy:
+                from maasserver.models import ScriptSet
 
-            self.current_deployment_script_set = (
-                ScriptSet.objects.create_deployment_script_set(self)
-            )
+                self.current_deployment_script_set = (
+                    ScriptSet.objects.create_deployment_script_set(self)
+                )
+            else:
+                # A previously aborted standard deployment leaves the node in
+                # ALLOCATED without clearing current_deployment_script_set.
+                # Clear it so an ephemeral deployment doesn't point at a stale
+                # script set.
+                self.current_deployment_script_set = None
 
         # Bug #1630361: Make sure that there is a maas_facing_server_address in
         # the same address family as our configured interfaces.
@@ -6293,14 +6290,6 @@ class Node(CleanSave, TimestampedModel):
             if try_fallback:
                 d.addErrback(eb_fallback_clients)
             d.addCallback(cb_check_power_driver, power_info)
-            if order:
-                d.addCallback(
-                    set_boot_order,
-                    self.system_id,
-                    self.hostname,
-                    power_info,
-                    order,
-                )
             if power_method_name:
                 d.addCallback(
                     lambda _: deferToDatabase(
@@ -6309,6 +6298,7 @@ class Node(CleanSave, TimestampedModel):
                         self,
                         power_info,
                         self.is_dpu,
+                        order,
                     ),
                 )
 

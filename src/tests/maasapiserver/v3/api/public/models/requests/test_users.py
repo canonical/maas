@@ -7,9 +7,11 @@ import pytest
 
 from maasapiserver.v3.api.public.models.requests.users import (
     BaseUserRequest,
+    UserChangePasswordRequest,
+    UserChangePasswordRequestAdmin,
     UserCreateRequest,
-    UserUpdateRequest,
     UserUpdateRequestAdmin,
+    UserUpdateRequestSelf,
 )
 from maasservicelayer.models.base import UNSET
 
@@ -109,11 +111,21 @@ class TestUserCreateRequest:
         assert u.groups == [1, 2]
 
 
-class TestUserUpdateRequest:
+class TestUserUpdateRequestSelf:
+    def test_requires_current_password_when_changing_password(self) -> None:
+        with pytest.raises(ValidationError):
+            UserUpdateRequestSelf(
+                username="test",
+                new_password="new-password",
+                first_name="test",
+                last_name="test",
+            )
+
     def test_to_builder(self) -> None:
-        u = UserUpdateRequest(
+        u = UserUpdateRequestSelf(
             username="test",
-            password=None,
+            current_password="current-password",
+            new_password="new-password",
             first_name="test",
             last_name="test",
             email="email@example.com",
@@ -125,7 +137,7 @@ class TestUserUpdateRequest:
         assert b.is_superuser == UNSET
         assert b.is_staff is False
         assert b.is_active is True
-        assert b.password == UNSET
+        assert PBKDF2PasswordHasher().verify("new-password", b.password)
 
 
 class TestUserUpdateRequestAdmin:
@@ -149,3 +161,36 @@ class TestUserUpdateRequestAdmin:
             groups=[1, 2],
         )
         assert u.groups == [1, 2]
+
+    def test_to_builder(self) -> None:
+        u = UserUpdateRequestAdmin(
+            username="test",
+            password="new-password",
+            first_name="test",
+            last_name="test",
+            email="email@example.com",
+        )
+        b = u.to_builder()
+
+        assert PBKDF2PasswordHasher().verify("new-password", b.password)
+
+
+class TestUserChangePasswordRequest:
+    def test_to_builder(self) -> None:
+        request = UserChangePasswordRequest(
+            current_password="current-password",
+            new_password="new-password",
+        )
+
+        builder = request.to_builder()
+
+        assert PBKDF2PasswordHasher().verify("new-password", builder.password)
+
+
+class TestUserChangePasswordRequestAdmin:
+    def test_to_builder(self) -> None:
+        request = UserChangePasswordRequestAdmin(password="new-password")
+
+        builder = request.to_builder()
+
+        assert PBKDF2PasswordHasher().verify("new-password", builder.password)

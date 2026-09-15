@@ -85,11 +85,12 @@ def compose_purpose_opts(params: KernelParameters):
 
     kernel_params = [
         f"root={image_type}:http://{server_addr}:5248/images/{image_filename}",
-        # Read by cloud-initramfs-dyn-netconf initramfs-tools networking
-        # configuration in the initramfs.  Choose IPv4 or IPv6 based on the
-        # family of fs_host.  If BOOTIF is set, IPv6 config uses that
+        # Read by initramfs for networking configuration. This is handled by dracut and
+        # systemd-network-generator as of Ubuntu 26.04 LTS, and is handled by
+        # cloud-initramfs-dyn-netconf initramfs-tools on prior releases. Choose IPv4 or
+        # IPv6 based on the family of fs_host. If BOOTIF is set, IPv6 config uses that
         # exclusively.
-        (f"ip=::::{params.hostname}:BOOTIF" if not is_v6 else "ip=off"),
+        (f"ip=::::{params.hostname}:BOOTIF:dhcp" if not is_v6 else "ip=off"),
         ("ip6=dhcp" if is_v6 else "ip6=off"),
         # Select the MAAS datasource by default.
         "cc:{'datasource_list': ['MAAS']}end_cc",

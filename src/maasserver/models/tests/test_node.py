@@ -1962,30 +1962,6 @@ class TestNode(MAASServerTestCase):
             node._get_boot_order(),
         )
 
-    def test_set_boot_order(self):
-        node = factory.make_Node(interface=True, power_type="hmcz")
-        mock_power_control_node = self.patch(node, "_power_control_node")
-        mock_power_control_node.return_value = defer.succeed(None)
-        network_boot = factory.pick_bool()
-
-        node.set_boot_order(network_boot)
-
-        mock_power_control_node.assert_called_with(
-            ANY,
-            None,
-            node.get_effective_power_info(),
-            node._get_boot_order(network_boot),
-        )
-        self.assertTrue(mock_power_control_node.return_value.called)
-
-    def test_set_boot_order_does_nothing_if_unsupported(self):
-        node = factory.make_Node(interface=True, power_type="manual")
-        mock_power_control_node = self.patch(node, "_power_control_node")
-
-        node.set_boot_order(factory.pick_bool())
-
-        mock_power_control_node.assert_not_called()
-
     def test_get_effective_kernel_options_with_nothing_set(self):
         node = factory.make_Node()
         self.assertEqual(node.get_effective_kernel_options(), "")
@@ -2520,8 +2496,11 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.abort_deploying(admin)
         stop_workflow.assert_called_once_with(f"deploy:{node.system_id}")
-        abort_all_tests.assert_called_once_with(
-            node.current_installation_script_set_id
+        abort_all_tests.assert_has_calls(
+            [
+                call(node.current_installation_script_set_id),
+                call(node.current_deployment_script_set_id),
+            ]
         )
 
     def test_abort_deployment_clears_deployment_resources(self):
@@ -3244,6 +3223,28 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.release()
         self.assertIsNone(node.current_deployment_script_set)
+
+    def test_release_aborts_pending_and_running_deployment_scripts(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User()
+        )
+        script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.DEPLOYMENT
+        )
+        node.current_deployment_script_set = script_set
+        node.save()
+        pending = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.PENDING
+        )
+        running = factory.make_ScriptResult(
+            script_set=script_set, status=SCRIPT_STATUS.RUNNING
+        )
+        self.patch(node, "_stop")
+        self.patch(node_module, "stop_workflow")
+        with post_commit_hooks:
+            node.release()
+        self.assertEqual(SCRIPT_STATUS.ABORTED, reload_object(pending).status)
+        self.assertEqual(SCRIPT_STATUS.ABORTED, reload_object(running).status)
 
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
         # If called on a node in New state, accept_enlistment()
@@ -4443,12 +4444,14 @@ class TestNode(MAASServerTestCase):
         node.current_installation_script_set = factory.make_ScriptSet(
             node=node
         )
+        node.current_deployment_script_set = factory.make_ScriptSet(node=node)
         updated_script_results = []
         untouched_script_results = []
         for script_set in (
             node.current_commissioning_script_set,
             node.current_testing_script_set,
             node.current_installation_script_set,
+            node.current_deployment_script_set,
         ):
             script_result = factory.make_ScriptResult(script_set)
             if script_result.status in SCRIPT_STATUS_RUNNING_OR_PENDING:
@@ -7746,6 +7749,50 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         )
         self.assertEqual(expected_gateways, node.get_default_gateways())
 
+    def test_get_default_gateways_ignores_unconfigured_gateway_link(self):
+        # LP#2162993. An interface set as the default
+        # gateway that is later changed to "Unconfigured" (LINK_UP) should not
+        # be used as the default gateway
+        node = factory.make_Node()
+        nic0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet_a = factory.make_Subnet(
+            cidr="192.168.0.0/24", gateway_ip="192.168.0.1"
+        )
+        subnet_b = factory.make_Subnet(
+            cidr="192.168.1.0/24", gateway_ip="192.168.1.1"
+        )
+        gateway_link = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            interface=nic0,
+            subnet=subnet_a,
+        )
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            interface=nic1,
+            subnet=subnet_b,
+        )
+        node.gateway_link_ipv4 = gateway_link
+        node.save()
+
+        # Simulate setting nic0 to "Unconfigured": the same row is reused
+        # with no IP, which turns it into a LINK_UP link.
+        gateway_link.ip = None
+        with post_commit_hooks:
+            gateway_link.save()
+
+        node = reload_object(node)
+        nic1_gw = GatewayDefinition(
+            interface_id=nic1.id,
+            subnet_id=subnet_b.id,
+            gateway_ip=subnet_b.gateway_ip,
+        )
+        gateways = node.get_default_gateways()
+        self.assertEqual(nic1_gw, gateways.ipv4)
+        self.assertNotIn(
+            nic0.id, [gateway.interface_id for gateway in gateways.all]
+        )
+
     def test_set_initial_net_config_does_nothing_if_skip_networking(self):
         node = factory.make_Node_with_Interface_on_Subnet(skip_networking=True)
         boot_interface = node.get_boot_interface()
@@ -9039,6 +9086,44 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node.distro_series = "focal"
         node.start(admin)
         self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
+
+    def test_ephemeral_deploy_does_not_create_deployment_script_set(self):
+        load_builtin_scripts()
+        admin = factory.make_admin()
+        with transaction.atomic():
+            factory.make_RegionController()
+            factory.make_usable_boot_resource(
+                name="ubuntu/focal",
+                architecture="amd64/ga-20.04",
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            )
+        node = self.make_acquired_node_with_interface(
+            admin,
+            power_type="manual",
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+            architecture="amd64/generic",
+        )
+        node.osystem = "ubuntu"
+        node.distro_series = "focal"
+        # Simulate a leftover deployment script set from a previously aborted
+        # standard deployment to verify it gets cleared.
+        leftover_script_set = factory.make_ScriptSet(
+            node=node, result_type=RESULT_TYPE.DEPLOYMENT
+        )
+        node.current_deployment_script_set = leftover_script_set
+        node.start(admin)
+
+        self.assertIsNone(node.current_deployment_script_set)
+        # No new deployment script set is created; only the leftover remains.
+        self.assertEqual(
+            [leftover_script_set.id],
+            list(
+                ScriptSet.objects.filter(
+                    node=node, result_type=RESULT_TYPE.DEPLOYMENT
+                ).values_list("id", flat=True)
+            ),
+        )
 
     def test_doesnt_raise_network_validation_when_all_dhcp(self):
         admin = factory.make_admin()
@@ -10603,8 +10688,10 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         )
         mock_confirm_power_driver.return_value = defer.succeed(None)
 
-        mock_set_boot_order = self.patch(node_module, "set_boot_order")
-        mock_set_boot_order.return_value = defer.succeed(client)
+        mock_convert = self.patch(
+            node_module, "convert_power_action_to_power_workflow"
+        )
+        mock_convert.return_value = ("power-on", Mock())
 
         # Testing only allows one thread at a time, but the way we are testing
         # this would actually require multiple to be started at once. To
@@ -10617,9 +10704,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
             "state": "on",
         }
 
-        yield node._power_control_node(
-            d, "power_query", power_info, boot_order
-        )
+        yield node._power_control_node(d, "power_on", power_info, boot_order)
 
         mock_getClientFromIdentifiers.assert_called_with(
             [rack_controller.system_id]
@@ -10627,58 +10712,8 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         mock_confirm_power_driver.assert_called_with(
             client, power_info.power_type, client.ident
         )
-        mock_set_boot_order.assert_called_with(
-            client, node.system_id, node.hostname, power_info, boot_order
-        )
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_sets_boot_order_if_given_with_no_power_method(self):
-        d = self.patch_post_commit()
-        rack_controller = yield deferToDatabase(self.make_rack_controller)
-        node, power_info = yield deferToDatabase(
-            self.make_node,
-            layer2_rack=rack_controller,
-        )
-        boot_order = yield deferToDatabase(node._get_boot_order)
-
-        client = Mock()
-        client.ident = rack_controller.system_id
-        mock_getClientFromIdentifiers = self.patch(
-            node_module, "getClientFromIdentifiers"
-        )
-        mock_getClientFromIdentifiers.return_value = defer.succeed(client)
-
-        # Add the client to getAllClients in so that its considered a to be a
-        # valid connection.
-        self.patch(node_module, "getAllClients").return_value = [client]
-
-        # Mock the confirm power driver check, we check in the test to make
-        # sure it gets called.
-        mock_confirm_power_driver = self.patch(
-            Node, "confirm_power_driver_operable"
-        )
-        mock_confirm_power_driver.return_value = defer.succeed(None)
-
-        mock_set_boot_order = self.patch(node_module, "set_boot_order")
-        mock_set_boot_order.return_value = defer.succeed(client)
-
-        # Testing only allows one thread at a time, but the way we are testing
-        # this would actually require multiple to be started at once. To
-        # by-pass this issue we mock `is_accessible` on the BMC model to return
-        # the value we are expecting.
-        self.patch(node.bmc, "is_accessible").return_value = True
-
-        yield node._power_control_node(d, None, power_info, boot_order)
-
-        mock_getClientFromIdentifiers.assert_called_with(
-            [rack_controller.system_id]
-        )
-        mock_confirm_power_driver.assert_called_with(
-            client, power_info.power_type, client.ident
-        )
-        mock_set_boot_order.assert_called_with(
-            client, node.system_id, node.hostname, power_info, boot_order
+        mock_convert.assert_called_once_with(
+            "power-on", node, power_info, node.is_dpu, boot_order
         )
 
 

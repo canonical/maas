@@ -29,8 +29,9 @@ from maascommon.workflows.deploy import (
 from maascommon.workflows.power import (
     PowerCycleParam,
     PowerOnParam,
-    PowerParam,
     PowerQueryParam,
+    SET_BOOT_ORDER_ACTIVITY_NAME,
+    SetBootOrderParam,
 )
 from maasservicelayer.builders.nodes import NodeBuilder
 from maasservicelayer.db.tables import (
@@ -40,12 +41,12 @@ from maasservicelayer.db.tables import (
     NodeTable,
     PhysicalBlockDeviceTable,
     StaticIPAddressTable,
-    VirtualBlockDeviceTable,
 )
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.power import (
     POWER_ACTION_ACTIVITY_TIMEOUT,
     POWER_CYCLE_ACTIVITY_NAME,
+    POWER_OFF_ACTIVITY_NAME,
     POWER_ON_ACTIVITY_NAME,
     POWER_QUERY_ACTIVITY_NAME,
     SET_POWER_STATE_ACTIVITY_NAME,
@@ -61,11 +62,16 @@ logger = structlog.getLogger()
 DEFAULT_DEPLOY_ACTIVITY_TIMEOUT = timedelta(seconds=30)
 DEFAULT_DEPLOY_RETRY_TIMEOUT = timedelta(seconds=60)
 
+# _switch_to_local_boot()'s power-on is fire-and-forget, so poll afterwards
+# to persist the real state. Some drivers (e.g. IBM Z HMC/DPM) can take
+# minutes to settle.
+CONFIRM_POWERED_ON_POLL_INTERVAL = timedelta(seconds=15)
+CONFIRM_POWERED_ON_MAX_ATTEMPTS = 20  # ~5 minutes total
+
 # Activities names
 GET_BOOT_ORDER_ACTIVITY_NAME = "get-boot-order"
 SET_NODE_STATUS_ACTIVITY_NAME = "set-node-status"
 MARK_NODE_FAILED_ACTIVITY_NAME = "mark-node-failed"
-SET_BOOT_ORDER_ACTIVITY_NAME = "set-boot-order"
 
 
 class InvalidMachineStateException(Exception):
@@ -94,13 +100,6 @@ class GetBootOrderParam:
 @dataclass
 class GetBootOrderResult:
     system_id: str
-    order: list[dict[str, Any]]
-
-
-@dataclass
-class SetBootOrderParam:
-    system_id: str
-    power_params: PowerParam
     order: list[dict[str, Any]]
 
 
@@ -176,8 +175,19 @@ class DeployActivity(ActivityBase):
     async def _get_boot_disk(
         self, tx: AsyncConnection, system_id: str
     ) -> dict[str, Any]:
+        # Only physical block devices can be boot devices for the power
+        # drivers, and they expect the same fields PhysicalBlockDevice.serialize
+        # produces (notably "serial"/"model", which live on the physical block
+        # device table). Returns an empty dict when the node has no boot disk
+        # set or its boot disk is not a physical block device.
         boot_disk_stmt = (
-            select(BlockDeviceTable)
+            select(
+                BlockDeviceTable.c.id,
+                BlockDeviceTable.c.name,
+                BlockDeviceTable.c.id_path,
+                PhysicalBlockDeviceTable.c.model,
+                PhysicalBlockDeviceTable.c.serial,
+            )
             .select_from(NodeTable)
             .join(
                 BlockDeviceTable,
@@ -188,25 +198,10 @@ class DeployActivity(ActivityBase):
                 PhysicalBlockDeviceTable.c.blockdevice_ptr_id
                 == BlockDeviceTable.c.id,
             )
-            .join(
-                VirtualBlockDeviceTable,
-                VirtualBlockDeviceTable.c.blockdevice_ptr_id
-                == BlockDeviceTable.c.id,
-            )
             .filter(NodeTable.c.system_id == system_id)
         )
         boot_disk_result = await tx.execute(boot_disk_stmt)
-        boot_disk = self._single_result_to_dict(boot_disk_result)
-        actual_instance_id = boot_disk.get("actual_instance_id")
-        if actual_instance_id:
-            actual_stmt = (
-                select("*")
-                .select_from(BlockDeviceTable)
-                .filter(id == actual_instance_id)
-            )
-            actual_result = await tx.execute(actual_stmt)
-            boot_disk = self._single_result_to_dict(actual_result)
-        return boot_disk
+        return self._single_result_to_dict(boot_disk_result)
 
     def _stringify_datetime_fields(
         self, obj: dict[str, Any]
@@ -257,13 +252,28 @@ class DeployActivity(ActivityBase):
             if boot_iface:
                 ifaces = [boot_iface] + ifaces
 
+            # Only physical block devices can be boot devices, and power
+            # drivers expect the same fields that PhysicalBlockDevice.serialize
+            # produces (notably "serial" and "model", which live on the
+            # physical block device table, not the base block device table).
             block_dev_stmt = (
-                select(BlockDeviceTable)
+                select(
+                    BlockDeviceTable.c.id,
+                    BlockDeviceTable.c.name,
+                    BlockDeviceTable.c.id_path,
+                    PhysicalBlockDeviceTable.c.model,
+                    PhysicalBlockDeviceTable.c.serial,
+                )
                 .select_from(NodeTable)
                 .join(
                     BlockDeviceTable,
                     BlockDeviceTable.c.node_config_id
                     == NodeTable.c.current_config_id,
+                )
+                .join(
+                    PhysicalBlockDeviceTable,
+                    PhysicalBlockDeviceTable.c.blockdevice_ptr_id
+                    == BlockDeviceTable.c.id,
                 )
                 .filter(
                     NodeTable.c.system_id == params.system_id,
@@ -452,12 +462,14 @@ class DeployWorkflow:
                 ),
             )
 
-    async def _set_boot_order(self, params: DeployParam) -> None:
+    async def _set_boot_order(
+        self, params: DeployParam, netboot: bool
+    ) -> None:
         boot_order = await workflow.execute_activity(
             GET_BOOT_ORDER_ACTIVITY_NAME,
             GetBootOrderParam(
                 system_id=params.system_id,
-                netboot=False,
+                netboot=netboot,
             ),
             task_queue="region",
             start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
@@ -482,15 +494,101 @@ class DeployWorkflow:
         else:
             raise InvalidMachineStateException("no boot order found")
 
+    async def _power(self, params: DeployParam, activity_name: str) -> None:
+        """Run a power activity (on/off) on the agent for this machine."""
+        await workflow.execute_activity(
+            activity_name,
+            params.power_params,
+            task_queue=params.power_params.task_queue,
+            start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
+            retry_policy=RetryPolicy(maximum_attempts=3),
+        )
+
+    async def _confirm_powered_on(self, params: DeployParam) -> None:
+        """Poll and persist the node's power state until it reads "on".
+
+        The preceding power-on is fire-and-forget, so query the state on a
+        bounded poll and persist changes as they settle, reusing the
+        query-then-persist pattern from _start_deployment(). A reading is
+        only acted on once seen on two consecutive polls, to ignore
+        transient flaky reports from the BMC/HMC.
+        """
+        persisted_state = None
+        candidate_state = None
+        for _ in range(CONFIRM_POWERED_ON_MAX_ATTEMPTS):
+            result = await workflow.execute_activity(
+                POWER_QUERY_ACTIVITY_NAME,
+                PowerQueryParam(
+                    system_id=params.power_params.system_id,
+                    driver_type=params.power_params.driver_type,
+                    driver_opts=params.power_params.driver_opts,
+                    task_queue=params.power_params.task_queue,
+                    is_dpu=params.power_params.is_dpu,
+                ),
+                task_queue=params.power_params.task_queue,
+                start_to_close_timeout=POWER_ACTION_ACTIVITY_TIMEOUT,
+                retry_policy=RetryPolicy(maximum_attempts=3),
+            )
+            state = PowerState(result["state"])
+            if state != candidate_state:
+                candidate_state = state
+            elif state != persisted_state:
+                await workflow.execute_activity(
+                    SET_POWER_STATE_ACTIVITY_NAME,
+                    SetPowerStateParam(
+                        system_id=params.power_params.system_id,
+                        state=state,
+                    ),
+                    task_queue="region",
+                    start_to_close_timeout=DEFAULT_DEPLOY_ACTIVITY_TIMEOUT,
+                    retry_policy=RetryPolicy(
+                        maximum_interval=DEFAULT_DEPLOY_RETRY_TIMEOUT,
+                    ),
+                )
+                persisted_state = state
+            if persisted_state == PowerState.ON:
+                return
+            await asyncio.sleep(
+                CONFIRM_POWERED_ON_POLL_INTERVAL.total_seconds()
+            )
+
+    async def _switch_to_local_boot(self, params: DeployParam) -> None:
+        """Point a boot-order-capable machine at its local disk to boot.
+
+        MAAS drives the power transition itself (power off -> confirm off ->
+        set boot order to disk -> power on) instead of relying on the
+        in-installer reboot.
+
+        This avoids a race specific to BMCs that MAAS controls the boot order
+        for (``can_set_boot_order``) and whose firmware cannot fall through
+        from a netboot config to the local disk -- notably IBM Z DPM. Once the
+        installer finishes, MAAS stops serving a netboot kernel; if the guest
+        reboots before the boot device is flipped to disk, the machine
+        network-IPLs into an empty config and hangs ("No value found for
+        kernel", IPL failed 110). Powering off and confirming the machine is
+        actually down before the flip closes that window (and also sidesteps
+        the transient HMC "busy" state seen while an operation is in flight).
+        """
+        await self._power(params, POWER_OFF_ACTIVITY_NAME)
+        await self._set_boot_order(params, netboot=False)
+        await self._power(params, POWER_ON_ACTIVITY_NAME)
+        await self._confirm_powered_on(params)
+
     @workflow_run_with_context
     async def run(self, params: DeployParam) -> DeployResult:
+        # Arm network boot before powering on so the machine PXE boots into
+        # the ephemeral environment. Applies to both ephemeral and regular
+        # deployments, matching the legacy behavior.
+        if params.can_set_boot_order:
+            await self._set_boot_order(params, netboot=True)
+
         await self._start_deployment(params)
 
         if not params.ephemeral_deploy:
             await workflow.wait_condition(lambda: self._has_netbooted)
 
             if params.can_set_boot_order:
-                await self._set_boot_order(params)
+                await self._switch_to_local_boot(params)
 
         await workflow.wait_condition(lambda: self._deployed_os_ready)
 

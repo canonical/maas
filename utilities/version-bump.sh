@@ -3,8 +3,9 @@
 # Prepare a MAAS release by doing the following:
 #
 # - update python project version
-# - tag the release in git
 # - commit changes
+#
+# Git tags are created later, after the cut, not during version bump.
 #
 # Usage:
 #   ./version-bump.sh maas-version
@@ -41,10 +42,6 @@ verbose_version() {
     echo "$1" | sed 's/a/ alpha/; tend; s/b/ beta/; tend; s/rc/ RC/; :end'
 }
 
-tag_version() {
-    echo "$1" | sed 's/a/-alpha/; tend; s/b/-beta/; tend; s/rc/-rc/; :end'
-}
-
 replace_setup_version() {
     local version major_version minor_version
     version="$1"
@@ -65,13 +62,6 @@ commit() {
     message="Prepare for $(verbose_version "$version") release"
 
     git commit -a -m "$message"
-}
-
-tag() {
-    local version="$1"
-    local tag
-    tag="$(tag_version "$version")"
-    git tag "$tag"
 }
 
 exit_error() {
@@ -99,10 +89,10 @@ elif ! echo "$version" | grep -Eq "^[2-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?$"; t
     echo "Invalid version!" >&2
     exit_usage
 elif [[ "$maas_version" != *${current_branch}* ]]; then
-    # Verify tags are created from the branch for that version if it exists.
+    # Bump on the series branch when it exists, not on another branch.
     for branch in $(git ls-remote --heads origin | awk -F/ '{ print $3 }'); do
 	if [[ "$maas_version" == *${branch}* ]]; then
-	    exit_error "Branch ${branch} exists for version ${version}. Refusing to tag ${current_branch}."
+	    exit_error "Branch ${branch} exists for version ${version}. Refusing to bump ${current_branch}."
 	fi
     done
 fi
@@ -116,6 +106,5 @@ if ! version_changed "$version"; then
     exit_error "The version is already set to $1"
 fi
 commit "$version"
-tag "$version"
 git_show_commit
 

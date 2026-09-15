@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The domain handler for the WebSocket connection."""
@@ -49,6 +49,7 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
             "delete_dnsdata",
         ]
         listen_channels = ["domain"]
+        view_permission = NodePermission.view
 
     def dehydrate(self, domain, data, for_list=False):
         rrsets = service_layer.services.domains.render_json_for_related_rrdata(

@@ -9,7 +9,7 @@ import re
 from subprocess import PIPE
 import sys
 from textwrap import dedent
-from unittest.mock import ANY
+from unittest.mock import ANY, call
 
 import yaml
 
@@ -85,7 +85,9 @@ class TestSevenZTest(MAASTestCase):
 
         self.assertRaises(SystemExit, seven_z.run_7z)
         mock_popen.assert_called_once_with(cmd, stdout=PIPE, stderr=PIPE)
-        mock_stderr.write.assert_called_once_with("Error")
+        # Other tests can leak finalizer output on patched stderr,
+        # thus asserting on the final write
+        self.assertEqual(mock_stderr.write.call_args, call("Error"))
 
     def test_run_7z_exits_if_no_regex_match_found(self):
         self.patch(os, "environ", {"RESULT_PATH": factory.make_name()})
@@ -108,4 +110,4 @@ class TestSevenZTest(MAASTestCase):
         mock_re_search.assert_called_once_with(
             seven_z.REGEX, SEVEN_Z_OUTPUT.encode("utf-8")
         )
-        mock_sys_stderr.write.assert_called_once_with(stderr)
+        self.assertEqual(mock_sys_stderr.write.call_args, call(stderr))

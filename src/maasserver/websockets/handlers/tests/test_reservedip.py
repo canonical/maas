@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests the ReservedIP WebSocket handler"""
@@ -10,6 +10,7 @@ from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.reservedip import ReservedIP
+from maasserver.rbac import rbac
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
@@ -281,6 +282,12 @@ class TestReservedIPHandler(MAASServerTestCase):
         )
         user = factory.make_User()
         handler = ReservedIPHandler(user, {}, None)
+
+        # Warm the RBAC enabled-state cache: the view-permission check reads
+        # it lazily (one DB query), and RBACClearFixture resets it each test.
+        # Priming here keeps that one-off query out of the measured count.
+        rbac.is_enabled()
+
         num_queries, reserved_ips = count_queries(handler.list, {})
         self.assertEqual(len(reserved_ips), 1)
         # 1 - get the list of reserved ips
@@ -402,4 +409,20 @@ class TestReservedIPHandlerOpenFGAIntegration(
         handler.delete({"id": reservedip.id})
         self.openfga_client.can_edit_global_entities.assert_called_once_with(
             user
+        )
+
+    def test_list_requires_can_view_global_entities(self):
+        self.openfga_client.can_view_global_entities.return_value = False
+        factory.make_ReservedIP()
+        user = factory.make_User()
+        handler = ReservedIPHandler(user, {}, None)
+        self.assertRaises(HandlerPermissionError, handler.list, {})
+
+    def test_get_requires_can_view_global_entities(self):
+        self.openfga_client.can_view_global_entities.return_value = False
+        reservedip = factory.make_ReservedIP()
+        user = factory.make_User()
+        handler = ReservedIPHandler(user, {}, None)
+        self.assertRaises(
+            HandlerPermissionError, handler.get, {"id": reservedip.id}
         )

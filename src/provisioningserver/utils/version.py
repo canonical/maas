@@ -116,7 +116,10 @@ class MAASVersion:
 @lru_cache(maxsize=1)
 def get_running_version() -> MAASVersion:
     """Return the version for the running MAAS."""
-    version_str = snap.get_snap_version().version
+    snap_version = snap.get_snap_version()
+    version_str = (
+        snap_version.version if snap_version else str(DISTRIBUTION.version)
+    )
     return MAASVersion.from_string(version_str)
 
 

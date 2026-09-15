@@ -20,7 +20,6 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.urls import reverse
 from netaddr import IPNetwork
-from twisted.internet.defer import succeed
 import yaml
 
 from maasserver.api import support
@@ -4040,35 +4039,19 @@ class TestByMACMetadataAPI(MAASServerTestCase):
 class TestNetbootOperationAPI(MAASServerTestCase):
     def test_netboot_off(self):
         node = factory.make_Node(netboot=True, power_type="hmcz")
-        mock_power_control_node = self.patch(api.Node, "_power_control_node")
-        mock_power_control_node.return_value = succeed(None)
         client = make_node_client(node=node)
         url = reverse("metadata-version", args=["latest"])
         response = client.post(url, {"op": "netboot_off"})
         node = reload_object(node)
         self.assertFalse(node.netboot, response)
-        mock_power_control_node.assert_called_with(
-            ANY,
-            None,
-            node.get_effective_power_info(),
-            node._get_boot_order(False),
-        )
 
     def test_netboot_on(self):
         node = factory.make_Node(netboot=False, power_type="hmcz")
-        mock_power_control_node = self.patch(api.Node, "_power_control_node")
-        mock_power_control_node.return_value = succeed(None)
         client = make_node_client(node=node)
         url = reverse("metadata-version", args=["latest"])
         response = client.post(url, {"op": "netboot_on"})
         node = reload_object(node)
         self.assertTrue(node.netboot, response)
-        mock_power_control_node.assert_called_with(
-            ANY,
-            None,
-            node.get_effective_power_info(),
-            node._get_boot_order(True),
-        )
 
 
 class TestAnonymousAPI(MAASServerTestCase):
@@ -4078,8 +4061,6 @@ class TestAnonymousAPI(MAASServerTestCase):
 
     def test_anonymous_netboot_off(self):
         node = factory.make_Node(netboot=True, power_type="hmcz")
-        mock_power_control_node = self.patch(api.Node, "_power_control_node")
-        mock_power_control_node.return_value = succeed(None)
         anon_netboot_off_url = reverse(
             "metadata-node-by-id", args=["latest", node.system_id]
         )
@@ -4091,12 +4072,6 @@ class TestAnonymousAPI(MAASServerTestCase):
             (http.client.OK, False),
             (response.status_code, node.netboot),
             response,
-        )
-        mock_power_control_node.assert_called_with(
-            ANY,
-            None,
-            node.get_effective_power_info(),
-            node._get_boot_order(False),
         )
 
     def test_anonymous_get_enlist_preseed(self):

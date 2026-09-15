@@ -199,7 +199,8 @@ html_context = {
     # TODO: To enable listing contributors on individual pages, set to True
     "display_contributors": False,
     # Required for feedback button
-    "github_issues": "enabled",
+    "feedback_link": "https://bugs.launchpad.net/maas/+filebug?",
+    "release_information": "https://canonical.com/maas/docs/release-information",
 }
 
 html_extra_path = []
@@ -370,7 +371,8 @@ exclude_patterns = [
 
 # Adds custom CSS files, located under 'html_static_path'
 
-html_css_files = []
+# Override canonical_sphinx theme's external font URLs with local copies.
+html_css_files = ["offline-fonts.css"]
 
 # CSS for google analytics tracker settings:
 if IS_ONLINE:
@@ -380,9 +382,7 @@ if IS_ONLINE:
 
 
 # Adds custom JavaScript files, located under 'html_static_path'
-# js/github_issue_links.js can be removed when a fix for https://github.com/canonical/canonical-sphinx/issues/51 is implemented.
-
-html_js_files = ["js/overwrite_links.js", "js/github_issue_links.js"]
+html_js_files = ["js/overwrite_links.js"]
 
 # JS for google analytics tracker setup:
 if IS_ONLINE:
@@ -400,7 +400,7 @@ rst_epilog = """
 #
 # TODO: To disable the button, uncomment this.
 
-disable_feedback_button = True
+# disable_feedback_button = True
 
 
 # Your manpage URL

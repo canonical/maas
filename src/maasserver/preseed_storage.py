@@ -256,10 +256,17 @@ class CurtinStorageGenerator:
 
     def _generate_disk_operations(self):
         """Generate all disk operations."""
+        disks_needing_path_fallback = get_disks_needing_path_fallback(
+            self.operations["disk"]
+        )
         for block_device in self.operations["disk"]:
-            self._generate_disk_operation(block_device)
+            self._generate_disk_operation(
+                block_device, disks_needing_path_fallback
+            )
 
-    def _generate_disk_operation(self, block_device):
+    def _generate_disk_operation(
+        self, block_device, disks_needing_path_fallback
+    ):
         """Generate disk operation for `block_device` and place in
         `storage_config`."""
         disk_operation = {
@@ -268,9 +275,15 @@ class CurtinStorageGenerator:
             "type": "disk",
             "wipe": "superblock",
         }
-        # Set model and serial unless not set, then curtin will use a
-        # device path to match.
-        if block_device.model and block_device.serial:
+
+        # Set model and serial unless not set or ambiguous (shared with
+        # another disk on this node), then curtin will use a device path
+        # to match.
+        if (
+            block_device.model
+            and block_device.serial
+            and block_device.id not in disks_needing_path_fallback
+        ):
             disk_operation["model"] = block_device.model
             disk_operation["serial"] = block_device.serial
         else:
@@ -759,3 +772,56 @@ def compose_curtin_storage_config(node):
     """Compose the storage configuration for curtin."""
     generator = CurtinStorageGenerator(node)
     return [generator.generate()]
+
+
+def get_disks_needing_path_fallback(
+    disks: list[PhysicalBlockDevice],
+) -> set[int]:
+    """Find physical disks that share the same model/serial.
+
+    Curtin resolves a disk stanza's identity via `wwn`, then `serial`,
+    by scanning `/dev/disk/by-id/` for a matching entry and picking the
+    shortest match. If two distinct `PhysicalBlockDevice`s report the
+    same model/serial, curtin cannot tell them apart: both storage-config
+    disk IDs resolve to the same underlying device, silently producing
+    an overlapping storage graph (e.g. two bcache backing devices
+    stacked on one another) instead of a clear failure.
+
+    The above can happen when the hardware/controller firmware reports
+    a duplicate serial across distinct LUNs (as opposed to true
+    multipath, where the same LUN is reachable via more than one path).
+    This was observed, for example, for the case of HPE GEN9 machines
+    using disks in pass-through mode.
+
+    For any disk affected by such a collision, curtin can still
+    disambiguate it unambiguously via its `path` key, as
+    long as its `id_path` is set and is itself unique among the
+    colliding set. The ids of such disks are returned by this function.
+
+    If a colliding disk has no usable, unique `id_path` either, we consider
+    there's no way to safely resolve it, so generation is aborted
+    with a `PreseedError`.
+    """
+    disks_needing_path_fallback = set()
+    by_identity = {}
+    for block_device in disks:
+        if not (block_device.model and block_device.serial):
+            continue
+        identity = (block_device.model, block_device.serial)
+        by_identity.setdefault(identity, []).append(block_device)
+
+    for identity, block_devices in by_identity.items():
+        if len(block_devices) < 2:
+            continue
+        model, serial = identity
+        id_paths = [bd.id_path for bd in block_devices]
+        if not all(id_paths) or len(set(id_paths)) != len(id_paths):
+            names = ", ".join(sorted(bd.get_name() for bd in block_devices))
+            raise PreseedError(
+                f"Disks {names} have the same model/serial ({model}/{serial}) and no "
+                "distinct id_path to disambiguate them; curtin cannot "
+                "distinguish between them"
+            )
+        disks_needing_path_fallback.update(bd.id for bd in block_devices)
+
+    return disks_needing_path_fallback

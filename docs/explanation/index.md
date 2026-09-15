@@ -11,6 +11,7 @@ Machines are the core component of MAAS and the primary driver of the provisioni
 - Conceptualize [commissioning](/explanation/commissioning-machines.md) -- how MAAS gathers the hardware information needed for later deployment.
 - Discover all the ways you can [customize](/explanation/machine-customization.md) deployment to suit your use case.
 - Find out about [deployment](/explanation/deploying-machines.md) and why it's valuable to also [deploy already-provisioned machines](/explanation/deploying-running-machines.md).
+- Learn how [deployment scripts](/explanation/deployment-scripts.md) let you run custom logic before and after the OS is installed.
 - Understand the value and utility of [grouping machines](/explanation/machine-groups.md).
 
 ## MAAS-managed infrastructure
@@ -46,6 +47,7 @@ commissioning-scripts
 machine-customization
 deploying-machines
 deploying-running-machines
+deployment-scripts
 machine-groups
 networking
 controllers

@@ -203,3 +203,33 @@ func (s *ClientTestSuite) TestClientDeleteHost() {
 	_, err = s.client.GetHost(options)
 	assert.EqualError(s.T(), err, "host lookup failed: no object matches specification")
 }
+
+// TestClientSyncHost verifies that the OMAPI client will delete and re-add a host if it already exists.
+// It performs the following steps:
+//
+// 1. Uses the OMAPI client to create a new host entry with the AddHost method.
+// 2. Checks the successful creation of the host entry by calling the GetHost.
+// 3. Calls the SyncHost method to update the previously created host entry.
+// 4. Verifies that the host entry has been updated by making another call to GetHost.
+func (s *ClientTestSuite) TestClientSyncHost() {
+	ip := s.dummyIP
+	mac := net.HardwareAddr([]byte{0xca, 0xfe, 0xc0, 0xff, 0xee, 0x00})
+
+	err := s.client.AddHost(ip, mac)
+	assert.NoError(s.T(), err)
+
+	options := map[string][]byte{"hardware-address": mac}
+
+	host, err := s.client.GetHost(options)
+	assert.NoError(s.T(), err)
+
+	assert.Equal(s.T(), ip.To4(), host.IP)
+
+	newIP := ip.To4()
+	newIP[3]++
+	err = s.client.SyncHost(newIP, mac)
+	assert.NoError(s.T(), err)
+
+	host, _ = s.client.GetHost(options)
+	assert.Equal(s.T(), newIP.To4(), host.IP)
+}

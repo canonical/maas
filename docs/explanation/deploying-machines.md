@@ -29,7 +29,7 @@ The following steps trace the boot and installation process for a typical deploy
 3. Network Boot Program (NBP): The firmware downloads a bootloader (via TFTP or HTTP).
 4. Ephemeral image request: The bootloader asks MAAS for a bootable kernel and initrd.
 5. Ephemeral environment boot: MAAS delivers a kernel, initrd, and a compressed SquashFS root filesystem. The machine boots into this RAM-only environment.
-6. Curtin runs: Inside the ephemeral OS, curtin executes. It applies preseed instructions, partitions disks, configures storage, and lays down the target OS image.
+6. Curtin runs: Inside the ephemeral OS, MAAS runs the deployment scripts in alphabetical order. The built-in `50-curtin-install` script executes curtin, which applies preseed instructions, partitions disks, configures storage, and lays down the target OS image. Any deployment scripts named before `50-curtin-install` run beforehand (pre-install), and any named after it run once curtin finishes (post-install).
 7. Target image installation: Curtin fetches the target image (Ubuntu, CentOS, RHEL, or a custom image) from the MAAS image store and installs it onto the machine’s storage.
 8. Reboot into target OS: Once installation is complete, the machine reboots from local disk.
 9. Cloud-init takes over: On first boot, the embedded cloud-init in the target OS configures networking, applies SSH keys, installs packages, and runs any user-defined scripts.
@@ -46,6 +46,10 @@ This makes it possible to log in immediately after deployment without touching t
 Curtin supports preseed files, allowing administrators to influence how storage, networking, or packages are configured during deployment. Cloud-init adds a second layer of flexibility, running scripts and applying configuration on first boot.
 
 Between curtin preseeds and cloud-init user-data, you can tailor deployments to a very fine level of detail.
+
+## Deployment scripts
+
+For logic that must run *during* deployment rather than on first boot, MAAS supports [deployment scripts](/explanation/deployment-scripts.md). These run in the ephemeral environment alongside curtin — before or after the OS is installed, depending on how they sort relative to the built-in `50-curtin-install` script — and execute on every machine being deployed. Unlike cloud-init user-data, which configures the installed OS, deployment scripts are ideal for one-shot, hardware-facing tasks such as firmware updates or preparing attached devices. See [Manage deployment scripts](/how-to-guides/manage-deployment-scripts.md) for how to upload and order them.
 
 ## Ephemeral OS deployments
 
@@ -78,4 +82,5 @@ By combining curtin’s fast, image-based installation with cloud-init’s flexi
 ## Next steps
 
 - Learn how to [customize machines](/explanation/machine-customization.md) to deliver precisely-tailored configurations.
+- Run custom logic during deployment with [deployment scripts](/explanation/deployment-scripts.md).
 - Discover some of the [pre-packaged configurations](/reference/configuration-guides/cloud-init.md) you can deploy using cloud-init.

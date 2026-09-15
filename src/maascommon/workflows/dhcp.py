@@ -43,5 +43,5 @@ def merge_configure_dhcp_param(
         ip_range_ids=ensure_list(old.ip_range_ids)
         + ensure_list(new.ip_range_ids),
         reserved_ip_ids=ensure_list(old.reserved_ip_ids)
-        + ensure_list(new.ip_range_ids),
+        + ensure_list(new.reserved_ip_ids),
     )

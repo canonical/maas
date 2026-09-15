@@ -106,7 +106,10 @@ class TestReservedIPsService:
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(
             CONFIGURE_DHCP_WORKFLOW_NAME,
-            ConfigureDHCPParam(reserved_ip_ids=[TEST_RESERVEDIP.id]),
+            # A delete removes a host reservation, so it must go through a
+            # full reload rather than the add-only OMAPI path. The row is
+            # already gone, so its own id would resolve to no hosts at all.
+            ConfigureDHCPParam(subnet_ids=[TEST_RESERVEDIP.subnet_id]),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
         )

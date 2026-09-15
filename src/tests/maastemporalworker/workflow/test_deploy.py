@@ -1,7 +1,7 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 import uuid
 
 import pytest
@@ -17,6 +17,7 @@ from temporalio.worker import Worker
 
 from maascommon.constants import NODE_TIMEOUT
 from maascommon.enums.node import NodeStatus
+from maascommon.enums.power import PowerState
 from maascommon.workflows.deploy import (
     DEPLOY_MANY_WORKFLOW_NAME,
     DEPLOY_WORKFLOW_NAME,
@@ -34,6 +35,7 @@ from maasservicelayer.db.tables import NodeTable
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.services import CacheForServices
 from maastemporalworker.workflow.deploy import (
+    CONFIRM_POWERED_ON_MAX_ATTEMPTS,
     DeployActivity,
     DeployManyParam,
     DeployManyWorkflow,
@@ -92,6 +94,22 @@ def _stringify_datetime_fields(obj: dict[str, Any]) -> dict[str, Any]:
                 if isinstance(v2, datetime):
                     v[k2] = str(v2)
     return obj
+
+
+def _expected_boot_disk(block_device: dict[str, Any]) -> dict[str, Any]:
+    """Project a block device fixture to the fields get_boot_order returns.
+
+    The activity only selects the base block device id/name/id_path plus the
+    physical block device model/serial (the fields the power drivers need), so
+    the expected boot-order entry for a disk is that narrowed projection.
+    """
+    return {
+        "id": block_device["id"],
+        "name": block_device["name"],
+        "id_path": block_device["id_path"],
+        "model": block_device["model"],
+        "serial": block_device["serial"],
+    }
 
 
 @pytest.mark.asyncio
@@ -164,8 +182,8 @@ class TestDeployActivity:
 
         assert boot_order.order == [
             _stringify_datetime_fields(dev)
-            for dev in [boot_iface, other_iface, boot_disk, other_disk]
-        ]
+            for dev in [boot_iface, other_iface]
+        ] + [_expected_boot_disk(dev) for dev in [boot_disk, other_disk]]
 
     async def test_get_boot_order_without_netboot(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
@@ -209,8 +227,10 @@ class TestDeployActivity:
             GetBootOrderParam(system_id=machine["system_id"], netboot=False),
         )
         assert boot_order.order == [
+            _expected_boot_disk(dev) for dev in [boot_disk, other_disk]
+        ] + [
             _stringify_datetime_fields(dev)
-            for dev in [boot_disk, other_disk, boot_iface, other_iface]
+            for dev in [boot_iface, other_iface]
         ]
 
 
@@ -788,11 +808,25 @@ class TestDeployManyWorkflow:
                 await wf.result()
 
                 assert len(calls["set_node_status"]) == 3
-                assert len(calls["get_boot_order"]) == 1
-                assert len(calls["power_query"]) == 3
-                assert len(calls["power_on"]) == 3
+                assert len(calls["get_boot_order"]) == 2
+                # 3 deploy-start queries + CONFIRM_POWERED_ON_MAX_ATTEMPTS
+                # confirm polls for the single can_set_boot_order machine
+                # after its switch-to-local-boot power-on. The mocked query
+                # never reports "on", so the confirm loop runs to exhaustion;
+                # its settle/debounce logic is covered in TestConfirmPoweredOn.
+                assert (
+                    len(calls["power_query"])
+                    == 3 + CONFIRM_POWERED_ON_MAX_ATTEMPTS
+                )
+                # 3 initial deploy power-ons + 1 extra power-on for the single
+                # can_set_boot_order machine, which MAAS power-cycles to switch
+                # its boot device to disk (power off -> set boot order ->
+                # power on).
+                assert len(calls["power_on"]) == 4
+                assert len(calls["power_off"]) == 1
                 assert len(calls["power_cycle"]) == 0
-                assert len(calls["set_power_state"]) == 3
+                # 3 deploy-start persists + one confirm-loop persist.
+                assert len(calls["set_power_state"]) == 4
                 assert len(calls["power_reset"]) == 0
 
     async def test_one_ephemeral(
@@ -1490,13 +1524,151 @@ class TestDeployWorkflow:
                 await wf.result()
 
                 assert len(calls["set_node_status"]) == 0
-                assert len(calls["get_boot_order"]) == 1
+                assert len(calls["get_boot_order"]) == 2
+                assert len(calls["set_boot_order"]) == 2
+                # 1 deploy-start query + CONFIRM_POWERED_ON_MAX_ATTEMPTS
+                # confirm polls after the switch-to-local-boot power-on. The
+                # mocked query never reports "on", so the confirm loop runs to
+                # exhaustion; its settle/debounce logic is covered in
+                # TestConfirmPoweredOn.
+                assert (
+                    len(calls["power_query"])
+                    == 1 + CONFIRM_POWERED_ON_MAX_ATTEMPTS
+                )
+                # Two power-ons: the initial deploy start, plus the
+                # MAAS-driven power-on after switching the boot device to
+                # disk (power off -> set boot order -> power on).
+                assert len(calls["power_on"]) == 2
+                assert len(calls["power_off"]) == 1
+                assert len(calls["power_cycle"]) == 0
+                # deploy-start persist + one confirm-loop persist.
+                assert len(calls["set_power_state"]) == 2
+                assert len(calls["power_reset"]) == 0
+
+    async def test_deploy_workflow_ephemeral_sets_network_boot_order(
+        self,
+        fixture: Fixture,
+        db_connection: AsyncConnection,
+        db: Database,
+    ) -> None:
+        bmc = await create_test_bmc_entry(fixture)
+        machine = await create_test_machine_entry(fixture, bmc_id=bmc["id"])
+        subnet = await create_test_subnet_entry(fixture)
+        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        boot_iface = await create_test_interface_dict(
+            fixture, node=machine, ips=[ip]
+        )
+        boot_disk = await create_test_blockdevice_entry(fixture, node=machine)
+
+        calls = defaultdict(list)
+
+        @activity.defn(name=SET_NODE_STATUS_ACTIVITY_NAME)
+        async def set_node_status(params: SetNodeStatusParam) -> None:
+            calls["set_node_status"].append(True)
+
+        @activity.defn(name=GET_BOOT_ORDER_ACTIVITY_NAME)
+        async def get_boot_order(
+            params: GetBootOrderParam,
+        ) -> GetBootOrderResult:
+            calls["get_boot_order"].append(params.netboot)
+            for link in boot_iface["links"]:
+                link["ip"] = str(link["ip"])
+            if params.netboot:
+                order = [boot_iface, boot_disk]
+            else:
+                order = [boot_disk, boot_iface]
+            return GetBootOrderResult(
+                system_id=machine["system_id"],
+                order=[_stringify_datetime_fields(dev) for dev in order],
+            )
+
+        @activity.defn(name=POWER_QUERY_ACTIVITY_NAME)
+        async def power_query(params: PowerQueryParam) -> PowerQueryResult:
+            calls["power_query"].append(True)
+            return PowerQueryResult(state="off")
+
+        @activity.defn(name=POWER_CYCLE_ACTIVITY_NAME)
+        async def power_cycle(params: PowerCycleParam) -> PowerCycleResult:
+            calls["power_cycle"].append(True)
+            return PowerCycleResult(state="on")
+
+        @activity.defn(name=POWER_ON_ACTIVITY_NAME)
+        async def power_on(params: PowerOnParam) -> PowerOnResult:
+            calls["power_on"].append(True)
+            return PowerOnResult(state="on")
+
+        @activity.defn(name=POWER_OFF_ACTIVITY_NAME)
+        async def power_off(params: PowerOffParam) -> PowerOffResult:
+            calls["power_off"].append(True)
+            return PowerOffResult(state="off")
+
+        @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
+        async def power_reset(params: PowerResetParam) -> PowerResetResult:
+            calls["power_reset"].append(True)
+            return PowerResetResult(state="on")
+
+        @activity.defn(name=SET_BOOT_ORDER_ACTIVITY_NAME)
+        async def set_boot_order(params: SetBootOrderParam) -> None:
+            calls["set_boot_order"].append(True)
+            return
+
+        @activity.defn(name=SET_POWER_STATE_ACTIVITY_NAME)
+        async def set_power_state(params: SetPowerStateParam) -> None:
+            calls["set_power_state"].append(True)
+            return
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue="region",
+                workflows=[DeployWorkflow],
+                activities=[
+                    set_node_status,
+                    get_boot_order,
+                    set_boot_order,
+                    set_power_state,
+                    power_query,
+                    power_cycle,
+                    power_on,
+                    power_off,
+                    power_reset,
+                ],
+            ) as worker:
+                wf = await env.client.start_workflow(
+                    DEPLOY_WORKFLOW_NAME,
+                    DeployParam(
+                        system_id=machine["system_id"],
+                        ephemeral_deploy=True,
+                        can_set_boot_order=True,
+                        task_queue=worker.task_queue,
+                        power_params=PowerParam(
+                            system_id=machine["system_id"],
+                            driver_type=bmc["power_type"],
+                            driver_opts=bmc["power_parameters"],
+                            task_queue=worker.task_queue,
+                            is_dpu=machine["is_dpu"],
+                        ),
+                    ),
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                )
+
+                assert (
+                    await wf.describe()
+                ).status == WorkflowExecutionStatus.RUNNING
+
+                await env.sleep(duration=timedelta(seconds=5))
+                await wf.signal("deployed-os-ready")
+                await env.sleep(duration=timedelta(seconds=5))
+
+                await wf.result()
+
+                # Only the network boot order is armed at the start; an
+                # ephemeral deploy never switches to local disk boot.
+                assert calls["get_boot_order"] == [True]
                 assert len(calls["set_boot_order"]) == 1
                 assert len(calls["power_query"]) == 1
                 assert len(calls["power_on"]) == 1
-                assert len(calls["power_cycle"]) == 0
-                assert len(calls["set_power_state"]) == 1
-                assert len(calls["power_reset"]) == 0
 
     async def test_deploy_workflow_manual_power_skips_power_actions(
         self,
@@ -1593,3 +1765,112 @@ class TestDeployWorkflow:
                 await wf.result()
 
                 temporal_calls.assert_activity_calls([])
+
+
+@pytest.mark.asyncio
+class TestConfirmPoweredOn:
+    """Unit tests for `DeployWorkflow._confirm_powered_on`.
+
+    Drives the method directly with `workflow.execute_activity` and
+    `asyncio.sleep` mocked, so the query sequence (and thus the settle and
+    debounce behavior) can be scripted deterministically without a Temporal
+    server.
+    """
+
+    def _params(self) -> DeployParam:
+        return DeployParam(
+            system_id="abc",
+            ephemeral_deploy=False,
+            can_set_boot_order=True,
+            task_queue="agent:1",
+            power_params=PowerParam(
+                system_id="abc",
+                driver_type="hmcz",
+                driver_opts={},
+                task_queue="agent:1",
+                is_dpu=False,
+            ),
+        )
+
+    async def _drive(
+        self, mocker: MockerFixture, query_states: list[str]
+    ) -> tuple[int, list[PowerState], AsyncMock]:
+        """Run `_confirm_powered_on` against a scripted query sequence.
+
+        Returns the number of power-query calls, the list of states persisted
+        via SET_POWER_STATE, and the patched sleep mock. Once `query_states`
+        is exhausted the last value is repeated, so callers can pad to
+        `CONFIRM_POWERED_ON_MAX_ATTEMPTS` or let a terminal state persist.
+        """
+        states = iter(query_states)
+        last = None
+        query_calls = 0
+        persisted: list[PowerState] = []
+
+        def execute_activity(name, *args, **kwargs):
+            nonlocal query_calls, last
+            if name == POWER_QUERY_ACTIVITY_NAME:
+                query_calls += 1
+                try:
+                    last = next(states)
+                except StopIteration:
+                    pass
+                return {"state": last}
+            if name == SET_POWER_STATE_ACTIVITY_NAME:
+                persisted.append(args[0].state)
+                return None
+            raise AssertionError(f"unexpected activity: {name}")
+
+        mocker.patch(
+            "maastemporalworker.workflow.deploy.workflow.execute_activity",
+            AsyncMock(side_effect=execute_activity),
+        )
+        sleep = AsyncMock()
+        mocker.patch("maastemporalworker.workflow.deploy.asyncio.sleep", sleep)
+
+        await DeployWorkflow()._confirm_powered_on(self._params())
+        return query_calls, persisted, sleep
+
+    async def test_settles_after_two_consecutive_on_readings(
+        self, mocker: MockerFixture
+    ) -> None:
+        query_calls, persisted, sleep = await self._drive(mocker, ["on", "on"])
+
+        assert query_calls == 2
+        assert persisted == [PowerState.ON]
+        assert sleep.await_count == 1
+
+    async def test_persists_each_state_as_it_settles(
+        self, mocker: MockerFixture
+    ) -> None:
+        query_calls, persisted, _ = await self._drive(
+            mocker, ["off", "off", "unknown", "unknown", "on", "on"]
+        )
+
+        assert query_calls == 6
+        assert persisted == [
+            PowerState.OFF,
+            PowerState.UNKNOWN,
+            PowerState.ON,
+        ]
+
+    async def test_gives_up_after_max_attempts_when_never_on(
+        self, mocker: MockerFixture
+    ) -> None:
+        query_calls, persisted, sleep = await self._drive(mocker, ["off"])
+
+        assert query_calls == CONFIRM_POWERED_ON_MAX_ATTEMPTS
+        assert persisted == [PowerState.OFF]
+        assert sleep.await_count == CONFIRM_POWERED_ON_MAX_ATTEMPTS
+
+    async def test_ignores_single_flaky_reading(
+        self, mocker: MockerFixture
+    ) -> None:
+        # A one-off "on" seen on a single poll (not confirmed on the next)
+        # must never be persisted.
+        _, persisted, _ = await self._drive(
+            mocker, ["off", "off", "on", "off"]
+        )
+
+        assert PowerState.ON not in persisted
+        assert persisted == [PowerState.OFF]

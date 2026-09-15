@@ -16,7 +16,15 @@ from maasserver.enum import (
     NODE_STATUS,
     PARTITION_TABLE_TYPE,
 )
-from maasserver.models import Bcache, Filesystem, RAID, VMFS, VolumeGroup
+from maasserver.exceptions import PreseedError
+from maasserver.models import (
+    Bcache,
+    Filesystem,
+    PhysicalBlockDevice,
+    RAID,
+    VMFS,
+    VolumeGroup,
+)
 from maasserver.models.partitiontable import (
     BIOS_GRUB_PARTITION_SIZE,
     PARTITION_TABLE_EXTRA_SPACE,
@@ -2428,3 +2436,81 @@ class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
         node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config, True)
+
+
+class TestDuplicateDiskIdentity(MAASServerTestCase):
+    def test_falls_back_to_path_when_disks_share_model_and_serial(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, with_boot_disk=False
+        )
+        sda = factory.make_PhysicalBlockDevice(
+            node=node, name="sda", bootable=True
+        )
+        sdb = factory.make_PhysicalBlockDevice(node=node, name="sdb")
+        PhysicalBlockDevice.objects.filter(id=sda.id).update(
+            model="vendor",
+            serial="duplicate-serial",
+            id_path="/dev/disk/by-id/wwn-0xaaa",
+        )
+        PhysicalBlockDevice.objects.filter(id=sdb.id).update(
+            model="vendor",
+            serial="duplicate-serial",
+            id_path="/dev/disk/by-id/wwn-0xbbb",
+        )
+        node._create_acquired_filesystems()
+        config = yaml.safe_load(compose_curtin_storage_config(node)[0])
+        disks = {
+            entry["id"]: entry
+            for entry in config["storage"]["config"]
+            if entry["type"] == "disk"
+        }
+        self.assertNotIn("serial", disks["sda"])
+        self.assertNotIn("model", disks["sda"])
+        self.assertEqual("/dev/disk/by-id/wwn-0xaaa", disks["sda"]["path"])
+        self.assertNotIn("serial", disks["sdb"])
+        self.assertNotIn("model", disks["sdb"])
+        self.assertEqual("/dev/disk/by-id/wwn-0xbbb", disks["sdb"]["path"])
+
+    def test_raises_error_when_duplicate_disks_have_no_distinct_id_path(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, with_boot_disk=False
+        )
+        sda = factory.make_PhysicalBlockDevice(
+            node=node, name="sda", bootable=True
+        )
+        sdb = factory.make_PhysicalBlockDevice(node=node, name="sdb")
+        PhysicalBlockDevice.objects.filter(id=sda.id).update(
+            model="vendor",
+            serial="duplicate-serial",
+            id_path="/dev/disk/by-id/wwn-0xaaa",
+        )
+        PhysicalBlockDevice.objects.filter(id=sdb.id).update(
+            model="vendor",
+            serial="duplicate-serial",
+            id_path="/dev/disk/by-id/wwn-0xaaa",
+        )
+        node._create_acquired_filesystems()
+        error = self.assertRaises(
+            PreseedError, compose_curtin_storage_config, node
+        )
+        self.assertIn("sda", str(error))
+        self.assertIn("sdb", str(error))
+        self.assertIn("duplicate-serial", str(error))
+
+    def test_allows_disks_with_distinct_model_and_serial(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, with_boot_disk=False
+        )
+        factory.make_PhysicalBlockDevice(
+            node=node,
+            name="sda",
+            model="vendor",
+            serial="serial-a",
+            bootable=True,
+        )
+        factory.make_PhysicalBlockDevice(
+            node=node, name="sdb", model="vendor", serial="serial-b"
+        )
+        node._create_acquired_filesystems()
+        # Does not raise.
+        compose_curtin_storage_config(node)

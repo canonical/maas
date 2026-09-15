@@ -1,9 +1,11 @@
-# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
 import random
+from unittest.mock import MagicMock
 
+from maasserver import openfga
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
@@ -542,3 +544,21 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         vlan = reload_object(vlan)
         self.assertTrue(vlan.dhcp_on)
         self.assertEqual(rack, vlan.primary_rack)
+
+
+class TestVLANHandlerViewPermission(MAASServerTestCase):
+    def deny_global_view(self):
+        client = openfga.get_openfga_client()
+        client.can_view_global_entities = MagicMock(return_value=False)
+
+    def test_list_requires_view_permission(self):
+        self.deny_global_view()
+        handler = VLANHandler(factory.make_User(), {}, None)
+        factory.make_VLAN()
+        self.assertRaises(HandlerPermissionError, handler.list, {})
+
+    def test_get_requires_view_permission(self):
+        self.deny_global_view()
+        vlan = factory.make_VLAN()
+        handler = VLANHandler(factory.make_User(), {}, None)
+        self.assertRaises(HandlerPermissionError, handler.get, {"id": vlan.id})
