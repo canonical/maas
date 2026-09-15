@@ -5,10 +5,13 @@ been removed in MAAS 4.0. Upgrading a deployment that still relies on it would
 silently disable external logins and could lock out administrators. This migration
 makes the transition explicit and cleans up the leftover state:
 
-1. If external authentication is still configured (the config secret is present
-   in ``maasserver_secret``, the local/database secret backend), the upgrade is
-   aborted. External authentication must be disabled first so administrators do
-   not get locked out.
+1. If external authentication is still configured, the upgrade is aborted.
+   External authentication must be disabled first so administrators do not get
+   locked out. The external-auth config secret is looked up in whichever secret
+   backend the deployment uses: when Vault is enabled (the ``vault_enabled``
+   config is true) the secret lives in Vault and is tracked by a non-deleted
+   ``maasserver_vaultsecret`` row; otherwise it is stored directly in the
+   local/database ``maasserver_secret`` table.
 
 2. Once external authentication is disabled, the Candid/RBAC user accounts are
    permanently deleted, together with their SSH keys, SSL keys, API tokens,
@@ -22,10 +25,6 @@ makes the transition explicit and cleans up the leftover state:
    addresses), the upgrade is aborted with the list of offending users so an
    administrator can reassign or release those resources first. Users are never
    deleted while they still own something.
-
-The ``maasserver_vaultsecret`` reference table is intentionally NOT used: it is
-only maintained by the legacy code path and is not populated when secrets are
-managed through the v3 stack, so it cannot be relied upon.
 
 Revision ID: 0038
 Revises: 0037
@@ -83,14 +82,44 @@ CANDID_RBAC_USER_IDS_SQL = (
 )
 
 
+def _external_auth_configured(conn) -> bool:
+    """Return whether the external-auth config secret is still present.
+
+    The secret backend depends on the deployment: when Vault is enabled the
+    secret is stored in Vault and referenced by a non-deleted
+    ``maasserver_vaultsecret`` row; otherwise it lives in the local
+    ``maasserver_secret`` table.
+    """
+    vault_enabled = conn.execute(
+        text(
+            "SELECT value = 'true'::jsonb FROM maasserver_config "
+            "WHERE name = 'vault_enabled'"
+        )
+    ).scalar()
+
+    if vault_enabled:
+        return bool(
+            conn.execute(
+                text(
+                    "SELECT 1 FROM maasserver_vaultsecret "
+                    "WHERE path = :path AND deleted = false LIMIT 1"
+                ),
+                {"path": EXTERNAL_AUTH_SECRET_PATH},
+            ).scalar()
+        )
+
+    return bool(
+        conn.execute(
+            text("SELECT 1 FROM maasserver_secret WHERE path = :path LIMIT 1"),
+            {"path": EXTERNAL_AUTH_SECRET_PATH},
+        ).scalar()
+    )
+
+
 def upgrade() -> None:
     conn = op.get_bind()
 
-    secret_configured = conn.execute(
-        text("SELECT 1 FROM maasserver_secret WHERE path = :path LIMIT 1"),
-        {"path": EXTERNAL_AUTH_SECRET_PATH},
-    ).scalar()
-    if secret_configured:
+    if _external_auth_configured(conn):
         raise RuntimeError(EXTERNAL_AUTH_CONFIGURED_MESSAGE)
 
     user_ids = [
