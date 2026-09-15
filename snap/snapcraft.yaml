@@ -122,7 +122,6 @@ parts:
     plugin: go
     build-packages:
       - golang-go
-    after: [go-deps]
     build-environment:
       - GOFIPS140: "latest"
     source-type: git
@@ -356,7 +355,6 @@ parts:
     source: src/host-info
     build-packages:
       - golang-go
-    after: [go-deps]
     build-environment:
       - GOFIPS140: "latest"
 
@@ -365,7 +363,6 @@ parts:
     source: src/maasagent
     build-packages:
       - golang-go
-    after: [go-deps]
     build-environment:
       - GOFIPS140: "latest"
     organize:
@@ -378,7 +375,6 @@ parts:
     source: src/maasagent
     build-packages:
       - golang-go
-    after: [go-deps]
     build-environment:
       - GOFIPS140: "latest"
       - GOFLAGS: "${GOFLAGS:-} -mod=readonly"

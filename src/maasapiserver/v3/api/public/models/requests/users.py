@@ -100,7 +100,8 @@ class UserCreateRequest(BaseUserRequest):
 class UserUpdateRequest(BaseUserRequest):
     password: str | None = Field(min_length=1, default=None)
 
-    @validator("password")
+    @field_validator("password")
+    @classmethod
     def _check_password(cls, v: str | None) -> str | None:
         if v is None:
             return v
@@ -133,7 +134,7 @@ class UserUpdateRequestAdmin(UserUpdateRequest):
 class UserChangePasswordRequest(BaseModel):
     password: str = Field(..., min_length=1)
 
-    # TODO: move to @field_validator when we migrate to pydantic 2.x.
-    @validator("password")
+    @field_validator("password")
+    @classmethod
     def _check_password(cls, v: str) -> str:
         return _enforce_password_complexity(v)

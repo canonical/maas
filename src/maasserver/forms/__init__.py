@@ -1293,7 +1293,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
             except (ValueError, TypeError):
                 power_parameters = {}
 
-        if power_type and power_parameters:
+        if power_type:
             apply_fips_power_validation(self, power_type, power_parameters)
 
         return cleaned_data

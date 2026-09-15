@@ -222,7 +222,7 @@ func (d *Daemon) startServices(ctx context.Context, g *errgroup.Group) error {
 		workerPoolOptions = append(workerPoolOptions, worker.WithConfigurator(svc))
 	}
 
-	var temporalHost str = d.cfg.ControllerURL.Hostname()
+	temporalHost := d.cfg.ControllerURL.Hostname()
 	if d.dynCfg.Temporal.Host != "" {
 		temporalHost = d.dynCfg.Temporal.Host
 	}
