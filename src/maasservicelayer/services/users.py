@@ -1,6 +1,7 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import asyncio
 import hashlib
 from time import time
 from typing import List
@@ -391,8 +392,8 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
                 ]
             )
 
-        if current_password is not None and not PBKDF2PasswordHasher().verify(
-            current_password, user.password
+        if current_password is not None and not await asyncio.to_thread(
+            PBKDF2PasswordHasher().verify, current_password, user.password
         ):
             raise BadRequestException(
                 details=[
