@@ -27,7 +27,7 @@ class SecretsRepository(Repository):
 
     async def get(self, path: str) -> Secret | None:
         stmt = (
-            select("*")
+            select(SecretTable)
             .select_from(SecretTable)
             .where(eq(SecretTable.c.path, path))
         )
@@ -41,13 +41,7 @@ class SecretsRepository(Repository):
 
 
 class VaultSecretsRepository(Repository):
-    """Track the Vault secrets managed by MAAS.
-
-    Deletions are not performed immediately in Vault: the secret is only
-    marked for deletion here, and a recurrent cleanup job removes it from
-    Vault asynchronously. This avoids accidental data loss if a transaction
-    fails after the secret has been removed from Vault.
-    """
+    """Track the Vault secrets managed by MAAS."""
 
     async def create_or_update(self, path: str) -> None:
         insert_stmt = insert(VaultSecretTable).values(path=path, deleted=False)
@@ -59,7 +53,7 @@ class VaultSecretsRepository(Repository):
 
     async def get(self, path: str) -> VaultSecret | None:
         stmt = (
-            select("*")
+            select(VaultSecretTable)
             .select_from(VaultSecretTable)
             .where(eq(VaultSecretTable.c.path, path))
         )

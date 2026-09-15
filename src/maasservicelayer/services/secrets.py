@@ -157,8 +157,8 @@ class VaultSecretsService(SecretsService):
     ) -> None:
         vault_manager = self._get_vault_manager()
         path = model.get_secret_path()
-        await vault_manager.set(path, value)
         await self.vault_secrets_repository.create_or_update(path)
+        await vault_manager.set(path, value)
 
     async def delete(self, model: SecretModel) -> None:
         # The secret is not removed from Vault immediately: it is only marked
