@@ -563,7 +563,7 @@ class Handler(metaclass=HandlerMetaclass):
         """Enforce the configured view permission before listing objects.
 
         The check is delegated to the authorization backend (`has_perm`),
-        which is the single source of truth for RBAC and OpenFGA. For
+        which is the single source of truth for OpenFGA. For
         object-scoped permissions (e.g. machines, pods) the backend cannot
         evaluate the permission against the model class and signals this by
         raising; those handlers restrict their results in `get_queryset`

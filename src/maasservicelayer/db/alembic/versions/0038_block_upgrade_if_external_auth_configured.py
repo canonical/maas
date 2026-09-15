@@ -1,9 +1,9 @@
 """Clean up legacy Candid/RBAC external authentication on upgrade
 
 Support for the legacy Candid/RBAC (macaroon-based) external authentication has
-been removed. Upgrading a deployment that still relies on it would silently
-disable external logins and could lock out administrators. This migration makes
-the transition explicit and cleans up the leftover state:
+been removed in MAAS 4.0. Upgrading a deployment that still relies on it would
+silently disable external logins and could lock out administrators. This migration
+makes the transition explicit and cleans up the leftover state:
 
 1. If external authentication is still configured (the config secret is present
    in ``maasserver_secret``, the local/database secret backend), the upgrade is

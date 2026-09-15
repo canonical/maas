@@ -10,7 +10,6 @@ from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.dhcp import configure_dhcp_on_agents
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.reservedip import ReservedIP
-from maasserver.rbac import rbac
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
@@ -282,11 +281,6 @@ class TestReservedIPHandler(MAASServerTestCase):
         )
         user = factory.make_User()
         handler = ReservedIPHandler(user, {}, None)
-
-        # Warm the RBAC enabled-state cache: the view-permission check reads
-        # it lazily (one DB query), and RBACClearFixture resets it each test.
-        # Priming here keeps that one-off query out of the measured count.
-        rbac.is_enabled()
 
         num_queries, reserved_ips = count_queries(handler.list, {})
         self.assertEqual(len(reserved_ips), 1)

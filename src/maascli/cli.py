@@ -266,7 +266,6 @@ REGIOND_COMMANDS = (
 DB_ONLY_REGIOND_COMMANDS = frozenset(
     {
         "apikey",
-        "configauth",
         "config-tls",
         "config-vault",
         "msm",
