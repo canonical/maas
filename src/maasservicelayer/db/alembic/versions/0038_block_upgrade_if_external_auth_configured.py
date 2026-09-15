@@ -173,16 +173,6 @@ def upgrade() -> None:
             {"ids": user_ids},
         )
 
-    # maasserver_operation keeps an audit trail and its user_id is nullable, so
-    # detach it from the user instead of deleting the records.
-    conn.execute(
-        text(
-            "UPDATE maasserver_operation SET user_id = NULL "
-            "WHERE user_id IN :ids"
-        ).bindparams(bindparam("ids", expanding=True)),
-        {"ids": user_ids},
-    )
-
     conn.execute(
         text(
             "DELETE FROM maasserver_userprofile WHERE user_id IN :ids"
