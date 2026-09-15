@@ -63,23 +63,15 @@ class TestConfigAuthCommand(MAASServerTestCase):
             "external-auth", {"url": "http://example.com/candid"}
         )
         call_command("configauth", candid_agent_file="")
-        self.assertEqual(
-            manager.get_composite_secret("external-auth")["url"], ""
+        self.assertIsNone(
+            manager.get_composite_secret("external-auth", default=None)
         )
 
     def test_configauth_changes_auth_prompt_default(self):
         self.read_input.return_value = ""
         call_command("configauth")
-        self.assertEqual(
-            SecretManager().get_composite_secret("external-auth"),
-            {
-                "url": "",
-                "domain": "",
-                "user": "",
-                "key": "",
-                "admin-group": "",
-                "rbac-url": "",
-            },
+        self.assertIsNone(
+            SecretManager().get_composite_secret("external-auth", default=None)
         )
 
     def test_configauth_changes_auth_invalid_rbac_url(self):
@@ -401,9 +393,8 @@ class TestConfigAuthCommand(MAASServerTestCase):
         RBACLastSync.objects.create(resource_type="resource-pool", sync_id=0)
         RBACSync.objects.create(resource_type="")
         call_command("configauth", rbac_url="none", candid_agent_file="none")
-        self.assertEqual(
-            SecretManager().get_composite_secret("external-auth")["rbac-url"],
-            "",
+        self.assertIsNone(
+            SecretManager().get_composite_secret("external-auth", default=None)
         )
         self.assertFalse(RBACLastSync.objects.all().exists())
         self.assertFalse(RBACSync.objects.all().exists())
