@@ -1,39 +1,60 @@
 name: LLM Code Review
 
-# Use pull_request_target so the workflow always runs from the main branch.
-# This gives it access to repository secrets while still being triggered by
-# PRs from forks or feature branches.
+# pull_request_target + issue_comment both run from the base branch (master),
+# so the workflow always has access to repository secrets, even for fork PRs.
+# We only ever READ the PR's files — we never execute code from the checkout.
 on:
   pull_request_target:
     types: [opened]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
   pull-requests: write
 
+concurrency:
+  group: llm-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
 env:
-  # Model can be any Gemini model name that your GEMINI_API_KEY has access to.
-  # For example:
-  #  - gemini-3.1-pro-preview
-  #  - gemini-3.1-pro-preview-customtools
-  #  - gemini-3-flash-preview
-  #  - gemini-3-flash-lite-preview
-  #  - gemini-2.5-pro
-  #  - gemini-2.5-flash
   MODEL: gemini-3.1-pro-preview
   SNAP_CHANNEL: stable
 
 jobs:
   review:
     runs-on: ubuntu-latest
+    # Run when a PR is opened, OR when someone comments "/review" on a PR
+    # (issue_comment fires for both issues and PRs, so we check .pull_request).
+    if: >
+      github.event_name == 'pull_request_target' ||
+      (github.event.issue.pull_request != null &&
+       startsWith(github.event.comment.body, '/review') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
 
     steps:
-      # 1. Check out the PR HEAD so the LLM can read the actual files being
-      #    reviewed via --repo-dir.  We do NOT run any code from this checkout.
+      # Resolve the PR number and head SHA. For pull_request_target these come
+      # straight from the event; for issue_comment we look them up via the API.
+      - name: Resolve PR context
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "issue_comment" ]; then
+            PR_NUMBER="${{ github.event.issue.number }}"
+          else
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+          fi
+          HEAD_SHA=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq '.head.sha')
+          echo "number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+
+      # Check out the PR HEAD so the LLM can read the actual files being
+      # reviewed via --repo-dir. We do NOT run any code from this checkout.
       - name: Check out PR head (for file context)
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ steps.pr.outputs.head_sha }}
 
       - name: Install maas-code-reviewer
         run: sudo snap install maas-code-reviewer --channel "$SNAP_CHANNEL"
@@ -47,12 +68,12 @@ jobs:
             --model "$MODEL" \
             --repo-dir "$GITHUB_WORKSPACE" \
             --metrics "$RUNNER_TEMP/metrics.json" \
-            "https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+            "https://github.com/${{ github.repository }}/pull/${{ steps.pr.outputs.number }}"
 
       - name: Upload metrics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: review-metrics-pr${{ github.event.pull_request.number }}
+          name: review-metrics-pr${{ steps.pr.outputs.number }}
           path: ${{ runner.temp }}/metrics.json
           retention-days: 30
