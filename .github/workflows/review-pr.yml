@@ -18,22 +18,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Model can be any Gemini model name that your GEMINI_API_KEY has access to.
-  # For example:
-  #  - gemini-3.1-pro-preview
-  #  - gemini-3.1-pro-preview-customtools
-  #  - gemini-3-flash-preview
-  #  - gemini-3-flash-lite-preview
-  #  - gemini-2.5-pro
-  #  - gemini-2.5-flash
   MODEL: gemini-3.1-pro-preview
   SNAP_CHANNEL: stable
 
 jobs:
   review:
     runs-on: ubuntu-latest
-    # Run when a PR is opened, OR when someone comments "/review" on a PR
-    # (issue_comment fires for both issues and PRs, so we check .pull_request).
     if: >
       github.event_name == 'pull_request_target' ||
       (github.event.issue.pull_request != null &&
@@ -41,8 +31,6 @@ jobs:
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
 
     steps:
-      # Resolve the PR number and head SHA. For pull_request_target these come
-      # straight from the event; for issue_comment we look them up via the API.
       - name: Resolve PR context
         id: pr
         env:
@@ -61,15 +49,10 @@ jobs:
           echo "number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
 
-      # Check out the PR HEAD so the LLM can read the actual files being
-      # reviewed via --repo-dir. We do NOT run any code from this checkout.
       - name: Check out PR head (for file context)
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: ${{ steps.pr.outputs.head_sha }}
-          # This checkout is only READ for file context; we never execute code
-          # from it. Opt out of the pull_request_target fork-checkout guard.
-          allow-unsafe-pr-checkout: true
 
       - name: Install maas-code-reviewer
         run: sudo snap install maas-code-reviewer --channel "$SNAP_CHANNEL"
