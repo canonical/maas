@@ -389,6 +389,7 @@ parts:
     build-packages:
       - golang-go
     build-environment:
+      - GOFIPS140: "latest"
       - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
     prime:
       - usr/sbin/
