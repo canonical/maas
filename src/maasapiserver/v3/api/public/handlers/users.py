@@ -232,7 +232,7 @@ class UsersHandler(Handler):
             current_password=change_password_request.current_password,
         )
         await services.users.update_by_id(
-            authenticated_user.id, change_password_request.to_builder()
+            authenticated_user.id, await change_password_request.to_builder()
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -266,7 +266,7 @@ class UsersHandler(Handler):
             )
 
         user = await services.users.update_by_id(
-            authenticated_user.id, user_request.to_builder()
+            authenticated_user.id, await user_request.to_builder()
         )
 
         current_groups = (
@@ -398,7 +398,7 @@ class UsersHandler(Handler):
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UserResponse:
-        builder = user_request.to_builder()
+        builder = await user_request.to_builder()
         builder.date_joined = utcnow()
 
         new_user = await services.users.create(builder)
@@ -462,7 +462,7 @@ class UsersHandler(Handler):
                 user_id=user_id, current_password=None
             )
         user = await services.users.update_by_id(
-            user_id, user_request.to_builder()
+            user_id, await user_request.to_builder()
         )
 
         current_groups = (
@@ -584,7 +584,7 @@ class UsersHandler(Handler):
             user_id=user_id, current_password=None
         )
         await services.users.update_by_id(
-            user_id, change_password_request.to_builder()
+            user_id, await change_password_request.to_builder()
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 

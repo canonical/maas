@@ -51,7 +51,7 @@ class TestUserModel:
             ),
         ],
     )
-    def test_check_password(
+    async def test_check_password(
         self,
         hashed_password: str,
         plaintext_password: str,
@@ -68,4 +68,4 @@ class TestUserModel:
             is_active=False,
             date_joined=datetime.datetime.now(datetime.timezone.utc),
         )
-        assert expected_result == user.check_password(plaintext_password)
+        assert expected_result == await user.check_password(plaintext_password)
