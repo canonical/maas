@@ -472,13 +472,13 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         if user is None:
             return nodes.none()
 
-        view_all_pools = (
-            get_openfga_client().list_pools_with_view_machines_access(user)
-        )
-        visible_pools = get_openfga_client().list_pools_with_view_available_machines_access(
-            user
-        )
         if perm == NodePermission.view:
+            view_all_pools = (
+                get_openfga_client().list_pools_with_view_machines_access(user)
+            )
+            visible_pools = get_openfga_client().list_pools_with_view_available_machines_access(
+                user
+            )
             condition = Q(
                 Q(Q(owner__isnull=True) | Q(owner=user))
                 & Q(pool_id__in=visible_pools)

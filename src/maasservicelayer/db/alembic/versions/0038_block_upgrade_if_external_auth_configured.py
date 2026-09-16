@@ -19,7 +19,8 @@ makes the transition explicit and cleans up the leftover state:
    identified as non-local accounts without an OIDC provider, i.e.
    ``maasserver_userprofile`` rows with ``is_local = false`` and
    ``provider_id IS NULL`` (OIDC users are also non-local but always have a
-   ``provider_id``).
+   ``provider_id``). Operation history rows are kept, but their ``user_id``
+   reference is cleared.
 
 3. If any of those users still own resources (machines, IP ranges or static IP
    addresses), the upgrade is aborted with the list of offending users so an
@@ -152,7 +153,7 @@ def upgrade() -> None:
             )
         )
 
-    # Delete the users' dependent rows before the users themselves. These are
+    # Clear the users' dependent rows before the users themselves. These are
     # the foreign keys to auth_user that use ON DELETE RESTRICT (rows with an
     # ON DELETE CASCADE constraint are removed automatically). Ownership FKs
     # (node, iprange, staticipaddress) are already guaranteed to be empty by
@@ -164,8 +165,13 @@ def upgrade() -> None:
         "DELETE FROM maasserver_sshkey WHERE user_id IN :ids",
         "DELETE FROM maasserver_sslkey WHERE user_id IN :ids",
         "DELETE FROM maasserver_notification WHERE user_id IN :ids",
+        "DELETE FROM maasserver_oidcrevokedtoken WHERE user_email IN "
+        "(SELECT username FROM auth_user WHERE id IN :ids)",
         "DELETE FROM auth_user_groups WHERE user_id IN :ids",
         "DELETE FROM auth_user_user_permissions WHERE user_id IN :ids",
+        # Operation history is kept, but the user reference is cleared (the
+        # column is nullable).
+        "UPDATE maasserver_operation SET user_id = NULL WHERE user_id IN :ids",
     )
     for statement in dependent_deletes:
         conn.execute(
