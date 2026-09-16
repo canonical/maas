@@ -5,7 +5,7 @@ from typing import AsyncIterator, Iterator, Optional
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from pydantic import BaseModel
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -93,7 +93,9 @@ def app(
 
 @pytest.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(
+        ASGITransport(app=app), base_url="http://test"
+    ) as client:
         yield client
 
 

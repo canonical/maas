@@ -249,7 +249,8 @@ class Command(BaseCommand):
                     params.append(f"sslkey={conn_params.get('sslkey', '')}")
                 if sslrootcert := conn_params.get("sslrootcert"):
                     params.append(f"sslrootcert={sslrootcert}")
-            connstring = f"{connstring}?{'&'.join(params)}"
+            if params:
+                connstring = f"{connstring}?{'&'.join(params)}"
         return connstring
 
     @classmethod

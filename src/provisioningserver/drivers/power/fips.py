@@ -23,7 +23,6 @@ DRIVER_FIPS_REGISTRY = {
     "ipmi": (DriverFIPSStatus.COMPLIANT, None),
     "manual": (DriverFIPSStatus.COMPLIANT, None),
     "mscm": (DriverFIPSStatus.COMPLIANT, None),
-    "nova": (DriverFIPSStatus.COMPLIANT, None),
     "openbmc": (DriverFIPSStatus.COMPLIANT, None),
     "proxmox": (DriverFIPSStatus.COMPLIANT, None),
     "redfish": (DriverFIPSStatus.COMPLIANT, None),
