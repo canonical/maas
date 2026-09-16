@@ -16,6 +16,10 @@ class TestSystemApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/system/info"
 
     @pytest.fixture
+    def endpoints_with_authorization(self) -> list[Endpoint]:
+        return []
+
+    @pytest.fixture
     def endpoints_with_authentication_only(self) -> list[Endpoint]:
         """The subclass should return a list of endpoints that need authentication only."""
         return [Endpoint(method="GET", path=self.BASE_PATH)]
