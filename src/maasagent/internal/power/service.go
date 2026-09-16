@@ -313,8 +313,8 @@ func (s *PowerService) PowerReset(ctx context.Context, param PowerResetParam) (*
 
 type SetBootOrderParam struct {
 	SystemID    string           `json:"system_id"`
-	PowerParams PowerParam       `json:"power_param"`
 	Order       []map[string]any `json:"order"`
+	PowerParams PowerParam       `json:"power_param"`
 }
 
 func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam) error {
