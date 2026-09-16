@@ -17,11 +17,12 @@
 package fips
 
 import (
+	"log/slog"
 	"os"
 	"strings"
 	"sync"
 
-	"github.com/rs/zerolog/log"
+	"maas.io/core/src/maasagent/internal/logger"
 )
 
 // procPath is the kernel FIPS state file. Overridable in tests.
@@ -46,30 +47,37 @@ func IsEnabled() bool {
 func detect(path string) bool {
 	//nolint:gosec // path is a hardcoded procfs file, not user input.
 	data, err := os.ReadFile(path)
+
+	infoLogger := logger.New("info")
+
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Info().
-				Bool("fips_mode", false).
-				Str("source", "file_missing").
-				Msg("fips_mode_detected")
+			//nolint:sloglint // event-name message, intentionally not a capitalized sentence
+			infoLogger.Info("fips_mode_detected",
+				slog.Bool("fips_mode", false),
+				slog.String("source", "file_missing"),
+			)
 
 			return false
 		}
 
-		log.Warn().
-			Err(err).
-			Bool("fips_mode", false).
-			Msg("fips_mode_unreadable")
+		warnLogger := logger.New("warn")
+		//nolint:sloglint // event-name message, intentionally not a capitalized sentence
+		warnLogger.Warn("fips_mode_unreadable",
+			slog.Any("error", err),
+			slog.Bool("fips_mode", false),
+		)
 
 		return false
 	}
 
 	active := strings.TrimSpace(string(data)) == "1"
 
-	log.Info().
-		Bool("fips_mode", active).
-		Str("source", path).
-		Msg("fips_mode_detected")
+	//nolint:sloglint // event-name message, intentionally not a capitalized sentence
+	infoLogger.Info("fips_mode_detected",
+		slog.Bool("fips_mode", active),
+		slog.String("source", path),
+	)
 
 	return active
 }
