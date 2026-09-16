@@ -6,56 +6,20 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from maasapiserver.common.api.base import Handler, handler
-from maasapiserver.v3.api import services
 from maasapiserver.v3.auth.base import (
     check_authentication,
     get_authenticated_user,
 )
 from maascommon.fips import get_fips_status
-from maascommon.hardening import (
-    CONF_KEYS,
-    CONF_LIST_KEYS,
-    is_hardening_enabled,
-)
-from maasserver.config import RegionConfiguration
+from maascommon.hardening import is_hardening_enabled
 from maasservicelayer.models.auth import AuthenticatedUser
-from maasservicelayer.services import ServiceCollectionV3
 from provisioningserver.utils.version import get_running_version
-
-
-class HardeningConfiguration(BaseModel):
-    """The hardening parameters as managed by `maas config-hardening`."""
-
-    api_tls_dhparam: str
-    api_bind: list[str]
-    api_int_bind: list[str]
-    prometheus_bind: str
-    temporal_bind: str
-    rpc_bind: list[str]
-    agent_api_bind: list[str]
-    dns_bind: list[str]
-    syslog_bind: list[str]
-    http_proxy_bind: list[str]
-    database_sslmode: str
-    database_sslcert: str
-    database_sslkey: str
-    database_sslrootcert: str
 
 
 class SystemInfoResponse(BaseModel):
     fips_active: bool
     hardening_active: bool
-    hardening_configuration: HardeningConfiguration | None
     version: str
-
-
-def _read_hardening_conf() -> dict:
-    """Read the regiond.conf-backed hardening parameters."""
-    scalar_keys = CONF_KEYS - CONF_LIST_KEYS
-    with RegionConfiguration.open() as cfg:
-        values: dict = {key: list(getattr(cfg, key)) for key in CONF_LIST_KEYS}
-        values.update({key: str(getattr(cfg, key)) for key in scalar_keys})
-    return values
 
 
 class SystemHandler(Handler):
@@ -68,14 +32,10 @@ class SystemHandler(Handler):
         methods=["GET"],
         tags=TAGS,
         responses={200: {"model": SystemInfoResponse}},
-        dependencies=[
-            # Additional permission checks are performed in the handler
-            Depends(check_authentication())
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_system_info(
         self,
-        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
@@ -84,18 +44,9 @@ class SystemHandler(Handler):
         fips_status = get_fips_status()
         version = await run_in_threadpool(get_running_version)
         hardening_enabled = is_hardening_enabled()
-        hardening_cfg = None
-        if await services.openfga_tuples.get_client().can_view_global_entities(
-            authenticated_user.id
-        ):
-            conf = await run_in_threadpool(_read_hardening_conf)
-            hardening_cfg = HardeningConfiguration(
-                **conf,
-            )
 
         return SystemInfoResponse(
             fips_active=fips_status.enabled,
             hardening_active=hardening_enabled,
-            hardening_configuration=hardening_cfg,
             version=version.short_version,
         )
