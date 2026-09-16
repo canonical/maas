@@ -10,7 +10,6 @@ import pytest
 
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.exceptions.catalog import PreconditionFailedException
 from maasservicelayer.exceptions.catalog import (
     NotFoundException,
     PreconditionFailedException,

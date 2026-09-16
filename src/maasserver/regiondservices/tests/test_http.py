@@ -186,10 +186,11 @@ class TestRegionHTTPService(
         self.assertIn("listen 5240;", nginx_config)
         self.assertIn("location /MAAS/api/2.0/machines {", nginx_config)
 
-
     def test_configure_sets_security_headers(self):
         cert = get_sample_cert_with_cacerts()
-        nginx_config = self._configure_to_file(http._Configuration(cert=cert, port=5443))
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=cert, port=5443)
+        )
         self.assertIn(
             "add_header X-Content-Type-Options 'nosniff';",
             nginx_config,
@@ -296,7 +297,6 @@ class TestRegionHTTPService(
             http._Configuration(cert=cert, port=5443)
         )
         self.assertNotIn("ssl_dhparam", nginx_config)
->>>>>>> 734313cca (feat(security): FIPS 140-2/140-3 and STIG/CIS compliance (#463))
 
     def test_ssl_non_fips_includes_x25519_and_chacha20(self):
         """Non-FIPS mode: X25519 curve and ChaCha20-Poly1305 ciphers present."""

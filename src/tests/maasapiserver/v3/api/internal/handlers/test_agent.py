@@ -93,9 +93,7 @@ class TestAgentsApi:
         """Returns headers required for internal API requests"""
         return {"client-cert-cn": "test-client"}
 
-    @patch(
-        "maasapiserver.v3.api.internal.handlers.agent.ClusterConfiguration"
-    )
+    @patch("maasapiserver.v3.api.internal.handlers.agent.ClusterConfiguration")
     async def test_agent_config_200_without_system_id(
         self,
         mock_cluster_config,
@@ -105,9 +103,7 @@ class TestAgentsApi:
         internal_api_headers: dict,
     ) -> None:
         internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
-        mock_cluster_config.open.return_value.__enter__.return_value.temporal_server = (
-            "temporal.example:7233"
-        )
+        mock_cluster_config.open.return_value.__enter__.return_value.temporal_server = "temporal.example:7233"
         mock_agent = Agent(id=1, uuid=UUID, rack_id=1)
         services_mock.agents = Mock(AgentsService)
         services_mock.agents.get_one.return_value = mock_agent
@@ -135,9 +131,7 @@ class TestAgentsApi:
         assert response_json["temporal"]["host"] == "temporal.example:7233"
         assert "ETag" in response.headers
 
-    @patch(
-        "maasapiserver.v3.api.internal.handlers.agent.ClusterConfiguration"
-    )
+    @patch("maasapiserver.v3.api.internal.handlers.agent.ClusterConfiguration")
     async def test_agent_config_200_with_system_id(
         self,
         mock_cluster_config,
@@ -147,9 +141,7 @@ class TestAgentsApi:
         internal_api_headers: dict,
     ) -> None:
         internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
-        mock_cluster_config.open.return_value.__enter__.return_value.temporal_server = (
-            "temporal.example:7233"
-        )
+        mock_cluster_config.open.return_value.__enter__.return_value.temporal_server = "temporal.example:7233"
         mock_agent = Agent(id=1, uuid=UUID, rack_id=1, rackcontroller_id=42)
         services_mock.agents = Mock(AgentsService)
         services_mock.agents.get_one.return_value = mock_agent

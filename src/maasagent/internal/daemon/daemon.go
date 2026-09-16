@@ -261,7 +261,7 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 
 		d.dynCfg = &DynamicConfig{
 			Temporal: TemporalConfig{
-				Host:          dynCfg.Host,
+				Host:          dynCfg.Temporal.Host,
 				EncryptionKey: dynCfg.RPCSecret,
 			},
 			SystemID:  dynCfg.SystemID,

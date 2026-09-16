@@ -14,8 +14,6 @@ from temporalio.api.workflowservice.v1 import (
 from temporalio.worker import Worker as TemporalWorker
 
 from maascommon.workflows.interceptors import ContextPropagationInterceptor
-from maastemporalworker.worker import Worker
-from provisioningserver.utils.env import MAAS_SHARED_SECRET
 from maastemporalworker.worker import get_client_async, Worker
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 

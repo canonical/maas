@@ -128,6 +128,7 @@ from provisioningserver.utils.config import (
     DirectoryString,
     ExtendedURL,
     OneWayStringBool,
+    UnicodeString,
 )
 from provisioningserver.utils.fs import atomic_write, RunLock
 

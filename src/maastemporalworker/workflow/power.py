@@ -357,9 +357,9 @@ def fetch_trusted_ssh_host_keys(
     from maasserver.models.trustedsshhostkey import TrustedSshHostKey
 
     keys = list(
-        TrustedSshHostKey.objects.filter(host=power_address).values_list(
-            "host", "key_type", "public_key"
-        )
+        TrustedSshHostKey.objects.filter(  # pyright: ignore[reportAttributeAccessIssue]
+            host=power_address
+        ).values_list("host", "key_type", "public_key")
     )
     if not keys:
         return None

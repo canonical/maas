@@ -217,9 +217,7 @@ class SshHostKeysHandler(Handler):
         ssh_host_key_id: int,
         ssh_host_key_request: SshHostKeyRequest,
         response: Response,
-        etag_if_match: str | None = Header(
-            alias="if-match", default=None
-        ),
+        etag_if_match: str | None = Header(alias="if-match", default=None),
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SshHostKeyResponse:
         builder = ssh_host_key_request.to_builder()

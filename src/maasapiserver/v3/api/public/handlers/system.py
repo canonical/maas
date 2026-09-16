@@ -6,8 +6,9 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from maasapiserver.common.api.base import Handler, handler
+from maasapiserver.v3.api import services
 from maasapiserver.v3.auth.base import (
-    check_permissions,
+    check_authentication,
     get_authenticated_user,
 )
 from maascommon.fips import get_fips_status
@@ -17,8 +18,8 @@ from maascommon.hardening import (
     is_hardening_enabled,
 )
 from maasserver.config import RegionConfiguration
-from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.services import ServiceCollectionV3
 from provisioningserver.utils.version import get_running_version
 
 
@@ -68,11 +69,13 @@ class SystemHandler(Handler):
         tags=TAGS,
         responses={200: {"model": SystemInfoResponse}},
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            # Additional permission checks are performed in the handler
+            Depends(check_authentication())
         ],
     )
     async def get_system_info(
         self,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
             get_authenticated_user
         ),
@@ -82,7 +85,9 @@ class SystemHandler(Handler):
         version = await run_in_threadpool(get_running_version)
         hardening_enabled = is_hardening_enabled()
         hardening_cfg = None
-        if UserRole.ADMIN in authenticated_user.roles:
+        if await services.openfga_tuples.get_client().can_view_global_entities(
+            authenticated_user.id
+        ):
             conf = await run_in_threadpool(_read_hardening_conf)
             hardening_cfg = HardeningConfiguration(
                 **conf,

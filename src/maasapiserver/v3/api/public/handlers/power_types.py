@@ -10,8 +10,7 @@ from maasapiserver.v3.api.public.models.responses.power_types import (
     PowerTypeResponse,
     PowerTypesListResponse,
 )
-from maasapiserver.v3.auth.base import check_permissions
-from maasservicelayer.auth.jwt import UserRole
+from maasapiserver.v3.auth.base import check_authentication
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -25,9 +24,7 @@ class PowerTypesHandler(Handler):
         methods=["GET"],
         tags=TAGS,
         responses={200: {"model": PowerTypesListResponse}},
-        dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def list_power_types(
         self,

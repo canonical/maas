@@ -56,8 +56,8 @@ from maasservicelayer.models.secrets import (
 )
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
-from provisioningserver.config import ClusterConfiguration
 from provisioningserver.certificates import Certificate, CertificateRequest
+from provisioningserver.config import ClusterConfiguration
 
 logger = structlog.get_logger()
 

@@ -1174,25 +1174,25 @@ class WindowsKmsHostConfig(Config[str | None]):
     value: str | None = Field(default=default, description=description)
 
 
-class HardeningEnabledConfig(Config[Optional[str]]):
+class HardeningEnabledConfig(Config[str | None]):
     is_public: ClassVar[bool] = False
     name: ClassVar[str] = "hardening_enabled"
-    default: ClassVar[Optional[str]] = "auto"
+    default: ClassVar[str | None] = "auto"
     description: ClassVar[str] = "Hardening mode: auto, on, or off"
-    value: Optional[str] = Field(default=default, description=description)
+    value: str | None = Field(default=default, description=description)
 
 
-class FipsEnabledConfig(Config[Optional[bool]]):
+class FipsEnabledConfig(Config[bool | None]):
     is_public: ClassVar[bool] = False
     name: ClassVar[str] = "fips_enabled"
-    default: ClassVar[Optional[bool]] = None
+    default: ClassVar[bool | None] = None
     description: ClassVar[str] = (
         "Declared FIPS posture: True if the deployment is intended to "
         "run on a FIPS-enabled host, False if explicitly not, None if "
         "undeclared.  Advisory only — does not gate any FIPS-conditional "
         "behaviour; runtime FIPS state is always read from the host."
     )
-    value: Optional[bool] = Field(default=default, description=description)
+    value: bool | None = Field(default=default, description=description)
 
 
 class ConfigFactory:

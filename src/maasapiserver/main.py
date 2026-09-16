@@ -87,6 +87,7 @@ def config_uvicorn_logging(level=logging.INFO) -> None:
         logging.ERROR if level == logging.INFO else level
     )
 
+
 async def load_hardening_configuration(db: Database) -> None:
     _hardening_value: HardeningMode | None = None
     try:

@@ -2,8 +2,8 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 """Security-related logging helpers for MAAS."""
 
-import logging
 import hashlib
+import logging
 from ssl import SSLObject, SSLSocket
 
 # Security Log Type
@@ -56,6 +56,7 @@ FIPS_DRIVER_REJECTED = "fips_driver_rejected"
 
 _log = logging.getLogger("maas.fips")
 
+
 def hash_token_for_logging(token: str) -> str:
     """
     Hash a token using SHA-256 for secure logging.
@@ -78,6 +79,7 @@ def hash_token_for_logging(token: str) -> str:
     if not token or not token.strip():
         return "<empty_token>"
     return hashlib.sha256(token.encode()).hexdigest()
+
 
 def log_fips_tls_handshake(
     *,

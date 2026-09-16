@@ -22,7 +22,6 @@ from django.db.models import (
     CASCADE,
     CharField,
     Count,
-    F,
     ForeignKey,
     JSONField,
     Manager,
@@ -1683,15 +1682,9 @@ class Interface(CleanSave, TimestampedModel):
                     f"{mac}, {ip}"
                 )
         else:
-            # Use a single-round-trip UPDATE to avoid a REPEATABLE READ
-            # conflict: loading the row and then saving it in the same
-            # transaction races with concurrent deletions or updates.
-            Neighbour.objects.filter(pk=neighbour.pk).update(
-                time=time,
-                count=F("count") + 1,
-                updated=timezone.now(),
-            )
-            neighbour.refresh_from_db()
+            neighbour.time = time
+            neighbour.count += 1
+            neighbour.save(update_fields=["time", "count", "updated"])
         return neighbour
 
     def update_mdns_entry(self, avahi_json: dict):

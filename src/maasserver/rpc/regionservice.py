@@ -324,24 +324,6 @@ class Region(SecuredRPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.ReportNeighbours`.
         """
-
-        def _suppress_retryable(failure):
-            # After all retries are exhausted the @transactional decorator
-            # lets the final OperationalError propagate.  ReportNeighbours is
-            # a best-effort observation; losing one update under extreme ARP
-            # contention is acceptable.  Log at warning level so the noise
-            # doesn't fill syslog as [critical].
-            if failure.check(DatabaseError) and is_retryable_failure(
-                failure.value
-            ):
-                log.info(
-                    "Discarding retryable DB failure in ReportNeighbours "
-                    "after exhausting retries: {err}",
-                    err=failure.value,
-                )
-                return {}
-            return failure
-
         d = deferToDatabase(
             rackcontrollers.report_neighbours, system_id, neighbours
         )

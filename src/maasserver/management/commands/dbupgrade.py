@@ -370,9 +370,7 @@ class Command(BaseCommand):
         alembic_cfg = config.Config(alembic_ini_path)
         alembic_cfg.set_main_option("run_migrations", "true")
         conn_params = conn.get_connection_params()
-        dsn = self._build_postgres_dsn(
-            conn_params, "postgresql+asyncpg"
-        )
+        dsn = self._build_postgres_dsn(conn_params, "postgresql+asyncpg")
         alembic_cfg.set_main_option("sqlalchemy.url", dsn)
         alembic_cfg.attributes["connect_args"] = (
             self._build_alembic_connect_args(conn_params)
