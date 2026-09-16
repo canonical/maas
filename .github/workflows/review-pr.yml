@@ -18,6 +18,14 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # Model can be any Gemini model name that your GEMINI_API_KEY has access to.
+  # For example:
+  #  - gemini-3.1-pro-preview
+  #  - gemini-3.1-pro-preview-customtools
+  #  - gemini-3-flash-preview
+  #  - gemini-3-flash-lite-preview
+  #  - gemini-2.5-pro
+  #  - gemini-2.5-flash
   MODEL: gemini-3.1-pro-preview
   SNAP_CHANNEL: stable
 
