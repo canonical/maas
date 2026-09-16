@@ -360,6 +360,9 @@ class MacaroonAuthenticationProvider:
         user = await request.state.services.users.update_by_id(
             user.id, user_builder
         )
+        await request.state.services.external_auth.update_openfga_group_membership(
+            user_id=user.id, is_superuser=user.is_superuser
+        )
 
         profile_builder = UserProfileBuilder()
         profile_builder.auth_last_check = now

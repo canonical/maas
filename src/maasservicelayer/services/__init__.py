@@ -682,6 +682,7 @@ class ServiceCollectionV3:
             context=context,
             secrets_service=services.secrets,
             users_service=services.users,
+            usergroups_service=services.usergroups,
             external_auth_repository=ExternalAuthRepository(context),
             cache=cache.get(
                 ExternalAuthService.__name__,

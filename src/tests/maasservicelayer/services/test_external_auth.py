@@ -81,6 +81,10 @@ from maasservicelayer.services.external_auth import (
 )
 from maasservicelayer.services.secrets import SecretNotFound
 from maasservicelayer.services.tokens import OIDCRevokedTokenService
+from maasservicelayer.services.usergroups import (
+    UserAlreadyInGroup,
+    UserGroupsService,
+)
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.encryptor import Encryptor
 from provisioningserver.security import to_bin, to_hex
@@ -109,6 +113,80 @@ TEST_CONFIG_RBAC = {
 
 @pytest.mark.asyncio
 class TestExternalAuthService:
+    @pytest.fixture
+    def usergroups_service(self):
+        service = Mock(UserGroupsService)
+        service.get_one.side_effect = [Mock(id=10), Mock(id=20)]
+        return service
+
+    @pytest.fixture
+    def external_auth_service(self, usergroups_service):
+        return ExternalAuthService(
+            context=Context(),
+            secrets_service=Mock(SecretsService),
+            users_service=Mock(UsersService),
+            external_auth_repository=Mock(ExternalAuthRepository),
+            usergroups_service=usergroups_service,
+            cache=ExternalAuthService.build_cache_object(),
+        )
+
+    async def test_update_openfga_group_membership_for_superuser(
+        self, external_auth_service, usergroups_service
+    ):
+        await external_auth_service.update_openfga_group_membership(
+            user_id=30, is_superuser=True
+        )
+
+        usergroups_service.add_user_to_group_by_id.assert_awaited_once_with(
+            user_id=30, group_id=10
+        )
+        usergroups_service.remove_user_from_group.assert_awaited_once_with(
+            user_id=30, group_id=20
+        )
+
+    async def test_update_openfga_group_membership_for_regular_user(
+        self, external_auth_service, usergroups_service
+    ):
+        await external_auth_service.update_openfga_group_membership(
+            user_id=30, is_superuser=False
+        )
+
+        usergroups_service.add_user_to_group_by_id.assert_awaited_once_with(
+            user_id=30, group_id=20
+        )
+        usergroups_service.remove_user_from_group.assert_awaited_once_with(
+            user_id=30, group_id=10
+        )
+
+    async def test_update_openfga_group_membership_ignores_existing_membership(
+        self,
+        external_auth_service,
+        usergroups_service,
+    ):
+        usergroups_service.add_user_to_group_by_id.side_effect = (
+            UserAlreadyInGroup()
+        )
+
+        await external_auth_service.update_openfga_group_membership(
+            user_id=30, is_superuser=True
+        )
+
+        usergroups_service.remove_user_from_group.assert_awaited_once_with(
+            user_id=30, group_id=20
+        )
+
+    async def test_update_openfga_group_membership_skips_missing_groups(
+        self, external_auth_service, usergroups_service
+    ):
+        usergroups_service.get_one.side_effect = [None, None]
+
+        await external_auth_service.update_openfga_group_membership(
+            user_id=30, is_superuser=False
+        )
+
+        usergroups_service.add_user_to_group_by_id.assert_not_awaited()
+        usergroups_service.remove_user_from_group.assert_not_awaited()
+
     async def test_get_external_auth_candid(self) -> None:
         secrets_service_mock = Mock(SecretsService)
         secrets_service_mock.get_composite_secret.return_value = (
@@ -118,6 +196,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -139,6 +218,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -158,6 +238,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -176,6 +257,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -195,6 +277,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -213,6 +296,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -236,6 +320,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -266,6 +351,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=external_auth_repository_mock,
         )
@@ -286,6 +372,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=Mock(SecretsService),
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=external_auth_repository_mock,
         )
@@ -306,6 +393,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=external_auth_repository_mock,
         )
@@ -332,6 +420,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=external_auth_repository_mock,
         )
@@ -376,6 +465,7 @@ class TestExternalAuthService:
             context=Context(trace_id="1224"),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=external_auth_repository_mock,
         )
@@ -410,6 +500,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -435,6 +526,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=Mock(SecretsService),
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -474,6 +566,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=Mock(SecretsService),
             users_service=users_service_mock,
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -538,6 +631,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=Mock(SecretsService),
             users_service=users_service_mock,
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -568,6 +662,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -589,6 +684,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -625,6 +721,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -684,6 +781,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -748,6 +846,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
@@ -780,6 +879,7 @@ class TestExternalAuthService:
             context=Context(),
             secrets_service=secrets_service_mock,
             users_service=Mock(UsersService),
+            usergroups_service=Mock(UserGroupsService),
             cache=ExternalAuthService.build_cache_object(),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
