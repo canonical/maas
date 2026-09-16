@@ -357,19 +357,7 @@ parts:
       - golang-go
     build-environment:
       - GOFIPS140: "latest"
-
-  maas-netmon:
-    plugin: make
-    source: src/maasagent
-    build-packages:
-      - golang-go
-    build-environment:
-      - GOFIPS140: "latest"
-    organize:
-      bin/maas-netmon: usr/sbin/maas-netmon
-    prime:
-      - usr/share/maas/machine-resources
-
+    
   maas-agent:
     plugin: make
     source: src/maasagent
@@ -378,8 +366,6 @@ parts:
     build-environment:
       - GOFIPS140: "latest"
       - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
-    organize:
-      bin/maas-agent: usr/sbin/maas-agent
     prime:
       - usr/sbin/
 
