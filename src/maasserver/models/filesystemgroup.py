@@ -139,13 +139,29 @@ class BaseFilesystemGroupManager(Manager):
         """
         prefix = filesystem_group.get_name_prefix()
         node = filesystem_group.get_node()
+        # Collect names from both FilesystemGroups and BlockDevices to avoid
+        # unique constraint violations when auto-generating names that could
+        # collide with existing PhysicalBlockDevices or VirtualBlockDevices.
+        # LP:#2167420
+        from maasserver.models.blockdevice import BlockDevice
+
+        fg_names = (
+            self.filter_by_node(node)
+            .filter(name__startswith=prefix)
+            .values_list("name", flat=True)
+        )
+        bd_names = (
+            BlockDevice.objects.filter(
+                node_config=node.current_config, name__startswith=prefix
+            ).values_list("name", flat=True)
+            if node is not None
+            else []
+        )
         idx = -1
-        for filesystem_group in self.filter_by_node(node).filter(
-            name__startswith=prefix
-        ):
-            name = filesystem_group.name.replace(prefix, "")
+        for name in list(fg_names) + list(bd_names):
+            suffix = name.removeprefix(prefix)
             try:
-                name_idx = int(name)
+                name_idx = int(suffix)
             except ValueError:
                 pass
             else:
