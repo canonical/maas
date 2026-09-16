@@ -549,6 +549,23 @@ class TestFilesystemGroupManager(MAASServerTestCase):
             ),
         )
 
+    def test_get_available_name_skips_block_device_names(self):
+        node = factory.make_Node()
+        prefix = FilesystemGroup.get_name_prefix(FILESYSTEM_GROUP_TYPE.BCACHE)
+        # Create a PhysicalBlockDevice with name "bcache0" to simulate
+        # a name that would collide with the auto-generated bcache name.
+        factory.make_PhysicalBlockDevice(
+            node=node,
+            name=f"{prefix}0",
+        )
+        self.assertEqual(
+            f"{prefix}1",
+            FilesystemGroup.objects.get_available_name_for_node(
+                FILESYSTEM_GROUP_TYPE.BCACHE,
+                node,
+            ),
+        )
+
 
 class TestVolumeGroupManager(MAASServerTestCase):
     """Tests for the `VolumeGroupManager`."""

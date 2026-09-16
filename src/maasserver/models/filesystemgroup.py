@@ -27,6 +27,7 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE_CHOICES,
     FILESYSTEM_TYPE,
 )
+from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.numa import NUMANode
@@ -134,11 +135,23 @@ class BaseFilesystemGroupManager(Manager):
     def get_available_name_for_node(self, group_type, node):
         """Return an available name for the given group_type and node."""
         prefix = FilesystemGroup.get_name_prefix(group_type)
+        # Collect names from both FilesystemGroups and BlockDevices to avoid
+        # unique constraint violations when auto-generating names that could
+        # collide with existing PhysicalBlockDevices or VirtualBlockDevices.
+        # LP:#2167420
+        fg_names = (
+            self.filter_by_node(node)
+            .filter(name__startswith=prefix)
+            .values_list("name", flat=True)
+        )
+        bd_names = BlockDevice.objects.filter(
+            node_config=node.current_config, name__startswith=prefix
+        ).values_list("name", flat=True)
         idx = -1
-        for group in self.filter_by_node(node).filter(name__startswith=prefix):
-            name = group.name.replace(prefix, "")
+        for name in list(fg_names) + list(bd_names):
+            suffix = name.removeprefix(prefix)
             try:
-                name_idx = int(name)
+                name_idx = int(suffix)
             except ValueError:
                 pass
             else:

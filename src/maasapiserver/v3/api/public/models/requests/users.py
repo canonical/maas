@@ -67,8 +67,8 @@ class UserCreateRequest(BaseUserRequest):
         description="The IDs of the groups the user will be a member of.",
     )
 
-    def to_builder(self) -> UserBuilder:
-        hashed_password = UserBuilder.hash_password(self.password)
+    async def to_builder(self) -> UserBuilder:
+        hashed_password = await UserBuilder.hash_password(self.password)
         return UserBuilder(
             username=self.username,
             password=hashed_password,
@@ -93,9 +93,9 @@ class UserUpdateRequestSelf(BaseUserRequest):
             )
         return self
 
-    def to_builder(self) -> UserBuilder:
+    async def to_builder(self) -> UserBuilder:
         password = (
-            UserBuilder.hash_password(self.new_password)
+            await UserBuilder.hash_password(self.new_password)
             if self.new_password is not None
             else UNSET
         )
@@ -117,9 +117,9 @@ class UserUpdateRequestAdmin(BaseUserRequest):
         description="The IDs of the groups the user will be a member of.",
     )
 
-    def to_builder(self) -> UserBuilder:
+    async def to_builder(self) -> UserBuilder:
         password = (
-            UserBuilder.hash_password(self.password)
+            await UserBuilder.hash_password(self.password)
             if self.password is not None
             else UNSET
         )
@@ -138,14 +138,14 @@ class UserChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=1)
 
-    def to_builder(self) -> UserBuilder:
-        password = UserBuilder.hash_password(self.new_password)
+    async def to_builder(self) -> UserBuilder:
+        password = await UserBuilder.hash_password(self.new_password)
         return UserBuilder(password=password)
 
 
 class UserChangePasswordRequestAdmin(BaseModel):
     password: str = Field(..., min_length=1)
 
-    def to_builder(self) -> UserBuilder:
-        password = UserBuilder.hash_password(self.password)
+    async def to_builder(self) -> UserBuilder:
+        password = await UserBuilder.hash_password(self.password)
         return UserBuilder(password=password)

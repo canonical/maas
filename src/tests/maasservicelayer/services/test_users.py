@@ -657,7 +657,7 @@ class TestUsersService:
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
         user = TEST_USER.model_copy(
-            update={"password": UserBuilder.hash_password("foo")}
+            update={"password": await UserBuilder.hash_password("foo")}
         )
         users_repository.get_by_id.return_value = user
         users_repository.get_user_profile.return_value = TEST_USER_PROFILE
@@ -672,7 +672,7 @@ class TestUsersService:
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
         user = TEST_USER.model_copy(
-            update={"password": UserBuilder.hash_password("foo")}
+            update={"password": await UserBuilder.hash_password("foo")}
         )
         users_repository.get_by_id.return_value = user
         users_repository.get_user_profile.return_value = TEST_USER_PROFILE

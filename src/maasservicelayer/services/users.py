@@ -5,7 +5,6 @@ import hashlib
 from time import time
 from typing import List
 
-from django.contrib.auth.hashers import PBKDF2PasswordHasher
 import structlog
 
 from maascommon.constants import (
@@ -389,8 +388,8 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
                 ]
             )
 
-        if current_password is not None and not PBKDF2PasswordHasher().verify(
-            current_password, user.password
+        if current_password is not None and not await user.check_password(
+            current_password
         ):
             raise BadRequestException(
                 details=[

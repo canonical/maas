@@ -71,7 +71,7 @@ class TestUserCreateRequest:
         assert len(e.value.errors()) == 1
         assert {"password"} == set([f["loc"][0] for f in e.value.errors()])
 
-    def test_to_builder(self) -> None:
+    async def test_to_builder(self) -> None:
         u = UserCreateRequest(
             username="test",
             password="test",
@@ -79,7 +79,7 @@ class TestUserCreateRequest:
             last_name="test",
             email="email@example.com",
         )
-        b = u.to_builder()
+        b = await u.to_builder()
         assert u.username == b.username
         assert u.first_name == b.first_name
         assert u.last_name == b.last_name
@@ -121,7 +121,7 @@ class TestUserUpdateRequestSelf:
                 last_name="test",
             )
 
-    def test_to_builder(self) -> None:
+    async def test_to_builder(self) -> None:
         u = UserUpdateRequestSelf(
             username="test",
             current_password="current-password",
@@ -130,7 +130,7 @@ class TestUserUpdateRequestSelf:
             last_name="test",
             email="email@example.com",
         )
-        b = u.to_builder()
+        b = await u.to_builder()
         assert u.username == b.username
         assert u.first_name == b.first_name
         assert u.last_name == b.last_name
@@ -162,7 +162,7 @@ class TestUserUpdateRequestAdmin:
         )
         assert u.groups == [1, 2]
 
-    def test_to_builder(self) -> None:
+    async def test_to_builder(self) -> None:
         u = UserUpdateRequestAdmin(
             username="test",
             password="new-password",
@@ -170,27 +170,27 @@ class TestUserUpdateRequestAdmin:
             last_name="test",
             email="email@example.com",
         )
-        b = u.to_builder()
+        b = await u.to_builder()
 
         assert PBKDF2PasswordHasher().verify("new-password", b.password)
 
 
 class TestUserChangePasswordRequest:
-    def test_to_builder(self) -> None:
+    async def test_to_builder(self) -> None:
         request = UserChangePasswordRequest(
             current_password="current-password",
             new_password="new-password",
         )
 
-        builder = request.to_builder()
+        builder = await request.to_builder()
 
         assert PBKDF2PasswordHasher().verify("new-password", builder.password)
 
 
 class TestUserChangePasswordRequestAdmin:
-    def test_to_builder(self) -> None:
+    async def test_to_builder(self) -> None:
         request = UserChangePasswordRequestAdmin(password="new-password")
 
-        builder = request.to_builder()
+        builder = await request.to_builder()
 
         assert PBKDF2PasswordHasher().verify("new-password", builder.password)
