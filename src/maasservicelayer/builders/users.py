@@ -41,7 +41,6 @@ class UserProfileBuilder(ResourceBuilder):
     the generated code.
     """
 
-    auth_last_check: datetime | None | Unset = Field(default=UNSET)
     completed_intro: bool | Unset = Field(default=UNSET)
     is_local: bool | Unset = Field(default=UNSET)
     provider_id: int | None | Unset = Field(default=UNSET)

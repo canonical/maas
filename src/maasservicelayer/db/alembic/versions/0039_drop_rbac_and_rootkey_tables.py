@@ -11,6 +11,10 @@ earlier release without a migration to drop them, so databases upgraded from
 older releases still carry them; fresh installs never had them (hence the
 ``IF EXISTS`` guards).
 
+Finally, the ``maasserver_userprofile.auth_last_check`` column is dropped. It
+recorded the last time a user was validated against Candid/RBAC and has no
+meaning without them.
+
 Revision ID: 0039
 Revises: 0038
 Create Date: 2026-07-30 09:57:54.000000+00:00
@@ -75,6 +79,8 @@ def upgrade() -> None:
     op.execute("DROP TABLE IF EXISTS maasserver_rbacsync CASCADE;")
     op.execute("DROP TABLE IF EXISTS maasserver_rbaclastsync CASCADE;")
     op.execute("DROP TABLE IF EXISTS maasserver_rootkey CASCADE;")
+
+    op.drop_column("maasserver_userprofile", "auth_last_check")
 
 
 def downgrade() -> None:

@@ -67,9 +67,9 @@ ADMIN_PERMISSIONS = (
 class MAASAuthorizationBackend(ModelBackend):
     supports_object_permissions = True
 
-    def authenticate(self, request, username=None, **kwargs):
+    def authenticate(self, request, username=None, password=None, **kwargs):
         authenticated = super().authenticate(
-            request, username=username, **kwargs
+            request, username=username, password=password, **kwargs
         )
         if authenticated:
             user = User.objects.get(username=username)

@@ -7534,7 +7534,6 @@ CREATE TABLE public.maasserver_userprofile (
     id bigint NOT NULL,
     user_id integer NOT NULL,
     completed_intro boolean NOT NULL,
-    auth_last_check timestamp with time zone,
     is_local boolean NOT NULL,
     provider_id bigint
 );
@@ -10592,7 +10591,7 @@ COPY public.maasserver_usergroup (id, created, updated, name, description) FROM 
 -- Data for Name: maasserver_userprofile; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_userprofile (id, user_id, completed_intro, auth_last_check, is_local, provider_id) FROM stdin;
+COPY public.maasserver_userprofile (id, user_id, completed_intro, is_local, provider_id) FROM stdin;
 \.
 
 

@@ -2357,7 +2357,6 @@ UserProfileTable = Table(
     METADATA,
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("completed_intro", Boolean, nullable=False),
-    Column("auth_last_check", DateTime(timezone=True), nullable=True),
     Column("is_local", Boolean, nullable=False),
     Column(
         "user_id",

@@ -102,7 +102,7 @@ TEST_USER = User(
 )
 
 TEST_USER_PROFILE = UserProfile(
-    id=1, completed_intro=True, auth_last_check=None, is_local=True, user_id=1
+    id=1, completed_intro=True, is_local=True, user_id=1
 )
 
 
@@ -279,9 +279,7 @@ class TestUsersService:
     async def test_create_profile(
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
-        builder = UserProfileBuilder(
-            is_local=True, completed_intro=True, auth_last_check=utcnow()
-        )
+        builder = UserProfileBuilder(is_local=True, completed_intro=True)
         await users_service.create_profile(user_id=1, builder=builder)
         users_repository.create_profile.assert_called_once_with(
             user_id=1, builder=builder
@@ -291,7 +289,7 @@ class TestUsersService:
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
         builder = UserProfileBuilder()
-        builder.auth_last_check = utcnow()
+        builder.completed_intro = True
         await users_service.update_profile(user_id=1, builder=builder)
         users_repository.update_profile.assert_called_once_with(
             user_id=1, builder=builder
@@ -301,7 +299,7 @@ class TestUsersService:
         self, users_service: UsersService, users_repository: Mock
     ) -> None:
         builder = UserProfileBuilder()
-        builder.auth_last_check = utcnow()
+        builder.completed_intro = True
         await users_service.update_profile(user_id=1, builder=builder)
         users_repository.update_profile.assert_called_once_with(
             user_id=1, builder=builder
@@ -321,9 +319,7 @@ class TestUsersService:
         # Ensure a new user profile is created each time also
         users_repository.create_profile.assert_called_once_with(
             user_id=1,
-            builder=UserProfileBuilder(
-                auth_last_check=None, is_local=True, completed_intro=False
-            ),
+            builder=UserProfileBuilder(is_local=True, completed_intro=False),
         )
 
     async def test_get_or_create_MAAS_user_already_exists(

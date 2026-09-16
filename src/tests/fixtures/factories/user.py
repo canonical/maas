@@ -76,7 +76,6 @@ async def create_test_user_profile(
 ) -> UserProfile:
     user_profile = {
         "completed_intro": True,
-        "auth_last_check": None,
         "is_local": False,
         "user_id": user_id,
     }
