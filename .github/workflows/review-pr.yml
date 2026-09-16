@@ -18,6 +18,14 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # Model can be any Gemini model name that your GEMINI_API_KEY has access to.
+  # For example:
+  #  - gemini-3.1-pro-preview
+  #  - gemini-3.1-pro-preview-customtools
+  #  - gemini-3-flash-preview
+  #  - gemini-3-flash-lite-preview
+  #  - gemini-2.5-pro
+  #  - gemini-2.5-flash
   MODEL: gemini-3.1-pro-preview
   SNAP_CHANNEL: stable
 
@@ -39,13 +47,17 @@ jobs:
         id: pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PR_NUMBER_EVENT: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            PR_NUMBER="${{ github.event.issue.number }}"
+          if [ "$EVENT_NAME" = "issue_comment" ]; then
+            PR_NUMBER="$ISSUE_NUMBER"
           else
-            PR_NUMBER="${{ github.event.pull_request.number }}"
+            PR_NUMBER="$PR_NUMBER_EVENT"
           fi
-          HEAD_SHA=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq '.head.sha')
+          HEAD_SHA=$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" --jq '.head.sha')
           echo "number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
 
@@ -55,6 +67,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: ${{ steps.pr.outputs.head_sha }}
+          # This checkout is only READ for file context; we never execute code
+          # from it. Opt out of the pull_request_target fork-checkout guard.
+          allow-unsafe-pr-checkout: true
 
       - name: Install maas-code-reviewer
         run: sudo snap install maas-code-reviewer --channel "$SNAP_CHANNEL"
@@ -71,7 +86,7 @@ jobs:
             "https://github.com/${{ github.repository }}/pull/${{ steps.pr.outputs.number }}"
 
       - name: Upload metrics
-        if: always()
+        if: always() && steps.pr.outputs.number != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: review-metrics-pr${{ steps.pr.outputs.number }}
