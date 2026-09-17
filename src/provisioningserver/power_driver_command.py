@@ -3,9 +3,9 @@
 
 import argparse
 import json
+import logging
 import sys
 from textwrap import dedent
-import logging
 
 from twisted.internet.defer import ensureDeferred
 from twisted.internet.task import react
