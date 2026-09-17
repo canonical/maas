@@ -314,8 +314,10 @@ def validate_user_external_auth(
     if active ^ user.is_active:
         user.is_active = active
     user.is_superuser = superuser
-    service_layer.services.external_auth.update_openfga_group_membership(
-        user_id=user.id, is_superuser=user.is_superuser
+    service_layer.exec_async(
+        service_layer.services.external_auth.update_openfga_group_membership(
+            user_id=user.id, is_superuser=user.is_superuser
+        )
     )
     # update user details
     user.last_name = details.fullname

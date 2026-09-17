@@ -54,8 +54,8 @@ from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
     ExternalOAuthRepository,
 )
-from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.db.repositories.usergroups import UserGroupsClauseFactory
+from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BadGatewayException,
     BaseExceptionDetail,
@@ -217,32 +217,25 @@ class ExternalAuthService(Service, RootKeyStore):
     ) -> None:
         """Synchronize an externally authenticated user's default group."""
         admin_group = await self.usergroups_service.get_one(
-            QuerySpec(where=UserGroupsClauseFactory.with_name("Administrators"))
+            QuerySpec(
+                where=UserGroupsClauseFactory.with_name("Administrators")
+            )
         )
         user_group = await self.usergroups_service.get_one(
             QuerySpec(where=UserGroupsClauseFactory.with_name("Users"))
         )
 
-        if is_superuser:
-            if admin_group:
-                with suppress(UserAlreadyInGroup):
-                    await self.usergroups_service.add_user_to_group_by_id(
-                        user_id=user_id, group_id=admin_group.id
-                    )
-            if user_group:
-                await self.usergroups_service.remove_user_from_group(
-                    user_id=user_id, group_id=user_group.id
+        group_to_add_to = admin_group if is_superuser else user_group
+        group_to_remove_from = user_group if is_superuser else admin_group
+        if group_to_add_to:
+            with suppress(UserAlreadyInGroup):
+                await self.usergroups_service.add_user_to_group_by_id(
+                    user_id=user_id, group_id=group_to_add_to.id
                 )
-        else:
-            if user_group:
-                with suppress(UserAlreadyInGroup):
-                    await self.usergroups_service.add_user_to_group_by_id(
-                        user_id=user_id, group_id=user_group.id
-                    )
-            if admin_group:
-                await self.usergroups_service.remove_user_from_group(
-                    user_id=user_id, group_id=admin_group.id
-                )
+        if group_to_remove_from:
+            await self.usergroups_service.remove_user_from_group(
+                user_id=user_id, group_id=group_to_remove_from.id
+            )
 
     async def _login(
         self,
