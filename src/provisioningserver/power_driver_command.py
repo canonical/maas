@@ -3,16 +3,20 @@
 
 import argparse
 import json
+import logging
 import sys
 from textwrap import dedent
 
 from twisted.internet.defer import ensureDeferred
 from twisted.internet.task import react
 
-from provisioningserver import logger
-
 # This import causes asyncioreactor to be installed
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
+from provisioningserver.logger import (
+    configure_standard_logging,
+    DEFAULT_LOG_VERBOSITY,
+    LoggingMode,
+)
 
 
 class InvalidDPUCommandError(Exception):
@@ -154,7 +158,13 @@ def run(argv=None):
 
     # Wire up MAAS logging so maas.* records (e.g. FIPS audit events) are
     # emitted; this subprocess would otherwise have no handlers configured.
-    logger.configure(mode=logger.LoggingMode.COMMAND)
+    configure_standard_logging(DEFAULT_LOG_VERBOSITY, LoggingMode.COMMAND)
+
+    # Prevent paramiko from emitting its own log records to stdout, which
+    # would corrupt the command's machine-readable status output.
+    paramiko_logger = logging.getLogger("paramiko")
+    paramiko_logger.propagate = False
+    paramiko_logger.addHandler(logging.NullHandler())
 
     args = _parse_args(argv)
 
