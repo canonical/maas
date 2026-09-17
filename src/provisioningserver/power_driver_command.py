@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import argparse
+import logging
 import sys
 from textwrap import dedent
 
@@ -144,6 +145,10 @@ def run(argv=None):
     # Wire up MAAS logging so maas.* records (e.g. FIPS audit events) are
     # emitted; this subprocess would otherwise have no handlers configured.
     configure_standard_logging(DEFAULT_LOG_VERBOSITY, LoggingMode.COMMAND)
+
+    paramiko_logger = logging.getLogger("paramiko")
+    paramiko_logger.propagate = False
+    paramiko_logger.addHandler(logging.NullHandler())
 
     args = _parse_args(argv)
 
