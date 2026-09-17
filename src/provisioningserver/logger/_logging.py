@@ -172,8 +172,6 @@ def get_logging_config(verbosity: int):
             "urllib3": {"level": get_logging_level(verbosity - 1)},
             # Keep `nose` relatively quiet in tests.
             "nose": {"level": get_logging_level(verbosity - 1)},
-            # stop paramiko from dirtying stdout for ssh-based power commands.
-            "paramiko": {"level": get_logging_level(verbosity - 1)},
         },
     }
 
