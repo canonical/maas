@@ -543,6 +543,24 @@ class TestFilesystemGroupManager(MAASServerTestCase):
             FilesystemGroup.objects.get_available_name_for(filesystem_group),
         )
 
+    def test_get_available_name_skips_block_device_names(self):
+        node = factory.make_Node()
+        filesystem_group = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE
+        )
+        prefix = filesystem_group.get_name_prefix()
+        # FG save already created a VirtualBlockDevice named "bcache0".
+        # Create a PhysicalBlockDevice with name "bcache1" to verify the
+        # method also scans BlockDevice names for collision avoidance.
+        factory.make_PhysicalBlockDevice(
+            node=node,
+            name=f"{prefix}1",
+        )
+        self.assertEqual(
+            f"{prefix}2",
+            FilesystemGroup.objects.get_available_name_for(filesystem_group),
+        )
+
 
 class TestVolumeGroupManager(MAASServerTestCase):
     """Tests for the `VolumeGroupManager`."""
