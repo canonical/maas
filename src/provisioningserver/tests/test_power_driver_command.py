@@ -16,6 +16,10 @@ from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import power_driver_command
 from provisioningserver.drivers.power import PowerDriver
 from provisioningserver.drivers.power.hmcz import HMCZPowerDriver
+from provisioningserver.logger import (
+    DEFAULT_LOG_VERBOSITY,
+    LoggingMode,
+)
 
 
 class FakeDriver(PowerDriver):
@@ -123,14 +127,14 @@ class TestPowerDriverCommand(MAASTestCase):
         )
 
     def test_run_configures_logging(self):
-        configure = self.patch(power_driver_command.logger, "configure")
+        configure = self.patch(power_driver_command, "configure_standard_logging")
         self.patch(power_driver_command, "react")
         self.patch(power_driver_command, "_parse_args")
 
         power_driver_command.run(["status", "virsh"])
 
         configure.assert_called_once_with(
-            mode=power_driver_command.logger.LoggingMode.COMMAND
+            DEFAULT_LOG_VERBOSITY, LoggingMode.COMMAND
         )
 
     def test_create_subparser(self):
