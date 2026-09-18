@@ -24,6 +24,9 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerError,
 )
+from provisioningserver.drivers.power.utils import (
+    install_fips_tls_audit_logging,
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils.twisted import asynchronous, threadDeferred
@@ -154,6 +157,7 @@ class HMCZPowerDriver(PowerDriver):
             context["power_pass"],
             verify_cert=context.get("power_verify_ssl", "y") == VERIFY_SSL_YES,
         )
+        install_fips_tls_audit_logging(session, context["power_address"])
         partition_name = context["power_partition_name"]
         client = Client(session)
         # Each HMC manages one or more CPCs(Central Processor Complex). To find
@@ -365,6 +369,7 @@ def probe_hmcz_and_enlist(
     :param verify_ssl: Whether SSL connections should be verified.
     """
     session = Session(hostname, username, password, verify_cert=verify_ssl)
+    install_fips_tls_audit_logging(session, hostname)
     client = Client(session)
     # Each HMC manages one or more CPCs(Central Processor Complex). Iterate
     # over all CPCs to find all partitions to add.

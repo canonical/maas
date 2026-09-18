@@ -35,6 +35,7 @@ builtins = {
     "apikey",
     "config-tls",
     "config-vault",
+    "config-hardening",
     "createadmin",
     "changepassword",
     "msm",

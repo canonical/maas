@@ -32,6 +32,7 @@ const expectedMAASCLIName = "maas.power"
 type testPowerProc struct {
 	name string
 	arg  []string
+	env  []string
 }
 
 func (t testPowerProc) Run() error {
@@ -108,10 +109,11 @@ func TestPowerOn(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("on")
@@ -171,10 +173,11 @@ func TestPowerOff(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("off")
@@ -234,10 +237,11 @@ func TestPowerCycle(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("on")
@@ -297,10 +301,11 @@ func TestPowerQuery(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("off")
@@ -361,10 +366,11 @@ func TestPowerReset(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("on")
@@ -425,10 +431,11 @@ func TestPowerOnDPU(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("on")
@@ -489,10 +496,11 @@ func TestPowerCycleDPU(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("on")
@@ -554,10 +562,11 @@ func TestPowerResetDPU(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, stdout, _ *bytes.Buffer, cmdEnv []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
+			env:  cmdEnv,
 		}
 
 		stdout.WriteString("on")
@@ -626,7 +635,7 @@ func TestSetBootOrder(t *testing.T) {
 	// Override the factories defined in service.go with mocks
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, _, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, _, _ *bytes.Buffer, _ []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
@@ -670,7 +679,7 @@ func TestSetBootOrderEmptyOrderOmitsFlag(t *testing.T) {
 
 	var mockedPowerProc testPowerProc
 
-	procFactory = func(_ context.Context, _, _ *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(_ context.Context, _, _ *bytes.Buffer, _ []string, name string, arg ...string) powerProc {
 		mockedPowerProc = testPowerProc{
 			name: name,
 			arg:  arg,
