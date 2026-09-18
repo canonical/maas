@@ -22,6 +22,7 @@ from provisioningserver.testing.certificates import (
     get_sample_cert_with_cacerts,
 )
 import provisioningserver.utils.network as network_module
+from provisioningserver.utils.twisted import DeferredValue
 
 wait_for_reactor = wait_for()
 
@@ -384,17 +385,18 @@ class TestRegionHTTPService(
     @inlineCallbacks
     def test_handler_is_called_on_config_change(self):
         listener = self.make_listener_without_delay()
-        capture = []
+        dv = DeferredValue()
 
         def _handler(channel, payload):
-            capture.append(channel)
+            dv.set(channel)
 
         listener.register("sys_reverse_proxy", _handler)
         self.addCleanup(listener.unregister, "sys_reverse_proxy", _handler)
         yield listener.startService()
         yield from self.create_tls_config()
         try:
-            self.assertEqual(capture, ["sys_reverse_proxy"])
+            yield dv.get(timeout=5)
+            self.assertEqual(dv.value, "sys_reverse_proxy")
         finally:
             yield listener.stopService()
 
@@ -403,17 +405,18 @@ class TestRegionHTTPService(
     def test_data_is_consistent_when_notified(self):
         cert = get_sample_cert_with_cacerts()
         listener = self.make_listener_without_delay()
-        capture = []
+        dv = DeferredValue()
 
         def _handler(channel, payload):
-            capture.append(channel)
+            dv.set(channel)
 
         listener.register("sys_reverse_proxy", _handler)
         self.addCleanup(listener.unregister, "sys_reverse_proxy", _handler)
         yield listener.startService()
         yield from self.create_tls_config()
         try:
-            self.assertEqual(capture, ["sys_reverse_proxy"])
+            yield dv.get(timeout=5)
+            self.assertEqual(dv.value, "sys_reverse_proxy")
         finally:
             yield listener.stopService()
 

@@ -118,7 +118,9 @@ class TestPowerDriverCommand(MAASTestCase):
         )
 
     def test_run_configures_logging(self):
-        configure = self.patch(power_driver_command.logger, "configure")
+        configure = self.patch(
+            power_driver_command, "configure_standard_logging"
+        )
         self.patch(power_driver_command, "react")
         self.patch(power_driver_command, "_parse_args")
 
