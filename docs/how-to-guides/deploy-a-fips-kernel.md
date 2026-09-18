@@ -4,7 +4,7 @@ This guide walks you through the steps to deploy an Ubuntu machine with a [FIPS-
 
 ## Install FIPS kernel
 
-The  kernel FIPS kernel isn't directly integrated into MAAS. Instead, cloud-init is used to first deploy a generic kernel. Then cloud-init installs the FIPS kernel and reboots the machine to enable it. Be aware that after MAAS marks the machine as DEPLOYED, there will be a delay while cloud-init completes and the machine reboots.
+The FIPS kernel isn't directly integrated into MAAS. Instead, cloud-init is used to first deploy a generic kernel. Then cloud-init installs the FIPS kernel and reboots the machine to enable it. Be aware that after MAAS marks the machine as DEPLOYED, there will be a delay while cloud-init completes and the machine reboots.
 
 ## Sequence of events
 
@@ -25,7 +25,7 @@ The  kernel FIPS kernel isn't directly integrated into MAAS. Instead, cloud-init
 3. A host compatible with Ubuntu FIPS-compliant kernel.
 4. Internet connection.
 
-Offline installation of the  kernel FIPS-compliant kernel is not supported currently.
+Offline installation of the FIPS-compliant kernel is not supported currently.
 
 ## Deploy FIPS kernel
 
@@ -65,7 +65,7 @@ Perform these steps in the MAAS UI:
 
 ## Verify deployment
 
-After deployment, execute these commands on the host to confirm RT kernel activation:
+After deployment, run these commands on the host to confirm FIPS kernel activation:
 
 1. Run `cat /proc/sys/crypto/fips_enabled` on the machine. A return value of 1 indicates FIPS mode is active.
 

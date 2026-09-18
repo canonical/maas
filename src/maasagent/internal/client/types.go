@@ -32,6 +32,7 @@ type EnrollResponse struct {
 
 // TemporalConfig holds Temporal-specific configuration.
 type TemporalConfig struct {
+	Host          string `json:"host"`
 	EncryptionKey string `json:"encryption_key"`
 }
 

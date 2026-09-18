@@ -88,6 +88,11 @@ class ValidationException(BaseException):
         )
 
 
+class FIPSViolationException(ValidationException):
+    def __init__(self, details: list[BaseExceptionDetail] | None = None):
+        super().__init__(details)
+
+
 class InsufficientStorageException(BaseException):
     def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__("Insufficient space on storage.", details)

@@ -1,0 +1,628 @@
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+"""Tests for HardeningValidator (maasservicelayer.services.hardening).
+
+validate() returns list[HardeningViolation] — never exits or raises.
+"""
+
+import datetime
+import logging
+from pathlib import Path
+from unittest import mock
+
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import dsa, rsa
+from cryptography.x509.oid import NameOID, SignatureAlgorithmOID
+import pytest
+
+from maasservicelayer.services.hardening import (
+    _ident,
+    AUTO_DERIVED_BIND_KEYS,
+    configure_and_validate_hardening,
+    HardeningValidator,
+)
+
+
+def _generate_private_key() -> rsa.RSAPrivateKey:
+    return rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+
+def _generate_small_rsa_key() -> rsa.RSAPrivateKey:
+    return rsa.generate_private_key(public_exponent=65537, key_size=1024)
+
+
+def _generate_dsa_key() -> dsa.DSAPrivateKey:
+    return dsa.generate_private_key(key_size=2048)
+
+
+def _generate_cert(
+    private_key, algorithm: hashes.HashAlgorithm | None = None
+) -> x509.Certificate:
+    if algorithm is None:
+        algorithm = hashes.SHA256()
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "maas-test")])
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    return (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(private_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now)
+        .not_valid_after(now + datetime.timedelta(days=365))
+        .sign(private_key, algorithm)
+    )
+
+
+def _cert_pem(cert: x509.Certificate) -> bytes:
+    return cert.public_bytes(serialization.Encoding.PEM)
+
+
+def _key_pem(key: rsa.RSAPrivateKey) -> bytes:
+    return key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.TraditionalOpenSSL,
+        serialization.NoEncryption(),
+    )
+
+
+class TestIdentHelper:
+    def test_lower_hyphenated(self) -> None:
+        # _ident transforms UPPER_SNAKE → lower-hyphen, prefixed with
+        # "hardening-", and truncates the slug to 29 chars.
+        result = _ident("MISSING_TLS_CERT")
+        assert result.startswith("hardening-")
+        slug = result[len("hardening-") :]
+        assert slug == slug.lower()
+        assert "_" not in slug
+        assert len(slug) <= 29
+
+
+class TestHardeningValidatorInactive:
+    def test_returns_empty_list_when_inactive(self) -> None:
+        validator = HardeningValidator(hardening_active=False)
+        assert validator.validate() == []
+
+
+class TestValidateTLSCert:
+    def test_no_cert_pem_returns_missing_tls_cert(self) -> None:
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=None,
+            api_tls_key_pem=None,
+        )
+        violations = validator._validate_tls_cert()
+        assert len(violations) == 1
+        assert violations[0].code == "MISSING_TLS_CERT"
+        assert violations[0].config_key == "tls"
+        assert "config-tls" in violations[0].resolution
+
+    def test_cert_present_key_missing_returns_missing_tls_key(self) -> None:
+        key = _generate_private_key()
+        cert = _generate_cert(key)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=None,
+        )
+        violations = validator._validate_tls_cert()
+        assert len(violations) == 1
+        assert violations[0].code == "MISSING_TLS_KEY"
+
+    def test_matching_cert_and_key_returns_no_violations(self) -> None:
+        key = _generate_private_key()
+        cert = _generate_cert(key)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=_key_pem(key),
+        )
+        assert validator._validate_tls_cert() == []
+
+    def test_mismatched_cert_and_key_returns_violation(self) -> None:
+        key1 = _generate_private_key()
+        key2 = _generate_private_key()
+        cert = _generate_cert(key1)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=_key_pem(key2),
+        )
+        violations = validator._validate_tls_cert()
+        assert len(violations) == 1
+        assert violations[0].code == "TLS_CERT_KEY_MISMATCH"
+
+    def test_corrupt_pem_returns_parse_error(self) -> None:
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=b"not-a-cert",
+            api_tls_key_pem=b"not-a-key",
+        )
+        violations = validator._validate_tls_cert()
+        assert len(violations) == 1
+        assert violations[0].code == "TLS_CERT_PARSE_ERROR"
+
+    def test_fips_active_dsa_key_returns_violation(self) -> None:
+        key = _generate_dsa_key()
+        cert = _generate_cert(key)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=_key_pem(key),
+            fips_active=True,
+        )
+        violations = validator._validate_tls_cert()
+        assert len(violations) == 1
+        assert violations[0].code == "WEAK_TLS_CERT_KEY"
+        assert "DSA" in violations[0].message
+
+    def test_fips_active_small_rsa_key_returns_violation(self) -> None:
+        key = _generate_small_rsa_key()
+        cert = _generate_cert(key)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=_key_pem(key),
+            fips_active=True,
+        )
+        violations = validator._validate_tls_cert()
+        assert len(violations) == 1
+        assert violations[0].code == "WEAK_TLS_CERT_KEY"
+        assert "1024" in violations[0].message
+
+    def test_fips_active_sha1_signature_returns_violation(self) -> None:
+        # The local cryptography/OpenSSL backend refuses to *produce* a
+        # SHA-1-signed certificate outright, so exercise the algorithm
+        # check directly against a cert whose signature OID is SHA-1.
+        key = _generate_private_key()
+        cert = mock.Mock(spec=x509.Certificate)
+        cert.signature_algorithm_oid = SignatureAlgorithmOID.RSA_WITH_SHA1
+        cert.public_key.return_value = key.public_key()
+        validator = HardeningValidator(hardening_active=True, fips_active=True)
+        violations = validator._validate_tls_cert_fips_key(cert)
+        assert len(violations) == 1
+        assert violations[0].code == "WEAK_TLS_CERT_KEY"
+        assert "SHA-256" in violations[0].message
+
+    def test_fips_active_compliant_cert_returns_no_violations(self) -> None:
+        key = _generate_private_key()
+        cert = _generate_cert(key)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=_key_pem(key),
+            fips_active=True,
+        )
+        assert validator._validate_tls_cert() == []
+
+    def test_fips_inactive_hardening_active_allows_dsa_key(self) -> None:
+        # Opt-in hardening on a non-FIPS host does not restrict key
+        # algorithms; only fips_active enforces this.
+        key = _generate_dsa_key()
+        cert = _generate_cert(key)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=_key_pem(key),
+            fips_active=False,
+        )
+        assert validator._validate_tls_cert() == []
+
+
+class TestValidateDHParams:
+    def test_no_dhparam_returns_no_violations(self) -> None:
+        validator = HardeningValidator(
+            hardening_active=True, api_tls_dhparam=None
+        )
+        assert validator._validate_dh_params() == []
+
+    def test_nonexistent_dhparam_file_returns_no_violations(
+        self, tmp_path: Path
+    ) -> None:
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_dhparam=str(tmp_path / "dhparam.pem"),
+        )
+        assert validator._validate_dh_params() == []
+
+    def test_weak_dh_params_returns_violation(self, tmp_path: Path) -> None:
+        from cryptography.hazmat.primitives.asymmetric.dh import (
+            generate_parameters,
+        )
+
+        params = generate_parameters(generator=2, key_size=512)
+        dhparam_path = tmp_path / "dhparam.pem"
+        dhparam_path.write_bytes(
+            params.parameter_bytes(
+                serialization.Encoding.PEM,
+                serialization.ParameterFormat.PKCS3,
+            )
+        )
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_dhparam=str(dhparam_path),
+        )
+        violations = validator._validate_dh_params()
+        assert len(violations) == 1
+        assert violations[0].code == "WEAK_DH_PARAMS"
+        assert violations[0].file_path == str(dhparam_path)
+
+    def test_strong_dh_params_returns_no_violations(
+        self, tmp_path: Path
+    ) -> None:
+        from cryptography.hazmat.primitives.asymmetric.dh import (
+            generate_parameters,
+        )
+
+        params = generate_parameters(generator=2, key_size=2048)
+        dhparam_path = tmp_path / "dhparam.pem"
+        dhparam_path.write_bytes(
+            params.parameter_bytes(
+                serialization.Encoding.PEM,
+                serialization.ParameterFormat.PKCS3,
+            )
+        )
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_dhparam=str(dhparam_path),
+        )
+        assert validator._validate_dh_params() == []
+
+
+class TestValidateBindings:
+    """Per-key wildcard/empty binding violations."""
+
+    _ALL_SPECIFIC = {
+        "api_bind": ["10.0.0.1", "fd00::1"],
+        "api_int_bind": ["10.0.0.7", "fd00::7"],
+        "prometheus_bind": "127.0.0.1",
+        "temporal_bind": "127.0.0.1",
+        "rpc_bind": ["10.0.0.2"],
+        "agent_api_bind": ["10.0.0.4", "fd00::4"],
+        "dns_bind": ["10.0.0.3", "fd00::3"],
+        "syslog_bind": ["10.0.0.5"],
+        "http_proxy_bind": ["10.0.0.6", "fd00::6"],
+    }
+
+    # Keys where an empty/unset value derives a real address at runtime
+    # (see `AUTO_DERIVED_BIND_KEYS`), so it's never a wildcard violation.
+    _AUTO_DERIVED = tuple(AUTO_DERIVED_BIND_KEYS)
+
+    def _validator(self, **overrides) -> HardeningValidator:
+        kwargs = {**self._ALL_SPECIFIC, **overrides}
+        # dns_bind is only validated in snap deployments; force it on here
+        # so these per-key tests exercise it like every other bind key.
+        # Snap-gating itself is covered by `TestValidateDnsBindSnapGating`
+        # below.
+        kwargs.setdefault("snap_deployment", True)
+        return HardeningValidator(hardening_active=True, **kwargs)
+
+    def test_all_specific_addresses_no_violations(self) -> None:
+        assert self._validator()._validate_bindings() == []
+
+    def test_each_key_unset_produces_its_own_violation(self) -> None:
+        for key in self._ALL_SPECIFIC:
+            if key in self._AUTO_DERIVED:
+                continue
+            v_list = self._validator(**{key: None})._validate_bindings()
+            assert len(v_list) == 1, f"expected 1 violation for {key}"
+            assert v_list[0].code == "WILDCARD_BIND_NOT_ALLOWED"
+            assert v_list[0].config_key == key
+            assert (
+                v_list[0].ident
+                == f"hardening-wildcard-bind-{key.replace('_', '-')}"
+            )
+
+    def test_auto_derived_keys_unset_produce_no_violation(self) -> None:
+        # api_bind/temporal_bind/rpc_bind/agent_api_bind/http_proxy_bind
+        # are auto-derived from maas_url at runtime when unset (see
+        # eventloop.resolve_rpc_bind_addresses/resolve_bind_address/
+        # resolve_bind_addresses/resolve_dual_stack_bind_addresses), so an
+        # empty value is not a wildcard violation.
+        for key in self._AUTO_DERIVED:
+            v_list = self._validator(**{key: None})._validate_bindings()
+            assert v_list == [], f"expected no violation for {key}"
+
+    def test_each_key_ipv4_wildcard_produces_its_own_violation(self) -> None:
+        for key, wildcard in (
+            ("api_bind", ["0.0.0.0"]),
+            ("prometheus_bind", "0.0.0.0"),
+            ("rpc_bind", ["0.0.0.0"]),
+            ("temporal_bind", "0.0.0.0"),
+        ):
+            v_list = self._validator(**{key: wildcard})._validate_bindings()
+            assert any(
+                v.code == "WILDCARD_BIND_NOT_ALLOWED" and v.config_key == key
+                for v in v_list
+            ), f"expected WILDCARD violation for {key}"
+
+    def test_each_key_ipv6_wildcard_produces_its_own_violation(self) -> None:
+        for key, wildcard in (
+            ("api_bind", ["::"]),
+            ("agent_api_bind", ["::"]),
+            ("http_proxy_bind", ["::"]),
+        ):
+            v_list = self._validator(**{key: wildcard})._validate_bindings()
+            assert any(
+                v.code == "WILDCARD_BIND_NOT_ALLOWED" and v.config_key == key
+                for v in v_list
+            ), f"expected WILDCARD violation for {key}"
+
+    def test_single_family_api_bind_not_a_wildcard_violation(self) -> None:
+        # With the merged api_bind key, configuring only one family is no
+        # longer a missing bind for the other family: the runtime service
+        # backfills the missing family from maas_url via
+        # resolve_dual_stack_bind_addresses.
+        validator = self._validator(api_bind=["10.0.0.5"])
+        assert not any(
+            v.code == "WILDCARD_BIND_NOT_ALLOWED"
+            and v.config_key == "api_bind"
+            for v in validator._validate_bindings()
+        )
+
+    def test_invalid_ip_returns_invalid_bind_violation(self) -> None:
+        v_list = self._validator(api_bind=["not-an-ip"])._validate_bindings()
+        assert len(v_list) == 1
+        assert v_list[0].code == "INVALID_BIND_ADDRESS"
+        assert v_list[0].config_key == "api_bind"
+        assert "not-an-ip" in v_list[0].message
+
+    def test_multiple_invalid_ips_in_same_key_reported_once(self) -> None:
+        # One violation per key, not per value: two bad values sharing a
+        # key must not collide on the same ident and silently drop one
+        # another when posted as Notifications.
+        v_list = self._validator(
+            api_bind=["not-an-ip", "also-not-an-ip"]
+        )._validate_bindings()
+        assert len(v_list) == 1
+        assert v_list[0].code == "INVALID_BIND_ADDRESS"
+        assert "not-an-ip" in v_list[0].message
+        assert "also-not-an-ip" in v_list[0].message
+
+    def test_invalid_ips_in_different_keys_have_distinct_idents(self) -> None:
+        # Regression: _validate_bindings() used to build INVALID_BIND_ADDRESS
+        # violations without a per-key ident, so two different keys with bad
+        # addresses collapsed onto the same notification.
+        v_list = self._validator(
+            api_bind=["not-an-ip"], rpc_bind=["also-not-an-ip"]
+        )._validate_bindings()
+        by_key = {v.config_key: v.ident for v in v_list}
+        assert by_key["api_bind"] != by_key["rpc_bind"]
+        assert by_key["api_bind"] == "hardening-invalid-bind-api-bind"
+        assert by_key["rpc_bind"] == "hardening-invalid-bind-rpc-bind"
+
+    def test_multiple_wildcards_in_same_key_reported_once(self) -> None:
+        v_list = self._validator(
+            api_bind=["0.0.0.0", "::"]
+        )._validate_bindings()
+        assert len(v_list) == 1
+        assert v_list[0].code == "WILDCARD_BIND_NOT_ALLOWED"
+        assert "0.0.0.0" in v_list[0].message
+        assert "::" in v_list[0].message
+
+    def test_multiple_offending_keys_produce_independent_violations(
+        self,
+    ) -> None:
+        v_list = self._validator(dns_bind=None)._validate_bindings()
+        codes = [v.config_key for v in v_list]
+        assert "dns_bind" in codes
+        # Other keys are specific — no other violations.
+        assert len(v_list) == 1
+
+
+class TestValidateDnsBindSnapGating:
+    """dns_bind is only validated in snap deployments."""
+
+    def test_unset_dns_bind_outside_snap_produces_no_violation(self) -> None:
+        validator = HardeningValidator(
+            hardening_active=True, snap_deployment=False
+        )
+        violations = validator._validate_bindings()
+        assert all(v.config_key != "dns_bind" for v in violations)
+
+    def test_wildcard_dns_bind_outside_snap_produces_no_violation(
+        self,
+    ) -> None:
+        validator = HardeningValidator(
+            hardening_active=True,
+            dns_bind=["0.0.0.0", "::"],
+            snap_deployment=False,
+        )
+        violations = validator._validate_bindings()
+        assert all(v.config_key != "dns_bind" for v in violations)
+
+    def test_unset_dns_bind_in_snap_produces_violation(self) -> None:
+        validator = HardeningValidator(
+            hardening_active=True, snap_deployment=True
+        )
+        codes = {v.config_key for v in validator._validate_bindings()}
+        assert "dns_bind" in codes
+
+    def test_snap_deployment_defaults_to_false(self) -> None:
+        validator = HardeningValidator(hardening_active=True)
+        codes = {v.config_key for v in validator._validate_bindings()}
+        assert "dns_bind" not in codes
+
+
+class TestValidateFipsDrift:
+    """FIPS config/status drift detection."""
+
+    def test_unset_returns_no_violations(self) -> None:
+        v = HardeningValidator(
+            hardening_active=False,
+            fips_declared=None,
+            fips_active=True,
+        )
+        assert v._validate_fips_drift() == []
+
+    def test_declared_on_host_on_no_violation(self) -> None:
+        v = HardeningValidator(
+            hardening_active=False,
+            fips_declared=True,
+            fips_active=True,
+        )
+        assert v._validate_fips_drift() == []
+
+    def test_declared_off_host_off_no_violation(self) -> None:
+        v = HardeningValidator(
+            hardening_active=False,
+            fips_declared=False,
+            fips_active=False,
+        )
+        assert v._validate_fips_drift() == []
+
+    def test_declared_on_host_off_returns_violation(self) -> None:
+        v = HardeningValidator(
+            hardening_active=False,
+            fips_declared=True,
+            fips_active=False,
+        )
+        violations = v._validate_fips_drift()
+        assert len(violations) == 1
+        assert violations[0].code == "FIPS_CONFIG_STATUS_MISMATCH"
+        assert violations[0].ident == "hardening-fips-config-status-mismatch"
+        assert "FIPS mode active" in violations[0].message
+        assert "cannot be unset via config-hardening" in (
+            violations[0].resolution
+        )
+
+    def test_declared_off_host_on_returns_no_violation(self) -> None:
+        v = HardeningValidator(
+            hardening_active=False,
+            fips_declared=False,
+            fips_active=True,
+        )
+        assert v._validate_fips_drift() == []
+
+    def test_drift_emitted_when_hardening_inactive(self) -> None:
+        v = HardeningValidator(
+            hardening_active=False,
+            fips_declared=True,
+            fips_active=False,
+        )
+        violations = v.validate()
+        assert any(v.code == "FIPS_CONFIG_STATUS_MISMATCH" for v in violations)
+
+
+class TestValidateDbSslmode:
+    @pytest.mark.parametrize("mode", ["disable", "allow", "prefer", "require"])
+    def test_insecure_sslmode_returns_violation(self, mode: str) -> None:
+        validator = HardeningValidator(
+            hardening_active=True, database_sslmode=mode
+        )
+        violations = validator._validate_db_sslmode()
+        assert len(violations) == 1
+        assert violations[0].code == "INSECURE_DB_SSLMODE"
+        assert violations[0].ident == _ident("INSECURE_DB_SSLMODE")
+
+    @pytest.mark.parametrize("mode", ["verify-full", "verify-ca"])
+    def test_secure_sslmode_returns_no_violations(self, mode: str) -> None:
+        validator = HardeningValidator(
+            hardening_active=True, database_sslmode=mode
+        )
+        assert validator._validate_db_sslmode() == []
+
+    def test_no_sslmode_returns_no_violations(self) -> None:
+        validator = HardeningValidator(
+            hardening_active=True, database_sslmode=None
+        )
+        assert validator._validate_db_sslmode() == []
+
+    @pytest.mark.parametrize("mode", ["disable", "allow", "prefer"])
+    def test_unix_socket_host_returns_no_violations(self, mode: str) -> None:
+        validator = HardeningValidator(
+            hardening_active=True,
+            database_host="/var/snap/maas-test-db/common/postgresql/sockets",
+            database_sslmode=mode,
+        )
+        assert validator._validate_db_sslmode() == []
+
+
+class TestHardeningValidatorFullValidate:
+    def test_validate_inactive_returns_empty_list(self) -> None:
+        validator = HardeningValidator(
+            hardening_active=False, api_bind=["0.0.0.0"]
+        )
+        assert validator.validate() == []
+
+    def test_validate_active_specific_bind_no_tls_returns_missing_cert(
+        self,
+    ) -> None:
+        validator = HardeningValidator(
+            hardening_active=True, api_bind=["10.0.0.5"]
+        )
+        violations = validator.validate()
+        assert any(v.code == "MISSING_TLS_CERT" for v in violations)
+
+    def test_validate_never_exits_on_corrupt_pem(self) -> None:
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=b"garbage",
+            api_tls_key_pem=b"garbage",
+        )
+        violations = validator.validate()
+        assert any(v.code == "TLS_CERT_PARSE_ERROR" for v in violations)
+
+    def test_insecure_sslmode_included_in_full_validate(self) -> None:
+        key = _generate_private_key()
+        cert = _generate_cert(key)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=_key_pem(key),
+            api_bind=["10.0.0.1"],
+            database_sslmode="disable",
+        )
+        violations = validator.validate()
+        assert any(v.code == "INSECURE_DB_SSLMODE" for v in violations)
+
+    def test_violations_are_logged_at_error(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        validator = HardeningValidator(hardening_active=True)
+        with caplog.at_level(logging.ERROR, logger="maas.hardening"):
+            validator.validate()
+        assert any("MISSING_TLS_CERT" in r.message for r in caplog.records)
+
+
+class TestConfigureAndValidateHardening:
+    @pytest.fixture(autouse=True)
+    def _patch_fips(self, mocker):
+        mocker.patch(
+            "maasservicelayer.services.hardening.is_fips_enabled",
+            return_value=False,
+        )
+
+    def test_inactive_returns_empty_list(self, mocker) -> None:
+        mocker.patch(
+            "maasservicelayer.services.hardening.is_hardening_enabled",
+            return_value=False,
+        )
+        result = configure_and_validate_hardening(fips_declared=None)
+        assert result == []
+
+    def test_active_no_tls_cert_returns_violations(self, mocker) -> None:
+        mocker.patch(
+            "maasservicelayer.services.hardening.is_hardening_enabled",
+            return_value=True,
+        )
+        result = configure_and_validate_hardening(
+            api_bind=["10.0.0.1", "fd00::1"],
+            prometheus_bind="127.0.0.1",
+            temporal_bind="127.0.0.1",
+            rpc_bind=["10.0.0.2"],
+            fips_declared=None,
+        )
+        assert any(v.code == "MISSING_TLS_CERT" for v in result)
+
+    def test_no_tls_cert_passed_returns_missing_cert_violation(
+        self, mocker
+    ) -> None:
+        mocker.patch(
+            "maasservicelayer.services.hardening.is_hardening_enabled",
+            return_value=True,
+        )
+        # Caller passes no cert PEM (e.g. cert read failed at call site).
+        result = configure_and_validate_hardening(fips_declared=None)
+        assert any(v.code == "MISSING_TLS_CERT" for v in result)

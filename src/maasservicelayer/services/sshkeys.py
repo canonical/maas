@@ -16,6 +16,7 @@ from maascommon.enums.sshkeys import (
     OPENSSH_PROTOCOL2_KEY_TYPES,
     SshKeysProtocolType,
 )
+from maascommon.fips import is_fips_enabled, validate_fips_ssh_public_key
 from maasservicelayer.builders.sshkeys import SshKeyBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -26,11 +27,14 @@ from maasservicelayer.db.repositories.sshkeys import (
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
+    FIPSViolationException,
     ValidationException,
 )
 from maasservicelayer.exceptions.constants import (
+    FIPS_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.logging.tls import fips_tls_trace_config
 from maasservicelayer.models.sshkeys import SshKey
 from maasservicelayer.services.base import BaseService, Service, ServiceCache
 
@@ -72,6 +76,18 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
         # TODO: remove type ignore after implementing safe get for builders
         builder.key = await self.normalize_openssh_public_key(builder.key)  # type: ignore
 
+        if is_fips_enabled():
+            violation = validate_fips_ssh_public_key(builder.key)  # type: ignore
+            if violation is not None:
+                raise FIPSViolationException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=FIPS_VIOLATION_TYPE,
+                            message=violation,
+                        )
+                    ]
+                )
+
         # skip the validation if it's a key imported by LP or GH.
         if builder.protocol is not None:
             return
@@ -105,7 +121,11 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
     def _get_session(self) -> ClientSession:
         context = ssl.create_default_context(cafile=SYSTEM_CA_FILE)
         tcp_conn = TCPConnector(ssl=context)
-        return ClientSession(trust_env=True, connector=tcp_conn)
+        return ClientSession(
+            trust_env=True,
+            connector=tcp_conn,
+            trace_configs=[fips_tls_trace_config()],
+        )
 
     async def import_keys(
         self, protocol: SshKeysProtocolType, auth_id: str, user_id: int

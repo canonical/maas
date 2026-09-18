@@ -1,0 +1,390 @@
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+"""Startup hardening validation for MAAS service-layer.
+
+Validates TLS certificates, DH parameters, service bindings, and database
+SSL mode at region/rack startup.  Activated only when
+``is_hardening_enabled()`` returns True (FIPS host or explicit opt-in).
+
+Violations are returned as a list of :class:`HardeningViolation` objects.
+The validator never raises, exits, or blocks socket binding.
+"""
+
+from collections.abc import Sequence
+import logging
+from pathlib import Path
+
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import load_pem_parameters
+
+from maascommon.fips import is_fips_enabled, validate_fips_tls_certificate
+from maascommon.hardening import BindViolation as HardeningViolation
+from maascommon.hardening import (
+    check_bind_violations,
+    INSECURE_DB_SSLMODES,
+    is_hardening_enabled,
+)
+
+_log = logging.getLogger("maas.hardening")
+
+
+# Keys where an empty value is not a wildcard violation: the consuming
+# service derives a specific, non-wildcard address at runtime when unset
+# (see `RegionTemporalService`/`RegionHTTPService`/`RackProxy`/
+# `RegionSyslogService`/`RackSyslog`/`proxyconfig.proxy_update_config`/
+# `eventloop.make_PrometheusExporterService`/`resolve_bind_address`/
+# `resolve_bind_addresses`).
+# An explicit wildcard value (e.g. `0.0.0.0`) is still flagged below.
+# `dns_bind` is deliberately excluded from this set: it has no
+# maas_url-derived default, since DNS must be explicitly picked to serve
+# every managed subnet, not just the one that reaches `maas_url`. It is
+# validated only in snap deployments (see `snap_deployment` below): on
+# Debian-packaged installs MAAS does not own the base named.conf.options,
+# so it cannot guarantee the key takes effect there.
+AUTO_DERIVED_BIND_KEYS = frozenset(
+    {
+        "temporal_bind",
+        "api_bind",
+        "rpc_bind",
+        "agent_api_bind",
+        "prometheus_bind",
+        "syslog_bind",
+        "http_proxy_bind",
+    }
+)
+
+
+def _ident(code: str) -> str:
+    slug = code.lower().replace("_", "-")[:29]
+    return f"hardening-{slug}"
+
+
+def _violation(
+    code: str,
+    message: str,
+    resolution: str,
+    config_key: str,
+    file_path: str | None = None,
+    ident: str | None = None,
+) -> HardeningViolation:
+    return HardeningViolation(
+        ident=ident if ident is not None else _ident(code),
+        code=code,
+        message=message,
+        resolution=resolution,
+        config_key=config_key,
+        file_path=file_path,
+    )
+
+
+class HardeningValidator:
+    """Validates hardening prerequisites at service startup."""
+
+    def __init__(
+        self,
+        hardening_active: bool,
+        api_tls_cert_pem: bytes | None = None,
+        api_tls_key_pem: bytes | None = None,
+        api_tls_dhparam: str | None = None,
+        api_bind: Sequence[str] | None = None,
+        api_int_bind: Sequence[str] | None = None,
+        prometheus_bind: str | None = None,
+        temporal_bind: str | None = None,
+        rpc_bind: Sequence[str] | None = None,
+        agent_api_bind: Sequence[str] | None = None,
+        dns_bind: Sequence[str] | None = None,
+        syslog_bind: Sequence[str] | None = None,
+        http_proxy_bind: Sequence[str] | None = None,
+        database_host: str | None = None,
+        database_sslmode: str | None = None,
+        fips_declared: bool | None = None,
+        fips_active: bool = False,
+        snap_deployment: bool = False,
+    ) -> None:
+        self.hardening_active = hardening_active
+        self.api_tls_cert_pem = api_tls_cert_pem
+        self.api_tls_key_pem = api_tls_key_pem
+        self.api_tls_dhparam = api_tls_dhparam
+        self._snap_deployment = snap_deployment
+        self._binds: dict[str, list[str]] = {
+            "api_bind": list(api_bind) if api_bind else [],
+            "api_int_bind": list(api_int_bind) if api_int_bind else [],
+            "prometheus_bind": [prometheus_bind] if prometheus_bind else [],
+            "temporal_bind": [temporal_bind] if temporal_bind else [],
+            "rpc_bind": list(rpc_bind) if rpc_bind else [],
+            "agent_api_bind": (list(agent_api_bind) if agent_api_bind else []),
+            "syslog_bind": list(syslog_bind) if syslog_bind else [],
+            "http_proxy_bind": (
+                list(http_proxy_bind) if http_proxy_bind else []
+            ),
+        }
+        # Snap-only; see AUTO_DERIVED_BIND_KEYS above for why.
+        if self._snap_deployment:
+            self._binds["dns_bind"] = list(dns_bind) if dns_bind else []
+        self.database_sslmode = database_sslmode
+        self.database_host = database_host
+        self.fips_declared = fips_declared
+        self.fips_active = fips_active
+
+    def validate(self) -> list[HardeningViolation]:
+        violations: list[HardeningViolation] = []
+
+        try:
+            violations += self._validate_fips_drift()
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("hardening: _validate_fips_drift raised: %s", exc)
+
+        if not self.hardening_active:
+            return violations
+
+        for check in (
+            self._validate_tls_cert,
+            self._validate_dh_params,
+            self._validate_bindings,
+            self._validate_db_sslmode,
+        ):
+            try:
+                violations += check()
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("hardening: %s raised: %s", check.__name__, exc)
+
+        for v in violations:
+            _log.error(
+                "hardening_violation: ident=%s code=%s config_key=%s file_path=%s message=%s",
+                v.ident,
+                v.code,
+                v.config_key,
+                v.file_path,
+                v.message,
+            )
+
+        return violations
+
+    def _validate_tls_cert(self) -> list[HardeningViolation]:
+        if self.api_tls_cert_pem is None:
+            return [
+                _violation(
+                    code="MISSING_TLS_CERT",
+                    message="TLS certificate is not configured",
+                    resolution="Run: maas config-tls enable <key> <cert>",
+                    config_key="tls",
+                )
+            ]
+
+        if self.api_tls_key_pem is None:
+            return [
+                _violation(
+                    code="MISSING_TLS_KEY",
+                    message="TLS private key is not configured",
+                    resolution="Run: maas config-tls enable <key> <cert>",
+                    config_key="tls",
+                )
+            ]
+
+        try:
+            cert = x509.load_pem_x509_certificate(self.api_tls_cert_pem)
+            key = serialization.load_pem_private_key(
+                self.api_tls_key_pem, password=None
+            )
+            cert_pub = cert.public_key().public_bytes(
+                serialization.Encoding.PEM,
+                serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+            key_pub = key.public_key().public_bytes(
+                serialization.Encoding.PEM,
+                serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+            if cert_pub != key_pub:
+                return [
+                    _violation(
+                        code="TLS_CERT_KEY_MISMATCH",
+                        message="TLS certificate and private key do not match",
+                        resolution="Run: maas config-tls enable <key> <cert> with a matching pair",
+                        config_key="tls",
+                    )
+                ]
+        except Exception as exc:
+            return [
+                _violation(
+                    code="TLS_CERT_PARSE_ERROR",
+                    message=f"Failed to parse TLS certificate or key: {exc}",
+                    resolution="Run: maas config-tls enable <key> <cert> with a valid PEM certificate",
+                    config_key="tls",
+                )
+            ]
+
+        return self._validate_tls_cert_fips_key(cert)
+
+    def _validate_tls_cert_fips_key(
+        self, cert: x509.Certificate
+    ) -> list[HardeningViolation]:
+        """Reject TLS certificates using a non-FIPS-approved key or
+        signature algorithm. Only relevant on FIPS hosts: hardening can be
+        opted into on non-FIPS hosts, where these algorithms remain valid.
+        """
+        if not self.fips_active:
+            return []
+
+        message = validate_fips_tls_certificate(cert)
+        if message is None:
+            return []
+        return [
+            _violation(
+                code="WEAK_TLS_CERT_KEY",
+                message=f"TLS certificate: {message}",
+                resolution=(
+                    "Run: maas config-tls enable <key> <cert> with a "
+                    "FIPS-compliant certificate (RSA >= 2048 bits or "
+                    "ECDSA, signed with SHA-256 or stronger, no DSA)"
+                ),
+                config_key="tls",
+            )
+        ]
+
+    def _validate_dh_params(self) -> list[HardeningViolation]:
+        if not self.api_tls_dhparam:
+            return []
+
+        dhparam_path = Path(self.api_tls_dhparam)
+        if not dhparam_path.exists():
+            return []
+
+        try:
+            dh_params = load_pem_parameters(dhparam_path.read_bytes())
+            bit_length = dh_params.parameter_numbers().p.bit_length()
+            if bit_length < 2048:
+                return [
+                    _violation(
+                        code="WEAK_DH_PARAMS",
+                        message=f"DH parameters are {bit_length} bits; minimum is 2048",
+                        resolution="Run: openssl dhparam -out dhparam.pem 2048, then run: maas config-hardening set api_tls_dhparam <path>",
+                        config_key="api_tls_dhparam",
+                        file_path=str(dhparam_path),
+                    )
+                ]
+        except Exception as exc:
+            return [
+                _violation(
+                    code="DH_PARAMS_PARSE_ERROR",
+                    message=f"Failed to parse DH parameters file: {exc}",
+                    resolution="Run: maas config-hardening set api_tls_dhparam <path> pointing to a valid PEM DH parameters file",
+                    config_key="api_tls_dhparam",
+                    file_path=str(dhparam_path),
+                )
+            ]
+
+        return []
+
+    def _validate_bindings(self) -> list[HardeningViolation]:
+        """Per-key wildcard/empty/invalid check; each key clears independently.
+
+        Delegates to `maascommon.hardening.check_bind_violations`, the same
+        implementation used by the rack's `hardening_command` CLI, so the
+        region and rack enforce identical rules from a single source of
+        truth. `BindViolation` is `HardeningViolation`, so no translation
+        is needed.
+        """
+        return check_bind_violations(
+            self._binds, AUTO_DERIVED_BIND_KEYS, "maas config-hardening"
+        )
+
+    def _validate_fips_drift(self) -> list[HardeningViolation]:
+        # `fips_declared` is auto-detected, not operator-set: the first
+        # controller in the fleet to observe kernel FIPS mode writes
+        # fips_enabled=True to the DB (see start_up.py), and it is never
+        # unset via config-hardening. So a mismatch here means this
+        # specific controller's kernel has fallen out of step with a
+        # fleet-wide FIPS requirement already established elsewhere. The
+        # reverse (kernel FIPS, DB silent) is not flagged because
+        # hardening.py already activates all FIPS controls via
+        # is_fips_enabled() regardless of what the DB says.
+        if not self.fips_declared or self.fips_declared == self.fips_active:
+            return []
+        return [
+            _violation(
+                code="FIPS_CONFIG_STATUS_MISMATCH",
+                message=(
+                    "Another controller in this MAAS has FIPS mode active, "
+                    "so all controllers are required to run FIPS, but this "
+                    "host's kernel does not have FIPS mode active "
+                    "(/proc/sys/crypto/fips_enabled != 1). "
+                    "FIPS-conditional controls are not active on this host."
+                ),
+                resolution=(
+                    "Enable FIPS mode on this host's kernel to match the "
+                    "rest of the fleet. fips_enabled is auto-detected and "
+                    "cannot be unset via config-hardening."
+                ),
+                config_key="fips_enabled",
+            )
+        ]
+
+    def _validate_db_sslmode(self) -> list[HardeningViolation]:
+        if not self.database_sslmode:
+            return []
+        # A host path (e.g. "/var/snap/maas-test-db/.../socket") selects a
+        # Unix domain socket, not a TCP/IP connection. libpq never
+        # negotiates SSL over a Unix socket, so sslmode is moot there.
+        if self.database_host and self.database_host.startswith("/"):
+            return []
+        if self.database_sslmode.lower() in INSECURE_DB_SSLMODES:
+            return [
+                _violation(
+                    code="INSECURE_DB_SSLMODE",
+                    message=f"database_sslmode '{self.database_sslmode}' does not verify the server certificate",
+                    resolution="Set database_sslmode=verify-full in regiond.conf (and supply database_sslcert, database_sslkey, database_sslrootcert)",
+                    config_key="database_sslmode",
+                )
+            ]
+        return []
+
+
+def configure_and_validate_hardening(
+    *,
+    api_tls_cert_pem: bytes | None = None,
+    api_tls_key_pem: bytes | None = None,
+    api_tls_dhparam: str = "",
+    api_bind: Sequence[str] = (),
+    api_int_bind: Sequence[str] = (),
+    prometheus_bind: str = "",
+    temporal_bind: str = "",
+    rpc_bind: Sequence[str] = (),
+    agent_api_bind: Sequence[str] = (),
+    dns_bind: Sequence[str] = (),
+    syslog_bind: Sequence[str] = (),
+    http_proxy_bind: Sequence[str] = (),
+    database_host: str = "",
+    database_sslmode: str = "",
+    fips_declared: bool | None = None,
+    snap_deployment: bool = False,
+) -> list[HardeningViolation]:
+    """Run hardening validation.
+
+    ``api_tls_cert_pem`` and ``api_tls_key_pem`` are optional PEM bytes for
+    the TLS certificate/key; the caller is responsible for reading them from
+    the secrets store.  ``snap_deployment`` gates ``dns_bind`` validation;
+    pass ``provisioningserver.utils.snap.running_in_snap()``.
+    Returns violations.  Never raises or exits.
+    """
+    validator = HardeningValidator(
+        hardening_active=is_hardening_enabled(),
+        api_tls_cert_pem=api_tls_cert_pem,
+        api_tls_key_pem=api_tls_key_pem,
+        api_tls_dhparam=api_tls_dhparam or None,
+        api_bind=api_bind,
+        api_int_bind=api_int_bind or None,
+        prometheus_bind=prometheus_bind or None,
+        temporal_bind=temporal_bind or None,
+        rpc_bind=rpc_bind,
+        agent_api_bind=agent_api_bind,
+        dns_bind=dns_bind,
+        syslog_bind=syslog_bind,
+        http_proxy_bind=http_proxy_bind,
+        database_host=database_host or None,
+        database_sslmode=database_sslmode or None,
+        fips_declared=fips_declared,
+        fips_active=is_fips_enabled(),
+        snap_deployment=snap_deployment,
+    )
+    return validator.validate()

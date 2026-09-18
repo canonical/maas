@@ -57,7 +57,7 @@ type powerProc interface {
 	Run() error
 }
 
-type powerProcFactory func(ctx context.Context, stdout, stderr *bytes.Buffer, name string, arg ...string) powerProc
+type powerProcFactory func(ctx context.Context, stdout, stderr *bytes.Buffer, env []string, name string, arg ...string) powerProc
 
 type osPathFactory func(file string) (string, error)
 
@@ -118,11 +118,15 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 		return err
 	}
 
-	procFactory = func(ctx context.Context, stdout, stderr *bytes.Buffer, name string, arg ...string) powerProc {
+	procFactory = func(ctx context.Context, stdout, stderr *bytes.Buffer, env []string, name string, arg ...string) powerProc {
 		//nolint: gosec // G204: variable comes from power driver config (regiond)
 		cmd := exec.CommandContext(ctx, name, arg...)
 		cmd.Stdout = stdout
 		cmd.Stderr = stderr
+
+		if len(env) > 0 {
+			cmd.Env = append(os.Environ(), env...)
+		}
 
 		return cmd
 	}
@@ -174,9 +178,17 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 
 // PowerParam is a generic activity parameter for power management of a host
 type PowerParam struct {
-	DriverOpts map[string]any `json:"driver_opts"`
-	DriverType string         `json:"driver_type"`
-	IsDPU      bool           `json:"is_dpu"`
+	DriverOpts         map[string]any           `json:"driver_opts"`
+	DriverType         string                   `json:"driver_type"`
+	TrustedSSHHostKeys []TrustedSSHHostKeyEntry `json:"trusted_ssh_host_keys"`
+	IsDPU              bool                     `json:"is_dpu"`
+}
+
+// TrustedSSHHostKeyEntry is a pre-fetched trusted SSH host key
+type TrustedSSHHostKeyEntry struct {
+	Host      string `json:"host"`
+	KeyType   string `json:"key_type"`
+	PublicKey string `json:"public_key"`
 }
 
 // PowerOnParam is the activity parameter for power management of a host
@@ -230,7 +242,7 @@ type PowerResetResult struct {
 }
 
 func (s *PowerService) PowerOn(ctx context.Context, param PowerOnParam) (*PowerOnResult, error) {
-	out, err := powerCommand(ctx, "on", param.IsDPU, param.DriverType, param.DriverOpts)
+	out, err := powerCommand(ctx, "on", param.IsDPU, param.DriverType, param.DriverOpts, param.TrustedSSHHostKeys)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +256,7 @@ func (s *PowerService) PowerOn(ctx context.Context, param PowerOnParam) (*PowerO
 	return &PowerOnResult{State: out}, nil
 }
 func (s *PowerService) PowerOff(ctx context.Context, param PowerOffParam) (*PowerOffResult, error) {
-	out, err := powerCommand(ctx, "off", param.IsDPU, param.DriverType, param.DriverOpts)
+	out, err := powerCommand(ctx, "off", param.IsDPU, param.DriverType, param.DriverOpts, param.TrustedSSHHostKeys)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +270,7 @@ func (s *PowerService) PowerOff(ctx context.Context, param PowerOffParam) (*Powe
 	return &PowerOffResult{State: out}, nil
 }
 func (s *PowerService) PowerCycle(ctx context.Context, param PowerCycleParam) (*PowerCycleResult, error) {
-	out, err := powerCommand(ctx, "cycle", param.IsDPU, param.DriverType, param.DriverOpts)
+	out, err := powerCommand(ctx, "cycle", param.IsDPU, param.DriverType, param.DriverOpts, param.TrustedSSHHostKeys)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +285,7 @@ func (s *PowerService) PowerCycle(ctx context.Context, param PowerCycleParam) (*
 }
 
 func (s *PowerService) PowerQuery(ctx context.Context, param PowerQueryParam) (*PowerQueryResult, error) {
-	out, err := powerCommand(ctx, "status", param.IsDPU, param.DriverType, param.DriverOpts)
+	out, err := powerCommand(ctx, "status", param.IsDPU, param.DriverType, param.DriverOpts, param.TrustedSSHHostKeys)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +296,7 @@ func (s *PowerService) PowerQuery(ctx context.Context, param PowerQueryParam) (*
 }
 
 func (s *PowerService) PowerReset(ctx context.Context, param PowerResetParam) (*PowerResetResult, error) {
-	out, err := powerCommand(ctx, "reset", param.IsDPU, param.DriverType, param.DriverOpts)
+	out, err := powerCommand(ctx, "reset", param.IsDPU, param.DriverType, param.DriverOpts, param.TrustedSSHHostKeys)
 	if err != nil {
 		return nil, err
 	}
@@ -300,8 +312,8 @@ func (s *PowerService) PowerReset(ctx context.Context, param PowerResetParam) (*
 
 type SetBootOrderParam struct {
 	SystemID    string           `json:"system_id"`
-	PowerParams PowerParam       `json:"power_params"`
 	Order       []map[string]any `json:"order"`
+	PowerParams PowerParam       `json:"power_params"`
 }
 
 func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam) error {
@@ -309,12 +321,12 @@ func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam
 
 	log.Info("setting boot order of " + param.SystemID)
 
-	_, err := powerCommand(ctx, "set-boot-order", false, param.PowerParams.DriverType, param.PowerParams.DriverOpts, param.Order...)
+	_, err := powerCommand(ctx, "set-boot-order", false, param.PowerParams.DriverType, param.PowerParams.DriverOpts, param.PowerParams.TrustedSSHHostKeys, param.Order...)
 
 	return err
 }
 
-func powerCommand(ctx context.Context, action string, isDPU bool, driver string, opts map[string]any, bootOrder ...map[string]any) (string, error) {
+func powerCommand(ctx context.Context, action string, isDPU bool, driver string, opts map[string]any, trustedKeys []TrustedSSHHostKeyEntry, bootOrder ...map[string]any) (string, error) {
 	log := activity.GetLogger(ctx)
 
 	maasPowerCLI, err := pathFactory(powerCLIExecutableName())
@@ -354,7 +366,18 @@ func powerCommand(ctx context.Context, action string, isDPU bool, driver string,
 
 	var stdout, stderr bytes.Buffer
 
-	cmd := procFactory(ctx, &stdout, &stderr, maasPowerCLI, args...)
+	var env []string
+
+	if len(trustedKeys) > 0 {
+		keysJSON, marshalErr := json.Marshal(trustedKeys)
+		if marshalErr != nil {
+			return "", fmt.Errorf("failed to marshal trusted SSH host keys: %w", marshalErr)
+		}
+
+		env = append(env, "MAAS_TRUSTED_SSH_HOST_KEYS="+string(keysJSON))
+	}
+
+	cmd := procFactory(ctx, &stdout, &stderr, env, maasPowerCLI, args...)
 
 	err = cmd.Run()
 	if err != nil {

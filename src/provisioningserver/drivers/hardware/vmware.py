@@ -182,7 +182,8 @@ class VMwarePyvmomiAPI(VMwareAPI):
                 # This is a workaround for using untrusted certificates.
                 extra_args["protocol"] = "https"
                 if "sslContext" in getcallargs(vmomi_api.SmartConnect):
-                    context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+                    context = ssl.SSLContext()
+                    context.minimum_version = ssl.TLSVersion.TLSv1_2
                     context.verify_mode = ssl.CERT_NONE
                     extra_args["sslContext"] = context
                 else:

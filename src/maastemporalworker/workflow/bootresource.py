@@ -6,6 +6,7 @@ from contextlib import suppress
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Coroutine
+from urllib.parse import urlparse
 
 import httpx
 import structlog
@@ -34,6 +35,7 @@ from maascommon.enums.notifications import (
     NotificationCategoryEnum,
     NotificationComponent,
 )
+from maascommon.logging.security import log_fips_tls_handshake_from_sslobj
 from maascommon.workflows.bootresource import (
     CLEANUP_TIMEOUT,
     CleanupBootResourceSetsParam,
@@ -267,6 +269,23 @@ class BootResourcesActivity(ActivityBase):
                 lfile.store() as store,
             ):
                 response.raise_for_status()
+
+                if url.startswith("https"):
+                    network_stream = response.extensions.get("network_stream")
+                    ssl_object = (
+                        network_stream.get_extra_info("ssl_object")
+                        if network_stream
+                        else None
+                    )
+                    parsed = urlparse(url)
+                    port = parsed.port or 443
+                    peer = (
+                        f"{parsed.hostname}:{port}"
+                        if parsed.hostname
+                        else "unknown"
+                    )
+                    log_fips_tls_handshake_from_sslobj(ssl_object, peer=peer)
+
                 last_update = datetime.now(timezone.utc)
 
                 # Buffer the chunks coming from the requests up to 4MB and then

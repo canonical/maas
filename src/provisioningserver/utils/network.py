@@ -21,7 +21,8 @@ from socket import (
     IPPROTO_TCP,
 )
 import struct
-from typing import Iterable, List, Optional, TypeVar
+from typing import Callable, ContextManager, Iterable, List, Optional, TypeVar
+from urllib.parse import urlparse
 from zlib import crc32
 
 from netaddr import EUI, IPAddress, IPNetwork, IPRange
@@ -37,12 +38,15 @@ from twisted.names.error import (
     ResolverError,
 )
 
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.dhclient import get_dhclient_info
 from provisioningserver.utils.ipaddr import get_ip_addr
 from provisioningserver.utils.iproute import get_ip_route
 from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import call_and_check, get_env_with_locale
 from provisioningserver.utils.twisted import synchronous
+
+maaslog = get_maas_logger("network")
 
 # Address families in /etc/network/interfaces that MAAS chooses to parse. All
 # other families are ignored.
@@ -884,6 +888,262 @@ def get_source_address_for_ipaddress(destination_ip: IPAddress):
             # configured. Could also happen if a network or broadcast address
             # is passed in, or we otherwise cannot route to the destination.
             return None
+
+
+def get_source_address_for_url(
+    url: str, family: Optional[int] = None
+) -> Optional[str]:
+    """Returns the local source address used to reach `url`'s host.
+
+    Resolves the hostname in `url` and returns the local address the
+    kernel would use to reach it (see `get_source_address_for_ipaddress`).
+
+    :param url: A URL such as ``http://10.0.0.1:5240/MAAS``.
+    :param family: Restrict resolution to `socket.AF_INET` or
+        `socket.AF_INET6`. Defaults to `socket.AF_UNSPEC`, i.e. whichever
+        family the hostname resolves to first.
+    :return: the string representation of the local IP address, or None
+        if the hostname cannot be resolved, has no address of the
+        requested family, or there is no route to it.
+    """
+    hostname = urlparse(url).hostname
+    if not hostname:
+        return None
+    try:
+        kwargs = {"proto": IPPROTO_TCP}
+        if family:
+            kwargs["family"] = family
+        addrinfo = getaddrinfo(hostname, None, **kwargs)
+        destination_ip = addrinfo[0][4][0]
+    except (gaierror, UnicodeError, IndexError):
+        return None
+    return get_source_address_for_ipaddress(IPAddress(destination_ip))
+
+
+def resolve_bind_address(
+    configured: str,
+    maas_url: str,
+    *,
+    hardening_active: bool = False,
+    family: Optional[int] = None,
+) -> str:
+    """Return the address a co-located service should bind to.
+
+    Resolution order:
+
+    1. the explicit ``configured`` value, if set;
+    2. the local address used to reach ``maas_url`` -- this keeps a
+       service's bind address, its cluster-membership broadcast address
+       (if any), and every client's dial target in agreement, since they
+       all derive from the same ``maas_url``;
+    3. a last-resort default: loopback under hardening (a wildcard bind
+       is not allowed), otherwise all-interfaces.
+
+    :param family: `socket.AF_INET` or `socket.AF_INET6` to restrict the
+        derivation in (2) and pick the matching family's wildcard/loopback
+        default in (3). Defaults to IPv4.
+    """
+    if configured:
+        return configured
+    derived = get_source_address_for_url(maas_url, family=family)
+    if derived:
+        return derived
+    if family == AF_INET6:
+        return "::1" if hardening_active else "::"
+    return "127.0.0.1" if hardening_active else "0.0.0.0"
+
+
+def resolve_bind_addresses(
+    configured: Iterable[str],
+    maas_url: str,
+    *,
+    hardening_active: bool = False,
+    family: Optional[int] = None,
+) -> List[str]:
+    """List-aware counterpart to `resolve_bind_address`.
+
+    For a service whose transport can bind more than one address at once
+    (e.g. nginx's several ``listen`` directives): an explicit, non-empty
+    ``configured`` list always wins verbatim -- no address is added or
+    removed. Otherwise, under hardening, derive a single non-wildcard
+    default from ``maas_url`` (see `resolve_bind_address`) so the service
+    doesn't require per-host configuration purely to move off a wildcard
+    bind. Outside hardening, an empty ``configured`` list means "all
+    interfaces": it is returned unchanged so callers keep their existing
+    wildcard-bind behaviour.
+    """
+    addrs = [addr for addr in configured if addr]
+    if addrs:
+        return addrs
+    if not hardening_active:
+        return []
+    return [
+        resolve_bind_address(
+            "", maas_url, hardening_active=True, family=family
+        )
+    ]
+
+
+def _read_bind_config(
+    open_config: Callable[[], ContextManager],
+    bind_attr: str,
+    maas_url_attr: str,
+):
+    """Read `bind_attr`/`maas_url_attr` from `open_config()`.
+
+    Shared by `resolve_service_bind` and `resolve_dual_stack_service_bind`:
+    open a Configuration, read a list-valued bind key and maas_url, and
+    fall back to no configured value on any error.
+
+    :param maas_url_attr: ``maas_url`` is a plain string on
+        `RegionConfiguration` but a list on `ClusterConfiguration`
+        (one per configured region); the first entry is used in the
+        latter case.
+    """
+    configured: Iterable[str] = []
+    maas_url = ""
+    try:
+        with open_config() as config:
+            configured = list(getattr(config, bind_attr))
+            raw_maas_url = getattr(config, maas_url_attr)
+            if isinstance(raw_maas_url, (list, tuple)):
+                raw_maas_url = raw_maas_url[0] if raw_maas_url else ""
+            maas_url = str(raw_maas_url)
+    except Exception:
+        maaslog.warning(
+            f"Failed to read {bind_attr!r}/{maas_url_attr!r} from "
+            f"configuration; falling back to no configured bind address.",
+            exc_info=True,
+        )
+    return configured, maas_url
+
+
+def resolve_service_bind(
+    open_config: Callable[[], ContextManager],
+    bind_attr: str,
+    *,
+    hardening_active: bool = False,
+    family: Optional[int] = None,
+    maas_url_attr: str = "maas_url",
+) -> List[str]:
+    """Read `bind_attr`/`maas_url_attr` from `open_config()` and resolve.
+
+    Centralizes the "open a Configuration, read a list-valued bind key
+    and maas_url, and fall back to no configured value on any error"
+    pattern shared by every hardened service, then defers to
+    `resolve_bind_addresses` for the actual derivation.
+
+    :param open_config: A zero-argument callable returning a
+        `Configuration.open()` context manager, e.g.
+        ``RegionConfiguration.open`` or ``ClusterConfiguration.open``.
+    """
+    configured, maas_url = _read_bind_config(
+        open_config, bind_attr, maas_url_attr
+    )
+    return resolve_bind_addresses(
+        configured,
+        maas_url,
+        hardening_active=hardening_active,
+        family=family,
+    )
+
+
+def partition_by_family(
+    addresses: Iterable[str],
+) -> tuple[List[str], List[str]]:
+    """Split IP address strings into ``(ipv4, ipv6)`` lists.
+
+    Order within each returned list is preserved. Shared by every
+    consumer of a mixed-family bind key (dual-stack derivation, nginx
+    ``listen`` directives, squid ``http_port`` directives, BIND9
+    ``listen-on``/``listen-on-v6``) so the family classification lives
+    in one place. This runs at service-config render time, not
+    validation time (see `check_bind_violations` for that), so a
+    malformed address (e.g. a typo in a conf file) is skipped with a
+    warning rather than raising -- it must not crash nginx/squid/BIND9
+    config generation.
+    """
+    v4: List[str] = []
+    v6: List[str] = []
+    for addr in addresses:
+        try:
+            family = IPAddress(addr).version
+        except AddrFormatError:
+            maaslog.warning(
+                f"Ignoring malformed bind address {addr!r}: not a "
+                f"valid IP address."
+            )
+            continue
+        (v6 if family == 6 else v4).append(addr)
+    return v4, v6
+
+
+def resolve_dual_stack_bind_addresses(
+    configured: Iterable[str],
+    maas_url: str,
+    *,
+    hardening_active: bool = False,
+) -> List[str]:
+    """Mixed-family counterpart to `resolve_bind_addresses`.
+
+    Each address family is resolved independently, so pinning one
+    family explicitly still backfills the other family's
+    ``maas_url``-derived default under hardening -- unlike a single
+    ``resolve_bind_addresses(..., family=None)`` call, which would treat
+    any non-empty ``configured`` as "wins verbatim" and never backfill
+    the still-missing family.
+    """
+    addrs = [addr for addr in configured if addr]
+    v4, v6 = partition_by_family(addrs)
+    result = v4 + v6
+    if not v4:
+        result += resolve_bind_addresses(
+            [], maas_url, hardening_active=hardening_active, family=AF_INET
+        )
+    if not v6:
+        result += resolve_bind_addresses(
+            [], maas_url, hardening_active=hardening_active, family=AF_INET6
+        )
+    return result
+
+
+def resolve_dual_stack_service_bind(
+    open_config: Callable[[], ContextManager],
+    bind_attr: str,
+    *,
+    hardening_active: bool = False,
+    maas_url_attr: str = "maas_url",
+) -> List[str]:
+    """Mixed-family counterpart to `resolve_service_bind`.
+
+    Same "open a Configuration, read a list-valued bind key and
+    maas_url" pattern, but defers to `resolve_dual_stack_bind_addresses`
+    so a bind key backing both address families in one list still gets
+    each family's default derived independently.
+    """
+    configured, maas_url = _read_bind_config(
+        open_config, bind_attr, maas_url_attr
+    )
+    return resolve_dual_stack_bind_addresses(
+        configured, maas_url, hardening_active=hardening_active
+    )
+
+
+def resolve_connect_address(
+    configured: str, maas_url: str, *, hardening_active: bool = False
+) -> str:
+    """Return the address a same-host client should dial to reach a
+    co-located service's frontend, given the same inputs used to compute
+    its bind address.
+    """
+    address = resolve_bind_address(
+        configured, maas_url, hardening_active=hardening_active
+    )
+    if address == "::":
+        return "::1"
+    if address == "0.0.0.0":
+        return "127.0.0.1"
+    return address
 
 
 def generate_mac_address():

@@ -195,6 +195,149 @@ sudo cp mysite.com.pem /etc/ssl/private/
 
 Include your root and intermediate CA certificates in the same PEM file, if required.
 
+## Activate MAAS hardening
+
+MAAS hardening enforces STIG/CIS transport-security controls on the region controller. It is best-effort: when a prerequisite is missing, MAAS keeps running and reports the problem as a non-dismissable admin notification rather than refusing to start.
+
+This section covers hardening the MAAS controllers. To deploy a FIPS kernel to a *managed machine*, see [Deploy a FIPS kernel](/how-to-guides/deploy-a-fips-kernel.md) instead.
+
+For the full parameter, store, and violation-code reference, see [Security hardening reference](/reference/configuration-guides/security-hardening.md).
+
+### Enable FIPS on the host
+
+FIPS mode is a host kernel feature provided by Ubuntu Pro; it is independent of MAAS hardening. When FIPS mode is active, MAAS hardening activates automatically and cannot be turned off.
+
+MAAS runs on the `core24` snap base, which provides the cryptographic libraries
+used at runtime. For FIPS-validated cryptography to apply inside the snap,
+`core24` must be switched to its FIPS-updates channel before the reboot.
+
+> **Note:** Ubuntu 24.04 LTS FIPS certification is in progress. The `fips-updates/stable`
+> channel is not yet available; use `fips-updates/candidate` until certification
+> is complete. Check the [current certification status](https://ubuntu.com/security/certifications/docs/2404#p-142510-fips-140-3).
+
+```text
+sudo pro attach <ubuntu_pro_token>
+sudo pro enable fips-updates
+sudo snap refresh core24 --channel=fips-updates/candidate
+sudo reboot
+```
+
+After the reboot, confirm FIPS mode is active:
+
+```text
+cat /proc/sys/crypto/fips_enabled
+```
+
+A value of `1` means FIPS mode is active.
+
+### Activate hardening on a non-FIPS host
+
+Run `maas config-hardening enable`. This sets `hardening_enabled=on` in the
+MAAS database; it is a pure database operation and does not touch
+`regiond.conf`. Bind addresses are left unset by default; see [Security
+hardening reference](/reference/configuration-guides/security-hardening.md#bind-and-address-parameters)
+for the full derivation rule.
+
+```text
+sudo maas config-hardening enable
+```
+
+Then restart MAAS to apply the change:
+
+```text
+sudo snap restart maas
+```
+
+`hardening_enabled` accepts `auto` (default — active only when the host is in FIPS mode), `on`
+(force active), or `off` (inactive; overridden by the host FIPS state). `enable`
+is a shortcut for `maas config-hardening set hardening_enabled on`.
+
+### Set the hardening parameters
+
+When hardening is active, MAAS validates transport-security prerequisites at
+startup. Use `maas config-hardening set` to configure each parameter:
+
+```text
+# api_bind is left unset by default: MAAS derives a specific address
+# per address family from maas_url when hardening is active. Only set
+# it explicitly to pin the public API to a different interface, or to
+# bind several at once (comma-separated, may mix IPv4 and IPv6 -- any
+# family not present in the explicit value is still auto-derived).
+sudo maas config-hardening set api_bind 10.0.0.5
+sudo maas config-hardening set api_bind 10.0.0.5,fd00::5
+
+# Bind Prometheus metrics to loopback (already seeded by
+# maas config-hardening enable; only needed if you skipped that step).
+sudo maas config-hardening set prometheus_bind 127.0.0.1
+
+# temporal_bind is left unset by default: MAAS derives it from maas_url.
+# Only set it explicitly to pin Temporal to a different interface.
+sudo maas config-hardening set temporal_bind 10.0.0.5
+
+# rpc_bind is left unset by default: MAAS derives it from maas_url, the
+# same as api_bind/temporal_bind. Set it explicitly (optionally as a
+# comma-separated list) to pin exactly which address(es) racks dial.
+sudo maas config-hardening set rpc_bind 10.0.0.5
+
+# syslog_bind is left unset by default: MAAS derives it from maas_url, the
+# same as rpc_bind/temporal_bind. Set it explicitly (optionally as a
+# comma-separated list) to pin the syslog receiver to a different
+# interface, e.g. when enrolled machines reach MAAS over a subnet other
+# than the one maas_url resolves to.
+sudo maas config-hardening set syslog_bind 10.0.0.5
+
+# dns_bind has no maas_url-derived default: DNS must serve every
+# managed subnet, not just the interface that reaches the API, so
+# hardening always requires picking address(es) explicitly (may mix
+# IPv4 and IPv6 in one comma-separated list). Snap installs only: MAAS
+# owns the whole named.conf there; on Debian-packaged installs this key
+# is not available (nor validated), since MAAS does not own the base
+# named.conf.options.
+sudo maas config-hardening set dns_bind 10.0.0.5,fd00::5
+
+# Verify the PostgreSQL server certificate.
+sudo maas config-hardening set database_sslmode verify-full
+sudo maas config-hardening set database_sslcert /var/snap/maas/current/certs/db-client.pem
+sudo maas config-hardening set database_sslkey /var/snap/maas/current/certs/db-client.key
+sudo maas config-hardening set database_sslrootcert /var/snap/maas/current/certs/db-ca.pem
+
+# Optional: a DH parameters file of at least 2048 bits.
+sudo maas config-hardening set api_tls_dhparam /var/snap/maas/current/certs/dhparam.pem
+```
+
+The public-API TLS certificate and key are **not** hardening parameters —
+configure them with [`maas config-tls enable`](#enable-tls). To generate DH
+parameters, run `openssl dhparam -out dhparam.pem 2048`.
+
+### Verify the hardening posture
+
+Check the effective values and their source stores:
+
+```text
+maas config-hardening list
+```
+
+For a bind key that's left unset but auto-derives from `maas_url`
+(`api_bind`, `agent_api_bind`, `http_proxy_bind`, `rpc_bind`,
+`temporal_bind`, `syslog_bind`), `list` appends the address(es) MAAS
+would actually bind to right now, e.g. `api_bind [conf ]  (effective:
+10.0.0.5,fd00::5)`. `api_bind`, `agent_api_bind`, and `http_proxy_bind`
+show one address per family; `rpc_bind`, `temporal_bind`, and
+`syslog_bind` show a single address matching whichever family
+`maas_url` resolves to. `prometheus_bind` gets the same treatment but
+with a loopback default instead of a `maas_url`-derived one. Nothing
+is appended when the key is explicitly set for every derivable
+family, or when no derivation is possible (e.g. hardening is inactive
+for the keys that only derive under hardening).
+
+Run validation on demand. It prints every violation and exits non-zero when any exist, so it doubles as audit evidence:
+
+```text
+maas config-hardening validate
+```
+
+A clean run prints `OK: no hardening violations.`. Otherwise each violation lists its code, message, resolution, and the configuration key to fix. Correct the setting, restart MAAS, and the corresponding admin notification clears on the next startup.
+
 ## Use TLS termination (3.2-)
 
 MAAS versions 3.2 and below don't support native TLS encryption. If you are not interested in [setting up an HAProxy](/how-to-guides/manage-high-availability.md#highly-available-api-with-haproxy), you can still enable TLS.
