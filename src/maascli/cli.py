@@ -248,6 +248,28 @@ class cmd_init(Command):
         init_maas(options)
 
 
+class cmd_config_hardening_rack(Command):
+    """Manage this rack controller's hardening configuration parameters.
+
+    Scoped to the bind keys this rack controller owns in `rackd.conf`;
+    mirrors the region `config-hardening` command's `list`/`get`/`set`/
+    `validate` subcommands. Registered in place of the region command
+    when the snap runs in rack-only mode, which has no region database
+    or `regiond.conf` — and no separately runnable `maas-rack` command
+    to fall back on inside the snap.
+    """
+
+    def __init__(self, parser):
+        super().__init__(parser)
+        from provisioningserver import hardening_command
+
+        hardening_command.add_arguments(parser)
+        self._run = hardening_command.run
+
+    def __call__(self, options):
+        self._run(options)
+
+
 # Built-in commands to the maascli.
 COMMANDS = {
     "login": cmd_login,
@@ -261,6 +283,7 @@ COMMANDS = {
 REGIOND_COMMANDS = (
     ("apikey", "maasserver"),
     ("configauth", "maasserver"),
+    ("config-hardening", "maasserver"),
     ("config-tls", "maasserver"),
     ("config-vault", "maasserver"),
     ("msm", "maasserver"),
@@ -290,6 +313,7 @@ def register_cli_commands(parser):
         add_command(name, command)
 
     # Setup the snap commands into the maascli if in a snap and command exists.
+    is_rack_only = False
     if "SNAP" in os.environ:
         # Only import snap if running under the snap.
         from maascli import snap
@@ -300,6 +324,18 @@ def register_cli_commands(parser):
             ("status", snap.cmd_status),
             ("migrate", snap.cmd_migrate),
         ]
+        # A rack-only snap has no local database or regiond.conf, so the
+        # region-only regiond commands must be hidden entirely (see
+        # `is_rack_only` below); `config-hardening` is replaced with the
+        # rack-side implementation instead of being dropped, since there
+        # is no separately runnable `maas-rack` command inside the snap.
+        is_rack_only = (
+            "SNAP_COMMON" in os.environ and snap.get_current_mode() == "rack"
+        )
+        if is_rack_only:
+            extra_commands.append(
+                ("config-hardening", cmd_config_hardening_rack)
+            )
     elif is_maasserver_available():
         extra_commands = [("init", cmd_init)]
     else:
@@ -308,13 +344,16 @@ def register_cli_commands(parser):
     for name, command in extra_commands:
         add_command(name, command)
 
-    # Setup and the allowed django commands into the maascli.
+    # Setup and the allowed django commands into the maascli. None of
+    # these can run on a rack-only snap: it has no local database or
+    # regiond.conf.
     management = get_django_management()
     if management is not None and is_maasserver_available():
         os.environ.setdefault(
             "DJANGO_SETTINGS_MODULE", "maasserver.djangosettings.settings"
         )
-        load_regiond_commands(management, parser)
+        if not is_rack_only:
+            load_regiond_commands(management, parser)
 
 
 def get_django_management():

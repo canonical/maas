@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any, Optional, Protocol
 import uuid
 
 from temporalio import workflow
@@ -24,6 +24,7 @@ from maascommon.workflows.power import (
     PowerOnParam,
     PowerQueryParam,
     PowerResetParam,
+    TrustedSshHostKeyEntry,
 )
 from maasserver.rpc import getAllClients
 from maasservicelayer.builders.nodes import NodeBuilder
@@ -118,6 +119,28 @@ class PowerActivity(ActivityBase):
             await services.nodes.update_by_system_id(params.system_id, builder)
 
 
+class _HasTrustedSshHostKeys(Protocol):
+    trusted_ssh_host_keys: list[TrustedSshHostKeyEntry] | None
+
+
+def _serialize_trusted_ssh_host_keys(
+    param: _HasTrustedSshHostKeys,
+) -> list[dict[str, str]] | None:
+    """Serialize trusted SSH host keys for an activity payload."""
+    return (
+        [
+            {
+                "host": k.host,
+                "key_type": k.key_type,
+                "public_key": k.public_key,
+            }
+            for k in param.trusted_ssh_host_keys
+        ]
+        if param.trusted_ssh_host_keys
+        else None
+    )
+
+
 @workflow.defn(name=POWER_ON_WORKFLOW_NAME, sandboxed=False)
 class PowerOnWorkflow:
     """
@@ -132,6 +155,9 @@ class PowerOnWorkflow:
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
                 "is_dpu": param.is_dpu,
+                "trusted_ssh_host_keys": _serialize_trusted_ssh_host_keys(
+                    param
+                ),
             },
             task_queue=param.task_queue,
             retry_policy=RetryPolicy(maximum_attempts=3),
@@ -155,6 +181,9 @@ class PowerOffWorkflow:
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
                 "is_dpu": param.is_dpu,
+                "trusted_ssh_host_keys": _serialize_trusted_ssh_host_keys(
+                    param
+                ),
             },
             task_queue=param.task_queue,
             retry_policy=RetryPolicy(maximum_attempts=3),
@@ -178,6 +207,9 @@ class PowerCycleWorkflow:
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
                 "is_dpu": param.is_dpu,
+                "trusted_ssh_host_keys": _serialize_trusted_ssh_host_keys(
+                    param
+                ),
             },
             task_queue=param.task_queue,
             retry_policy=RetryPolicy(maximum_attempts=3),
@@ -201,6 +233,9 @@ class PowerQueryWorkflow:
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
                 "is_dpu": param.is_dpu,
+                "trusted_ssh_host_keys": _serialize_trusted_ssh_host_keys(
+                    param
+                ),
             },
             task_queue=param.task_queue,
             retry_policy=RetryPolicy(maximum_attempts=3),
@@ -243,6 +278,9 @@ class PowerResetWorkflow:
                 "driver_type": param.driver_type,
                 "driver_opts": param.driver_opts,
                 "is_dpu": param.is_dpu,
+                "trusted_ssh_host_keys": _serialize_trusted_ssh_host_keys(
+                    param
+                ),
             },
             task_queue=param.task_queue,
             retry_policy=RetryPolicy(maximum_attempts=3),
@@ -302,6 +340,35 @@ class UnknownPowerActionException(Exception):
     pass
 
 
+SSH_POWER_DRIVERS = frozenset({"hmc", "mscm", "wedge"})
+
+
+def fetch_trusted_ssh_host_keys(
+    driver_type: str, driver_opts: dict
+) -> list[TrustedSshHostKeyEntry] | None:
+    if (
+        not isinstance(driver_type, str)
+        or driver_type not in SSH_POWER_DRIVERS
+    ):
+        return None
+    power_address = driver_opts.get("power_address")
+    if not power_address:
+        return None
+    from maasserver.models.trustedsshhostkey import TrustedSshHostKey
+
+    keys = list(
+        TrustedSshHostKey.objects.filter(  # pyright: ignore[reportAttributeAccessIssue]
+            host=power_address
+        ).values_list("host", "key_type", "public_key")
+    )
+    if not keys:
+        return None
+    return [
+        TrustedSshHostKeyEntry(host=h, key_type=kt, public_key=pk)
+        for h, kt, pk in keys
+    ]
+
+
 # XXX: remove this temporary solution, once we switch to SQLAlchemy
 def convert_power_action_to_power_workflow(
     power_action: str,
@@ -318,6 +385,10 @@ def convert_power_action_to_power_workflow(
     """
     assert extra_params is not None
 
+    trusted_keys = fetch_trusted_ssh_host_keys(
+        extra_params.power_type, extra_params.power_parameters
+    )
+
     match power_action:
         case PowerAction.POWER_ON.value:
             return (
@@ -328,6 +399,7 @@ def convert_power_action_to_power_workflow(
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
                     is_dpu=is_dpu,
+                    trusted_ssh_host_keys=trusted_keys,
                 ),
             )
         case PowerAction.POWER_OFF.value:
@@ -339,6 +411,7 @@ def convert_power_action_to_power_workflow(
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
                     is_dpu=is_dpu,
+                    trusted_ssh_host_keys=trusted_keys,
                 ),
             )
         case PowerAction.POWER_CYCLE.value:
@@ -350,6 +423,7 @@ def convert_power_action_to_power_workflow(
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
                     is_dpu=is_dpu,
+                    trusted_ssh_host_keys=trusted_keys,
                 ),
             )
         case PowerAction.POWER_QUERY.value:
@@ -361,6 +435,7 @@ def convert_power_action_to_power_workflow(
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
                     is_dpu=is_dpu,
+                    trusted_ssh_host_keys=trusted_keys,
                 ),
             )
         case PowerAction.POWER_RESET.value:
@@ -372,6 +447,7 @@ def convert_power_action_to_power_workflow(
                     driver_type=extra_params.power_type,
                     driver_opts=extra_params.power_parameters,
                     is_dpu=is_dpu,
+                    trusted_ssh_host_keys=trusted_keys,
                 ),
             )
         case _:

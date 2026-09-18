@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import argparse
+import logging
 import sys
 from textwrap import dedent
 
@@ -10,6 +11,11 @@ from twisted.internet.task import react
 
 # This import causes asyncioreactor to be installed
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
+from provisioningserver.logger import (
+    configure_standard_logging,
+    DEFAULT_LOG_VERBOSITY,
+    LoggingMode,
+)
 
 
 class InvalidDPUCommandError(Exception):
@@ -135,6 +141,14 @@ async def _run(reactor, args, driver_registry=PowerDriverRegistry):
 def run(argv=None):
     if argv is None:
         argv = sys.argv[1:]
+
+    # Wire up MAAS logging so maas.* records (e.g. FIPS audit events) are
+    # emitted; this subprocess would otherwise have no handlers configured.
+    configure_standard_logging(DEFAULT_LOG_VERBOSITY, LoggingMode.COMMAND)
+
+    paramiko_logger = logging.getLogger("paramiko")
+    paramiko_logger.propagate = False
+    paramiko_logger.addHandler(logging.NullHandler())
 
     args = _parse_args(argv)
 

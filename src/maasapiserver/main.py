@@ -53,12 +53,20 @@ from maasapiserver.v3.middlewares.client_certificate import (
 )
 from maasapiserver.v3.middlewares.context import ContextMiddleware
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
+from maascommon.hardening import configure_hardening, HardeningMode
 from maascommon.worker import set_max_workers_count
+from maasservicelayer.context import Context
 from maasservicelayer.db import Database
 from maasservicelayer.db.listeners import PostgresListenersTaskFactory
 from maasservicelayer.db.locks import wait_for_startup
+from maasservicelayer.db.repositories.database_configurations import (
+    DatabaseConfigurationsRepository,
+)
 from maasservicelayer.logging.configure import configure_logging
 from maasservicelayer.services import CacheForServices
+from maasservicelayer.services.database_configurations import (
+    DatabaseConfigurationsService,
+)
 from provisioningserver.certificates import get_maas_cluster_cert_paths
 
 logger = structlog.getLogger()
@@ -78,6 +86,26 @@ def config_uvicorn_logging(level=logging.INFO) -> None:
     logging.getLogger("uvicorn.access").setLevel(
         logging.ERROR if level == logging.INFO else level
     )
+
+
+async def load_hardening_configuration(db: Database) -> None:
+    _hardening_value: HardeningMode | None = None
+    try:
+        async with db.engine.connect() as conn:
+            async with conn.begin():
+                context = Context(connection=conn)
+                service = DatabaseConfigurationsService(
+                    context=context,
+                    database_configurations_repository=DatabaseConfigurationsRepository(
+                        context
+                    ),
+                )
+                val = await service.get("hardening_enabled")
+                if val is not None:
+                    _hardening_value = HardeningMode(str(val))
+    except Exception:
+        pass
+    configure_hardening(_hardening_value)
 
 
 def craft_public_app(
@@ -203,6 +231,7 @@ def run(app_config: Config | None = None):
     db = Database(app_config.db, echo=app_config.debug_queries)
     # In maasserver we have a startup lock. If it is set, we have to wait to start maasapiserver as well.
     loop.run_until_complete(wait_for_startup(db))
+    loop.run_until_complete(load_hardening_configuration(db))
 
     public_app = craft_public_app(db)
     internal_app = craft_internal_app(db)

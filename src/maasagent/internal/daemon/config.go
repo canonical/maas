@@ -260,4 +260,5 @@ type DynamicConfig struct {
 type TemporalConfig struct {
 	// EncryptionKey is used for Data Codec (to encrypt data)
 	EncryptionKey string
+	Host          string
 }

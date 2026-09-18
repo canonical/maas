@@ -190,7 +190,7 @@ class BMC(CleanSave, TimestampedModel):
 
     class Meta:
         # power_type and power_parameters have indexes in addition of the
-        # combined unique one as the unique one uses MD5 hash of the content
+        # combined unique one as the unique one uses SHA-256 hash of the content
         # and would not be used for queries looking for exact content. Here we
         # use a HASH index to get around the size limitation on the content of
         # the indexed object

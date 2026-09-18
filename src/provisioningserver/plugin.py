@@ -52,6 +52,7 @@ class ProvisioningServiceMaker:
         from provisioningserver.utils.twisted import SiteNoLog
 
         port = 5249
+        # Only reached via the rack's local nginx reverse proxy; loopback-only.
         s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
@@ -59,7 +60,7 @@ class ProvisioningServiceMaker:
         except socket_error as e:
             if e.errno != ENOPROTOOPT:
                 raise e
-        s.bind(("::", port))
+        s.bind(("::1", port))
         # Use a backlog of 50, which seems to be fairly common.
         s.listen(50)
         # Adopt this socket into Twisted's reactor.
@@ -79,13 +80,22 @@ class ProvisioningServiceMaker:
         self, tftp_root, tftp_port, tftp_max_blksize, rpc_service
     ):
         """Create the dynamic TFTP service."""
+        from provisioningserver.config import ClusterConfiguration
         from provisioningserver.rackdservices.tftp import TFTPService
+
+        tftp_bind = []
+        try:
+            with ClusterConfiguration.open() as cfg:
+                tftp_bind = list(cfg.tftp_bind)
+        except Exception:
+            pass
 
         tftp_service = TFTPService(
             resource_root=tftp_root,
             port=tftp_port,
             max_blksize=tftp_max_blksize,
             client_service=rpc_service,
+            bind_addresses=tftp_bind,
         )
         tftp_service.setName("tftp")
 

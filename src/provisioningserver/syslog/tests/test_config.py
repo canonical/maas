@@ -94,6 +94,27 @@ class TestWriteConfig(MAASTestCase):
         for needle in needles:
             self.assertIn(needle, contents)
 
+    def test_bind_addresses_rendered_for_tcp_and_udp(self):
+        config.write_config(False, bind=["10.0.0.5", "10.0.0.6"])
+        needles = [
+            'input(type="imtcp" port="5247" address="10.0.0.5")',
+            'input(type="imtcp" port="5247" address="10.0.0.6")',
+            'input(type="imudp" port="5247" address="10.0.0.5")',
+            'input(type="imudp" port="5247" address="10.0.0.6")',
+        ]
+        contents = self.syslog_path.read_text()
+        for needle in needles:
+            self.assertIn(needle, contents)
+        self.assertNotIn('input(type="imtcp" port="5247")\n', contents)
+        self.assertNotIn('input(type="imudp" port="5247")\n', contents)
+
+    def test_no_bind_listens_on_all_interfaces(self):
+        config.write_config(False)
+        contents = self.syslog_path.read_text()
+        self.assertIn('input(type="imtcp" port="5247")', contents)
+        self.assertIn('input(type="imudp" port="5247")', contents)
+        self.assertNotIn("address=", contents)
+
     def test_adds_tcp_stop(self):
         cidr = factory.make_ipv4_network()
         config.write_config([cidr])

@@ -18,7 +18,6 @@ from typing import Any
 
 from bson import BSON
 from bson.errors import BSONError
-from cryptography.fernet import InvalidToken
 from ulid import ULID
 
 from provisioningserver.path import get_path
@@ -185,7 +184,7 @@ def read_beacon_payload(beacon_bytes):
                 decrypted_data = fernet_decrypt_psk(
                     payload_bytes, ttl=60, raw=True
                 )
-            except InvalidToken:
+            except ValueError:
                 raise InvalidBeaconingPacket(  # noqa: B904
                     "Failed to decrypt inner payload: check MAAS secret key."
                 )

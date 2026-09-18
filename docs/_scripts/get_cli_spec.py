@@ -36,6 +36,7 @@ builtins = {
     "configauth",
     "config-tls",
     "config-vault",
+    "config-hardening",
     "createadmin",
     "changepassword",
     "msm",
