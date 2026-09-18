@@ -3,6 +3,7 @@
 
 from datetime import datetime
 from enum import IntEnum
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -51,3 +52,4 @@ class OAuthProvider(MaasTimestampedBaseModel):
     scopes: str
     enabled: bool
     metadata: ProviderMetadata
+    config: dict[str, Any] | None = None
