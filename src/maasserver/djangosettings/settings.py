@@ -146,10 +146,7 @@ PISTON_DISPLAY_ERRORS = False
 # same model, so we silence the warnings that Piston gives.
 PISTON_IGNORE_DUPE_MODELS = True
 
-AUTHENTICATION_BACKENDS = (
-    "maasserver.auth.MAASAuthorizationBackend",
-    "maasserver.macaroon_auth.MacaroonAuthorizationBackend",
-)
+AUTHENTICATION_BACKENDS = ("maasserver.auth.MAASAuthorizationBackend",)
 
 # Database access configuration.
 try:
@@ -252,7 +249,7 @@ MIDDLEWARE = (
     "django.middleware.common.CommonMiddleware",
     # Used for rendering and logging exceptions.
     "maasserver.middleware.ExceptionMiddleware",
-    # Used to clear the RBAC/openfga thread-local cache.
+    # Used to clear the openfga thread-local cache.
     "maasserver.middleware.AuthorizationCacheMiddleware",
     # Handle errors that should really be handled in application code:
     # NoConnectionsAvailable, TimeoutError.
@@ -265,9 +262,6 @@ MIDDLEWARE = (
     "maasserver.middleware.CSRFHelperMiddleware",
     # Used to remove csrf cookies from responses,
     "maasserver.middleware.SuppressCSRFCookieMiddleware",
-    # Used to add external auth info to the request, to avoid getting the
-    # information in multiple places.
-    "maasserver.middleware.ExternalAuthInfoMiddleware",
     # Cookies to prevent CSRF.
     "django.middleware.csrf.CsrfViewMiddleware",
     # Creates request.user.

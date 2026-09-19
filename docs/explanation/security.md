@@ -55,56 +55,15 @@ MAAS configuration files should be set to have permission `640`: readable by log
 
 Snaps are fully confined or 'sandboxed,' offering inherent security for the enclosed application. For more detailed information, see [this snap blog](https://snapcraft.io/blog/where-eagles-snap-a-closer-look).
 
-## Role-Based Access Control (RBAC)  
+## Fine-grained authorization
 
-MAAS assigns access based on roles:  
+MAAS 3.8 introduces a built-in relationship-based access control (ReBAC) system for fine-grained authorization. Access follows the chain **user → group → entitlement → resource**: users belong to groups, and groups are granted entitlements (permissions) on resources.
 
-- Administrator – Full access to all settings and machines.  
-- Operator – Admin privileges within assigned resource pools.  
-- User – Access to unallocated machines but no settings.  
-- Auditor – Read-only access to assigned resource pools.  
+Entitlements are scoped either globally (the `maas` resource) or per resource pool (the `pool` resource). Resource pools are therefore the unit of access control: you can grant a group per-pool entitlements such as `can_view_machines`, `can_deploy_machines`, or `can_edit_machines`, restricting that group to just the machines in the pool. Global machine permissions cascade to every pool, while per-pool entitlements grant additional access to specific pools only.
 
-RBAC, Candid, and an identity provider (e.g., SSO) manage authentication.  
+MAAS enforces these entitlements on every request, so users cannot access machines they are not entitled to, even if they know the system ID. Hiding machines is not security—proper authorization is required.
 
-### Resource pools & permissions  
-
-Each machine belongs to one resource pool. Users access machines based on roles. Hiding machines is not security—proper authorization is required.  
-
-### Identity services & Candid  
-
-MAAS supports multiple identity services via Candid, Canonical’s authentication gateway. Candid issues macaroons—tokens that verify users without repeated authentication requests.  
-
-### RBAC & MAAS integration  
-
-RBAC associates roles with authenticated identities, not individual users. It governs:  
-
-- Machines in resource pools  
-- DNS, availability zones, images, and settings  
-
-A user can have different roles across pools—e.g., Operator in one, Auditor in another.  
-
-### RBAC workflow  
-
-1. MAAS syncs resource pools with RBAC.  
-2. User login is redirected to RBAC.  
-3. RBAC authenticates via Candid.  
-4. Candid validates the user via an identity provider (e.g., SSO).  
-5. If authenticated, Candid issues a macaroon.  
-6. RBAC sends the macaroon and role details to MAAS.  
-7. MAAS grants access based on role-resource pairings.  
-
-RBAC does not check permissions per resource pool—MAAS enforces them based on roles.  
-
-### RBAC roles summary  
-
-| Role        | Permissions |
-|------------|-------------|
-| Administrator | Full access (all settings, machines, pools). |
-| Operator | Admin privileges within assigned resource pools. |
-| User | Can allocate machines but can’t change settings. |
-| Auditor | Read-only access to permitted resource pools. |
-
-MAAS enforces role-based visibility. Users cannot access non-permitted machines, even if they know the system ID.
+For the full permission model, the list of available entitlements, and CLI examples, see [User groups and entitlements](/how-to-guides/user-groups-and-entitlements.md).
 
 ## Security consulting
 

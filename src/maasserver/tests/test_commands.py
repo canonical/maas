@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom commands, as found in src/maasserver/management/commands."""
@@ -17,7 +17,6 @@ from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.management.commands import changepasswords, createadmin
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.user import get_creds_tuple
-from maasserver.secrets import SecretManager
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -83,36 +82,6 @@ class TestCommands(MAASServerTestCase):
         self.assertEqual(stderr.getvalue().strip(), "")
         self.assertEqual(stdout.getvalue().strip(), "")
         self.assertTrue(user.check_password(password))
-
-    def test_createadmin_not_prompts_for_password_if_ext_auth(self):
-        SecretManager().set_composite_secret(
-            "external-auth", {"url": "https://example.com"}
-        )
-        stderr = StringIO()
-        stdout = StringIO()
-        username = factory.make_name("user")
-        ssh_import = "{}:{}".format(
-            random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
-            factory.make_name("user-id"),
-        )
-        email = factory.make_email_address()
-        prompt_for_password = self.patch(createadmin, "prompt_for_password")
-        prompt_for_password.return_value = factory.make_string()
-        self.patch(SSHKey.objects, "from_keysource")
-
-        self.call_command(
-            "createadmin",
-            username=username,
-            email=email,
-            ssh_import=ssh_import,
-            stdout=stdout,
-            stderr=stderr,
-        )
-
-        user = User.objects.get(username=username)
-        self.assertIsNotNone(user)
-        self.assertFalse(prompt_for_password.called)
-        self.assertEqual("", stderr.getvalue().strip())
 
     def test_createadmin_prompts_for_username_if_not_given(self):
         stderr = StringIO()

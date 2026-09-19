@@ -173,11 +173,10 @@ We have different middlewares in place, which are:
 ## Authentication
 
 Among all the middlewares above, this is probably the one that needs more attention.
-Currently, the v3 API supports three methods of authentication:
+Currently, the v3 API supports the following methods of authentication:
 
 - using a Bearer token
 - using a Django sessionid
-- using a Macaroon
 
 After a successful authentication, the logged in user is available in the request context as an `AuthenticatedUser`.
 
@@ -196,21 +195,13 @@ As of now, only a `LocalAuthenticationProvider` is implemented, but we plan to a
 Back-compatible authentication mechanism that relies on Django.
 Querying the v3 API is possible using the sessionid issued by Django.
 
-### Macaroons
-
-MAAS supports Role Based Access Control through Candid and Canonical's RBAC.
-To support it we have to deal with macaroons.
-See `MacaroonAuthenticationProvider` for more details.
-
 ## Authorization
 
 Authorization checks are performed through the `check_permissions` function.
 
-This is used as a dependency on each handler, which defines the user role and, optionally, the RBAC permissions, required for accessing the endpoint.
+This is used as a dependency on each handler, which defines the user role required for accessing the endpoint.
 
 Those requirements are checked against the `AuthenticatedUser`.
-If RBAC is not enabled, the only check made is that the user role matches the required user role.
-Otherwise, all the permissions the user has are retrieved from RBAC and checked if they meets the requirements.
 
 ## Handlers
 
@@ -245,5 +236,3 @@ To test API endpoints, we have different fixtures that comes in handy:
 - `mocked_api_client_user`: client with a user authenticated
 - `mocked_api_client_admin`: client with an admin authenticated
 - `mocked_api_client_session_id`: client with a user authenticated with a sessionid
-- `mocked_api_client_user_rbac`: client with a user authenticated through RBAC
-- `mocked_api_client_admin_rbac`: client with an admin authenticated through RBAC

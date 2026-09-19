@@ -7,7 +7,6 @@ from unittest.mock import MagicMock
 
 from maasserver import openfga
 from maasserver.models.space import Space
-from maasserver.rbac import rbac
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -65,12 +64,6 @@ class TestSpaceHandler(MAASServerTestCase):
             interface = node.get_boot_interface()
             subnet = factory.make_Subnet(space=space, vlan=interface.vlan)
             factory.make_StaticIPAddress(subnet=subnet, interface=interface)
-
-        # Warm the RBAC enabled-state cache: the view-permission check reads
-        # it lazily (one DB query), and RBACClearFixture resets it each test.
-        # Priming here keeps that one-off query out of the measured section so
-        # both counts reflect steady state.
-        rbac.is_enabled()
 
         queries_one, _ = count_queries(handler.list, {"limit": 1})
         queries_multiple, _ = count_queries(handler.list, {})

@@ -138,9 +138,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
     async def post_create_hook(self, resource: User) -> None:
         await self.create_profile(
             resource.id,
-            UserProfileBuilder(
-                completed_intro=False, auth_last_check=None, is_local=True
-            ),
+            UserProfileBuilder(completed_intro=False, is_local=True),
         )
         if resource.is_superuser:
             logger.warn(

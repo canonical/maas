@@ -192,16 +192,14 @@ class TestUsersRepository:
     ) -> None:
         user = await create_test_user(fixture)
         users_repository = UsersRepository(Context(connection=db_connection))
-        now = utcnow()
         user_profile_builder = UserProfileBuilder(
-            is_local=True, completed_intro=True, auth_last_check=now
+            is_local=True, completed_intro=True
         )
         user_profile = await users_repository.create_profile(
             user.id, user_profile_builder
         )
         assert user_profile.is_local is True
         assert user_profile.completed_intro is True
-        assert user_profile.auth_last_check == now
 
     async def test_update(
         self, db_connection: AsyncConnection, fixture: Fixture
@@ -215,15 +213,14 @@ class TestUsersRepository:
     async def test_update_profile(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
-        now = utcnow()
         user = await create_test_user(fixture)
         await create_test_user_profile(fixture, user.id)
         users_repository = UsersRepository(Context(connection=db_connection))
-        builder = UserProfileBuilder(auth_last_check=now)
+        builder = UserProfileBuilder(completed_intro=True)
         updated_profile = await users_repository.update_profile(
             user.id, builder
         )
-        assert updated_profile.auth_last_check == now
+        assert updated_profile.completed_intro is True
 
     async def test_delete_profile(
         self, db_connection: AsyncConnection, fixture: Fixture

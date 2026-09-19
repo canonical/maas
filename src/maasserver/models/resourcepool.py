@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """ResourcePool model."""
@@ -90,15 +90,6 @@ class ResourcePoolManager(Manager, ResourcePoolQueriesMixin):
            #django.contrib.auth.models.User
 
         """
-        # Circular imports.
-        from maasserver.rbac import rbac
-
-        if rbac.is_enabled():
-            fetched = rbac.get_resource_pool_ids(
-                user.username, "view", "view-all"
-            )
-            pool_ids = set(fetched["view"] + fetched["view-all"])
-            return self.filter(id__in=pool_ids)
         return self.all()
 
 

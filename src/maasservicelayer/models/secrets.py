@@ -28,20 +28,12 @@ class ClusterCertificateSecret(GlobalSecret):
     secret_name = "cluster-certificate"
 
 
-class ExternalAuthSecret(GlobalSecret):
-    secret_name = "external-auth"
-
-
 class MAASAutoIPMIKGBmcKeySecret(GlobalSecret):
     secret_name = "ipmi-k_g-key"
 
 
 class MAASCACertificateSecret(GlobalSecret):
     secret_name = "maas-ca-certificate"
-
-
-class MacaroonKeySecret(GlobalSecret):
-    secret_name = "macaroon-key"
 
 
 class MSMConnectorSecret(GlobalSecret):
@@ -87,11 +79,6 @@ class NodeDeployMetadataSecret(SecretForObject):
 class NodePowerParametersSecret(SecretForObject):
     prefix = "node"
     secret_name = "power-parameters"
-
-
-class RootKeyMaterialSecret(SecretForObject):
-    prefix = "rootkey"
-    secret_name = "material"
 
 
 class BMCPowerParametersSecret(SecretForObject):
