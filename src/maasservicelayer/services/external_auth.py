@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import base64
+from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import timedelta
 import os
@@ -53,6 +54,7 @@ from maasservicelayer.db.repositories.external_auth import (
     ExternalAuthRepository,
     ExternalOAuthRepository,
 )
+from maasservicelayer.db.repositories.usergroups import UserGroupsClauseFactory
 from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BadGatewayException,
@@ -84,6 +86,10 @@ from maasservicelayer.models.users import User
 from maasservicelayer.services.base import BaseService, Service, ServiceCache
 from maasservicelayer.services.secrets import SecretNotFound, SecretsService
 from maasservicelayer.services.tokens import OIDCRevokedTokenService
+from maasservicelayer.services.usergroups import (
+    UserAlreadyInGroup,
+    UserGroupsService,
+)
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.encryptor import Encryptor
@@ -137,12 +143,14 @@ class ExternalAuthService(Service, RootKeyStore):
         secrets_service: SecretsService,
         users_service: UsersService,
         external_auth_repository: ExternalAuthRepository,
+        usergroups_service: UserGroupsService,
         cache: ExternalAuthServiceCache | None = None,
     ):
         super().__init__(context, cache)
         self.secrets_service = secrets_service
         self.users_service = users_service
         self.external_auth_repository = external_auth_repository
+        self.usergroups_service = usergroups_service
 
     @staticmethod
     def build_cache_object() -> ExternalAuthServiceCache:
@@ -203,6 +211,31 @@ class ExternalAuthService(Service, RootKeyStore):
     ) -> User | None:
         macaroon_bakery = await self.get_bakery(request_absolute_uri)
         return await self._login(macaroons, macaroon_bakery)
+
+    async def update_openfga_group_membership(
+        self, user_id: int, is_superuser: bool
+    ) -> None:
+        """Synchronize an externally authenticated user's default group."""
+        admin_group = await self.usergroups_service.get_one(
+            QuerySpec(
+                where=UserGroupsClauseFactory.with_name("Administrators")
+            )
+        )
+        user_group = await self.usergroups_service.get_one(
+            QuerySpec(where=UserGroupsClauseFactory.with_name("Users"))
+        )
+
+        group_to_add_to = admin_group if is_superuser else user_group
+        group_to_remove_from = user_group if is_superuser else admin_group
+        if group_to_add_to:
+            with suppress(UserAlreadyInGroup):
+                await self.usergroups_service.add_user_to_group_by_id(
+                    user_id=user_id, group_id=group_to_add_to.id
+                )
+        if group_to_remove_from:
+            await self.usergroups_service.remove_user_from_group(
+                user_id=user_id, group_id=group_to_remove_from.id
+            )
 
     async def _login(
         self,
