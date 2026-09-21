@@ -233,17 +233,38 @@ def test_broadcast_address_explicit_value_wins(tmp_path, monkeypatch):
 def test_broadcast_address_matches_derived_temporal_bind(
     tmp_path, monkeypatch
 ):
-    """When temporal_bind is itself derived from maas_url, the broadcast
-    address agrees with it (no regression for the non-hardened default)."""
+    """Under hardening, when temporal_bind is itself derived from
+    maas_url, the broadcast address agrees with it."""
     monkeypatch.setenv("MAAS_TEMPORAL_CONFIG_DIR", str(tmp_path))
     environ, _ = _run_configure(
         _BASE_DATABASES,
         monkeypatch,
         temporal_bind="",
         broadcast_address="",
+        hardening_active=True,
         source_address_for_url="10.0.0.9",
     )
     assert environ["temporal_bind"] == "10.0.0.9"
+    assert environ["broadcast_address"] == "10.0.0.9"
+
+
+def test_temporal_bind_stays_wildcard_outside_hardening_despite_resolvable_maas_url(
+    tmp_path, monkeypatch
+):
+    """Outside hardening, an unset temporal_bind must stay wildcard even
+    when maas_url resolves to a local address (regression: a floating
+    VIP fronting the region controller must remain reachable on
+    temporal's port, not just the node's own derived address)."""
+    monkeypatch.setenv("MAAS_TEMPORAL_CONFIG_DIR", str(tmp_path))
+    environ, _ = _run_configure(
+        _BASE_DATABASES,
+        monkeypatch,
+        temporal_bind="",
+        broadcast_address="",
+        hardening_active=False,
+        source_address_for_url="10.0.0.9",
+    )
+    assert environ["temporal_bind"] == "0.0.0.0"
     assert environ["broadcast_address"] == "10.0.0.9"
 
 

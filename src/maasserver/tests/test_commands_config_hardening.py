@@ -456,10 +456,9 @@ class TestConfigHardeningListEffectiveBinds(_Base):
     def test_hardening_gated_binds_not_effective_when_hardening_inactive(
         self,
     ):
-        # api_bind/http_proxy_bind/syslog_bind only derive under hardening;
-        # rpc_bind/temporal_bind derive from maas_url regardless (see
-        # `AUTO_DERIVED_BIND_KEYS`/`resolve_rpc_bind_addresses`), so they
-        # are checked separately and excluded here.
+        # rpc_bind derives from maas_url regardless of hardening (see
+        # `resolve_rpc_bind_addresses`), so it is checked separately via
+        # `test_rpc_bind_shows_effective_value_regardless_of_hardening`.
         import provisioningserver.utils.network as network_module
 
         with patch.object(
@@ -473,8 +472,23 @@ class TestConfigHardeningListEffectiveBinds(_Base):
             "agent_api_bind",
             "http_proxy_bind",
             "syslog_bind",
+            "temporal_bind",
         ):
             self.assertNotIn("effective", self._line_for(output, key))
+
+    def test_temporal_bind_shows_effective_value_under_hardening(self):
+        import provisioningserver.utils.network as network_module
+
+        with patch.object(
+            network_module,
+            "get_source_address_for_url",
+            return_value="10.0.0.9",
+        ):
+            output = self._run_list(self._mock_cfg(), hardening_active=True)
+        self.assertIn(
+            "(effective: 10.0.0.9)",
+            self._line_for(output, "temporal_bind"),
+        )
 
     def test_api_bind_shows_effective_value_under_hardening(self):
         import socket
