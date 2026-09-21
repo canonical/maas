@@ -2398,6 +2398,20 @@ class TestResolveBindAddress(MAASTestCase):
         )
         self.assertEqual("0.0.0.0", result)
 
+    def test_empty_hardening_inactive_ignores_resolvable_maas_url(self):
+        # A resolvable maas_url must not narrow the bind outside
+        # hardening (e.g. a floating VIP fronting the region controller
+        # would otherwise be unreachable, since nothing would listen on
+        # the VIP itself -- only on the node's own derived address).
+        mock_derive = self.patch(network_module, "get_source_address_for_url")
+        mock_derive.return_value = "10.0.0.5"
+
+        result = resolve_bind_address(
+            "", "http://10.0.0.5:5240/MAAS", hardening_active=False
+        )
+        self.assertEqual("0.0.0.0", result)
+        mock_derive.assert_not_called()
+
     def test_empty_ipv6_hardening_active_falls_back_to_ipv6_loopback(self):
         self.patch(
             network_module, "get_source_address_for_url"

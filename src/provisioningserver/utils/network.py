@@ -1105,25 +1105,29 @@ def resolve_bind_address(
     Resolution order:
 
     1. the explicit ``configured`` value, if set;
-    2. the local address used to reach ``maas_url`` -- this keeps a
-       service's bind address, its cluster-membership broadcast address
-       (if any), and every client's dial target in agreement, since they
-       all derive from the same ``maas_url``;
-    3. a last-resort default: loopback under hardening (a wildcard bind
-       is not allowed), otherwise all-interfaces.
+    2. outside hardening, all-interfaces -- this preserves each
+       service's pre-hardening default of binding every interface
+       (e.g. so a floating VIP fronting the region controller keeps
+       working) rather than narrowing to a single derived address;
+    3. under hardening, the local address used to reach ``maas_url``
+       -- this keeps a service's bind address, its cluster-membership
+       broadcast address (if any), and every client's dial target in
+       agreement, since they all derive from the same ``maas_url``;
+    4. a last-resort default when that derivation fails: loopback (a
+       wildcard bind is not allowed under hardening).
 
     :param family: `socket.AF_INET` or `socket.AF_INET6` to restrict the
-        derivation in (2) and pick the matching family's wildcard/loopback
-        default in (3). Defaults to IPv4.
+        derivation in (3) and pick the matching family's wildcard/loopback
+        default in (2)/(4). Defaults to IPv4.
     """
     if configured:
         return configured
+    if not hardening_active:
+        return "::" if family == AF_INET6 else "0.0.0.0"
     derived = get_source_address_for_url(maas_url, family=family)
     if derived:
         return derived
-    if family == AF_INET6:
-        return "::1" if hardening_active else "::"
-    return "127.0.0.1" if hardening_active else "0.0.0.0"
+    return "::1" if family == AF_INET6 else "127.0.0.1"
 
 
 def resolve_bind_addresses(
