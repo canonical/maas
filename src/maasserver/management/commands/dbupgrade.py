@@ -201,7 +201,7 @@ class Command(BaseCommand):
                 params.append(f"search_path={search_path}")
             if "asyncpg" not in driver:
                 sslmode = conn_params.get("sslmode") or "prefer"
-                params.append(f"ssl={sslmode}")
+                params.append(f"sslmode={sslmode}")
                 if sslcert := conn_params.get("sslcert"):
                     params.append(f"sslcert={sslcert}")
                     params.append(f"sslkey={conn_params.get('sslkey', '')}")

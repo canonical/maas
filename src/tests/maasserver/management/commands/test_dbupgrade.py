@@ -165,7 +165,7 @@ def test_build_postgres_dsn_tcp_defaults_ssl_to_prefer():
         # no sslmode key
     }
     dsn = Command._build_postgres_dsn(params, "postgres")
-    assert "ssl=prefer" in dsn
+    assert "sslmode=prefer" in dsn
 
 
 def test_build_postgres_dsn_unix_socket_excludes_ssl_param():
@@ -178,7 +178,7 @@ def test_build_postgres_dsn_unix_socket_excludes_ssl_param():
         "sslmode": "require",
     }
     dsn = Command._build_postgres_dsn(params, "postgres")
-    assert "ssl=" not in dsn
+    assert "sslmode=" not in dsn
     assert "sslcert=" not in dsn
     assert "sslkey=" not in dsn
     assert "sslrootcert=" not in dsn
@@ -198,7 +198,7 @@ def test_build_alembic_postgres_dsn_omits_ssl_params():
         "sslrootcert": "/etc/maas/ca.crt",
     }
     dsn = Command._build_postgres_dsn(params, "postgresql+asyncpg")
-    assert "ssl=" not in dsn
+    assert "sslmode=" not in dsn
     assert "sslcert=" not in dsn
     assert "sslkey=" not in dsn
     assert "sslrootcert=" not in dsn
@@ -215,7 +215,7 @@ def test_build_postgres_dsn_rootcert_only_omits_ssl_params():
         "sslrootcert": "/etc/maas/ca.crt",
     }
     dsn = Command._build_postgres_dsn(params, "postgres")
-    assert "ssl=" in dsn
+    assert "sslmode=" in dsn
     assert "sslrootcert=" in dsn
     assert "sslcert=" not in dsn
     assert "sslkey=" not in dsn
