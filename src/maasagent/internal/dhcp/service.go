@@ -327,8 +327,9 @@ func (s *DHCPService) start() error {
 
 	// The dhcpd socket must be world readable/writable
 	if err = os.Chmod(sockPath, 0666); err != nil { //nolint:gosec // ignore G302
-		s.notificationSock.Close() //nolint:errcheck,gosec
-		os.Remove(sockPath)        //nolint:errcheck,gosec
+		s.notificationSock.Close() //nolint:errcheck,gosec // best-effort cleanup
+		os.Remove(sockPath)        //nolint:errcheck,gosec // best-effort cleanup
+
 		return fmt.Errorf("failed to change dhcp notification socket permissions: %w", err)
 	}
 
@@ -357,7 +358,7 @@ func (s *DHCPService) stop(ctx context.Context) error {
 
 	// Always remove the socket file, even if Close() fails.
 	sockPath := s.dataPathFactory(dhcpdNotificationSocketName)
-	defer os.Remove(sockPath) //nolint:errcheck,gosec // best-effort cleanup; file may not exist
+	defer os.Remove(sockPath) //nolint:errcheck // best-effort cleanup; file may not exist
 
 	if s.notificationSock != nil {
 		err := s.notificationSock.Close()
