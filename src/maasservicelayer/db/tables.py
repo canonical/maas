@@ -1872,15 +1872,6 @@ ResourcePoolTable = Table(
 )
 
 
-RootKeyTable = Table(
-    "maasserver_rootkey",
-    METADATA,
-    Column("id", BigInteger, Identity(), primary_key=True),
-    Column("created", DateTime(timezone=True), nullable=False),
-    Column("updated", DateTime(timezone=True), nullable=False),
-    Column("expiration", DateTime(timezone=True), nullable=False),
-)
-
 ScriptResultTable = Table(
     "maasserver_scriptresult",
     METADATA,
@@ -2366,7 +2357,6 @@ UserProfileTable = Table(
     METADATA,
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("completed_intro", Boolean, nullable=False),
-    Column("auth_last_check", DateTime(timezone=True), nullable=True),
     Column("is_local", Boolean, nullable=False),
     Column(
         "user_id",

@@ -22,13 +22,10 @@ from maasserver.middleware import (
     CSRFHelperMiddleware,
     DebuggingLoggerMiddleware,
     ExceptionMiddleware,
-    ExternalAuthInfoMiddleware,
     is_public_path,
     RPCErrorsMiddleware,
     TracingMiddleware,
 )
-from maasserver.rbac import rbac
-from maasserver.secrets import SecretManager
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -36,7 +33,6 @@ from maasserver.utils.orm import (
     make_deadlock_failure,
     make_serialization_failure,
 )
-from maasservicelayer.auth.external_auth import ExternalAuthType
 from maastesting.utils import sample_binary_data
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.shell import ExternalProcessError
@@ -553,85 +549,6 @@ class TestCSRFHelperMiddleware(MAASServerTestCase):
         self.assertIsNone(getattr(request, "csrf_processing_done", None))
 
 
-class TestExternalAuthInfoMiddleware(MAASServerTestCase):
-    def process_request(self, request):
-        def get_response(request):
-            return None
-
-        middleware = ExternalAuthInfoMiddleware(get_response)
-        return middleware(request)
-
-    def test_without_external_auth(self):
-        request = factory.make_fake_request("/")
-        self.process_request(request)
-        self.assertIsNone(request.external_auth_info)
-
-    def test_with_external_auth_candid(self):
-        SecretManager().set_composite_secret(
-            "external-auth",
-            {
-                "url": "https://example.com/",
-                "domain": "ldap",
-                "admin-group": "admins",
-            },
-        )
-        request = factory.make_fake_request("/")
-        self.process_request(request)
-        self.assertEqual(
-            request.external_auth_info.type, ExternalAuthType.CANDID
-        )
-        self.assertEqual(request.external_auth_info.url, "https://example.com")
-        self.assertEqual(request.external_auth_info.domain, "ldap")
-        self.assertEqual(request.external_auth_info.admin_group, "admins")
-
-    def test_with_external_auth_rbac(self):
-        SecretManager().set_composite_secret(
-            "external-auth", {"rbac-url": "https://rbac.example.com/"}
-        )
-        request = factory.make_fake_request("/")
-        self.process_request(request)
-        self.assertEqual(
-            request.external_auth_info.type, ExternalAuthType.RBAC
-        )
-        self.assertEqual(
-            request.external_auth_info.url, "https://rbac.example.com/auth"
-        )
-        self.assertEqual(request.external_auth_info.domain, "")
-        self.assertEqual(request.external_auth_info.admin_group, "")
-
-    def test_with_external_auth_rbac_ignore_candid_settings(self):
-        SecretManager().set_composite_secret(
-            "external-auth",
-            {
-                "url": "https://candid.example.com/",
-                "domain": "example.com",
-                "admin-group": "admins",
-                "rbac-url": "https://rbac.example.com/",
-            },
-        )
-        request = factory.make_fake_request("/")
-        self.process_request(request)
-        self.assertEqual(
-            request.external_auth_info.type, ExternalAuthType.RBAC
-        )
-        self.assertEqual(
-            request.external_auth_info.url, "https://rbac.example.com/auth"
-        )
-        self.assertEqual(request.external_auth_info.domain, "")
-        self.assertEqual(request.external_auth_info.admin_group, "")
-
-    def test_with_external_auth_strip_trailing_slash(self):
-        SecretManager().set_composite_secret(
-            "external-auth", {"url": "https://example.com/"}
-        )
-        request = factory.make_fake_request("/")
-        self.process_request(request)
-        self.assertEqual(
-            request.external_auth_info.type, ExternalAuthType.CANDID
-        )
-        self.assertEqual(request.external_auth_info.url, "https://example.com")
-
-
 class TestAuthorizationCacheMiddleware(MAASServerTestCase):
     def process_request(self, request):
         def get_response(request):
@@ -639,9 +556,3 @@ class TestAuthorizationCacheMiddleware(MAASServerTestCase):
 
         middleware = AuthorizationCacheMiddleware(get_response)
         return middleware(request)
-
-    def test_calls_rbac_clear(self):
-        mock_clear = self.patch(rbac, "clear")
-        request = factory.make_fake_request(factory.make_string(), "GET")
-        self.process_request(request)
-        mock_clear.assert_called_once_with()

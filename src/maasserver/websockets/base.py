@@ -433,7 +433,7 @@ class Handler(metaclass=HandlerMetaclass):
                 if IAsynchronous.providedBy(
                     method
                 ) or inspect.iscoroutinefunction(method):
-                    # Running in the io thread so clear RBAC/openfga now.
+                    # Running in the io thread so clear openfga now.
                     clear_caches()
 
                     # Reload the user from the database.
@@ -448,7 +448,7 @@ class Handler(metaclass=HandlerMetaclass):
                     @wraps(method)
                     @transactional
                     def prep_user_execute(params):
-                        # Clear RBAC/openfga and reload the user to ensure that
+                        # Clear openfga and reload the user to ensure that
                         # its up to date. This must be done inside
                         # the thread because it uses thread locals internally.
                         clear_caches()
@@ -563,7 +563,7 @@ class Handler(metaclass=HandlerMetaclass):
         """Enforce the configured view permission before listing objects.
 
         The check is delegated to the authorization backend (`has_perm`),
-        which is the single source of truth for RBAC and OpenFGA. For
+        which is the single source of truth for OpenFGA. For
         object-scoped permissions (e.g. machines, pods) the backend cannot
         evaluate the permission against the model class and signals this by
         raising; those handlers restrict their results in `get_queryset`

@@ -40,7 +40,6 @@ from maasserver.testing.fixtures import (
     IntroCompletedFixture,
     OpenFGAMock,
     PackageRepositoryFixture,
-    RBACClearFixture,
 )
 from maasserver.testing.openfga import OpenFGAClientMock
 from maasserver.testing.orm import PostCommitHooksTestMixin
@@ -116,9 +115,6 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         """This should be called by a subclass once other set-up is done."""
         # Avoid circular imports.
         from maasserver.models import signals
-
-        # Always clear the RBAC thread-local between tests.
-        self.useFixture(RBACClearFixture())
 
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         self.useFixture(IntroCompletedFixture())

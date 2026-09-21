@@ -1,4 +1,4 @@
-# Copyright 2016-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Use the `PostgresListenerService` to test all of the triggers from for
@@ -15,7 +15,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.testing import (
     DNSHelpersMixin,
-    RBACHelpersMixin,
     TransactionalHelpersMixin,
 )
 from maasserver.utils.orm import transactional
@@ -772,83 +771,3 @@ class TestProxyListener(
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
-
-
-class TestRBACResourcePoolListener(
-    MAASTransactionServerTestCase, TransactionalHelpersMixin, RBACHelpersMixin
-):
-    """End-to-end test for the resource pool RBAC triggers code."""
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_sends_message_for_resource_pool_insert(self):
-        yield self.captureSynced()
-        name = factory.make_name("pool")
-        dv = DeferredValue()
-        listener = self.make_listener_without_delay()
-        listener.register("sys_rbac", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            pool = yield deferToDatabase(
-                self.create_resource_pool, {"name": name}
-            )
-            yield dv.get(timeout=2)
-            yield self.assertSynced()
-        finally:
-            yield listener.stopService()
-        change = self.getCapturedSynced()
-        self.assertEqual("added resource pool %s" % name, change.source)
-        self.assertEqual("add", change.action)
-        self.assertEqual("resource-pool", change.resource_type)
-        self.assertEqual(pool.id, change.resource_id)
-        self.assertEqual(name, change.resource_name)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_sends_message_for_resource_pool_update(self):
-        pool = yield deferToDatabase(self.create_resource_pool, {})
-        pool_name = factory.make_name("pool")
-        yield self.captureSynced()
-        dv = DeferredValue()
-        listener = self.make_listener_without_delay()
-        listener.register("sys_rbac", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(
-                self.update_resource_pool, pool.id, {"name": pool_name}
-            )
-            yield dv.get(timeout=2)
-            yield self.assertSynced()
-        finally:
-            yield listener.stopService()
-        change = self.getCapturedSynced()
-        self.assertEqual(
-            f"renamed resource pool {pool.name} to {pool_name}",
-            change.source,
-        )
-        self.assertEqual("update", change.action)
-        self.assertEqual("resource-pool", change.resource_type)
-        self.assertEqual(pool.id, change.resource_id)
-        self.assertEqual(pool_name, change.resource_name)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_sends_message_for_resource_pool_delete(self):
-        pool = yield deferToDatabase(self.create_resource_pool)
-        yield self.captureSynced()
-        dv = DeferredValue()
-        listener = self.make_listener_without_delay()
-        listener.register("sys_rbac", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(self.delete_resource_pool, pool.id)
-            yield dv.get(timeout=2)
-            yield self.assertSynced()
-        finally:
-            yield listener.stopService()
-        change = self.getCapturedSynced()
-        self.assertEqual("removed resource pool %s" % pool.name, change.source)
-        self.assertEqual("remove", change.action)
-        self.assertEqual("resource-pool", change.resource_type)
-        self.assertEqual(pool.id, change.resource_id)
-        self.assertEqual(pool.name, change.resource_name)
