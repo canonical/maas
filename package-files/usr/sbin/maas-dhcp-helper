@@ -102,8 +102,8 @@ def notify(args):
     payload = json.dumps(notify_packet)
     try:
         conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        conn.connect(args.socket)
         with closing(conn):
+            conn.connect(args.socket)
             conn.send(payload.encode("utf-8"))
     except FileNotFoundError:
         logger.warning(

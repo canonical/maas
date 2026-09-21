@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from fixtures import EnvironmentVariable
+
 from maastesting.testcase import MAASTestCase
 
 
@@ -35,12 +36,22 @@ class TestRunSocketCleanup(MAASTestCase):
             server.run()
             mock_run.assert_called_once_with("maas-rackd")
 
-    def test_run_handles_unwritable_socket_path(self):
+    def test_run_survives_cleanup_failure(self):
         from provisioningserver import server
 
-        self.useFixture(
-            EnvironmentVariable("MAAS_DATA", "/nonexistent/path")
-        )
-        with patch.object(server, "runService") as mock_run:
-            server.run()
-            mock_run.assert_called_once_with("maas-rackd")
+        self.useFixture(EnvironmentVariable("MAAS_DATA", self.make_dir()))
+        with patch.object(Path, "unlink", side_effect=PermissionError):
+            with patch.object(server, "runService") as mock_run:
+                server.run()
+                mock_run.assert_called_once_with("maas-rackd")
+
+    def test_run_logs_on_cleanup_failure(self):
+        from provisioningserver import server
+
+        self.useFixture(EnvironmentVariable("MAAS_DATA", self.make_dir()))
+        with patch.object(Path, "unlink", side_effect=PermissionError):
+            with patch.object(server, "runService"):
+                with self.assertLogs(
+                    "provisioningserver.server", level="WARNING"
+                ):
+                    server.run()

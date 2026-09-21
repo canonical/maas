@@ -166,3 +166,4 @@ class TestDHCPHelperNotify(MAASTestCase):
             result.returncode,
             f"Helper crashed with exit code {result.returncode}:\n{result.stderr}",
         )
+        self.assertIn("not found", result.stderr)
