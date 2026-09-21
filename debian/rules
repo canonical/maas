@@ -1,5 +1,8 @@
 #!/usr/bin/make -f
 
+# golang-1.24 puts go in /usr/lib/go-1.24/bin, not on PATH
+export PATH := /usr/lib/go-1.24/bin:$(PATH)
+
 BUILDHOME = $(CURDIR)/debian/build
 PYTHON3 = $(shell py3versions -d)
 
