@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import base64
 import typing
@@ -32,8 +32,6 @@ class PreLoginInfoResponse(BaseModel):
     kind: str = Field(default="PreLoginInfo")
     is_authenticated: bool
     no_users: bool
-    # TODO: Delete this once we drop support for rbac/candid.
-    external_legacy_login_url: str | None = None
 
 
 class AuthInfoResponse(BaseModel):

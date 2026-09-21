@@ -2,14 +2,12 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import timedelta
-from json import dumps as _dumps
 from typing import Callable
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
-from macaroonbakery.bakery import Macaroon
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
@@ -28,7 +26,6 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
 from maasapiserver.v3.auth.cookie_manager import (
     MAASDjangoCookie,
     MAASLocalCookie,
-    MAASMacaroonCookie,
     MAASOAuth2Cookie,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -47,7 +44,6 @@ from maasservicelayer.exceptions.catalog import (
     BadGatewayException,
     BaseExceptionDetail,
     ConflictException,
-    DischargeRequiredException,
     PreconditionFailedException,
     UnauthorizedException,
 )
@@ -72,10 +68,7 @@ from maasservicelayer.models.users import UserProfile
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.auth import AuthService, AuthTokens
 from maasservicelayer.services.django_session import DjangoSessionService
-from maasservicelayer.services.external_auth import (
-    ExternalAuthService,
-    ExternalOAuthService,
-)
+from maasservicelayer.services.external_auth import ExternalOAuthService
 from maasservicelayer.services.tokens import RefreshTokenService
 from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
@@ -121,10 +114,6 @@ TEST_PROVIDER_2 = OAuthProvider(
 )
 
 
-def json_dumps_with_mocks(*args, **kwargs):
-    return _dumps(*args, **(kwargs | {"default": lambda obj: "mock"}))
-
-
 @pytest.mark.asyncio
 class TestAuthApi:
     BASE_PATH = f"{V3_API_PREFIX}/auth"
@@ -144,24 +133,6 @@ class TestAuthApi:
         pre_login_info = PreLoginInfoResponse(**response.json())
         assert pre_login_info.is_authenticated is True
         assert pre_login_info.no_users is True
-        assert pre_login_info.external_legacy_login_url is None
-
-    async def test_get_with_external_legacy_auth(
-        self,
-        authenticated_admin_api_client_v3: AsyncClient,
-        enable_candid,
-    ) -> None:
-        response = await authenticated_admin_api_client_v3.get(
-            f"{self.BASE_PATH}/login"
-        )
-        assert response.status_code == 200
-        pre_login_info = PreLoginInfoResponse(**response.json())
-        assert pre_login_info.is_authenticated is True
-        assert pre_login_info.no_users is False
-        assert (
-            pre_login_info.external_legacy_login_url
-            == "http://candid.example.com"
-        )
 
     async def test_post(
         self,
@@ -201,27 +172,6 @@ class TestAuthApi:
         )
 
         assert response.status_code == 422
-
-    async def test_post_discharge_required_exception(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user_rbac: AsyncClient,
-    ) -> None:
-        services_mock.external_auth = Mock(ExternalAuthService)
-        services_mock.external_auth.raise_discharge_required_exception.side_effect = DischargeRequiredException(
-            macaroon=Mock(Macaroon)
-        )
-
-        with patch("json.dumps", json_dumps_with_mocks):
-            response = await mocked_api_client_user_rbac.post(
-                f"{self.BASE_PATH}/login",
-                data={"username": "username", "password": "test"},
-            )
-
-        services_mock.external_auth.raise_discharge_required_exception.assert_called_once()
-        assert response.status_code == 401
-        json_response = response.json()
-        assert json_response["Code"] == "macaroon discharge required"
 
     async def test_post_wrong_credentials(
         self,
@@ -297,10 +247,6 @@ class TestAuthApi:
         assert decoded_token["sub"] == "username"
         assert decoded_token["user_id"] == 0
         assert token_response.refresh_token is None
-
-    @pytest.mark.skip
-    async def test_get_access_token_with_macaroon(self):
-        pass
 
     async def test_get_access_token_not_logged_in(
         self,
@@ -1252,9 +1198,6 @@ class TestAuthApi:
         )
         cookie_manager_clear_cookie.assert_any_call(
             key=MAASLocalCookie.REFRESH_TOKEN
-        )
-        cookie_manager_clear_cookie.assert_any_call(
-            key=MAASMacaroonCookie.MACAROON_MAAS
         )
         services_mock.django_session.delete_session.assert_awaited_once_with(
             session_key="sessionid123"

@@ -21,7 +21,6 @@ from maasserver.models import Interface, StaticIPAddress
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACEnabled, RBACForceOffFixture
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import (
     post_commit_hooks,
@@ -281,7 +280,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             queries,
-            20,
+            19,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -334,9 +333,6 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
 
     @transactional
     def test_list_num_queries_is_the_expected_number(self):
-        # Prevent RBAC from making a query.
-        self.useFixture(RBACForceOffFixture())
-
         owner = factory.make_User()
         handler = DeviceHandler(owner, {}, None)
         self.make_devices(
@@ -358,9 +354,6 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
 
     @transactional
     def test_list_num_queries_is_independent_of_num_devices(self):
-        # Prevent RBAC from making a query.
-        self.useFixture(RBACForceOffFixture())
-
         owner = factory.make_User()
         handler = DeviceHandler(owner, {}, None)
         ip_assignment = factory.pick_enum(DEVICE_IP_ASSIGNMENT_TYPE)
@@ -1181,20 +1174,6 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         self.assertRaises(HandlerDoesNotExistError, handler.update, node_data)
 
     @transactional
-    def test_update_owned_with_rbac(self):
-        rbac = self.useFixture(RBACEnabled())
-        user = factory.make_User(is_local=False)
-        rbac.store.allow(
-            user.username, factory.make_ResourcePool(), "admin-machines"
-        )
-        node = factory.make_Node(owner=user, node_type=NODE_TYPE.DEVICE)
-        handler = DeviceHandler(user, {}, None)
-        new_hostname = factory.make_name("hostname")
-        updated_node = handler.update(
-            {"system_id": node.system_id, "hostname": new_hostname}
-        )
-        self.assertEqual(updated_node["hostname"], new_hostname)
-
     @transactional
     def test_delete_interface_admin(self):
         user = factory.make_admin()

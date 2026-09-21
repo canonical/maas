@@ -11,7 +11,6 @@ from django.urls import reverse
 from twisted.internet.defer import succeed
 
 from maasserver import eventloop
-from maasserver.api import auth
 from maasserver.api import machines as machines_module
 from maasserver.api.machines import AllocationOptions, get_allocation_options
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
@@ -27,7 +26,6 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import post_commit_hooks, reload_object
@@ -498,7 +496,7 @@ class TestMachinesAPI(APITestCase.ForUser):
 
         expected_counts = [1, 2, 3]
         self.assertEqual(machines_count, expected_counts)
-        base_count = 84
+        base_count = 83
         for idx, machine_count in enumerate(machines_count):
             self.assertEqual(
                 queries_count[idx], base_count + (machine_count * 7)
@@ -678,44 +676,6 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertCountEqual(
             required_machine_ids, extract_system_ids(parsed_result)
         )
-
-    def test_GET_list_allocated_with_rbac(self):
-        self.patch(auth, "validate_user_external_auth").return_value = True
-        rbac = self.useFixture(RBACEnabled())
-        self.become_non_local()
-
-        user = factory.make_User()
-        pool = factory.make_ResourcePool()
-        rbac.store.allow(user.username, pool, "view")
-
-        pool = factory.make_ResourcePool()
-        rbac.store.add_pool(pool)
-        rbac.store.allow(self.user.username, pool, "view")
-
-        factory.make_Node(
-            hostname="viewable",
-            owner=self.user,
-            pool=pool,
-            status=NODE_STATUS.ALLOCATED,
-        )
-        # a machine with the same user but not accesssible to the user (not in
-        # the allowed pool)
-        factory.make_Node(
-            hostname="not-accessible",
-            owner=self.user,
-            status=NODE_STATUS.ALLOCATED,
-        )
-        # a machine owned by another user in the accessible pool
-        factory.make_Node(
-            hostname="other-user",
-            owner=factory.make_User(),
-            status=NODE_STATUS.ALLOCATED,
-            pool=pool,
-        )
-
-        parsed_result = self.get_json({"op": "list_allocated"})
-        hostnames = [machine["hostname"] for machine in parsed_result]
-        self.assertEqual(["viewable"], hostnames)
 
     def test_POST_allocate_returns_available_machine(self):
         # The "allocate" operation returns an available machine.
@@ -1879,27 +1839,6 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         machine = reload_object(machine)
         self.assertEqual(original_zone, machine.zone)
-
-    def test_POST_set_zone_rbac_pool_admin_allowed(self):
-        self.patch(auth, "validate_user_external_auth").return_value = True
-        rbac = self.useFixture(RBACEnabled())
-        self.become_non_local()
-        machine = factory.make_Machine()
-        zone = factory.make_Zone()
-        rbac.store.add_pool(machine.pool)
-        rbac.store.allow(self.user.username, machine.pool, "admin-machines")
-        rbac.store.allow(self.user.username, machine.pool, "view")
-        response = self.client.post(
-            self.machines_url,
-            {
-                "op": "set_zone",
-                "nodes": [machine.system_id],
-                "zone": zone.name,
-            },
-        )
-        self.assertEqual(http.client.OK, response.status_code)
-        machine = reload_object(machine)
-        self.assertEqual(zone, machine.zone)
 
     def test_POST_add_chassis_requires_admin(self):
         response = self.client.post(self.machines_url, {"op": "add_chassis"})

@@ -1,0 +1,198 @@
+"""Clean up legacy Candid/RBAC external authentication on upgrade
+
+Support for the legacy Candid/RBAC (macaroon-based) external authentication has
+been removed in MAAS 4.0. Upgrading a deployment that still relies on it would
+silently disable external logins and could lock out administrators. This migration
+makes the transition explicit and cleans up the leftover state:
+
+1. If external authentication is still configured, the upgrade is aborted.
+   External authentication must be disabled first so administrators do not get
+   locked out. The external-auth config secret is looked up in whichever secret
+   backend the deployment uses: when Vault is enabled (the ``vault_enabled``
+   config is true) the secret lives in Vault and is tracked by a non-deleted
+   ``maasserver_vaultsecret`` row; otherwise it is stored directly in the
+   local/database ``maasserver_secret`` table.
+
+2. Once external authentication is disabled, the Candid/RBAC user accounts are
+   permanently deleted, together with their SSH keys, SSL keys, API tokens,
+   OAuth consumers, notifications and stored files. Candid/RBAC users are
+   identified as non-local accounts without an OIDC provider, i.e.
+   ``maasserver_userprofile`` rows with ``is_local = false`` and
+   ``provider_id IS NULL`` (OIDC users are also non-local but always have a
+   ``provider_id``). Operation and event history rows are kept, but their
+   ``user_id`` reference is cleared.
+
+3. If any of those users still own resources (machines, IP ranges or static IP
+   addresses), the upgrade is aborted with the list of offending users so an
+   administrator can reassign or release those resources first. Users are never
+   deleted while they still own something.
+
+Revision ID: 0038
+Revises: 0037
+Create Date: 2026-07-30 09:50:00.000000+00:00
+
+"""
+
+from typing import Sequence
+
+from alembic import op
+from sqlalchemy import bindparam, text
+
+# revision identifiers, used by Alembic.
+revision: str = "0038"
+down_revision: str | None = "0037"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
+
+EXTERNAL_AUTH_SECRET_PATH = "global/external-auth"
+
+EXTERNAL_AUTH_CONFIGURED_MESSAGE = (
+    "This MAAS version has removed support for Candid/RBAC external "
+    "authentication, but this deployment still relies on it.\n"
+    "Upgrading now would disable external logins and could lock out "
+    "administrators.\n\n"
+    "Before upgrading, on your current MAAS release:\n"
+    "  1. Make sure a local administrator account with a usable password "
+    "exists (create one with `maas createadmin` if needed).\n"
+    "  2. Disable external authentication by running `maas configauth` and "
+    "leaving the RBAC URL and Candid agent file blank.\n"
+    "Once external authentication is cleared, retry the upgrade.\n\n"
+    "WARNING: when you retry the upgrade, all Candid/RBAC user accounts "
+    "(non-local users without an OIDC provider) will be PERMANENTLY DELETED, "
+    "along with their SSH keys, SSL keys, API tokens, OAuth consumers, "
+    "notifications and stored files. Reassign or release any machines, IP "
+    "ranges or static IP addresses they own beforehand, otherwise the upgrade "
+    "will abort and list the users that still own resources."
+)
+
+OWNED_RESOURCES_MESSAGE = (
+    "This MAAS version has removed support for Candid/RBAC external "
+    "authentication, so the following Candid/RBAC user accounts (non-local "
+    "users without an OIDC provider) must be deleted during the upgrade. "
+    "However, they still own machines, IP ranges or static IP addresses and "
+    "cannot be deleted:\n\n"
+    "{users}\n\n"
+    "Reassign these resources to another user, or release them, and then "
+    "retry the upgrade."
+)
+
+# Candid/RBAC users are non-local accounts without an OIDC provider.
+CANDID_RBAC_USER_IDS_SQL = (
+    "SELECT user_id FROM maasserver_userprofile "
+    "WHERE is_local = false AND provider_id IS NULL"
+)
+
+
+def _external_auth_configured(conn) -> bool:
+    """Return whether the external-auth config secret is still present.
+
+    The secret backend depends on the deployment: when Vault is enabled the
+    secret is stored in Vault and referenced by a non-deleted
+    ``maasserver_vaultsecret`` row; otherwise it lives in the local
+    ``maasserver_secret`` table.
+    """
+    vault_enabled = conn.execute(
+        text(
+            "SELECT value = 'true'::jsonb FROM maasserver_config "
+            "WHERE name = 'vault_enabled'"
+        )
+    ).scalar()
+
+    if vault_enabled:
+        return bool(
+            conn.execute(
+                text(
+                    "SELECT 1 FROM maasserver_vaultsecret "
+                    "WHERE path = :path AND deleted = false LIMIT 1"
+                ),
+                {"path": EXTERNAL_AUTH_SECRET_PATH},
+            ).scalar()
+        )
+
+    return bool(
+        conn.execute(
+            text("SELECT 1 FROM maasserver_secret WHERE path = :path LIMIT 1"),
+            {"path": EXTERNAL_AUTH_SECRET_PATH},
+        ).scalar()
+    )
+
+
+def upgrade() -> None:
+    conn = op.get_bind()
+
+    if _external_auth_configured(conn):
+        raise RuntimeError(EXTERNAL_AUTH_CONFIGURED_MESSAGE)
+
+    user_ids = [
+        row[0] for row in conn.execute(text(CANDID_RBAC_USER_IDS_SQL)).all()
+    ]
+    if not user_ids:
+        return
+
+    owners = (
+        conn.execute(
+            text(
+                "SELECT u.username FROM auth_user u WHERE u.id IN :ids AND ("
+                "  EXISTS (SELECT 1 FROM maasserver_node n "
+                "WHERE n.owner_id = u.id)"
+                "  OR EXISTS (SELECT 1 FROM maasserver_iprange r "
+                "WHERE r.user_id = u.id)"
+                "  OR EXISTS (SELECT 1 FROM maasserver_staticipaddress s "
+                "WHERE s.user_id = u.id)"
+                ") ORDER BY u.username"
+            ).bindparams(bindparam("ids", expanding=True)),
+            {"ids": user_ids},
+        )
+        .scalars()
+        .all()
+    )
+    if owners:
+        raise RuntimeError(
+            OWNED_RESOURCES_MESSAGE.format(
+                users="\n".join(f"  - {username}" for username in owners)
+            )
+        )
+
+    # Clear the users' dependent rows before the users themselves. These are
+    # the foreign keys to auth_user that use the default NO ACTION referential
+    # action: PostgreSQL rejects the user delete while any of these rows still
+    # reference it, so they must be removed first (rows referenced by an
+    # ON DELETE CASCADE constraint are removed automatically). Ownership FKs
+    # (node, iprange, staticipaddress) also use NO ACTION, but are already
+    # guaranteed to be empty by the check above.
+    dependent_deletes = (
+        "DELETE FROM piston3_token WHERE user_id IN :ids",
+        "DELETE FROM piston3_consumer WHERE user_id IN :ids",
+        "DELETE FROM maasserver_filestorage WHERE owner_id IN :ids",
+        "DELETE FROM maasserver_sshkey WHERE user_id IN :ids",
+        "DELETE FROM maasserver_sslkey WHERE user_id IN :ids",
+        "DELETE FROM maasserver_notification WHERE user_id IN :ids",
+        "DELETE FROM auth_user_groups WHERE user_id IN :ids",
+        "DELETE FROM auth_user_user_permissions WHERE user_id IN :ids",
+        "DELETE FROM maasserver_userprofile WHERE user_id IN :ids",
+        # Operation and event history are kept, but the user reference is
+        # cleared. For events the denormalized username column is populated
+        # first (when empty) so the record still shows who triggered them.
+        "UPDATE maasserver_operation SET user_id = NULL WHERE user_id IN :ids",
+        "UPDATE maasserver_event e "
+        "SET username = COALESCE(NULLIF(e.username, ''), u.username), "
+        "user_id = NULL "
+        "FROM auth_user u WHERE e.user_id = u.id AND e.user_id IN :ids",
+    )
+    for statement in dependent_deletes:
+        conn.execute(
+            text(statement).bindparams(bindparam("ids", expanding=True)),
+            {"ids": user_ids},
+        )
+
+    conn.execute(
+        text("DELETE FROM auth_user WHERE id IN :ids").bindparams(
+            bindparam("ids", expanding=True)
+        ),
+        {"ids": user_ids},
+    )
+
+
+def downgrade() -> None:
+    # we don't support migration downgrade
+    pass

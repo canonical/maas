@@ -17,7 +17,6 @@ from twisted.internet import defer
 import yaml
 
 from maasserver import forms
-from maasserver.api import auth
 from maasserver.api import machines as machines_module
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import (
@@ -60,7 +59,6 @@ from maasserver.testing.api import (
 )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.orm import reload_objects
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
@@ -1248,89 +1246,9 @@ class TestMachineAPI(APITestCase.ForUser):
             ).exists()
         )
 
-    def test_POST_deploy_sets_vcenter_registration_rbac_admin(self):
-        self.patch(node_module.Node, "_start")
-        self.patch(machines_module, "get_curtin_merged_config")
-        self.patch(auth, "validate_user_external_auth").return_value = True
-        rbac = self.useFixture(RBACEnabled())
-        self.become_non_local()
-        # The api allows the updating of a Machine.
-        machine = factory.make_Node(
-            hostname="diane",
-            owner=self.user,
-            interface=True,
-            power_type="manual",
-            status=NODE_STATUS.READY,
-            architecture=make_usable_architecture(self),
-        )
-        rbac.store.add_pool(machine.pool)
-        rbac.store.allow(self.user.username, machine.pool, "admin-machines")
-        _, releases = make_usable_osystem(self, "esxi", ["6.7"])
-        distro_series = releases[0]
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {
-                "op": "deploy",
-                "distro_series": distro_series,
-                "vcenter_registration": True,
-            },
-        )
-        self.assertEqual(
-            (http.client.OK, machine.system_id),
-            (
-                response.status_code,
-                json_load_bytes(response.content)["system_id"],
-            ),
-        )
-        self.assertTrue(
-            machine.nodemetadata_set.filter(
-                key="vcenter_registration"
-            ).exists()
-        )
-
-    def test_POST_deploy_doesnt_set_vcenter_registration_rbac_user(self):
-        self.patch(node_module.Node, "_start")
-        self.patch(machines_module, "get_curtin_merged_config")
-        self.patch(auth, "validate_user_external_auth").return_value = True
-        rbac = self.useFixture(RBACEnabled())
-        self.become_non_local()
-        # The api allows the updating of a Machine.
-        machine = factory.make_Node(
-            owner=self.user,
-            interface=True,
-            power_type="manual",
-            status=NODE_STATUS.READY,
-            architecture=make_usable_architecture(self),
-        )
-        rbac.store.add_pool(machine.pool)
-        rbac.store.allow(self.user.username, machine.pool, "deploy-machines")
-        _, releases = make_usable_osystem(self, "esxi", ["6.7"])
-        distro_series = releases[0]
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {
-                "op": "deploy",
-                "distro_series": distro_series,
-                "vcenter_registration": True,
-            },
-        )
-        self.assertEqual(
-            (http.client.OK, machine.system_id),
-            (
-                response.status_code,
-                json_load_bytes(response.content)["system_id"],
-            ),
-        )
-        self.assertFalse(
-            machine.nodemetadata_set.filter(
-                key="vcenter_registration"
-            ).exists()
-        )
-
     def test_POST_deploy_distro_series(self):
         self.patch(node_module.Node, "_start")
         self.patch(machines_module, "get_curtin_merged_config")
-        self.patch(auth, "validate_user_external_auth").return_value = True
         # The api allows the updating of a Machine.
         machine = factory.make_Node(
             owner=self.user,
@@ -2223,48 +2141,6 @@ class TestMachineAPI(APITestCase.ForUser):
             self.get_machine_uri(machine), {"hostname": "francis"}
         )
 
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
-
-    def test_PUT_updates_machine_rbac_pool_admin(self):
-        self.patch(auth, "validate_user_external_auth").return_value = True
-        rbac = self.useFixture(RBACEnabled())
-        self.become_non_local()
-        # The api allows the updating of a Machine.
-        machine = factory.make_Node(
-            hostname="diane",
-            owner=self.user,
-            architecture=make_usable_architecture(self),
-            power_type="manual",
-        )
-        rbac.store.add_pool(machine.pool)
-        rbac.store.allow(self.user.username, machine.pool, "admin-machines")
-        response = self.client.put(
-            self.get_machine_uri(machine), {"hostname": "francis"}
-        )
-        parsed_result = json_load_bytes(response.content)
-
-        self.assertEqual(http.client.OK, response.status_code)
-        domain_name = Domain.objects.get_default_domain().name
-        self.assertEqual("francis.%s" % domain_name, parsed_result["fqdn"])
-        self.assertEqual(0, Machine.objects.filter(hostname="diane").count())
-        self.assertEqual(1, Machine.objects.filter(hostname="francis").count())
-
-    def test_PUT_not_updates_machine_rbac_pool_user(self):
-        self.patch(auth, "validate_user_external_auth").return_value = True
-        rbac = self.useFixture(RBACEnabled())
-        self.become_non_local()
-        # The api allows the updating of a Machine.
-        machine = factory.make_Node(
-            hostname="diane",
-            owner=self.user,
-            architecture=make_usable_architecture(self),
-            power_type="manual",
-        )
-        rbac.store.add_pool(machine.pool)
-        rbac.store.allow(self.user.username, machine.pool, "deploy-machines")
-        response = self.client.put(
-            self.get_machine_uri(machine), {"hostname": "francis"}
-        )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_denied_if_locked(self):

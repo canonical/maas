@@ -12,7 +12,6 @@ from maasserver import openfga
 from maasserver.api import discoveries as discoveries_module
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models.subnet import Subnet
-from maasserver.rbac import rbac
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks, reload_object
@@ -84,7 +83,7 @@ class TestSubnetHandler(MAASServerTestCase):
         subnet = factory.make_Subnet()
         self.assertIsNone(handler.cache.get("staticroutes"))
         queries, _ = count_queries(handler.get, {"id": subnet.id})
-        self.assertEqual(7, queries)  # 6 queries + 1 for ReBAC
+        self.assertEqual(6, queries)
         self.assertIsNotNone(handler.cache["staticroutes"])
 
     def test_list(self):
@@ -103,11 +102,6 @@ class TestSubnetHandler(MAASServerTestCase):
         subnet = factory.make_Subnet()
         factory.make_Interface(iftype=INTERFACE_TYPE.UNKNOWN, subnet=subnet)
         self.assertIsNone(handler.cache.get("staticroutes"))
-
-        # Warm the RBAC enabled-state cache: the view-permission check reads
-        # it lazily (one DB query), and RBACClearFixture resets it each test.
-        # Priming here keeps that one-off query out of the measured count.
-        rbac.is_enabled()
 
         queries_one, _ = count_queries(handler.list, {})
 
