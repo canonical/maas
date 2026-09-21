@@ -67,13 +67,13 @@ def upgrade() -> None:
     )
 
     # Drop the RBAC sync procedures.
-    op.execute("DROP FUNCTION IF EXISTS sys_rbac_rpool_insert() CASCADE;")
-    op.execute("DROP FUNCTION IF EXISTS sys_rbac_rpool_update() CASCADE;")
-    op.execute("DROP FUNCTION IF EXISTS sys_rbac_rpool_delete() CASCADE;")
-    op.execute("DROP FUNCTION IF EXISTS sys_rbac_config_insert() CASCADE;")
-    op.execute("DROP FUNCTION IF EXISTS sys_rbac_config_update() CASCADE;")
+    op.execute("DROP FUNCTION IF EXISTS sys_rbac_rpool_insert CASCADE;")
+    op.execute("DROP FUNCTION IF EXISTS sys_rbac_rpool_update CASCADE;")
+    op.execute("DROP FUNCTION IF EXISTS sys_rbac_rpool_delete CASCADE;")
+    op.execute("DROP FUNCTION IF EXISTS sys_rbac_config_insert CASCADE;")
+    op.execute("DROP FUNCTION IF EXISTS sys_rbac_config_update CASCADE;")
     op.execute("DROP FUNCTION IF EXISTS sys_rbac_sync_update CASCADE;")
-    op.execute("DROP FUNCTION IF EXISTS sys_rbac_sync() CASCADE;")
+    op.execute("DROP FUNCTION IF EXISTS sys_rbac_sync CASCADE;")
 
     # Drop the tables.
     op.execute("DROP TABLE IF EXISTS maasserver_rbacsync CASCADE;")

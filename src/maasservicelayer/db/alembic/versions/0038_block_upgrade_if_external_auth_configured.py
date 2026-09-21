@@ -19,8 +19,8 @@ makes the transition explicit and cleans up the leftover state:
    identified as non-local accounts without an OIDC provider, i.e.
    ``maasserver_userprofile`` rows with ``is_local = false`` and
    ``provider_id IS NULL`` (OIDC users are also non-local but always have a
-   ``provider_id``). Operation history rows are kept, but their ``user_id``
-   reference is cleared.
+   ``provider_id``). Operation and event history rows are kept, but their
+   ``user_id`` reference is cleared.
 
 3. If any of those users still own resources (machines, IP ranges or static IP
    addresses), the upgrade is aborted with the list of offending users so an
@@ -167,13 +167,17 @@ def upgrade() -> None:
         "DELETE FROM maasserver_sshkey WHERE user_id IN :ids",
         "DELETE FROM maasserver_sslkey WHERE user_id IN :ids",
         "DELETE FROM maasserver_notification WHERE user_id IN :ids",
-        "DELETE FROM maasserver_oidcrevokedtoken WHERE user_email IN "
-        "(SELECT username FROM auth_user WHERE id IN :ids)",
         "DELETE FROM auth_user_groups WHERE user_id IN :ids",
         "DELETE FROM auth_user_user_permissions WHERE user_id IN :ids",
-        # Operation history is kept, but the user reference is cleared (the
-        # column is nullable).
+        "DELETE FROM maasserver_userprofile WHERE user_id IN :ids",
+        # Operation and event history are kept, but the user reference is
+        # cleared. For events the denormalized username column is populated
+        # first (when empty) so the record still shows who triggered them.
         "UPDATE maasserver_operation SET user_id = NULL WHERE user_id IN :ids",
+        "UPDATE maasserver_event e "
+        "SET username = COALESCE(NULLIF(e.username, ''), u.username), "
+        "user_id = NULL "
+        "FROM auth_user u WHERE e.user_id = u.id AND e.user_id IN :ids",
     )
     for statement in dependent_deletes:
         conn.execute(
@@ -181,12 +185,6 @@ def upgrade() -> None:
             {"ids": user_ids},
         )
 
-    conn.execute(
-        text(
-            "DELETE FROM maasserver_userprofile WHERE user_id IN :ids"
-        ).bindparams(bindparam("ids", expanding=True)),
-        {"ids": user_ids},
-    )
     conn.execute(
         text("DELETE FROM auth_user WHERE id IN :ids").bindparams(
             bindparam("ids", expanding=True)
