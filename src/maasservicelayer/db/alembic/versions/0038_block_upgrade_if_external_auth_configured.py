@@ -154,10 +154,12 @@ def upgrade() -> None:
         )
 
     # Clear the users' dependent rows before the users themselves. These are
-    # the foreign keys to auth_user that use ON DELETE RESTRICT (rows with an
+    # the foreign keys to auth_user that use the default NO ACTION referential
+    # action: PostgreSQL rejects the user delete while any of these rows still
+    # reference it, so they must be removed first (rows referenced by an
     # ON DELETE CASCADE constraint are removed automatically). Ownership FKs
-    # (node, iprange, staticipaddress) are already guaranteed to be empty by
-    # the check above.
+    # (node, iprange, staticipaddress) also use NO ACTION, but are already
+    # guaranteed to be empty by the check above.
     dependent_deletes = (
         "DELETE FROM piston3_token WHERE user_id IN :ids",
         "DELETE FROM piston3_consumer WHERE user_id IN :ids",
