@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import asyncio
 from datetime import datetime
 
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
@@ -28,10 +29,10 @@ class UserBuilder(ResourceBuilder):
     username: str | Unset = Field(default=UNSET)
 
     @staticmethod
-    def hash_password(password: str) -> str:
+    async def hash_password(password: str) -> str:
         hasher = PBKDF2PasswordHasher()
         salt = hasher.salt()
-        return hasher.encode(password, salt)
+        return await asyncio.to_thread(hasher.encode, password, salt)
 
 
 class UserProfileBuilder(ResourceBuilder):

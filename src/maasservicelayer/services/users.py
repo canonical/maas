@@ -363,7 +363,9 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         builder = UserProfileBuilder(completed_intro=True)
         return await self.update_profile(user_id, builder)
 
-    async def change_password(self, user_id: int, password: str) -> None:
+    async def change_password_checks(
+        self, user_id: int, current_password: str | None
+    ) -> None:
         user = await self.get_by_id(user_id)
         if user is None:
             raise NotFoundException()
@@ -388,10 +390,17 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
                 ]
             )
 
-        hashed_password = UserBuilder.hash_password(password)
-        await self._update_resource(
-            user, UserBuilder(password=hashed_password)
-        )
+        if current_password is not None and not await user.check_password(
+            current_password
+        ):
+            raise BadRequestException(
+                details=[
+                    BaseExceptionDetail(
+                        type=PRECONDITION_FAILED,
+                        message="Wrong password.",
+                    )
+                ]
+            )
 
     async def post_update_hook(self, old_resource, updated_resource):
         if old_resource.password != updated_resource.password:
