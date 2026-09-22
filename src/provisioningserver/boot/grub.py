@@ -15,6 +15,7 @@ from maascommon.bootmethods import (
     UefiArm64BootMetadata,
     UefiArm64HttpBootMetadata,
     UefiEbcBootMetadata,
+    UefiRiscv64BootMetadata,
 )
 from provisioningserver.boot import BootMethod, BytesReader, get_parameters
 from provisioningserver.kernel_opts import compose_kernel_command_line
@@ -171,6 +172,10 @@ class UEFIARM64BootMethod(UEFIAMD64BootMethod, UefiArm64BootMetadata):
 
 
 class UEFIARM64HTTPBootMethod(UEFIARM64BootMethod, UefiArm64HttpBootMetadata):
+    pass
+
+
+class UEFIRISCV64BootMethod(UEFIAMD64BootMethod, UefiRiscv64BootMetadata):
     pass
 
 
