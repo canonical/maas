@@ -207,6 +207,51 @@ func (s *DHCPServiceTestSuite) TestConfigurationWorkflowDisabled() {
 	s.False(s.svc.running.Load())
 }
 
+func (s *DHCPServiceTestSuite) TestStopUnlinksSocket() {
+	// Start the service so a socket is created.
+	err := s.svc.start()
+	s.NoError(err)
+	s.True(s.svc.running.Load())
+
+	sockPath := s.svc.dataPathFactory(dhcpdNotificationSocketName)
+	_, err = os.Stat(sockPath)
+	s.NoError(err, "socket should exist after start()")
+
+	// Stop the service.
+	err = s.svc.stop(context.Background())
+	s.NoError(err)
+
+	// The socket file should be gone.
+	_, err = os.Stat(sockPath)
+	s.True(os.IsNotExist(err), "socket should be unlinked after stop()")
+}
+
+func (s *DHCPServiceTestSuite) TestStartCleansUpStaleSocket() {
+	sockPath := s.svc.dataPathFactory(dhcpdNotificationSocketName)
+
+	// Create a stale socket file manually to simulate a crash.
+	addr, err := net.ResolveUnixAddr("unixgram", sockPath)
+	s.NoError(err)
+	conn, err := net.ListenUnixgram("unixgram", addr)
+	s.NoError(err)
+	conn.Close() // leaves the stale socket file on disk
+
+	// The stale socket file should exist.
+	_, err = os.Stat(sockPath)
+	s.NoError(err, "stale socket should exist")
+
+	// Start should clean up the stale socket and succeed.
+	err = s.svc.start()
+	s.NoError(err)
+
+	// A new socket should be in place.
+	_, err = os.Stat(sockPath)
+	s.NoError(err, "socket should exist after start()")
+
+	// Clean up.
+	s.svc.stop(context.Background())
+}
+
 func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4() {
 	secret := base64.StdEncoding.EncodeToString([]byte("abc"))
 

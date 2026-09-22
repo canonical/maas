@@ -27,7 +27,6 @@ import (
 	"os"
 	"os/exec"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -289,10 +288,8 @@ func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigP
 func (s *DHCPService) start() error {
 	sockPath := s.dataPathFactory(dhcpdNotificationSocketName)
 
-	if err := syscall.Unlink(sockPath); err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
+	if err = os.Remove(sockPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("error unlinking dhcp notification socket: %w", err)
 	}
 
 	addr, err := net.ResolveUnixAddr("unixgram", sockPath)
@@ -302,12 +299,17 @@ func (s *DHCPService) start() error {
 
 	s.notificationSock, err = net.ListenUnixgram("unixgram", addr)
 	if err != nil {
-		return err
+		// Clean up any socket file the OS may have created during bind.
+		os.Remove(sockPath) //nolint:errcheck,gosec // best-effort
+		return fmt.Errorf("failed to listen on dhcp notification socket: %w", err)
 	}
 
 	// The dhcpd socket must be world readable/writable
-	if err := os.Chmod(sockPath, 0666); err != nil { //nolint:gosec // ignore G302
-		return err
+	if err = os.Chmod(sockPath, 0666); err != nil { //nolint:gosec // ignore G302
+		s.notificationSock.Close() //nolint:errcheck,gosec // best-effort cleanup
+		os.Remove(sockPath)        //nolint:errcheck,gosec // best-effort cleanup
+
+		return fmt.Errorf("failed to change dhcp notification socket permissions: %w", err)
 	}
 
 	notificationListener := dhcpd.NewNotificationListener(s.notificationSock,
@@ -328,6 +330,10 @@ func (s *DHCPService) stop(ctx context.Context) error {
 	if s.notificationCancel != nil {
 		s.notificationCancel()
 	}
+
+	// Always remove the socket file, even if Close() fails.
+	sockPath := s.dataPathFactory(dhcpdNotificationSocketName)
+	defer os.Remove(sockPath) //nolint:errcheck // best-effort cleanup; file may not exist
 
 	if s.notificationSock != nil {
 		err := s.notificationSock.Close()
