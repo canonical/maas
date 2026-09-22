@@ -286,6 +286,8 @@ func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigP
 }
 
 func (s *DHCPService) start() error {
+	var err error
+
 	sockPath := s.dataPathFactory(dhcpdNotificationSocketName)
 
 	if err = os.Remove(sockPath); err != nil && !os.IsNotExist(err) {
@@ -337,6 +339,8 @@ func (s *DHCPService) stop(ctx context.Context) error {
 
 	if s.notificationSock != nil {
 		err := s.notificationSock.Close()
+		s.notificationSock = nil
+
 		if err != nil {
 			return err
 		}
