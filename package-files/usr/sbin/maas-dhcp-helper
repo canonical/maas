@@ -71,8 +71,12 @@ def notify(args):
     # each command.
     from contextlib import closing
     import json
+    import logging
     import socket
     import time
+
+    logging.basicConfig(level=logging.WARNING)
+    logger = logging.getLogger("maas-dhcp-helper")
 
     notify_packet = {
         "action": args.action,
@@ -96,10 +100,29 @@ def notify(args):
 
     # Connect to the socket and send the packet over as JSON.
     payload = json.dumps(notify_packet)
-    conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    conn.connect(args.socket)
-    with closing(conn):
-        conn.send(payload.encode("utf-8"))
+    try:
+        conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        with closing(conn):
+            conn.connect(args.socket)
+            conn.send(payload.encode("utf-8"))
+    except FileNotFoundError:
+        logger.warning(
+            "DHCP notification socket %s not found; "
+            "rackd may not be running. Dropping notification.",
+            args.socket,
+        )
+    except ConnectionRefusedError:
+        logger.warning(
+            "DHCP notification socket %s refused connection; "
+            "rackd may be restarting. Dropping notification.",
+            args.socket,
+        )
+    except PermissionError:
+        logger.warning(
+            "Permission denied for DHCP notification socket %s; "
+            "check file permissions. Dropping notification.",
+            args.socket,
+        )
 
 
 def clean_add_arguments(parser):
