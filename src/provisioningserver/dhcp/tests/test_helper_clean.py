@@ -7,7 +7,6 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-
 from maastesting import dev_root
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.fs import read_text_file
