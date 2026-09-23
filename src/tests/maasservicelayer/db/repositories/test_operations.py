@@ -95,6 +95,17 @@ class TestOperationsClauseFactory:
             == "maasserver_operation.is_bulk = true"
         )
 
+    def test_with_parent_id(self) -> None:
+        clause = OperationsClauseFactory.with_parent_id("parent-uuid")
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.parent_id = 'parent-uuid'"
+        )
+
     def test_with_user_id(self) -> None:
         clause = OperationsClauseFactory.with_user_id(1)
         assert (
@@ -104,6 +115,17 @@ class TestOperationsClauseFactory:
                 )
             )
             == "maasserver_operation.user_id = 1"
+        )
+
+    def test_without_parent_id(self) -> None:
+        clause = OperationsClauseFactory.without_parent_id()
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.parent_id IS NULL"
         )
 
 
