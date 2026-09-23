@@ -22,10 +22,7 @@ from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
     NOT_AUTHENTICATED_VIOLATION_TYPE,
 )
-from maasservicelayer.models.auth import (
-    AuthenticatedUser,
-    RBACPermissionsPools,
-)
+from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
 # This is used just to generate the openapi spec with the security annotations.
@@ -163,16 +160,39 @@ def check_permissions(
             external_auth_info
             and external_auth_info.type == ExternalAuthType.RBAC
         ):
-            # Initialize an empty object. The permissions will be populated if the handler has requested some.
-            authenticated_user.rbac_permissions = RBACPermissionsPools()
-            # really pyright?
-            assert authenticated_user.rbac_permissions is not None
+            permissions = authenticated_user.rbac_permissions
+            if permissions is None:
+                raise ForbiddenException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                            message="RBAC permissions were not populated during authentication.",
+                        )
+                    ]
+                )
 
-            if rbac_permissions:
+            requested_permissions = rbac_permissions or set()
+            if (
+                RbacPermission.MAAS_ADMIN in requested_permissions
+                and permissions.is_admin is not True
+            ):
+                raise ForbiddenException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                            message=f"The permission '{RbacPermission.MAAS_ADMIN}' is required.",
+                        )
+                    ]
+                )
+
+            pool_permissions = requested_permissions - {
+                RbacPermission.MAAS_ADMIN
+            }
+            if pool_permissions:
                 rbac_client = await services.external_auth.get_rbac_client()
                 pool_responses = await rbac_client.get_resource_pool_ids(
                     user=authenticated_user.username,
-                    permissions=rbac_permissions,
+                    permissions=pool_permissions,
                 )
                 all_resource_pools = set()
                 # if any of the response has the access_all property, we have to fetch all the resource pools ids
@@ -190,22 +210,18 @@ def check_permissions(
                     )
                     match resp.permission:
                         case RbacPermission.VIEW:
-                            authenticated_user.rbac_permissions.visible_pools = pools
+                            permissions.visible_pools = pools
                         case RbacPermission.VIEW_ALL:
-                            authenticated_user.rbac_permissions.view_all_pools = pools
+                            permissions.view_all_pools = pools
                         case RbacPermission.DEPLOY_MACHINES:
-                            authenticated_user.rbac_permissions.deploy_pools = pools
+                            permissions.deploy_pools = pools
                         case RbacPermission.ADMIN_MACHINES:
-                            authenticated_user.rbac_permissions.admin_pools = (
-                                pools
-                            )
+                            permissions.admin_pools = pools
                         case RbacPermission.EDIT:
-                            authenticated_user.rbac_permissions.edit_pools = (
-                                pools
-                            )
+                            permissions.edit_pools = pools
                             if resp.access_all:
                                 # The user can edit resource pools only if access_all is set
-                                authenticated_user.rbac_permissions.can_edit_all_resource_pools = True
+                                permissions.can_edit_all_resource_pools = True
         return authenticated_user
 
     return wrapper

@@ -20,6 +20,7 @@ class RBACPermissionsPools(BaseModel):
     deploy_pools (set[int] | None): pools where the user can deploy machines
     admin_pools (set[int] | None): pools where the user can admin machines
     edit_pools (set[int] | None): pools that the user can edit
+    is_admin
     """
 
     visible_pools: set[int] | None = Field(default=None)
@@ -28,6 +29,7 @@ class RBACPermissionsPools(BaseModel):
     admin_pools: set[int] | None = Field(default=None)
     edit_pools: set[int] | None = Field(default=None)
     can_edit_all_resource_pools: bool | None = Field(default=None)
+    is_admin: bool | None = Field(default=None)
 
 
 class AuthenticatedUser(BaseModel):
