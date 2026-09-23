@@ -163,6 +163,25 @@ jobs:
           PR_BODY_ENV: ${{ github.event.pull_request.body }}
           PR_TITLE_ENV: ${{ github.event.pull_request.title }}
 
+      - name: Verify Launchpad bug reference in description
+        run: |
+          PR_BODY="$PR_BODY_ENV"
+
+          # Same keywords as the lp-bug-update workflow.
+          if grep -qiP '\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\b.*LP:\s*' <<< "$PR_BODY"; then
+            if ! grep -qiP '\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\b.*LP:\s*\K[0-9]+' <<< "$PR_BODY"; then
+              echo "Error: PR description contains a closing keyword but no valid Launchpad bug reference."
+              echo "Expected syntax for Launchpad bug reference is LP:<number>."
+              exit 1
+            fi
+
+            echo "Launchpad bug reference found in the description."
+          else
+            echo "No closing keyword found. Skipping Launchpad bug reference check."
+          fi
+        env:
+          PR_BODY_ENV: ${{ github.event.pull_request.body }}
+
   test-python:
     needs: changes
     runs-on: ubuntu-24.04
