@@ -1674,7 +1674,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         "arch": ("architecture", _match_substring),
         "tags": ("tags__name", _match_substring),
         "vlans": ("current_config__interface__vlan__name", _match_substring),
-        "pod": ("bmc__name", _match_substring),
+        "pod": ("bmc__name", _match_any),
         "pod_type": ("bmc__power_type", _match_substring),
         "owner": ("owner__username", _match_substring),
         "subnets": (
@@ -1723,7 +1723,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         "not_arch": ("architecture", _match_substring),
         "not_tags": ("tags__name", _match_substring),
         "not_system_id": ("system_id", _match_substring),
-        "not_pod": ("bmc__name", _match_substring),
+        "not_pod": ("bmc__name", _match_any),
         "not_pod_type": ("bmc__power_type", _match_substring),
         "not_owner": ("owner__username", _match_substring),
         "not_subnets": (
@@ -1768,6 +1768,11 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         "not_physical_disk_count": ("physical_disk_count", _match_any),
         "not_total_storage": ("total_storage", _match_any),
         "not_numa_nodes_count": ("numa_nodes_count", _match_any),
+    }
+
+    FREE_TEXT_SEARCH_FILTERS = {
+        **FREETEXT_FILTERS,
+        "pod": ("bmc__name", _match_substring),
     }
 
     def __init__(self, **kwargs):
@@ -1955,7 +1960,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
                 "workloads",
                 "zone",
             ):
-                (db_field, cond) = self.FREETEXT_FILTERS[field]
+                (db_field, cond) = self.FREE_TEXT_SEARCH_FILTERS[field]
                 subq = reduce(
                     lambda q, c: q.__or__(c),
                     cond(db_field, [txt]),
