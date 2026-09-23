@@ -112,6 +112,20 @@ class TestHMCZPowerDriver(MAASTestCase):
             PowerActionError, self.hmcz._get_partition, self.make_context()
         )
 
+    def test_get_partition_logs_off_session_when_not_found(self):
+        cpc = self.fake_session.hmc.cpcs.add(
+            {
+                "name": factory.make_name("cpc"),
+                "dpm-enabled": True,
+            }
+        )
+        cpc.partitions.add({"name": factory.make_name("power_partition_name")})
+
+        self.assertRaises(
+            PowerActionError, self.hmcz._get_partition, self.make_context()
+        )
+        self.assertFalse(self.fake_session.is_logon())
+
     # zhmcclient_mock doesn't currently support async so MagicMock
     # must be used for power on/off
 
@@ -123,6 +137,22 @@ class TestHMCZPowerDriver(MAASTestCase):
         mock_get_partition.return_value.start.assert_called_once_with(
             wait_for_completion=False
         )
+
+    @inlineCallbacks
+    def test_power_on_logs_off_session(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        partition = mock_get_partition.return_value
+        yield self.hmcz.power_on(None, self.make_context())
+        partition.manager.session.logoff.assert_called_once()
+
+    @inlineCallbacks
+    def test_power_on_succeeds_even_if_session_logoff_fails(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        partition = mock_get_partition.return_value
+        partition.manager.session.logoff.side_effect = ConnectionError()
+        # Should not raise, despite logoff() failing.
+        yield self.hmcz.power_on(None, self.make_context())
+        partition.start.assert_called_once_with(wait_for_completion=False)
 
     @inlineCallbacks
     def test_power_on_stops_in_a_paused_state(self):
@@ -179,6 +209,13 @@ class TestHMCZPowerDriver(MAASTestCase):
         mock_get_partition.return_value.stop.assert_called_once_with(
             wait_for_completion=False
         )
+
+    @inlineCallbacks
+    def test_power_off_logs_off_session(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        partition = mock_get_partition.return_value
+        yield self.hmcz.power_off(None, self.make_context())
+        partition.manager.session.logoff.assert_called_once()
 
     @inlineCallbacks
     def test_power_off_waits_for_starting_state(self):
@@ -244,6 +281,40 @@ class TestHMCZPowerDriver(MAASTestCase):
             None, self.make_context(power_partition_name)
         )
 
+        self.assertEqual("on", status)
+
+    @inlineCallbacks
+    def test_power_query_logs_off_session(self):
+        power_partition_name = factory.make_name("power_partition_name")
+        cpc = self.fake_session.hmc.cpcs.add(
+            {
+                "name": factory.make_name("cpc"),
+                "dpm-enabled": True,
+            }
+        )
+        cpc.partitions.add(
+            {
+                "name": power_partition_name,
+                "status": "active",
+            }
+        )
+
+        yield self.hmcz.power_query(
+            None, self.make_context(power_partition_name)
+        )
+
+        self.assertFalse(self.fake_session.is_logon())
+
+    @inlineCallbacks
+    def test_power_query_result_not_masked_by_session_logoff_failure(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        partition = mock_get_partition.return_value
+        partition.get_property.return_value = "active"
+        partition.manager.session.logoff.side_effect = ConnectionError()
+
+        status = yield self.hmcz.power_query(None, self.make_context())
+
+        # The result is still returned, despite logoff() failing.
         self.assertEqual("on", status)
 
     @inlineCallbacks
@@ -422,6 +493,32 @@ class TestHMCZPowerDriver(MAASTestCase):
             "network-adapter", partition.properties["boot-device"]
         )
         self.assertEqual(nic.uri, partition.properties["boot-network-device"])
+
+    @inlineCallbacks
+    def test_set_boot_order_logs_off_session(self):
+        power_partition_name = factory.make_name("power_partition_name")
+        mac_address = factory.make_mac_address()
+        cpc = self.fake_session.hmc.cpcs.add(
+            {
+                "name": factory.make_name("cpc"),
+                "dpm-enabled": True,
+            }
+        )
+        partition = cpc.partitions.add(
+            {
+                "name": power_partition_name,
+                "status": "terminated",
+            }
+        )
+        partition.nics.add({"mac-address": mac_address})
+
+        yield self.hmcz.set_boot_order(
+            None,
+            self.make_context(power_partition_name),
+            [{"mac_address": mac_address}],
+        )
+
+        self.assertFalse(self.fake_session.is_logon())
 
     @inlineCallbacks
     def test_set_boot_order_storage_volume(self):
@@ -859,3 +956,16 @@ class TestProbeHMCZAndEnlist(MAASTestCase):
             domain=self.domain,
         )
         self.assertRPC(rpc, "commissioning")
+
+    @inlineCallbacks
+    def test_probe_hmcz_and_enlist_logs_off_session(self):
+        yield self.create_fake_rpc_service()
+        yield hmcz_module.probe_hmcz_and_enlist(
+            self.user,
+            self.hostname,
+            self.username,
+            self.password,
+            accept_all=False,
+            domain=self.domain,
+        )
+        self.assertFalse(self.fake_session.is_logon())
