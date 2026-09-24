@@ -37,6 +37,7 @@ from maasservicelayer.services import (
     SubnetsService,
     V3SubnetUtilizationService,
 )
+from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -336,6 +337,7 @@ class TestIPRangesApi(ApiCommonTests):
         services_mock: ServiceCollectionV3,
         mocked_api_client_user_rbac_admin: AsyncClient,
     ) -> None:
+        services_mock.external_auth = Mock(ExternalAuthService)
         services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = Subnet(
             id=1,

@@ -160,8 +160,7 @@ def check_permissions(
             external_auth_info
             and external_auth_info.type == ExternalAuthType.RBAC
         ):
-            permissions = authenticated_user.rbac_permissions
-            if permissions is None:
+            if authenticated_user.rbac_permissions is None:
                 raise ForbiddenException(
                     details=[
                         BaseExceptionDetail(
@@ -174,7 +173,7 @@ def check_permissions(
             requested_permissions = rbac_permissions or set()
             if (
                 RbacPermission.MAAS_ADMIN in requested_permissions
-                and permissions.is_admin is not True
+                and authenticated_user.rbac_permissions.is_admin is not True
             ):
                 raise ForbiddenException(
                     details=[
@@ -210,18 +209,22 @@ def check_permissions(
                     )
                     match resp.permission:
                         case RbacPermission.VIEW:
-                            permissions.visible_pools = pools
+                            authenticated_user.rbac_permissions.visible_pools = pools
                         case RbacPermission.VIEW_ALL:
-                            permissions.view_all_pools = pools
+                            authenticated_user.rbac_permissions.view_all_pools = pools
                         case RbacPermission.DEPLOY_MACHINES:
-                            permissions.deploy_pools = pools
+                            authenticated_user.rbac_permissions.deploy_pools = pools
                         case RbacPermission.ADMIN_MACHINES:
-                            permissions.admin_pools = pools
+                            authenticated_user.rbac_permissions.admin_pools = (
+                                pools
+                            )
                         case RbacPermission.EDIT:
-                            permissions.edit_pools = pools
+                            authenticated_user.rbac_permissions.edit_pools = (
+                                pools
+                            )
                             if resp.access_all:
                                 # The user can edit resource pools only if access_all is set
-                                permissions.can_edit_all_resource_pools = True
+                                authenticated_user.rbac_permissions.can_edit_all_resource_pools = True
         return authenticated_user
 
     return wrapper

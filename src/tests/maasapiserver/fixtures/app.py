@@ -59,7 +59,6 @@ def create_app_with_mocks(
             call_next: Callable[[Request], Awaitable[Response]],
         ) -> Response:
             request.state.services = mocked_services
-            request.state.services.external_auth = Mock(ExternalAuthService)
             if external_auth:
                 request.state.services.external_auth.get_external_auth.return_value = ExternalAuthConfig(
                     type=ExternalAuthType.RBAC,
@@ -68,6 +67,9 @@ def create_app_with_mocks(
                     admin_group="",
                 )
             else:
+                request.state.services.external_auth = Mock(
+                    ExternalAuthService
+                )
                 request.state.services.external_auth.get_external_auth.return_value = None
             return await call_next(request)
 
