@@ -740,6 +740,55 @@ class TestComposePreseed(MAASServerTestCase):
             preseed["power_state"],
         )
 
+    def test_compose_preseed_skips_reboot_for_boot_order_capable_power_type(
+        self,
+    ):
+        rack_controller = factory.make_RackController(url="")
+        node = factory.make_Node(
+            interface=True,
+            status=NODE_STATUS.DEPLOYING,
+            power_type="hmcz",
+        )
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
+        self.useFixture(RunningClusterRPCFixture())
+        request = make_HttpRequest()
+        preseed = yaml.safe_load(
+            compose_preseed(request, PRESEED_TYPE.CURTIN, node)
+        )
+        self.assertNotIn("power_state", preseed)
+
+    def test_compose_preseed_for_testing_skips_reboot_for_boot_order_capable_power_type(
+        self,
+    ):
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True,
+            status=NODE_STATUS.TESTING,
+            power_type="hmcz",
+            with_empty_script_sets=True,
+        )
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+
+        with post_commit_hooks:
+            nic.vlan.save()
+
+        script_set = node.current_testing_script_set
+        script_set.power_state_before_transition = POWER_STATE.ON
+        script_set.save()
+        request = make_HttpRequest()
+        preseed = yaml.safe_load(
+            compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
+        )
+        self.assertNotIn("power_state", preseed)
+
     def test_compose_preseed_powersoff_for_all_other_statuses(self):
         rack_controller = factory.make_RackController()
         for status, status_name in NODE_STATUS_CHOICES:
