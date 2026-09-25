@@ -1,7 +1,11 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for maas-dhcp-support clean command."""
+"""Tests for maas-dhcp-helper clean and notify commands."""
+
+from pathlib import Path
+import subprocess
+import tempfile
 
 from maastesting import dev_root
 from maastesting.testcase import MAASTestCase
@@ -99,3 +103,67 @@ class TestDHCPClean(MAASTestCase):
             ]
         )
         self.assertEqual(LEASES_FILE_WITHOUT_HOSTS, read_text_file(path))
+
+
+class TestDHCPHelperNotify(MAASTestCase):
+    """Tests for maas-dhcp-helper notify graceful degradation."""
+
+    def test_notify_exits_cleanly_when_socket_missing(self):
+        helper = f"{dev_root}/package-files/usr/sbin/maas-dhcp-helper"
+        nonexistent = Path(tempfile.mktemp(suffix=".sock"))
+        result = subprocess.run(
+            [
+                helper,
+                "notify",
+                "--action",
+                "commit",
+                "--mac",
+                "aa:bb:cc:dd:ee:ff",
+                "--ip-family",
+                "ipv4",
+                "--ip",
+                "10.0.0.1",
+                "--lease-time",
+                "3600",
+                "--socket",
+                str(nonexistent),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(
+            0,
+            result.returncode,
+            f"Helper crashed with exit code {result.returncode}:\n{result.stderr}",
+        )
+        self.assertIn("not found", result.stderr)
+
+    def test_notify_exits_cleanly_when_socket_dir_missing(self):
+        helper = f"{dev_root}/package-files/usr/sbin/maas-dhcp-helper"
+        nonexistent = "/nonexistent/path/dhcpd.sock"
+        result = subprocess.run(
+            [
+                helper,
+                "notify",
+                "--action",
+                "commit",
+                "--mac",
+                "aa:bb:cc:dd:ee:ff",
+                "--ip-family",
+                "ipv4",
+                "--ip",
+                "10.0.0.1",
+                "--lease-time",
+                "3600",
+                "--socket",
+                nonexistent,
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(
+            0,
+            result.returncode,
+            f"Helper crashed with exit code {result.returncode}:\n{result.stderr}",
+        )
+        self.assertIn("not found", result.stderr)
