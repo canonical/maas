@@ -38,6 +38,12 @@ else:
 maaslog = get_maas_logger("drivers.power.hmcz")
 
 
+_RETRYABLE_REASONS = {
+    1: "not yet in a valid state",
+    2: "busy",
+}
+
+
 def _retry_on_busy(
     func,
     *args,
@@ -47,14 +53,27 @@ def _retry_on_busy(
     retry_delay=5,
     **kwargs,
 ):
-    """Run a zhmcclient call, retrying while the partition is 409,2 busy.
+    """Run a zhmcclient call, retrying while the partition isn't ready yet.
 
-    IBM Z rejects a write against a partition with HTTP 409 reason 2 while
-    another operation is in flight on that partition -- e.g. a fire-and-forget
-    start/stop still settling on the HMC, or a guest re-IPL after the install.
-    That busy window is transient and is not reflected in the partition status,
-    so retry the call for a bounded time before giving up. Any other error is
-    re-raised immediately.
+    IBM Z rejects a write against a partition with HTTP 409 for (at least)
+    two distinct reasons that both come down to the same thing: the
+    partition's *actual* state on the HMC hasn't caught up with an
+    in-flight, fire-and-forget transition yet, even though the status
+    property this driver last read already looked settled:
+
+    - reason 2 ("busy"): another operation is still in flight on that
+      partition -- e.g. a fire-and-forget start/stop still settling on the
+      HMC, or a guest re-IPL after the install.
+    - reason 1 ("not in a valid state to perform the operation"): e.g. a
+      boot-order update issued right after a fire-and-forget stop, before
+      the HMC's internal state has fully settled to "stopped" -- observed
+      live causing set_boot_order to fail outright and fall back on
+      Temporal's own outer activity retry instead of resolving here.
+
+    IBM Z/DPM state transitions are comparatively slow and not always
+    reflected promptly in the partition's status property, so both windows
+    are transient. Retry the call for a bounded time before giving up. Any
+    other error is re-raised immediately.
 
     These power/boot operations run inside the short-lived maas.power CLI under
     a Temporal power activity whose start_to_close timeout is 5 minutes, so the
@@ -64,14 +83,17 @@ def _retry_on_busy(
         try:
             return func(*args, **kwargs)
         except HTTPError as exc:
-            if not (exc.http_status == 409 and exc.reason == 2):
+            reason_desc = _RETRYABLE_REASONS.get(exc.reason)
+            if not (exc.http_status == 409 and reason_desc is not None):
                 raise
             if attempt >= max_attempts:
                 maaslog.error(
-                    "%s: %s still 409,2 busy after %d attempts; giving up. "
+                    "%s: %s still 409,%d (%s) after %d attempts; giving up. "
                     "HMC error: %s [%s %s]",
                     system_id,
                     op_desc,
+                    exc.reason,
+                    reason_desc,
                     attempt,
                     exc.message,
                     exc.request_method,
@@ -79,10 +101,12 @@ def _retry_on_busy(
                 )
                 raise
             maaslog.warning(
-                "%s: %s got 409,2 busy (attempt %d/%d); retrying in %ds. "
+                "%s: %s got 409,%d (%s) (attempt %d/%d); retrying in %ds. "
                 "HMC error: %s [%s %s]",
                 system_id,
                 op_desc,
+                exc.reason,
+                reason_desc,
                 attempt,
                 max_attempts,
                 retry_delay,
@@ -99,12 +123,23 @@ VERIFY_SSL_NO = "n"
 VERIFY_SSL_CHOICES = [[VERIFY_SSL_NO, "No"], [VERIFY_SSL_YES, "Yes"]]
 
 # set_boot_order shares the single 5 minute (300s) Temporal power activity
-# budget with an upfront partition.wait_for_status() that can block up to 120s.
-# Keep the busy-retry budget small enough that 120s + retries + the HMC session
-# setup still finish well under 300s; otherwise Temporal aborts and retries the
-# activity while this Twisted thread keeps writing to the HMC in the background.
-# 8 attempts => 7 x 15s = 105s of retries, so ~225s worst case (120s + 105s).
-SET_BOOT_ORDER_RETRY_MAX_ATTEMPTS = 8
+# budget with an upfront partition.wait_for_status() that can block up to
+# 120s. Keep the busy-retry budget small enough that 120s + retries + the
+# HMC session setup still finish well under 300s; otherwise Temporal
+# aborts and retries the activity while this Twisted thread keeps writing
+# to the HMC in the background.
+#
+# Repeated live testing against a real HMC under concurrent load showed
+# 409,2/409,1 durations trending upward across runs: ~160-170s, then
+# ~205-215s, then ~225-235s -- well beyond what a smaller budget can
+# absorb. 19 x 15s = 285s leaves a 15s margin under the 5 minute Temporal
+# activity timeout (not the full 300s, since _get_partition()'s HMC
+# session setup plus the final successful call and Temporal's own
+# overhead also need to fit inside that same 5 minutes), while sending
+# fewer requests than an equivalent-budget shorter-interval alternative
+# would, since the total wait matters far more here than how often we
+# ask in the meantime.
+SET_BOOT_ORDER_RETRY_MAX_ATTEMPTS = 19
 SET_BOOT_ORDER_RETRY_DELAY = 15
 
 
