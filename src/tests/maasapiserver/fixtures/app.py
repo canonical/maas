@@ -34,6 +34,7 @@ from maasservicelayer.auth.external_auth import (
     ExternalAuthType,
 )
 from maasservicelayer.db import Database
+from maasservicelayer.models.auth import RBACPermissionsPools
 from maasservicelayer.models.users import User
 from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
 from maasservicelayer.services.external_auth import ExternalAuthService
@@ -49,6 +50,7 @@ def create_app_with_mocks(
     mocked_services: ServiceCollectionV3,
     with_user: bool = False,
     external_auth: bool = False,
+    rbac_is_admin: bool = False,
 ):
     class InjectServicesMocks(BaseHTTPMiddleware):
         async def dispatch(
@@ -79,7 +81,13 @@ def create_app_with_mocks(
         ) -> Response:
             if with_user:
                 request.state.authenticated_user = AuthenticatedUser(
-                    id=0, username="username"
+                    id=0,
+                    username="username",
+                    rbac_permissions=(
+                        RBACPermissionsPools(is_admin=rbac_is_admin)
+                        if external_auth
+                        else None
+                    ),
                 )
             else:
                 request.state.authenticated_user = None
@@ -144,6 +152,18 @@ def app_with_mocked_services_rbac(services_mock: ServiceCollectionV3):
 def app_with_mocked_services_user_rbac(services_mock: ServiceCollectionV3):
     yield create_app_with_mocks(
         services_mock, with_user=True, external_auth=True
+    )
+
+
+@pytest.fixture
+def app_with_mocked_services_user_rbac_admin(
+    services_mock: ServiceCollectionV3,
+):
+    yield create_app_with_mocks(
+        services_mock,
+        with_user=True,
+        external_auth=True,
+        rbac_is_admin=True,
     )
 
 
@@ -267,6 +287,17 @@ async def mocked_api_client_user_rbac(
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
         transport=ASGITransport(app=app_with_mocked_services_user_rbac),
+        base_url="http://test",
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+async def mocked_api_client_user_rbac_admin(
+    app_with_mocked_services_user_rbac_admin: FastAPI,
+) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(
+        transport=ASGITransport(app=app_with_mocked_services_user_rbac_admin),
         base_url="http://test",
     ) as client:
         yield client

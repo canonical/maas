@@ -268,7 +268,8 @@ class MachinesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_MACHINES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_MACHINES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],

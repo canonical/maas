@@ -28,6 +28,7 @@ from maasapiserver.v3.auth.base import (
 from maascommon.enums.events import EventTypeEnum
 from maascommon.events import EVENT_DETAILS_MAP
 from maascommon.openfga.base import MAASResourceEntitlement
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.events import EndpointChoicesEnum
 from maasservicelayer.services import ServiceCollectionV3
@@ -111,7 +112,8 @@ class ConfigurationsHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -159,7 +161,8 @@ class ConfigurationsHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],

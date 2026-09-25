@@ -42,6 +42,7 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.configurations import BootImagesAutoImportConfig
 from maasservicelayer.models.fields import UniqueList
@@ -157,7 +158,8 @@ class BootSourceSelectionsHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -213,7 +215,8 @@ class BootSourceSelectionsHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],

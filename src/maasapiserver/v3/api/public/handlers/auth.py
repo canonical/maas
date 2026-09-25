@@ -43,6 +43,7 @@ from maasapiserver.v3.auth.cookie_manager import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -369,7 +370,8 @@ class AuthHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -449,7 +451,8 @@ class AuthHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -475,7 +478,8 @@ class AuthHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
