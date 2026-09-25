@@ -129,6 +129,18 @@ def get_snap_mode():
     return mode
 
 
+def running_in_snap() -> bool:
+    """Return whether MAAS is running inside a snap.
+
+    MAAS 4.0+ ships exclusively as a snap (see commit "MAAS as a snap only -
+    drop debian packaging"), so this is unconditionally ``True``. Kept as a
+    function (rather than inlining ``True`` at call sites) so callers reading
+    like "only available on snap deployments" keep making sense without a
+    larger rewrite of their conditional branches.
+    """
+    return True
+
+
 # Key used to wrap the versions info in the RPC "versions" state payload.
 SNAP_VERSIONS_INFO_KEY = "snap"
 

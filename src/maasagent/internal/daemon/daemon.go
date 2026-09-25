@@ -46,6 +46,7 @@ import (
 	"maas.io/core/src/maasagent/internal/atomicfile"
 	"maas.io/core/src/maasagent/internal/certutil"
 	"maas.io/core/src/maasagent/internal/client"
+	"maas.io/core/src/maasagent/internal/fips"
 	"maas.io/core/src/maasagent/internal/logger"
 	"maas.io/core/src/maasagent/internal/pathutil"
 	"maas.io/core/src/maasagent/internal/token"
@@ -214,6 +215,11 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 	d.logger = logger.New(string(d.cfg.Observability.Logging.Level))
 	d.logger.Info("Starting daemon")
 
+	// Detect and log host FIPS state once at startup. Native FIPS enforcement
+	// is driven by GODEBUG=fips140 set by the snap wrapper; this records the
+	// detected state for operators and audit tooling.
+	fips.IsEnabled()
+
 	if err := d.setupObservability(ctx); err != nil {
 		return fmt.Errorf("configure observability: %w", err)
 	}
@@ -255,6 +261,7 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 
 		d.dynCfg = &DynamicConfig{
 			Temporal: TemporalConfig{
+				Host:          dynCfg.Temporal.Host,
 				EncryptionKey: dynCfg.RPCSecret,
 			},
 			SystemID:  dynCfg.SystemID,
@@ -582,6 +589,7 @@ func runAll(cmds ...*exec.Cmd) error {
 // TODO: Remove once Python based rackd is obsolete
 func (d *Daemon) readLegacyConfig(path string) error {
 	type temporalConfig struct {
+		Host          string `yaml:"host"`
 		EncryptionKey string `yaml:"encryption_key"`
 	}
 
@@ -602,6 +610,7 @@ func (d *Daemon) readLegacyConfig(path string) error {
 
 	d.dynCfg = &DynamicConfig{
 		Temporal: TemporalConfig{
+			Host:          cfg.Temporal.Host,
 			EncryptionKey: cfg.Temporal.EncryptionKey,
 		},
 		SystemID: cfg.SystemID,

@@ -10,7 +10,10 @@ import pytest
 
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.exceptions.catalog import PreconditionFailedException
+from maasservicelayer.exceptions.catalog import (
+    NotFoundException,
+    PreconditionFailedException,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.ssh_host_keys import TrustedSshHostKey
 from maasservicelayer.services import ServiceCollectionV3
@@ -63,6 +66,11 @@ class TestSshHostKeysApi(ApiCommonTests):
             ),
             Endpoint(
                 method="DELETE",
+                path=f"{self.BASE_PATH}/1",
+                permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+            ),
+            Endpoint(
+                method="PUT",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
             ),
@@ -144,6 +152,83 @@ class TestSshHostKeysApi(ApiCommonTests):
         assert "ETag" in response.headers
         body = response.json()
         assert body["host"] == TEST_KEY.host
+
+    async def test_update_ssh_host_key(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+        )
+        services_mock.trusted_ssh_host_keys = AsyncMock()
+        services_mock.trusted_ssh_host_keys.update_by_id.return_value = (
+            TEST_KEY_2
+        )
+
+        response = await client.put(
+            f"{self.BASE_PATH}/1",
+            json={
+                "host": TEST_KEY_2.host,
+                "key_type": TEST_KEY_2.key_type,
+                "public_key": TEST_KEY_2.public_key,
+                "label": TEST_KEY_2.label,
+            },
+        )
+        assert response.status_code == 200
+        assert "ETag" in response.headers
+        body = response.json()
+        assert body["host"] == TEST_KEY_2.host
+        assert body["label"] == TEST_KEY_2.label
+
+    async def test_update_ssh_host_key_not_found(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+        )
+        services_mock.trusted_ssh_host_keys = AsyncMock()
+        services_mock.trusted_ssh_host_keys.update_by_id.side_effect = (
+            NotFoundException()
+        )
+
+        response = await client.put(
+            f"{self.BASE_PATH}/999",
+            json={
+                "host": TEST_KEY.host,
+                "key_type": TEST_KEY.key_type,
+                "public_key": TEST_KEY.public_key,
+                "label": TEST_KEY.label,
+            },
+        )
+        assert response.status_code == 404
+
+    async def test_update_ssh_host_key_precondition_failed(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+        )
+        services_mock.trusted_ssh_host_keys = AsyncMock()
+        services_mock.trusted_ssh_host_keys.update_by_id.side_effect = (
+            PreconditionFailedException()
+        )
+
+        response = await client.put(
+            f"{self.BASE_PATH}/1",
+            headers={"If-Match": "stale-etag"},
+            json={
+                "host": TEST_KEY.host,
+                "key_type": TEST_KEY.key_type,
+                "public_key": TEST_KEY.public_key,
+                "label": TEST_KEY.label,
+            },
+        )
+        assert response.status_code == 412
 
     async def test_delete_ssh_host_key(
         self,
