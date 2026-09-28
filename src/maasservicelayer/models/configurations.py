@@ -65,6 +65,9 @@ class Config(BaseModel, Generic[T]):
     # If the config should be exposed to the users via API.
     is_public: ClassVar[bool] = True
 
+    # If the config requires the CAN_VIEW_CONFIGURATIONS entitlement.
+    requires_entitlement_to_view: ClassVar[bool] = True
+
     # If the config should be stored as secret.
     stored_as_secret: ClassVar[bool] = False
 
@@ -80,6 +83,7 @@ class Config(BaseModel, Generic[T]):
 
 
 class MAASNameConfig(Config[str | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "maas_name"
     default: ClassVar[str | None] = gethostname()
     description: ClassVar[str] = "MAAS name"
@@ -89,6 +93,7 @@ class MAASNameConfig(Config[str | None]):
 
 
 class ThemeConfig(Config[str | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "theme"
     default: ClassVar[str | None] = ""
     description: ClassVar[str] = "MAAS theme"
@@ -96,6 +101,7 @@ class ThemeConfig(Config[str | None]):
 
 
 class KernelOptsConfig(Config[str | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "kernel_opts"
     default: ClassVar[str | None] = None
     description: ClassVar[str] = (
@@ -174,6 +180,7 @@ class DefaultDnsTtlConfig(Config[int | None]):
 
 
 class UpstreamDnsConfig(Config[list[IPvAnyAddress] | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "upstream_dns"
     default: ClassVar[list[IPvAnyAddress] | None] = None
     description: ClassVar[str] = (
@@ -188,6 +195,7 @@ class UpstreamDnsConfig(Config[list[IPvAnyAddress] | None]):
 
 
 class DNSSECValidationConfig(Config[DNSSECEnumm | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "dnssec_validation"
     default: ClassVar[DNSSECEnumm | None] = DNSSECEnumm.AUTO
     description: ClassVar[str] = "Enable DNSSEC validation of upstream zones"
@@ -225,6 +233,7 @@ class DNSTrustedAclConfig(Config[str | None]):
     This field normalizes the list to a space-separated list.
     """
 
+    requires_entitlement_to_view = False
     _separators: ClassVar[re.Pattern] = re.compile(r"[,\s]+")
     _pt_ipv4: ClassVar[str] = r"(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
     _pt_ipv6: ClassVar[str] = (
@@ -300,6 +309,7 @@ class AllowOnlyTrustedTransfersConfig(Config[bool | None]):
 
 
 class RemoteSyslogConfig(Config[str | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "remote_syslog"
     default: ClassVar[str | None] = None
     description: ClassVar[str] = "Remote syslog server to forward machine logs"
@@ -362,6 +372,7 @@ class MAASSyslogPortConfig(Config[int | None]):
 class ActiveDiscoveryIntervalConfig(
     Config[ActiveDiscoveryIntervalEnum | None]
 ):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "active_discovery_interval"
     default: ClassVar[ActiveDiscoveryIntervalEnum | None] = (
         ActiveDiscoveryIntervalEnum.EVERY_3_HOURS
@@ -388,6 +399,7 @@ class DefaultBootInterfaceLinkTypeConfig(Config[InterfaceLinkType | None]):
 
 
 class DefaultOSystemConfig(Config[str | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "default_osystem"
     default: ClassVar[str | None] = DEFAULT_OS.name
     description: ClassVar[str] = "Default operating system used for deployment"
@@ -408,6 +420,7 @@ class DefaultDistroSeriesConfig(Config[str | None]):
 
 
 class DefaultMinHweKernelConfig(Config[str | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "default_min_hwe_kernel"
     default: ClassVar[str | None] = ""
     description: ClassVar[str] = "Default Minimum Kernel Version"
@@ -420,6 +433,7 @@ class DefaultMinHweKernelConfig(Config[str | None]):
 
 
 class EnableKernelCrashDumpConfig(Config[bool | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "enable_kernel_crash_dump"
     default: ClassVar[bool | None] = False
     description: ClassVar[str] = (
@@ -432,6 +446,7 @@ class EnableKernelCrashDumpConfig(Config[bool | None]):
 
 
 class DefaultStorageLayoutConfig(Config[StorageLayoutEnum | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "default_storage_layout"
     default: ClassVar[StorageLayoutEnum | None] = StorageLayoutEnum.FLAT
     description: ClassVar[str] = "Default storage layout"
@@ -444,6 +459,7 @@ class DefaultStorageLayoutConfig(Config[StorageLayoutEnum | None]):
 
 
 class CommissioningDistroSeriesConfig(Config[str | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "commissioning_distro_series"
     default: ClassVar[str | None] = (
         DEFAULT_OS.get_default_commissioning_release()
@@ -458,6 +474,7 @@ class CommissioningDistroSeriesConfig(Config[str | None]):
 
 
 class EnableThirdPartyDriversConfig(Config[bool | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "enable_third_party_drivers"
     default: ClassVar[bool | None] = True
     description: ClassVar[str] = (
@@ -468,6 +485,7 @@ class EnableThirdPartyDriversConfig(Config[bool | None]):
 
 
 class EnableDiskErasingOnReleaseConfig(Config[bool | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "enable_disk_erasing_on_release"
     default: ClassVar[bool | None] = False
     description: ClassVar[str] = "Erase nodes' disks prior to releasing"
@@ -478,6 +496,7 @@ class EnableDiskErasingOnReleaseConfig(Config[bool | None]):
 
 
 class DiskEraseWithSecureEraseConfig(Config[bool | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "disk_erase_with_secure_erase"
     default: ClassVar[bool | None] = True
     description: ClassVar[str] = (
@@ -490,6 +509,7 @@ class DiskEraseWithSecureEraseConfig(Config[bool | None]):
 
 
 class DiskEraseWithQuickEraseConfig(Config[bool | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "disk_erase_with_quick_erase"
     default: ClassVar[bool | None] = False
     description: ClassVar[str] = (
@@ -502,6 +522,7 @@ class DiskEraseWithQuickEraseConfig(Config[bool | None]):
 
 
 class BootImagesAutoImportConfig(Config[bool | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "boot_images_auto_import"
     default: ClassVar[bool | None] = True
     description: ClassVar[str] = (
@@ -524,6 +545,7 @@ class BootImagesNoProxyConfig(Config[bool | None]):
 
 
 class BootImagesImportIntervalMinutesConfig(Config[int]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "boot_images_import_interval_minutes"
     default: ClassVar[int] = 60
     description: ClassVar[str] = (
@@ -561,6 +583,7 @@ class EnableAnalyticsConfig(Config[bool | None]):
     )
     help_text: ClassVar[str | None] = ""
     value: bool | None = Field(default=default, description=description)
+    requires_entitlement_to_view = False
 
 
 class CompletedIntroConfig(Config[bool | None]):
@@ -634,6 +657,7 @@ class SubnetIPExhaustionThresholdCountConfig(Config[int | None]):
 
 
 class ReleaseNotificationsConfig(Config[bool | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "release_notifications"
     default: ClassVar[bool | None] = True
     description: ClassVar[str] = (
@@ -826,6 +850,7 @@ class NTPServersConfig(Config[str | None]):
     This field normalizes the list to a space-separated list.
     """
 
+    requires_entitlement_to_view = False
     _separators: ClassVar[re.Pattern] = re.compile(r"[,\s]+")
 
     # Regular expressions to sniff out things that look like IP addresses;
@@ -894,6 +919,7 @@ class NTPServersConfig(Config[str | None]):
 
 
 class NTPExternalOnlyConfig(Config[bool | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "ntp_external_only"
     hook_required: ClassVar[bool] = True
     default: ClassVar[bool | None] = False
@@ -951,6 +977,7 @@ class VCenterDatacenterConfig(Config[str | None]):
 
 
 class HardwareSyncIntervalConfig(Config[str | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "hardware_sync_interval"
     default: ClassVar[str | None] = "15m"
     description: ClassVar[str] = "Hardware Sync Interval"
@@ -1005,6 +1032,7 @@ class SessionLengthConfig(Config[int | None]):
 
 
 class RefreshTokenDurationConfig(Config[int | None]):
+    requires_entitlement_to_view = False
     name: ClassVar[str] = "refresh_token_duration"
     hook_required: ClassVar[bool] = True
     default: ClassVar[int | None] = 2592000  # 30 days
@@ -1061,6 +1089,7 @@ class CommissioningOSystemConfig(Config[str | None]):
 
 
 class EnableHttpProxyConfig(Config[bool | None]):
+    requires_entitlement_to_view = False
     is_public: ClassVar[bool] = True
     name: ClassVar[str] = "enable_http_proxy"
     default: ClassVar[bool | None] = True
@@ -1095,9 +1124,11 @@ class MAASUrlConfig(Config[str | None]):
     description: ClassVar[str] = ""
     value: str | None = Field(default=default, description=description)
     supported_by_msm = False
+    requires_entitlement_to_view = False
 
 
 class NetworkDiscoveryConfig(Config[NetworkDiscoveryEnum | None]):
+    requires_entitlement_to_view = False
     is_public: ClassVar[bool] = False
     name: ClassVar[str] = "network_discovery"
     default: ClassVar[NetworkDiscoveryEnum | None] = (
@@ -1262,6 +1293,12 @@ class ConfigFactory:
         config_name: config_model
         for config_name, config_model in ALL_CONFIGS.items()
         if config_model.is_public
+    }
+
+    UNRESTRICTED_CONFIGS = {
+        config_name: config_model
+        for config_name, config_model in PUBLIC_CONFIGS.items()
+        if not config_model.requires_entitlement_to_view
     }
 
     @classmethod
