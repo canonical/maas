@@ -6,6 +6,7 @@ from typing import Self
 from pydantic import BaseModel
 
 from maasservicelayer.exceptions.constants import (
+    FIPS_VIOLATION_TYPE,
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
 
@@ -91,6 +92,17 @@ class ValidationException(BaseException):
 class FIPSViolationException(ValidationException):
     def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__(details)
+
+    @classmethod
+    def build(cls, message: str) -> Self:
+        return cls(
+            details=[
+                BaseExceptionDetail(
+                    type=FIPS_VIOLATION_TYPE,
+                    message=message,
+                )
+            ]
+        )
 
 
 class InsufficientStorageException(BaseException):

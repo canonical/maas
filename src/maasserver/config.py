@@ -256,10 +256,7 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     dns_bind = ConfigurationOption(
         "dns_bind",
         "Address(es) the DNS (Bind9) service binds to when hardening "
-        "is active. May be a list mixing IPv4 and IPv6 addresses. Snap "
-        "installs only: MAAS does not own the base named.conf.options "
-        "on Debian-packaged installs, so this key is not available "
-        "(nor validated) there.",
+        "is active. May be a list mixing IPv4 and IPv6 addresses.",
         ForEach(
             UnicodeString(accept_python=False),
             convert_to_list=True,
@@ -369,9 +366,8 @@ def build_hardening_validation_kwargs(
     Reads the bind and database settings from an already-open
     ``RegionConfiguration`` and the optional MAAS TLS certificate.
     Callers should add process-specific flags such as ``fips_declared``
-    and ``snap_deployment`` before calling
-    ``configure_and_validate_hardening``. Lives here (not in
-    ``maasservicelayer``) because it reads ``RegionConfiguration``, a
+    before calling ``configure_and_validate_hardening``. Lives here (not
+    in ``maasservicelayer``) because it reads ``RegionConfiguration``, a
     ``maasserver``-only type.
     """
     cert_pem = cert.certificate_pem().encode() if cert else None

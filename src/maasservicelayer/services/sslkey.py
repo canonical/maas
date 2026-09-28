@@ -18,7 +18,6 @@ from maasservicelayer.exceptions.catalog import (
     ValidationException,
 )
 from maasservicelayer.exceptions.constants import (
-    FIPS_VIOLATION_TYPE,
     INVALID_ARGUMENT_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
@@ -71,14 +70,7 @@ class SSLKeysService(BaseService[SSLKey, SSLKeysRepository, SSLKeyBuilder]):
 
         message = validate_fips_tls_certificate(cert)
         if message is not None:
-            raise FIPSViolationException(
-                details=[
-                    BaseExceptionDetail(
-                        type=FIPS_VIOLATION_TYPE,
-                        message=message,
-                    )
-                ]
-            )
+            raise FIPSViolationException.build(message)
 
     async def update_by_id(self, id, builder, etag_if_match=None):
         raise NotImplementedError("Update is not supported for SSL keys")

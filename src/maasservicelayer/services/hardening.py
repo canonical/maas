@@ -38,10 +38,7 @@ _log = logging.getLogger("maas.hardening")
 # An explicit wildcard value (e.g. `0.0.0.0`) is still flagged below.
 # `dns_bind` is deliberately excluded from this set: it has no
 # maas_url-derived default, since DNS must be explicitly picked to serve
-# every managed subnet, not just the one that reaches `maas_url`. It is
-# validated only in snap deployments (see `snap_deployment` below): on
-# Debian-packaged installs MAAS does not own the base named.conf.options,
-# so it cannot guarantee the key takes effect there.
+# every managed subnet, not just the one that reaches `maas_url`.
 AUTO_DERIVED_BIND_KEYS = frozenset(
     {
         "temporal_bind",
@@ -100,13 +97,11 @@ class HardeningValidator:
         database_sslmode: str | None = None,
         fips_declared: bool | None = None,
         fips_active: bool = False,
-        snap_deployment: bool = False,
     ) -> None:
         self.hardening_active = hardening_active
         self.api_tls_cert_pem = api_tls_cert_pem
         self.api_tls_key_pem = api_tls_key_pem
         self.api_tls_dhparam = api_tls_dhparam
-        self._snap_deployment = snap_deployment
         self._binds: dict[str, list[str]] = {
             "api_bind": list(api_bind) if api_bind else [],
             "api_int_bind": list(api_int_bind) if api_int_bind else [],
@@ -114,14 +109,12 @@ class HardeningValidator:
             "temporal_bind": [temporal_bind] if temporal_bind else [],
             "rpc_bind": list(rpc_bind) if rpc_bind else [],
             "agent_api_bind": (list(agent_api_bind) if agent_api_bind else []),
+            "dns_bind": list(dns_bind) if dns_bind else [],
             "syslog_bind": list(syslog_bind) if syslog_bind else [],
             "http_proxy_bind": (
                 list(http_proxy_bind) if http_proxy_bind else []
             ),
         }
-        # Snap-only; see AUTO_DERIVED_BIND_KEYS above for why.
-        if self._snap_deployment:
-            self._binds["dns_bind"] = list(dns_bind) if dns_bind else []
         self.database_sslmode = database_sslmode
         self.database_host = database_host
         self.fips_declared = fips_declared
@@ -357,15 +350,12 @@ def configure_and_validate_hardening(
     database_host: str = "",
     database_sslmode: str = "",
     fips_declared: bool | None = None,
-    snap_deployment: bool = False,
 ) -> list[HardeningViolation]:
     """Run hardening validation.
 
     ``api_tls_cert_pem`` and ``api_tls_key_pem`` are optional PEM bytes for
     the TLS certificate/key; the caller is responsible for reading them from
-    the secrets store.  ``snap_deployment`` gates ``dns_bind`` validation;
-    pass ``provisioningserver.utils.snap.running_in_snap()``.
-    Returns violations.  Never raises or exits.
+    the secrets store. Returns violations. Never raises or exits.
     """
     validator = HardeningValidator(
         hardening_active=is_hardening_enabled(),
@@ -385,6 +375,5 @@ def configure_and_validate_hardening(
         database_sslmode=database_sslmode or None,
         fips_declared=fips_declared,
         fips_active=is_fips_enabled(),
-        snap_deployment=snap_deployment,
     )
     return validator.validate()

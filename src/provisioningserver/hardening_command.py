@@ -14,14 +14,14 @@ parameter, and database sslmode checks are region-only concerns.
 from maascommon.hardening import (
     check_bind_violations,
     configure_hardening,
+    format_bind_value,
     is_hardening_enabled,
+    parse_bind_value,
+    sanitize_hardening_enabled,
 )
 from provisioningserver.config import ClusterConfiguration
-from provisioningserver.utils.snap import running_in_snap
 
 _COMMAND_PREFIX = "maas-rack config-hardening"
-
-_HARDENING_ENABLED_VALUES = frozenset({"auto", "on", "off"})
 
 # Keys backed by a comma-separated list in rackd.conf (`ForEach` in
 # `provisioningserver.config.ClusterConfiguration`). `rpc_bind` is a plain
@@ -55,33 +55,6 @@ _AUTO_DERIVED_BIND_KEYS = frozenset(
     }
 )
 
-# Only meaningful in snap deployments: MAAS owns the whole named.conf
-# there. On Debian-packaged installs MAAS does not own the base
-# named.conf.options, so this key is refused entirely.
-_SNAP_ONLY_KEYS = frozenset({"dns_bind"})
-
-
-def _format_value(key: str, value) -> str:
-    if key in _LIST_KEYS:
-        return ",".join(value)
-    return str(value)
-
-
-def _parse_value(key: str, value: str):
-    if key in _LIST_KEYS:
-        return [addr.strip() for addr in value.split(",") if addr.strip()]
-    return value
-
-
-def _sanitize_hardening_enabled(value: str) -> str:
-    canonical = value.strip().lower()
-    if canonical not in _HARDENING_ENABLED_VALUES:
-        raise ValueError(
-            "hardening_enabled must be one of "
-            f"{sorted(_HARDENING_ENABLED_VALUES)}, got {value!r}"
-        )
-    return canonical
-
 
 def add_arguments(parser):
     """Add this command's options to the `ArgumentParser`."""
@@ -113,33 +86,21 @@ def add_arguments(parser):
 def _cmd_list():
     with ClusterConfiguration.open() as config:
         for key in sorted(_ALL_KEYS):
-            if key in _SNAP_ONLY_KEYS and not running_in_snap():
-                continue
             value = getattr(config, key)
-            print(f"{key:<20} {_format_value(key, value)}")
+            print(f"{key:<20} {format_bind_value(key, value, _LIST_KEYS)}")
 
 
 def _cmd_get(key: str):
-    if key in _SNAP_ONLY_KEYS and not running_in_snap():
-        raise SystemExit(
-            f"{key} is only available on snap deployments (MAAS does not "
-            "own named.conf.options on Debian-packaged installs)."
-        )
     with ClusterConfiguration.open() as config:
-        print(_format_value(key, getattr(config, key)))
+        print(format_bind_value(key, getattr(config, key), _LIST_KEYS))
 
 
 def _cmd_set(key: str, value: str):
-    if key in _SNAP_ONLY_KEYS and not running_in_snap():
-        raise SystemExit(
-            f"{key} is only available on snap deployments (MAAS does not "
-            "own named.conf.options on Debian-packaged installs)."
-        )
     try:
         parsed = (
-            _sanitize_hardening_enabled(value)
+            sanitize_hardening_enabled(value)
             if key == "hardening_enabled"
-            else _parse_value(key, value)
+            else parse_bind_value(key, value, _LIST_KEYS)
         )
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
@@ -151,11 +112,7 @@ def _cmd_set(key: str, value: str):
 def _cmd_validate():
     with ClusterConfiguration.open() as config:
         hardening_enabled = str(config.hardening_enabled)
-        binds = {
-            key: getattr(config, key)
-            for key in _BIND_KEYS
-            if key not in _SNAP_ONLY_KEYS or running_in_snap()
-        }
+        binds = {key: getattr(config, key) for key in _BIND_KEYS}
 
     configure_hardening(hardening_enabled)
     hardening_active = is_hardening_enabled()

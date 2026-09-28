@@ -36,7 +36,6 @@ from provisioningserver.dns.zoneconfig import DNSReverseZoneConfig
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.shell import ExternalProcessError
-from provisioningserver.utils.snap import running_in_snap
 
 maaslog = get_maas_logger("dns")
 log = LegacyLogger()
@@ -140,19 +139,11 @@ def dns_update_all_zones(
     # expect this side-effect from calling dns_update_all_zones_now(), and
     # some that call it for this side-effect alone. At present all it does is
     # set the upstream DNS servers, nothing to do with serving zones at all!
-    # dns_bind only takes effect in snap installs: MAAS writes and owns the
-    # whole named.conf there, whereas on Debian-packaged installs the base
-    # named.conf.options belongs to the system's bind9 package (MAAS only
-    # appends an include line to it), so a listen-on/listen-on-v6 directive
-    # from MAAS could not be relied on to take effect.
     try:
         from maasserver.config import RegionConfiguration
 
         with RegionConfiguration.open() as _region_cfg:
-            if running_in_snap():
-                _dns_bind = _region_cfg.dns_bind
-            else:
-                _dns_bind = []
+            _dns_bind = _region_cfg.dns_bind
             _dns_allow_transfer = _region_cfg.dns_allow_transfer
             _dns_fetches_per_zone = int(_region_cfg.dns_fetches_per_zone)
             _dns_fetches_per_server = int(_region_cfg.dns_fetches_per_server)

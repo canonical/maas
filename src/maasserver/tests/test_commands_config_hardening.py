@@ -93,26 +93,11 @@ class TestConfigHardeningSet(_Base):
         self.assertEqual(1, ctx.exception.code)
 
 
-class TestConfigHardeningSnapOnlyKeys(_Base):
-    def test_set_dns_bind_refused_outside_snap(self):
+class TestConfigHardeningDnsBind(_Base):
+    def test_set_dns_bind_writes_to_regiond_conf(self):
         with patch(
-            "maasserver.management.commands.config_hardening.running_in_snap",
-            return_value=False,
-        ):
-            with self.assertRaises(SystemExit) as ctx:
-                self._cmd(command="set", key="dns_bind", value="10.0.0.1")
-        self.assertEqual(1, ctx.exception.code)
-
-    def test_set_dns_bind_allowed_in_snap(self):
-        with (
-            patch(
-                "maasserver.management.commands.config_hardening.running_in_snap",
-                return_value=True,
-            ),
-            patch(
-                "maasserver.management.commands.config_hardening.RegionConfiguration"
-            ) as MockRegionCfg,
-        ):
+            "maasserver.management.commands.config_hardening.RegionConfiguration"
+        ) as MockRegionCfg:
             mock_cfg = MagicMock()
             MockRegionCfg.open_for_update.return_value.__enter__ = MagicMock(
                 return_value=mock_cfg
@@ -123,43 +108,8 @@ class TestConfigHardeningSnapOnlyKeys(_Base):
             self._cmd(command="set", key="dns_bind", value="10.0.0.1")
         self.assertEqual(["10.0.0.1"], mock_cfg.dns_bind)
 
-    def test_get_dns_bind_refused_outside_snap(self):
-        with patch(
-            "maasserver.management.commands.config_hardening.running_in_snap",
-            return_value=False,
-        ):
-            with self.assertRaises(SystemExit) as ctx:
-                self._cmd(command="get", key="dns_bind")
-        self.assertEqual(1, ctx.exception.code)
-
-    def test_list_excludes_dns_bind_outside_snap(self):
+    def test_list_includes_dns_bind(self):
         with (
-            patch(
-                "maasserver.management.commands.config_hardening.running_in_snap",
-                return_value=False,
-            ),
-            patch(
-                "maasserver.management.commands.config_hardening.RegionConfiguration"
-            ) as MockRegionCfg,
-            patch("maasserver.models.Config") as MockConfig,
-        ):
-            mock_cfg = MagicMock()
-            MockRegionCfg.open.return_value.__enter__ = MagicMock(
-                return_value=mock_cfg
-            )
-            MockRegionCfg.open.return_value.__exit__ = MagicMock(
-                return_value=False
-            )
-            MockConfig.objects.db_manager.return_value.get_config.return_value = None
-            cmd = self._cmd(command="list")
-        self.assertNotIn("dns_bind ", cmd.stdout.getvalue())
-
-    def test_list_includes_dns_bind_in_snap(self):
-        with (
-            patch(
-                "maasserver.management.commands.config_hardening.running_in_snap",
-                return_value=True,
-            ),
             patch(
                 "maasserver.management.commands.config_hardening.RegionConfiguration"
             ) as MockRegionCfg,

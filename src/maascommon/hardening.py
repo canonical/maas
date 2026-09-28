@@ -67,6 +67,34 @@ CONF_LIST_KEYS = frozenset(
 #: (``maasservicelayer.services.hardening``).
 INSECURE_DB_SSLMODES = frozenset({"disable", "allow", "prefer", "require"})
 
+#: Valid values for the ``hardening_enabled`` configuration option.
+HARDENING_ENABLED_VALUES = frozenset({"auto", "on", "off"})
+
+
+def format_bind_value(key: str, value, list_keys: frozenset[str]) -> str:
+    """Render a conf-backed hardening value for CLI display."""
+    if key in list_keys:
+        return ",".join(value)
+    return str(value)
+
+
+def parse_bind_value(key: str, value: str, list_keys: frozenset[str]):
+    """Inverse of :func:`format_bind_value`."""
+    if key in list_keys:
+        return [addr.strip() for addr in value.split(",") if addr.strip()]
+    return value
+
+
+def sanitize_hardening_enabled(value: str) -> str:
+    """Return *value* lower-cased, raising ``ValueError`` if invalid."""
+    canonical = value.strip().lower()
+    if canonical not in HARDENING_ENABLED_VALUES:
+        raise ValueError(
+            "hardening_enabled must be one of "
+            f"{sorted(HARDENING_ENABLED_VALUES)}, got {value!r}"
+        )
+    return canonical
+
 
 def configure_hardening(hardening_enabled: HardeningMode | None) -> None:
     """Set the process-wide hardening state.

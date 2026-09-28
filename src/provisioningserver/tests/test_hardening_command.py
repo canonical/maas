@@ -74,37 +74,13 @@ class TestCmdSetGetList(_Base):
         with ClusterConfiguration.open() as config:
             self.assertEqual("on", config.hardening_enabled)
 
-    def test_set_dns_bind_refused_outside_snap(self):
-        with patch.object(
-            hardening_command, "running_in_snap", return_value=False
-        ):
-            self.assertRaises(
-                SystemExit,
-                hardening_command._cmd_set,
-                "dns_bind",
-                "10.0.0.5",
-            )
-
-    def test_set_dns_bind_allowed_in_snap(self):
-        with patch.object(
-            hardening_command, "running_in_snap", return_value=True
-        ):
-            hardening_command._cmd_set("dns_bind", "10.0.0.5")
+    def test_set_and_get_dns_bind(self):
+        hardening_command._cmd_set("dns_bind", "10.0.0.5")
         with ClusterConfiguration.open() as config:
             self.assertEqual(["10.0.0.5"], config.dns_bind)
 
-    def test_list_excludes_dns_keys_outside_snap(self):
-        with patch.object(
-            hardening_command, "running_in_snap", return_value=False
-        ):
-            output, _ = self._capture(hardening_command._cmd_list)
-        self.assertNotIn("dns_bind", output)
-
-    def test_list_includes_dns_keys_in_snap(self):
-        with patch.object(
-            hardening_command, "running_in_snap", return_value=True
-        ):
-            output, _ = self._capture(hardening_command._cmd_list)
+    def test_list_includes_dns_bind(self):
+        output, _ = self._capture(hardening_command._cmd_list)
         self.assertIn("dns_bind", output)
 
 
@@ -120,13 +96,8 @@ class TestCmdValidate(_Base):
 
     def test_active_hardening_with_unset_binds_reports_violations(self):
         hardening_command._cmd_set("hardening_enabled", "on")
-        with (
-            patch.object(
-                hardening_command, "running_in_snap", return_value=False
-            ),
-            patch.object(
-                hardening_command, "is_hardening_enabled", return_value=True
-            ),
+        with patch.object(
+            hardening_command, "is_hardening_enabled", return_value=True
         ):
             output, code = self._capture(hardening_command._cmd_validate)
         self.assertIn("WILDCARD_BIND_NOT_ALLOWED", output)
@@ -139,13 +110,9 @@ class TestCmdValidate(_Base):
         hardening_command._cmd_set("rpc_bind", "10.0.0.5")
         hardening_command._cmd_set("syslog_bind", "10.0.0.5")
         hardening_command._cmd_set("http_proxy_bind", "10.0.0.5,fd00::5")
-        with (
-            patch.object(
-                hardening_command, "running_in_snap", return_value=False
-            ),
-            patch.object(
-                hardening_command, "is_hardening_enabled", return_value=True
-            ),
+        hardening_command._cmd_set("dns_bind", "10.0.0.5,fd00::5")
+        with patch.object(
+            hardening_command, "is_hardening_enabled", return_value=True
         ):
             output, code = self._capture(hardening_command._cmd_validate)
         self.assertIn("INVALID_BIND_ADDRESS", output)
@@ -160,15 +127,11 @@ class TestCmdValidate(_Base):
             ("tftp_bind", "10.0.0.5"),
             ("syslog_bind", "10.0.0.5"),
             ("http_proxy_bind", "10.0.0.5,fd00::5"),
+            ("dns_bind", "10.0.0.5,fd00::5"),
         ):
             hardening_command._cmd_set(key, value)
-        with (
-            patch.object(
-                hardening_command, "running_in_snap", return_value=False
-            ),
-            patch.object(
-                hardening_command, "is_hardening_enabled", return_value=True
-            ),
+        with patch.object(
+            hardening_command, "is_hardening_enabled", return_value=True
         ):
             output, code = self._capture(hardening_command._cmd_validate)
         self.assertIn("OK", output)
@@ -182,15 +145,11 @@ class TestCmdValidate(_Base):
             ("tftp_bind", "10.0.0.5,10.0.1.5,fd00::5"),
             ("syslog_bind", "10.0.0.5"),
             ("http_proxy_bind", "10.0.0.5,fd00::5"),
+            ("dns_bind", "10.0.0.5,fd00::5"),
         ):
             hardening_command._cmd_set(key, value)
-        with (
-            patch.object(
-                hardening_command, "running_in_snap", return_value=False
-            ),
-            patch.object(
-                hardening_command, "is_hardening_enabled", return_value=True
-            ),
+        with patch.object(
+            hardening_command, "is_hardening_enabled", return_value=True
         ):
             output, code = self._capture(hardening_command._cmd_validate)
         self.assertIn("OK", output)

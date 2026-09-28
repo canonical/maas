@@ -307,41 +307,15 @@ def test_temporal_bind_falls_back_to_loopback_under_hardening(
 
 
 class TestReloadService:
-    def test_restarts_service_in_snap(self, monkeypatch):
+    def test_restarts_service(self, monkeypatch):
         from maasserver.regiondservices import temporal as temporal_module
 
-        monkeypatch.setattr(
-            temporal_module.snap, "running_in_snap", lambda: True
-        )
         restart = mock.Mock()
-        reload_ = mock.Mock()
         monkeypatch.setattr(
             temporal_module.service_monitor, "restartService", restart
-        )
-        monkeypatch.setattr(
-            temporal_module.service_monitor, "reloadService", reload_
         )
         RegionTemporalService()._reload_service()
         restart.assert_called_once_with("temporal")
-        reload_.assert_not_called()
-
-    def test_reloads_service_outside_snap(self, monkeypatch):
-        from maasserver.regiondservices import temporal as temporal_module
-
-        monkeypatch.setattr(
-            temporal_module.snap, "running_in_snap", lambda: False
-        )
-        restart = mock.Mock()
-        reload_ = mock.Mock()
-        monkeypatch.setattr(
-            temporal_module.service_monitor, "restartService", restart
-        )
-        monkeypatch.setattr(
-            temporal_module.service_monitor, "reloadService", reload_
-        )
-        RegionTemporalService()._reload_service()
-        reload_.assert_called_once_with("temporal")
-        restart.assert_not_called()
 
 
 class TestStartService:

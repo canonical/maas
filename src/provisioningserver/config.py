@@ -811,9 +811,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     dns_bind = ConfigurationOption(
         "dns_bind",
         "Address(es) the DNS (Bind9) service binds to. May be a list "
-        "mixing IPv4 and IPv6 addresses. Snap installs only: not "
-        "available (nor validated) on Debian-packaged installs, where "
-        "MAAS does not own the base named.conf.options.",
+        "mixing IPv4 and IPv6 addresses.",
         ForEach(
             UnicodeString(accept_python=False),
             convert_to_list=True,

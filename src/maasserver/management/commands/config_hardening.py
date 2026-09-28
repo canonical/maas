@@ -8,7 +8,13 @@ from django.db import DEFAULT_DB_ALIAS
 from maascommon.fips import is_fips_enabled
 from maascommon.hardening import CONF_KEYS as _CONF_KEYS
 from maascommon.hardening import CONF_LIST_KEYS as _LIST_KEYS
-from maascommon.hardening import configure_hardening, is_hardening_enabled
+from maascommon.hardening import (
+    configure_hardening,
+    format_bind_value,
+    is_hardening_enabled,
+    parse_bind_value,
+    sanitize_hardening_enabled,
+)
 from maasserver.config import (
     build_hardening_validation_kwargs,
     RegionConfiguration,
@@ -19,14 +25,8 @@ from maasservicelayer.services.hardening import (
     configure_and_validate_hardening,
 )
 from provisioningserver.utils.network import resolve_dual_stack_bind_addresses
-from provisioningserver.utils.snap import running_in_snap
 
 _CONFIG_KEYS = frozenset({"hardening_enabled", "fips_enabled"})
-
-# Only meaningful in snap deployments: MAAS owns the whole named.conf
-# there. On Debian-packaged installs MAAS does not own the base
-# named.conf.options, so this key is refused entirely.
-_SNAP_ONLY_KEYS = frozenset({"dns_bind"})
 
 # Keys resolved as single mixed-family lists via
 # `resolve_dual_stack_bind_addresses`. Keys absent here (`rpc_bind`,
@@ -84,31 +84,6 @@ _ALL_KNOWN_KEYS = _CONFIG_KEYS | _CONF_KEYS
 def _is_conf_only_operation(command: str, key: str) -> bool:
     """True when the operation only touches regiond.conf (no DB needed)."""
     return command in ("set", "get") and _store_for(key) == "conf"
-
-
-_HARDENING_ENABLED_VALUES = frozenset({"auto", "on", "off"})
-
-
-def _format_conf_value(key: str, value) -> str:
-    if key in _LIST_KEYS:
-        return ",".join(value)
-    return str(value)
-
-
-def _parse_conf_value(key: str, value: str):
-    if key in _LIST_KEYS:
-        return [addr.strip() for addr in value.split(",") if addr.strip()]
-    return value
-
-
-def _sanitize_hardening_enabled(value: str) -> str:
-    canonical = value.strip().lower()
-    if canonical not in _HARDENING_ENABLED_VALUES:
-        raise ValueError(
-            f"Invalid hardening_enabled value '{value}'."
-            f" Must be one of: {sorted(_HARDENING_ENABLED_VALUES)}"
-        )
-    return canonical
 
 
 def _store_for(key: str) -> str:
@@ -188,14 +163,7 @@ class Command(BaseCommandWithConnection):
         elif command == "disable":
             self._cmd_disable()
 
-    def _refuse_if_snap_only(self, key: str) -> None:
-        if key in _SNAP_ONLY_KEYS and not running_in_snap():
-            self.stderr.write(f"'{key}' is only available on snap installs.\n")
-            raise SystemExit(1)
-
     def _cmd_set(self, key: str, value: str) -> None:
-        self._refuse_if_snap_only(key)
-
         if key not in _ALL_KNOWN_KEYS:
             self.stderr.write(
                 f"Unknown hardening key '{key}'."
@@ -221,7 +189,7 @@ class Command(BaseCommandWithConnection):
             return
 
         try:
-            stored = _sanitize_hardening_enabled(value)
+            stored = sanitize_hardening_enabled(value)
         except ValueError as exc:
             self.stderr.write(f"{exc}\n")
             raise SystemExit(1) from exc
@@ -229,10 +197,8 @@ class Command(BaseCommandWithConnection):
         from maasserver.models import Config
 
         Config.objects.db_manager(DEFAULT_DB_ALIAS).set_config(key, stored)
-        self.stdout.write(f"Set {key} in DB Config store\n")
 
     def _cmd_get(self, key: str) -> None:
-        self._refuse_if_snap_only(key)
         self.stdout.write(
             f"{key} [{_store_for(key)}] = {self._read_key(key)}\n"
         )
@@ -255,10 +221,7 @@ class Command(BaseCommandWithConnection):
             f"{'tls_certificate/key':<35} [secret ] {tls_status}"
             " (manage with: maas config-tls enable)\n"
         )
-
         for key in sorted(_ALL_KNOWN_KEYS):
-            if key in _SNAP_ONLY_KEYS and not running_in_snap():
-                continue
             store = _store_for(key)
             value = (
                 conf_values.get(key, "<not in conf>")
@@ -297,7 +260,6 @@ class Command(BaseCommandWithConnection):
             with RegionConfiguration.open() as cfg:
                 kwargs = build_hardening_validation_kwargs(cfg, cert=cert)
                 kwargs["fips_declared"] = fips_declared
-                kwargs["snap_deployment"] = running_in_snap()
                 violations = configure_and_validate_hardening(**kwargs)
         except Exception as exc:
             self.stderr.write(f"Could not read configuration: {exc}\n")
@@ -344,7 +306,7 @@ class Command(BaseCommandWithConnection):
     def _write_conf_key(self, key: str, value: str) -> None:
         try:
             with RegionConfiguration.open_for_update() as cfg:
-                setattr(cfg, key, _parse_conf_value(key, value))
+                setattr(cfg, key, parse_bind_value(key, value, _LIST_KEYS))
         except Exception as exc:
             self.stderr.write(
                 f"Could not write '{key}' to regiond.conf: {exc}\n"
@@ -355,7 +317,7 @@ class Command(BaseCommandWithConnection):
         try:
             with RegionConfiguration.open() as cfg:
                 return {
-                    key: _format_conf_value(key, getattr(cfg, key))
+                    key: format_bind_value(key, getattr(cfg, key), _LIST_KEYS)
                     for key in _CONF_KEYS
                 }
         except Exception:

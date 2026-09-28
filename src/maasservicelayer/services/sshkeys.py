@@ -31,7 +31,6 @@ from maasservicelayer.exceptions.catalog import (
     ValidationException,
 )
 from maasservicelayer.exceptions.constants import (
-    FIPS_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.logging.tls import fips_tls_trace_config
@@ -79,14 +78,7 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
         if is_fips_enabled():
             violation = validate_fips_ssh_public_key(builder.key)  # type: ignore
             if violation is not None:
-                raise FIPSViolationException(
-                    details=[
-                        BaseExceptionDetail(
-                            type=FIPS_VIOLATION_TYPE,
-                            message=violation,
-                        )
-                    ]
-                )
+                raise FIPSViolationException.build(violation)
 
         # skip the validation if it's a key imported by LP or GH.
         if builder.protocol is not None:

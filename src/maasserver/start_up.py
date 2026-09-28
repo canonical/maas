@@ -73,7 +73,6 @@ from provisioningserver.utils.env import (
     MAAS_SHARED_SECRET,
     MAAS_UUID,
 )
-from provisioningserver.utils.snap import running_in_snap
 from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
 from provisioningserver.utils.version import get_versions_info
 
@@ -359,7 +358,6 @@ def inner_start_up(master=False):
             with RegionConfiguration.open() as config:
                 kwargs = build_hardening_validation_kwargs(config, cert=cert)
                 kwargs["fips_declared"] = read_fips_declared_from_db()
-                kwargs["snap_deployment"] = running_in_snap()
                 violations = configure_and_validate_hardening(**kwargs)
         except Exception:
             logger.error(
