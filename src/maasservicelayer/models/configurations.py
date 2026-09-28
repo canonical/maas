@@ -1118,13 +1118,13 @@ class HttpProxyConfig(Config[AnyHttpUrl | None]):
 
 
 class MAASUrlConfig(Config[str | None]):
+    requires_entitlement_to_view = False
     is_public: ClassVar[bool] = False
     name: ClassVar[str] = "maas_url"
     default: ClassVar[str | None] = "http://localhost:5240/MAAS"
     description: ClassVar[str] = ""
     value: str | None = Field(default=default, description=description)
     supported_by_msm = False
-    requires_entitlement_to_view = False
 
 
 class NetworkDiscoveryConfig(Config[NetworkDiscoveryEnum | None]):
