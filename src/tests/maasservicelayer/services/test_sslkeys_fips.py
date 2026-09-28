@@ -4,6 +4,8 @@
 from unittest.mock import Mock, patch
 
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 import pytest
 
 from maasservicelayer.builders.sslkeys import SSLKeyBuilder
@@ -53,8 +55,7 @@ class TestSSLKeysServiceFIPSValidation:
         )
 
         mock_cert = Mock()
-        mock_rsa_key = Mock()
-        mock_rsa_key.__class__.__name__ = "RSAPublicKey"
+        mock_rsa_key = Mock(spec=RSAPublicKey)
         mock_cert.public_key.return_value = mock_rsa_key
         mock_cert.signature_algorithm_oid = Mock()
         mock_cert.signature_algorithm_oid._name = "sha1WithRSAEncryption"
@@ -83,8 +84,7 @@ class TestSSLKeysServiceFIPSValidation:
         )
 
         mock_cert = Mock()
-        mock_rsa_key = Mock()
-        mock_rsa_key.__class__.__name__ = "RSAPublicKey"
+        mock_rsa_key = Mock(spec=RSAPublicKey)
         mock_rsa_key.key_size = 4096
         mock_cert.public_key.return_value = mock_rsa_key
         mock_cert.signature_algorithm_oid = Mock()
@@ -105,6 +105,26 @@ class TestSSLKeysServiceFIPSValidation:
                 SSLKeyBuilder(key="dummy_pem", user_id=1)
             )
 
+    async def test_fips_rejects_ed25519_cert(self) -> None:
+        repository = Mock(SSLKeysRepository)
+        repository.exists.return_value = False
+        service = SSLKeysService(
+            context=Context(), sslkey_repository=repository
+        )
+        mock_cert = Mock()
+        mock_ed25519_key = Mock(spec=Ed25519PublicKey)
+        mock_cert.public_key.return_value = mock_ed25519_key
+        mock_cert.signature_algorithm_oid = Mock()
+        mock_cert.signature_algorithm_oid._name = "ed25519"
+        with patch(
+            "cryptography.x509.load_pem_x509_certificate",
+            return_value=mock_cert,
+        ):
+            with pytest.raises(FIPSViolationException):
+                await service.pre_create_hook(
+                    SSLKeyBuilder(key="dummy_pem", user_id=1)
+                )
+
 
 @pytest.mark.asyncio
 class TestSSLKeysServiceNonFIPSValidation:
@@ -116,8 +136,7 @@ class TestSSLKeysServiceNonFIPSValidation:
         )
 
         mock_cert = Mock()
-        mock_rsa_key = Mock()
-        mock_rsa_key.__class__.__name__ = "RSAPublicKey"
+        mock_rsa_key = Mock(spec=RSAPublicKey)
         mock_rsa_key.key_size = 1024
         mock_cert.public_key.return_value = mock_rsa_key
         mock_cert.signature_algorithm_oid = Mock()

@@ -2,14 +2,21 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 """Unit tests for maascommon.fips — FIPS detection and SSH allow-lists."""
 
+import datetime
 import logging
+from unittest import mock
 
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed25519, rsa
+from cryptography.x509.oid import NameOID, SignatureAlgorithmOID
 import pytest
 
 from maascommon.fips import (
     FIPS_SSH_CONFIG,
     get_fips_status,
     validate_fips_ssh_public_key,
+    validate_fips_tls_certificate,
 )
 
 
@@ -182,3 +189,57 @@ class TestValidateFipsSshPublicKey:
 
     def test_empty_key_returns_none(self):
         assert validate_fips_ssh_public_key("") is None
+
+
+def _self_signed_cert(private_key, algorithm=None) -> x509.Certificate:
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "maas-test")])
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    return (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(private_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now)
+        .not_valid_after(now + datetime.timedelta(days=365))
+        .sign(private_key, algorithm)
+    )
+
+
+class TestValidateFipsTlsCertificate:
+    def test_accepts_rsa_2048(self):
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        cert = _self_signed_cert(key, hashes.SHA256())
+        assert validate_fips_tls_certificate(cert) is None
+
+    def test_accepts_ecdsa_p256(self):
+        key = ec.generate_private_key(ec.SECP256R1())
+        cert = _self_signed_cert(key, hashes.SHA256())
+        assert validate_fips_tls_certificate(cert) is None
+
+    def test_rejects_small_rsa(self):
+        key = rsa.generate_private_key(public_exponent=65537, key_size=1024)
+        cert = _self_signed_cert(key, hashes.SHA256())
+        msg = validate_fips_tls_certificate(cert)
+        assert msg is not None and "1024" in msg
+
+    def test_rejects_dsa(self):
+        key = dsa.generate_private_key(key_size=2048)
+        cert = _self_signed_cert(key, hashes.SHA256())
+        msg = validate_fips_tls_certificate(cert)
+        assert msg is not None and "DSAPublicKey" in msg
+
+    def test_rejects_ed25519(self):
+        key = ed25519.Ed25519PrivateKey.generate()
+        cert = _self_signed_cert(key, algorithm=None)
+        msg = validate_fips_tls_certificate(cert)
+        assert msg is not None and "Ed25519PublicKey" in msg
+
+    def test_rejects_weak_signature_algorithm(self):
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        real_cert = _self_signed_cert(key, hashes.SHA256())
+        cert = mock.Mock(spec=x509.Certificate)
+        cert.signature_algorithm_oid = SignatureAlgorithmOID.RSA_WITH_SHA1
+        cert.public_key.return_value = real_cert.public_key()
+        msg = validate_fips_tls_certificate(cert)
+        assert msg is not None and "SHA-256" in msg

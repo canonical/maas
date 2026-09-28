@@ -10,7 +10,7 @@ import struct
 from typing import NamedTuple
 
 from cryptography import x509
-from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.x509.oid import SignatureAlgorithmOID
 
@@ -187,9 +187,10 @@ _WEAK_TLS_SIGNATURE_ALGORITHM_NAMES = {
 def validate_fips_tls_certificate(cert: x509.Certificate) -> str | None:
     """Return a FIPS-violation message for an x509 certificate, else None.
 
-    Rejects SHA-1/MD5-signed certificates, DSA keys, and RSA keys below
-    :data:`FIPS_RSA_MIN_BITS`. Shared by every caller that validates a
-    TLS/SSL certificate under FIPS mode (hardening's API TLS cert,
+    Rejects SHA-1/MD5-signed certificates, RSA keys below
+    :data:`FIPS_RSA_MIN_BITS`, and any public key type other than RSA or
+    ECDSA (e.g. DSA, Ed25519, Ed448). Shared by every caller that validates
+    a TLS/SSL certificate under FIPS mode (hardening's API TLS cert,
     user-uploaded SSL keys in both the v3 service layer and the legacy
     Django model), so the compliance rule lives in exactly one place.
 
@@ -206,8 +207,11 @@ def validate_fips_tls_certificate(cert: x509.Certificate) -> str | None:
         )
 
     pub_key = cert.public_key()
-    if isinstance(pub_key, DSAPublicKey):
-        return "DSA keys are not FIPS-compliant."
+    if not isinstance(pub_key, (RSAPublicKey, EllipticCurvePublicKey)):
+        return (
+            f"{type(pub_key).__name__} keys are not FIPS-compliant. "
+            "Use RSA (>= 2048-bit) or ECDSA (P-256, P-384, or P-521)."
+        )
     if (
         isinstance(pub_key, RSAPublicKey)
         and pub_key.key_size < FIPS_RSA_MIN_BITS

@@ -12,7 +12,7 @@ from unittest import mock
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import dsa, rsa
+from cryptography.hazmat.primitives.asymmetric import dsa, ed25519, rsa
 from cryptography.x509.oid import NameOID, SignatureAlgorithmOID
 import pytest
 
@@ -34,6 +34,27 @@ def _generate_small_rsa_key() -> rsa.RSAPrivateKey:
 
 def _generate_dsa_key() -> dsa.DSAPrivateKey:
     return dsa.generate_private_key(key_size=2048)
+
+
+def _generate_ed25519_key() -> ed25519.Ed25519PrivateKey:
+    return ed25519.Ed25519PrivateKey.generate()
+
+
+def _generate_ed25519_cert(
+    private_key: ed25519.Ed25519PrivateKey,
+) -> x509.Certificate:
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "maas-test")])
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    return (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(private_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now)
+        .not_valid_after(now + datetime.timedelta(days=365))
+        .sign(private_key, algorithm=None)
+    )
 
 
 def _generate_cert(
@@ -63,6 +84,14 @@ def _key_pem(key: rsa.RSAPrivateKey) -> bytes:
     return key.private_bytes(
         serialization.Encoding.PEM,
         serialization.PrivateFormat.TraditionalOpenSSL,
+        serialization.NoEncryption(),
+    )
+
+
+def _ed25519_key_pem(key: ed25519.Ed25519PrivateKey) -> bytes:
+    return key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
         serialization.NoEncryption(),
     )
 
@@ -156,6 +185,20 @@ class TestValidateTLSCert:
         assert len(violations) == 1
         assert violations[0].code == "WEAK_TLS_CERT_KEY"
         assert "DSA" in violations[0].message
+
+    def test_fips_active_ed25519_key_returns_violation(self) -> None:
+        key = _generate_ed25519_key()
+        cert = _generate_ed25519_cert(key)
+        validator = HardeningValidator(
+            hardening_active=True,
+            api_tls_cert_pem=_cert_pem(cert),
+            api_tls_key_pem=_ed25519_key_pem(key),
+            fips_active=True,
+        )
+        violations = validator._validate_tls_cert()
+        assert len(violations) == 1
+        assert violations[0].code == "WEAK_TLS_CERT_KEY"
+        assert "Ed25519" in violations[0].message
 
     def test_fips_active_small_rsa_key_returns_violation(self) -> None:
         key = _generate_small_rsa_key()

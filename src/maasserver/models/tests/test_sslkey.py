@@ -1,6 +1,12 @@
 # Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import datetime
+
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.x509.oid import NameOID
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from OpenSSL import crypto as ossl_crypto
@@ -49,6 +55,29 @@ def _make_ssl_cert(key_type="rsa", key_size=2048, hash_alg="sha256"):
     ).decode()
 
 
+def _make_ed25519_ssl_cert() -> str:
+    """Generate a self-signed Ed25519 PEM certificate for testing.
+
+    pyOpenSSL's key generation only supports RSA/DSA, so Ed25519 certs are
+    built directly with the `cryptography` library instead of
+    `_make_ssl_cert`.
+    """
+    key = ed25519.Ed25519PrivateKey.generate()
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test")])
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now)
+        .not_valid_after(now + datetime.timedelta(days=365))
+        .sign(key, algorithm=None)
+    )
+    return cert.public_bytes(serialization.Encoding.PEM).decode()
+
+
 class TestSSLKeyValidatorFIPS(MAASServerTestCase):
     """Tests for FIPS-conditional validation in validate_ssl_key."""
 
@@ -60,6 +89,12 @@ class TestSSLKeyValidatorFIPS(MAASServerTestCase):
 
     def test_fips_rejects_dsa_cert(self):
         pem = _make_ssl_cert(key_type="dsa", key_size=2048, hash_alg="sha256")
+        self.patch(sslkey, "is_fips_enabled").return_value = True
+        error = self.assertRaises(ValidationError, validate_ssl_key, pem)
+        self.assertEqual("fips_violation", error.code)
+
+    def test_fips_rejects_ed25519_cert(self):
+        pem = _make_ed25519_ssl_cert()
         self.patch(sslkey, "is_fips_enabled").return_value = True
         error = self.assertRaises(ValidationError, validate_ssl_key, pem)
         self.assertEqual("fips_violation", error.code)
