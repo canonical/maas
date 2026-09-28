@@ -398,7 +398,7 @@ def get_base_osystem_series(node):
         arch, subarch = node.split_arch()
         try:
             resource = BootResource.objects.get(
-                name=release,
+                name__in=[release, f"custom/{release}"],
                 architecture__startswith=f"{arch}/",
                 base_image__isnull=False,
             )
