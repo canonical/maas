@@ -23,6 +23,7 @@ from maasapiserver.v3.api.public.models.responses.configurations import (
     ConfigurationsListResponse,
 )
 from maasapiserver.v3.auth.base import (
+    check_authentication,
     check_permissions,
     get_authenticated_user,
 )
@@ -58,13 +59,7 @@ class ConfigurationsHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(
-                check_permissions(
-                    openfga_permission=None,
-                )
-            )
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_configurations(
         self,
@@ -115,13 +110,7 @@ class ConfigurationsHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(
-                check_permissions(
-                    openfga_permission=None,
-                )
-            )
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_configuration(
         self,
