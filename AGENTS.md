@@ -59,6 +59,13 @@ Across all parts of the codebase:
 - Be especially careful with authentication and authorization code
 - Always use secure defaults for cryptographic operations
 
+## FIPS and STIG/CIS Hardening Compliance
+
+MAAS versions 3.7 and above have (or will have in the future) support for FIPS 140-2/140-3 and STIG/CIS hardening.
+Ensure that any changes made do not break FIPS compliance when FIPS is enabled at the operating system level.
+Additionally, ensure that changes do not enforce FIPS checks when it is not enabled at the operating system level.
+Finally, ensure that any changes do not break STIG/CIS hardening configuration.
+
 ## Documentation Standards
 
 - Keep inline comments focused on *why*, not *what*
