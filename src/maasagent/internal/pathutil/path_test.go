@@ -34,7 +34,7 @@ func TestDataPath(t *testing.T) {
 			in:  "foo",
 			out: "/var/snap/maas/common/var/lib/maas/foo",
 		},
-		"deb": {
+		"unset": {
 			setup: func(t *testing.T) {
 				t.Setenv("SNAP_COMMON", "")
 			},
@@ -64,7 +64,7 @@ func TestDataDir(t *testing.T) {
 		assert.Equal(t, "/var/snap/maas/common/var/lib/maas", DataDir())
 	})
 
-	t.Run("deb", func(t *testing.T) {
+	t.Run("unset", func(t *testing.T) {
 		t.Setenv("SNAP_COMMON", "")
 		assert.Equal(t, "/var/lib/maas", DataDir())
 	})
@@ -81,7 +81,7 @@ func TestConfigPath(t *testing.T) {
 			in:    "conf",
 			out:   "/var/snap/maas/common/etc/maas/conf",
 		},
-		"deb": {
+		"unset": {
 			setup: func(t *testing.T) { t.Setenv("SNAP_COMMON", "") },
 			in:    "conf",
 			out:   "/etc/maas/conf",
@@ -102,7 +102,7 @@ func TestConfigDir(t *testing.T) {
 		assert.Equal(t, "/var/snap/maas/common/etc/maas", ConfigDir())
 	})
 
-	t.Run("deb", func(t *testing.T) {
+	t.Run("unset", func(t *testing.T) {
 		t.Setenv("SNAP_COMMON", "")
 		assert.Equal(t, "/etc/maas", ConfigDir())
 	})
@@ -119,7 +119,7 @@ func TestRunDir(t *testing.T) {
 			},
 			out: "/run/snap.maas",
 		},
-		"deb": {
+		"unset": {
 			setup: func(t *testing.T) {
 				t.Setenv("SNAP_INSTANCE_NAME", "")
 			},
@@ -146,7 +146,7 @@ func TestCachePath(t *testing.T) {
 			in:    "cachefile",
 			out:   "/var/snap/maas/common/var/cache/maas/cachefile",
 		},
-		"deb": {
+		"unset": {
 			setup: func(t *testing.T) { t.Setenv("SNAP_DATA", "") },
 			in:    "cachefile",
 			out:   "/var/cache/maas/cachefile",
@@ -167,7 +167,7 @@ func TestCacheDir(t *testing.T) {
 		assert.Equal(t, "/var/snap/maas/common/var/cache/maas", CacheDir())
 	})
 
-	t.Run("deb", func(t *testing.T) {
+	t.Run("unset", func(t *testing.T) {
 		t.Setenv("SNAP_DATA", "")
 		assert.Equal(t, "/var/cache/maas", CacheDir())
 	})

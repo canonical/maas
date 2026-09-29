@@ -13,7 +13,6 @@ Before you open Launchpad, collect the essentials:
 * Version and build –
 
   * Snap: `snap list maas`
-  * Debian package: `apt list maas`
 * Interface – Did the issue occur in the UI, CLI, or API?
 * What happened – Brief description of the unexpected behavior.
 * Steps to reproduce – Clear, step-by-step sequence.
@@ -49,7 +48,6 @@ Logs are stored on disk. Collect:
 Default locations:
 
 * Snap: `/var/snap/maas/common/log/`
-* Debian package: `/var/log/maas/`
 
 ### Using `sosreport`
 

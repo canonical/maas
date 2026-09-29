@@ -28,7 +28,8 @@ const (
 	defaultRunDir    = "/run/maas"
 )
 
-// DataPath returns the MAAS data path (snap or deb) with the given relative path appended.
+// DataPath returns the MAAS data path with the given relative path appended,
+// falling back to defaultDataDir when not running inside a snap.
 func DataPath(path string) string {
 	base := defaultDataDir
 	if dataDir := os.Getenv("SNAP_COMMON"); dataDir != "" {
@@ -38,12 +39,13 @@ func DataPath(path string) string {
 	return filepath.Join(base, path)
 }
 
-// DataDir returns the root MAAS data directory (snap or deb).
+// DataDir returns the root MAAS data directory.
 func DataDir() string {
 	return DataPath("")
 }
 
-// ConfigPath returns the MAAS config path (snap or deb) with the given relative path appended.
+// ConfigPath returns the MAAS config path with the given relative path
+// appended, falling back to defaultConfigDir when not running inside a snap.
 func ConfigPath(path string) string {
 	path = filepath.Clean(path)
 
@@ -55,12 +57,12 @@ func ConfigPath(path string) string {
 	return filepath.Join(base, path)
 }
 
-// ConfigDir returns the root MAAS config directory (snap or deb).
+// ConfigDir returns the root MAAS config directory.
 func ConfigDir() string {
 	return ConfigPath("")
 }
 
-// RunDir returns the MAAS runtime directory (snap or deb).
+// RunDir returns the MAAS runtime directory.
 func RunDir() string {
 	if name := os.Getenv("SNAP_INSTANCE_NAME"); name != "" {
 		return fmt.Sprintf("/run/snap.%s", name)
@@ -69,7 +71,8 @@ func RunDir() string {
 	return defaultRunDir
 }
 
-// CachePath returns the MAAS cache path (snap or deb) with the given relative path appended.
+// CachePath returns the MAAS cache path with the given relative path
+// appended, falling back to defaultCacheDir when not running inside a snap.
 func CachePath(path string) string {
 	path = filepath.Clean(path)
 
@@ -81,7 +84,7 @@ func CachePath(path string) string {
 	return filepath.Join(base, path)
 }
 
-// CacheDir returns the root MAAS cache directory (snap or deb).
+// CacheDir returns the root MAAS cache directory.
 func CacheDir() string {
 	return CachePath("")
 }

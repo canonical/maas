@@ -490,26 +490,18 @@ func startRackd(ctx context.Context, fs afero.Fs, cfg rackdConfig) error {
 }
 
 // writeRackdConfig persists legacy configuration files (secret, agent_uuid
-// and rackd.conf with specified maas_url parameter) required by rackd.
-// If running as a snap, it sets the snap_mode to "rack".
+// and rackd.conf with specified maas_url parameter) required by rackd, and
+// sets the snap_mode to "rack".
 // TODO: Remove once Python based rackd is obsolete.
 func writeRackdConfig(fs afero.Fs, cfg rackdConfig) error {
-	if common := filepath.Clean(os.Getenv("SNAP_COMMON")); common != "" {
-		if err := atomicfile.WriteFileWithFs(fs, filepath.Join(common, "snap_mode"),
-			[]byte("rack"), 0o640); err != nil {
-			return fmt.Errorf("writing snap_mode: %w", err)
-		}
+	common := filepath.Clean(os.Getenv("SNAP_COMMON"))
+	if err := atomicfile.WriteFileWithFs(fs, filepath.Join(common, "snap_mode"),
+		[]byte("rack"), 0o640); err != nil {
+		return fmt.Errorf("writing snap_mode: %w", err)
 	}
 
-	commonDir := "/var/lib/maas"
-	if dir := os.Getenv("SNAP_COMMON"); dir != "" {
-		commonDir = filepath.Join(filepath.Clean(dir), "maas")
-	}
-
-	dataDir := "/etc/maas"
-	if dir := os.Getenv("SNAP_DATA"); dir != "" {
-		dataDir = filepath.Clean(dir)
-	}
+	commonDir := filepath.Join(common, "maas")
+	dataDir := filepath.Clean(os.Getenv("SNAP_DATA"))
 
 	configFiles := []struct {
 		path string
@@ -549,21 +541,13 @@ func writeRackdConfig(fs afero.Fs, cfg rackdConfig) error {
 // from rackd-supervised agents to standalone operation.
 // TODO: Remove once Python based rackd is obsolete.
 func restartRackd(ctx context.Context) error {
-	if snap := os.Getenv("SNAP"); snap != "" {
-		snap = filepath.Clean(snap)
-
-		return runAll(
-			exec.CommandContext(ctx, "snapctl", "stop", "maas.pebble"),
-			//nolint:gosec // G204 previous .Clean and .Join should be enough
-			exec.CommandContext(ctx, filepath.Join(snap, "usr/bin/reconfigure-pebble")),
-			exec.CommandContext(ctx, "snapctl", "start", "maas.pebble"),
-		)
-	}
+	snap := filepath.Clean(os.Getenv("SNAP"))
 
 	return runAll(
-		exec.CommandContext(ctx, "systemctl", "stop", "maas-rackd"),
-		exec.CommandContext(ctx, "systemctl", "enable", "maas-rackd"),
-		exec.CommandContext(ctx, "systemctl", "start", "maas-rackd"),
+		exec.CommandContext(ctx, "snapctl", "stop", "maas.pebble"),
+		//nolint:gosec // G204 previous .Clean and .Join should be enough
+		exec.CommandContext(ctx, filepath.Join(snap, "usr/bin/reconfigure-pebble")),
+		exec.CommandContext(ctx, "snapctl", "start", "maas.pebble"),
 	)
 }
 

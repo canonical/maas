@@ -100,7 +100,6 @@ clean: clean-doc
 
 clean-doc:
 # Check if we are in a git directory before executing the `git clean` command otherwise it will fail.
-# (Known to fail when building the deb package)
 	if git status > /dev/null; then \
 		git clean -fx "$(BUILDDIR)"; \
 	fi

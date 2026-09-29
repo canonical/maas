@@ -27,7 +27,7 @@ import (
 	"maas.io/core/src/maasagent/internal/logger"
 )
 
-const expectedMAASCLIName = "maas.power"
+const expectedMAASCLIName = "maas-power"
 
 type testPowerProc struct {
 	name string

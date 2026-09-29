@@ -63,13 +63,13 @@ For example, a legitimate login request might resemble:
 
 ### Systemd log commands
 
-|**Component**|**Snap Command**|**Debian Command**|
-| --- | --- | --- |
-|**Regiond**|`journalctl -u snap.maas.pebble -t maas-regiond`|`journalctl -u maas-regiond`|
-|**Rackd**|`journalctl -u snap.maas.pebble -t maas-rackd`|`journalctl -u maas-rackd`|
-|**API Server**|`journalctl -u snap.maas.pebble -t maas-apiserver`|`journalctl -u maas-apiserver`|
-|**Proxy (squid)**|`journalctl -u snap.maas.pebble -t maas-proxy`|`journalctl -u maas-proxy`|
-|**NTP (chrony)**|`journalctl -u snap.maas.pebble -t chronyd`|`journalctl -u chrony`|
+|**Component**|**Snap Command**|
+| --- | --- |
+|**Regiond**|`journalctl -u snap.maas.pebble -t maas-regiond`|
+|**Rackd**|`journalctl -u snap.maas.pebble -t maas-rackd`|
+|**API Server**|`journalctl -u snap.maas.pebble -t maas-apiserver`|
+|**Proxy (squid)**|`journalctl -u snap.maas.pebble -t maas-proxy`|
+|**NTP (chrony)**|`journalctl -u snap.maas.pebble -t chronyd`|
 
 ## Audit logs
 

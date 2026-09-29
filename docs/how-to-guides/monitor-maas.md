@@ -209,17 +209,13 @@ unzip /tmp/agent.zip -d /opt/agent
 chmod a+x /opt/agent/grafana-agent-linux-amd64
 ```
 
-Copy the agent example configuration from MAAS based on the installation method and start the agent:
+Copy the agent example configuration from MAAS and start the agent:
 
 ```
 mkdir -p /var/lib/grafana-agent/positions \
          /var/lib/grafana-agent/wal
 
-# for snap
 cp /snap/maas/current/usr/share/maas/grafana_agent/agent-example-snap.yaml /opt/agent/agent.yaml
-
-# for deb
-cp /usr/share/maas/grafana_agent/agent-example-deb.yaml /opt/agent/agent.yaml
 
 systemd-run -u telemetry \
     -E HOSTNAME="$(hostname)" \
@@ -513,15 +509,9 @@ All available metrics are prefixed with `maas_`, to make it easier to look them 
 
 ## Prometheus endpoints
 
-Whenever you install the `python3-prometheus-client` library, Prometheus endpoints are exposed over HTTP by the `rackd` and `regiond` processes under the default `/metrics` path.
+MAAS snaps bundle the necessary libraries, so Prometheus endpoints are exposed automatically over HTTP by the `rackd` and `regiond` processes under the default `/metrics` path.
 
 >Pro tip: Currently, prometheus metrics are shared when rack and region controllers are running on the same machine, even though each service provides its own port. You can safely only query one of the two ports if you're running both controllers.
-
-For a Snap-based MAAS setup, you're in luck: the necessary libraries are bundled right in, making metrics immediately available. For those on a Debian-based MAAS installation, you'll need to install the library and give your MAAS services a quick restart. Here's how:
-
-    sudo apt install python3-prometheus-client
-    sudo systemctl restart maas-rackd
-    sudo systemctl restart maas-regiond
 
 MAAS also provides optional stats about resources registered with the MAAS server itself. These include four broad categories of information:
 
@@ -529,7 +519,7 @@ MAAS also provides optional stats about resources registered with the MAAS serve
 2. Number of networks, spaces, fabrics, VLANs and subnets
 3. Total counts for machines CPU cores, memory and storage
 
-After installing the `python3-prometheus-client` library as describe above, run the following to enable stats:
+Run the following to enable stats:
 
     maas $PROFILE maas set-config name=prometheus_enabled value=true
 
