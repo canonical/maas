@@ -61,7 +61,7 @@ Across all parts of the codebase:
 
 ## FIPS and STIG/CIS Hardening Compliance
 
-MAAS versions 3.7 and above have (or will have in the future) support for FIPS 140-2/140-3 and STIG/CIS hardening.
+MAAS has support for FIPS 140-2/140-3 and STIG/CIS hardening.
 Ensure that any changes made do not break FIPS compliance when FIPS is enabled at the operating system level.
 Additionally, ensure that changes do not enforce FIPS checks when it is not enabled at the operating system level.
 Finally, ensure that any changes do not break STIG/CIS hardening configuration.
