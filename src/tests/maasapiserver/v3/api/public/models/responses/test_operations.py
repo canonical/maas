@@ -35,6 +35,7 @@ class TestOperationResponse:
             operation=operation,
             self_base_hyperlink=f"{V3_API_PREFIX}/operations",
         )
+        assert response.id == operation.id
         assert response.uuid == operation.uuid
         assert response.op_type == operation.op_type
         assert response.resource_id == operation.resource_id
