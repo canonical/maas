@@ -93,6 +93,25 @@ def _retry_on_busy(
             time.sleep(retry_delay)
 
 
+def _logoff(session):
+    """Log off an HMC session without letting a failure here mask the
+    outcome of the operation that was just performed.
+
+    If logging off itself fails (e.g. the HMC becomes unreachable at
+    exactly this moment), the worst case is the same session leak this
+    is meant to prevent in the first place -- not failing an otherwise-
+    successful power action, or masking a more meaningful exception
+    already in flight, because of a problem logging off.
+    """
+    try:
+        session.logoff()
+    except Exception:
+        maaslog.warning(
+            "Failed to log off HMC session; it may linger until the "
+            "HMC's own idle-session timeout reaps it."
+        )
+
+
 VERIFY_SSL_YES = "y"
 VERIFY_SSL_NO = "n"
 
@@ -155,19 +174,27 @@ class HMCZPowerDriver(PowerDriver):
             verify_cert=context.get("power_verify_ssl", "y") == VERIFY_SSL_YES,
         )
         partition_name = context["power_partition_name"]
-        client = Client(session)
-        # Each HMC manages one or more CPCs(Central Processor Complex). To find
-        # a partition MAAS must iterate over all CPCs.
-        for cpc in client.cpcs.list():
-            if not cpc.dpm_enabled:
-                maaslog.warning(
-                    f"DPM is not enabled on '{cpc.get_property('name')}', "
-                    "skipping"
-                )
-                continue
-            with contextlib.suppress(NotFound):
-                return cpc.partitions.find(name=partition_name)
-        raise PowerActionError(f"Unable to find '{partition_name}' on HMC!")
+        try:
+            client = Client(session)
+            # Each HMC manages one or more CPCs(Central Processor Complex).
+            # To find a partition MAAS must iterate over all CPCs.
+            for cpc in client.cpcs.list():
+                if not cpc.dpm_enabled:
+                    maaslog.warning(
+                        f"DPM is not enabled on '{cpc.get_property('name')}', "
+                        "skipping"
+                    )
+                    continue
+                with contextlib.suppress(NotFound):
+                    return cpc.partitions.find(name=partition_name)
+            raise PowerActionError(
+                f"Unable to find '{partition_name}' on HMC!"
+            )
+        except Exception:
+            # Log off here since no partition is being returned for the
+            # caller to eventually log off itself.
+            _logoff(session)
+            raise
 
     # IBM Z partitions can take awhile to start/stop. Don't wait for completion
     # so power actions don't consume a thread.
@@ -177,91 +204,101 @@ class HMCZPowerDriver(PowerDriver):
     def power_on(self, system_id: str, context: dict):
         """Power on IBM Z DPM."""
         partition = self._get_partition(context)
-        status = partition.get_property("status")
-        if status in {"paused", "terminated"}:
-            # A "paused" or "terminated" partition can only be started if
-            # it is stopped first. MAAS can't execute the start action until
-            # the stop action completes. This holds the thread in MAAS for ~30s.
-            # IBM is aware this isn't optimal for us so they are looking into
-            # modifying IBM Z to go into a stopped state.
+        try:
+            status = partition.get_property("status")
+            if status in {"paused", "terminated"}:
+                # A "paused" or "terminated" partition can only be
+                # started if it is stopped first. MAAS can't execute the
+                # start action until the stop action completes. This
+                # holds the thread in MAAS for ~30s. IBM is aware this
+                # isn't optimal for us so they are looking into
+                # modifying IBM Z to go into a stopped state.
+                _retry_on_busy(
+                    partition.stop,
+                    wait_for_completion=True,
+                    op_desc="power_on pre-start stop",
+                    system_id=system_id,
+                )
+            elif status == "stopping":
+                # The HMC does not allow a machine to be powered on if its
+                # currently stopping. Wait 120s for it which should be more
+                # than enough time.
+                try:
+                    partition.wait_for_status("stopped", 120)
+                except StatusTimeout:
+                    # If 120s isn't enough time raise a PowerError() which will
+                    # trigger the builtin retry code in the base PowerDriver()
+                    # class.
+                    raise PowerError(  # noqa: B904
+                        "Partition is stuck in a "
+                        f"{partition.get_property('status')} state!"
+                    )
+
             _retry_on_busy(
-                partition.stop,
-                wait_for_completion=True,
-                op_desc="power_on pre-start stop",
+                partition.start,
+                wait_for_completion=False,
+                op_desc="power_on start",
                 system_id=system_id,
             )
-        elif status == "stopping":
-            # The HMC does not allow a machine to be powered on if its
-            # currently stopping. Wait 120s for it which should be more
-            # than enough time.
-            try:
-                partition.wait_for_status("stopped", 120)
-            except StatusTimeout:
-                # If 120s isn't enough time raise a PowerError() which will
-                # trigger the builtin retry code in the base PowerDriver()
-                # class.
-                raise PowerError(  # noqa: B904
-                    "Partition is stuck in a "
-                    f"{partition.get_property('status')} state!"
-                )
-
-        _retry_on_busy(
-            partition.start,
-            wait_for_completion=False,
-            op_desc="power_on start",
-            system_id=system_id,
-        )
+        finally:
+            _logoff(partition.manager.session)
 
     @asynchronous
     @threadDeferred
     def power_off(self, system_id: str, context: dict):
         """Power off IBM Z DPM."""
         partition = self._get_partition(context)
-        status = partition.get_property("status")
-        if status == "starting":
-            # The HMC does not allow a machine to be powered off if its
-            # currently starting. Wait 120s for it which should be more
-            # than enough time.
-            try:
-                partition.wait_for_status("active", 120)
-            except StatusTimeout:
-                # If 120s isn't enough time raise a PowerError() which will
-                # trigger the builtin retry code in the base PowerDriver()
-                # class.
-                raise PowerError(  # noqa: B904
-                    "Partition is stuck in a "
-                    f"{partition.get_property('status')} state!"
-                )
-        _retry_on_busy(
-            partition.stop,
-            wait_for_completion=False,
-            op_desc="power_off stop",
-            system_id=system_id,
-        )
+        try:
+            status = partition.get_property("status")
+            if status == "starting":
+                # The HMC does not allow a machine to be powered off if its
+                # currently starting. Wait 120s for it which should be more
+                # than enough time.
+                try:
+                    partition.wait_for_status("active", 120)
+                except StatusTimeout:
+                    # If 120s isn't enough time raise a PowerError() which will
+                    # trigger the builtin retry code in the base PowerDriver()
+                    # class.
+                    raise PowerError(  # noqa: B904
+                        "Partition is stuck in a "
+                        f"{partition.get_property('status')} state!"
+                    )
+            _retry_on_busy(
+                partition.stop,
+                wait_for_completion=False,
+                op_desc="power_off stop",
+                system_id=system_id,
+            )
+        finally:
+            _logoff(partition.manager.session)
 
     @asynchronous
     @threadDeferred
     def power_query(self, system_id: str, context: dict):
         """Power on IBM Z DPM."""
         partition = self._get_partition(context)
-        status = partition.get_property("status")
-        # IBM Z takes time to start or stop a partition. It returns a
-        # transitional state during this time. Associate the transitional
-        # state with on or off so MAAS doesn't repeatedly issue a power
-        # on or off command.
-        if status in {"starting", "active", "degraded"}:
-            return "on"
-        elif status in {"stopping", "stopped", "paused", "terminated"}:
-            # A "paused" state isn't on or off, it just means the partition
-            # isn't currently executing instructions. A partition can go into
-            # a "paused" state if `shutdown -h now` is executed in the
-            # partition. "paused" also happens when transitioning between
-            # "starting" and "active". Consider it off so MAAS can start
-            # it again when needed. IBM is aware this is weird and is working
-            # on a solution.
-            return "off"
-        else:
-            return "unknown"
+        try:
+            status = partition.get_property("status")
+            # IBM Z takes time to start or stop a partition. It returns a
+            # transitional state during this time. Associate the transitional
+            # state with on or off so MAAS doesn't repeatedly issue a power
+            # on or off command.
+            if status in {"starting", "active", "degraded"}:
+                return "on"
+            elif status in {"stopping", "stopped", "paused", "terminated"}:
+                # A "paused" state isn't on or off, it just means the
+                # partition isn't currently executing instructions. A
+                # partition can go into a "paused" state if `shutdown -h
+                # now` is executed in the partition. "paused" also happens
+                # when transitioning between "starting" and "active".
+                # Consider it off so MAAS can start it again when needed.
+                # IBM is aware this is weird and is working on a solution.
+                return "off"
+            else:
+                return "unknown"
+        finally:
+            _logoff(partition.manager.session)
 
     @asynchronous
     @threadDeferred
@@ -279,66 +316,73 @@ class HMCZPowerDriver(PowerDriver):
         :param order: An ordered list of network or storage devices.
         """
         partition = self._get_partition(context)
-        status = partition.get_property("status")
+        try:
+            status = partition.get_property("status")
 
-        if status in {"starting", "stopping"}:
-            # The HMC does not allow a machine's boot order to be reconfigured
-            # while in a transitional (starting/stopping) state. Wait for it to
-            # settle. Accept any non-transitional state -- including "paused",
-            # which IBM Z can land in (e.g. after `shutdown -h now` or a quick
-            # release/redeploy) and which never resolves to stopped/active on
-            # its own. Waiting only for ["stopped", "active"] would then hang
-            # the full 120s and raise StatusTimeout. If it times out anyway,
-            # allow it to be raised so the region can log it.
-            partition.wait_for_status(
-                ["stopped", "active", "degraded", "paused", "terminated"],
-                120,
-            )
-
-        # You can only specify one boot device on IBM Z
-        boot_device = order[0]
-        if boot_device.get("mac_address"):
-            nic = partition.nics.find(
-                **{"mac-address": boot_device["mac_address"]}
-            )
-            _retry_on_busy(
-                partition.update_properties,
-                {
-                    "boot-device": "network-adapter",
-                    "boot-network-device": nic.uri,
-                },
-                op_desc="set_boot_order network-adapter",
-                system_id=system_id,
-                max_attempts=SET_BOOT_ORDER_RETRY_MAX_ATTEMPTS,
-                retry_delay=SET_BOOT_ORDER_RETRY_DELAY,
-            )
-        else:
-            for storage_group in partition.list_attached_storage_groups():
-                # MAAS/LXD detects the storage volume UUID or serial-number as its serial.
-                storage_volumes = storage_group.storage_volumes.list(
-                    full_properties=True
+            if status in {"starting", "stopping"}:
+                # The HMC does not allow a machine's boot order to be
+                # reconfigured while in a transitional (starting/stopping)
+                # state. Wait for it to settle. Accept any non-transitional
+                # state -- including "paused", which IBM Z can land in
+                # (e.g. after `shutdown -h now` or a quick
+                # release/redeploy) and which never resolves to
+                # stopped/active on its own. Waiting only for ["stopped",
+                # "active"] would then hang the full 120s and raise
+                # StatusTimeout. If it times out anyway, allow it to be
+                # raised so the region can log it.
+                partition.wait_for_status(
+                    ["stopped", "active", "degraded", "paused", "terminated"],
+                    120,
                 )
-                for vol in storage_volumes:
-                    if boot_device["serial"].upper() in [
-                        vol.properties.get("uuid", "").strip(),
-                        vol.properties.get("serial-number", "").strip(),
-                    ]:
-                        _retry_on_busy(
-                            partition.update_properties,
-                            {
-                                "boot-device": "storage-volume",
-                                "boot-storage-volume": vol.uri,
-                            },
-                            op_desc="set_boot_order storage-volume",
-                            system_id=system_id,
-                            max_attempts=SET_BOOT_ORDER_RETRY_MAX_ATTEMPTS,
-                            retry_delay=SET_BOOT_ORDER_RETRY_DELAY,
-                        )
-                        return
 
-            raise PowerError(
-                f"No storage volume found with {boot_device['serial'].upper()}"
-            )
+            # You can only specify one boot device on IBM Z
+            boot_device = order[0]
+            if boot_device.get("mac_address"):
+                nic = partition.nics.find(
+                    **{"mac-address": boot_device["mac_address"]}
+                )
+                _retry_on_busy(
+                    partition.update_properties,
+                    {
+                        "boot-device": "network-adapter",
+                        "boot-network-device": nic.uri,
+                    },
+                    op_desc="set_boot_order network-adapter",
+                    system_id=system_id,
+                    max_attempts=SET_BOOT_ORDER_RETRY_MAX_ATTEMPTS,
+                    retry_delay=SET_BOOT_ORDER_RETRY_DELAY,
+                )
+            else:
+                for storage_group in partition.list_attached_storage_groups():
+                    # MAAS/LXD detects the storage volume UUID or
+                    # serial-number as its serial.
+                    storage_volumes = storage_group.storage_volumes.list(
+                        full_properties=True
+                    )
+                    for vol in storage_volumes:
+                        if boot_device["serial"].upper() in [
+                            vol.properties.get("uuid", "").strip(),
+                            vol.properties.get("serial-number", "").strip(),
+                        ]:
+                            _retry_on_busy(
+                                partition.update_properties,
+                                {
+                                    "boot-device": "storage-volume",
+                                    "boot-storage-volume": vol.uri,
+                                },
+                                op_desc="set_boot_order storage-volume",
+                                system_id=system_id,
+                                max_attempts=SET_BOOT_ORDER_RETRY_MAX_ATTEMPTS,
+                                retry_delay=SET_BOOT_ORDER_RETRY_DELAY,
+                            )
+                            return
+
+                raise PowerError(
+                    "No storage volume found with "
+                    f"{boot_device['serial'].upper()}"
+                )
+        finally:
+            _logoff(partition.manager.session)
 
 
 @asynchronous
@@ -365,45 +409,52 @@ def probe_hmcz_and_enlist(
     :param verify_ssl: Whether SSL connections should be verified.
     """
     session = Session(hostname, username, password, verify_cert=verify_ssl)
-    client = Client(session)
-    # Each HMC manages one or more CPCs(Central Processor Complex). Iterate
-    # over all CPCs to find all partitions to add.
-    for cpc in client.cpcs.list():
-        if not cpc.dpm_enabled:
-            maaslog.warning(
-                f"DPM is not enabled on '{cpc.get_property('name')}', skipping"
-            )
-            continue
-        for partition in cpc.partitions.list():
-            if prefix_filter and not partition.name.startswith(prefix_filter):
+    try:
+        client = Client(session)
+        # Each HMC manages one or more CPCs(Central Processor Complex).
+        # Iterate over all CPCs to find all partitions to add.
+        for cpc in client.cpcs.list():
+            if not cpc.dpm_enabled:
+                maaslog.warning(
+                    f"DPM is not enabled on '{cpc.get_property('name')}', "
+                    "skipping"
+                )
                 continue
+            for partition in cpc.partitions.list():
+                if prefix_filter and not partition.name.startswith(
+                    prefix_filter
+                ):
+                    continue
 
-            system_id = yield create_node(
-                [
-                    nic.get_property("mac-address")
-                    for nic in partition.nics.list()
-                ],
-                "s390x",
-                "hmcz",
-                {
-                    "power_address": hostname,
-                    "power_user": username,
-                    "power_pass": password,
-                    "power_partition_name": partition.name,
-                    "power_verify_ssl": (
-                        VERIFY_SSL_NO
-                        if verify_ssl is False
-                        else VERIFY_SSL_YES
-                    ),
-                },
-                domain,
-                partition.name,
-            )
+                system_id = yield create_node(
+                    [
+                        nic.get_property("mac-address")
+                        for nic in partition.nics.list()
+                    ],
+                    "s390x",
+                    "hmcz",
+                    {
+                        "power_address": hostname,
+                        "power_user": username,
+                        "power_pass": password,
+                        "power_partition_name": partition.name,
+                        "power_verify_ssl": (
+                            VERIFY_SSL_NO
+                            if verify_ssl is False
+                            else VERIFY_SSL_YES
+                        ),
+                    },
+                    domain,
+                    partition.name,
+                )
 
-            # If the system_id is None an error occured when creating the machine.
-            # Most likely the error is the node already exists.
-            if system_id is None:
-                continue
+                # If the system_id is None an error occured when creating
+                # the machine. Most likely the error is the node already
+                # exists.
+                if system_id is None:
+                    continue
 
-            if accept_all:
-                yield commission_node(system_id, user)
+                if accept_all:
+                    yield commission_node(system_id, user)
+    finally:
+        _logoff(session)
