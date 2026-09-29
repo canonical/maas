@@ -494,10 +494,14 @@ func startRackd(ctx context.Context, fs afero.Fs, cfg rackdConfig) error {
 // sets the snap_mode to "rack".
 // TODO: Remove once Python based rackd is obsolete.
 func writeRackdConfig(fs afero.Fs, cfg rackdConfig) error {
-	common := filepath.Clean(os.Getenv("SNAP_COMMON"))
-	if err := atomicfile.WriteFileWithFs(fs, filepath.Join(common, "snap_mode"),
-		[]byte("rack"), 0o640); err != nil {
-		return fmt.Errorf("writing snap_mode: %w", err)
+	snapCommon := os.Getenv("SNAP_COMMON")
+	common := filepath.Clean(snapCommon)
+
+	if snapCommon != "" {
+		if err := atomicfile.WriteFileWithFs(fs, filepath.Join(common, "snap_mode"),
+			[]byte("rack"), 0o640); err != nil {
+			return fmt.Errorf("writing snap_mode: %w", err)
+		}
 	}
 
 	commonDir := filepath.Join(common, "maas")

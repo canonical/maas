@@ -63,7 +63,7 @@ For example, a legitimate login request might resemble:
 
 ### Systemd log commands
 
-|**Component**|**Snap Command**|
+|**Component**|**Command**|
 | --- | --- |
 |**Regiond**|`journalctl -u snap.maas.pebble -t maas-regiond`|
 |**Rackd**|`journalctl -u snap.maas.pebble -t maas-rackd`|
