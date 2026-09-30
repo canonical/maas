@@ -410,6 +410,7 @@ class DefaultOSystemConfig(Config[str | None]):
 
 
 class DefaultDistroSeriesConfig(Config[str | None]):
+    requires_entitlement_to_view: ClassVar[bool] = False
     name: ClassVar[str] = "default_distro_series"
     default: ClassVar[str | None] = DEFAULT_OS.get_default_release()
     description: ClassVar[str] = "Default OS release used for deployment"
@@ -1058,6 +1059,7 @@ class AutoVlanCreationConfig(Config[bool | None]):
 
 
 class ExperimentalSwitchProvisioningConfig(Config[bool | None]):
+    requires_entitlement_to_view: ClassVar[bool] = False
     name: ClassVar[str] = "experimental_switch_provisioning"
     default: ClassVar[bool | None] = False
     description: ClassVar[str] = (
