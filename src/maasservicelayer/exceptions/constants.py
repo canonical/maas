@@ -76,3 +76,6 @@ SERVICE_UNAVAILABLE_VIOLATION_TYPE = "ServiceUnavailableViolation"
 
 # Machines
 INVALID_MACHINE_STATUS_VIOLATION_TYPE = "InvalidMachineStatusViolation"
+
+# Operations
+OPERATION_IN_PROGRESS_VIOLATION_TYPE = "OperationInProgressViolation"
