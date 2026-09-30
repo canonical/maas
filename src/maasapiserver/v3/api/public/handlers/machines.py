@@ -39,14 +39,18 @@ from maasservicelayer.db.repositories.nodes import NodeClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ConflictException,
+    ForbiddenException,
     NotFoundException,
 )
 from maasservicelayer.exceptions.constants import (
     INVALID_MACHINE_STATUS_VIOLATION_TYPE,
+    MACHINE_LOCKED_VIOLATION_TYPE,
+    MISSING_PERMISSIONS_VIOLATION_TYPE,
     OPERATION_IN_PROGRESS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.machines import Machine
 from maasservicelayer.services import ServiceCollectionV3
 
 COMMISSIONABLE_STATUSES = frozenset(
@@ -300,7 +304,7 @@ class MachinesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_MACHINES
+                    openfga_permission=None  # Permissions are handled in the handler.
                 )
             )
         ],
@@ -317,12 +321,44 @@ class MachinesHandler(Handler):
         machine = await services.machines.get_one(
             query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id))
         )
-        if machine is None:
+
+        # Both keeps the type checker happy and at the same time checks if machine is None.
+        # Ensures the object is a Machine not a generic Node.
+        if not isinstance(machine, Machine):
             raise NotFoundException(
                 details=[
                     BaseExceptionDetail(
                         type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
                         message=f"Machine with system_id '{system_id}' was not found.",
+                    )
+                ]
+            )
+
+        # Check if the authenticated user has the necessary permissions to edit the machine.
+        fga_client = services.openfga_tuples.get_client()
+        if machine.pool_id is None:
+            can_edit = await fga_client.can_edit_machines(
+                authenticated_user.id
+            )
+        else:
+            can_edit = await fga_client.can_edit_machines_in_pool(
+                authenticated_user.id, machine.pool_id
+            )
+        if not can_edit:
+            raise ForbiddenException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                        message=f"The permission 'can_edit_machines' is required on the pool of machine '{system_id}'.",
+                    )
+                ]
+            )
+        if machine.locked:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MACHINE_LOCKED_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because it is locked.",
                     )
                 ]
             )
