@@ -31,6 +31,7 @@ class Machine(Node):
     cpu_count: int
     power_type: PowerTypeEnum | None = None
     fqdn: str
+    pool_id: int | None = None
 
 
 class HardwareDevice(MaasTimestampedBaseModel):
