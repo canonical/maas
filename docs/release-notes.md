@@ -181,6 +181,19 @@ In rack-only mode, we no longer run a BIND instance to forward queries to the re
 
 ## Version 3.6 release notes
 
+### MAAS 3.6.6 has been released
+
+We are happy to announce that MAAS 3.6.6 has been released, with the following bug fixes:
+
+- [2167420](https://launchpad.net/maas/+bug/2167420): bcache-layout hosts crash with block device name collision
+- [2137492](https://launchpad.net/maas/+bug/2137492): Problematic MAC address normalization
+- [2160731](https://launchpad.net/maas/+bug/2160731): Redfish power driver fails on upgraded Dell iDRAC 10
+- [2161260](https://launchpad.net/maas/+bug/2161260): 64KB packet hard limit on DHCP configuration RPC
+- [2161952](https://launchpad.net/maas/+bug/2161952): Several MAAS code paths perform N+1 node queries on large deployments
+- [2161119](https://launchpad.net/maas/+bug/2161119): Virtual machines show up in wrong LXD host in UI
+- [2162993](https://launchpad.net/maas/+bug/2162993): MAAS fails to reassign machine.default_gateways when an interface's IP assignment mode is set to Unconfigured
+- [2167838](https://launchpad.net/maas/+bug/2167838): rackd DHCP socket not cleanup on stop, causing cascading dhcp and pxe boot failures in deb installations
+
 ### MAAS 3.6.5 has been released
 
 We are happy to announce that MAAS 3.6.5 has been released, with the following bug fixes:
