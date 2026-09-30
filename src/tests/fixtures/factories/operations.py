@@ -18,6 +18,8 @@ async def create_test_operation_entry(
     op_type: OperationType = OperationType.MACHINE_DEPLOY,
     status: OperationStatus = OperationStatus.ACCEPTED,
     is_bulk: bool = False,
+    resource_id: int | None = None,
+    resource_type: str | None = None,
 ) -> Operation:
     now = utcnow()
     [row] = await fixture.create(
@@ -28,6 +30,8 @@ async def create_test_operation_entry(
                 "op_type": op_type.value,
                 "status": status.value,
                 "is_bulk": is_bulk,
+                "resource_id": resource_id,
+                "resource_type": resource_type,
                 "created": now,
                 "updated": now,
             }

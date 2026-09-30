@@ -1687,6 +1687,20 @@ OperationTable = Table(
     ),
     Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
     Index("maasserver_operation_parent_id_idx", "parent_id"),
+    Index(
+        "maasserver_operation_resource_type_resource_id_idx",
+        "resource_type",
+        "resource_id",
+    ),
+    Index(
+        "maasserver_operation_one_in_progress_per_resource_idx",
+        "resource_type",
+        "resource_id",
+        unique=True,
+        postgresql_where=text(
+            "status IN ('ACCEPTED', 'RUNNING', 'CANCELLING')"
+        ),
+    ),
 )
 
 OpenFGATupleTable = Table(
