@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -376,13 +375,8 @@ func powerCommand(ctx context.Context, action string, isDPU bool, driver string,
 	return stdout.String(), nil
 }
 
-// powerCLIExecutableName returns correct MAAS Power CLI executable name
-// depending on the installation type (snap or deb package)
+// powerCLIExecutableName returns the MAAS Power CLI executable name.
 func powerCLIExecutableName() string {
-	if os.Getenv("SNAP") == "" {
-		return "maas.power"
-	}
-
 	return "maas-power"
 }
 

@@ -351,15 +351,8 @@ METADATA_URL_PREFIX = "/MAAS/metadata/"
 SIMPLESTREAMS_URL_PREFIX = "/MAAS/images-stream/"
 
 # The path to the asset manifest file.
-SNAP_MANIFEST_PATH = pathlib.Path(
+MAAS_UI_MANIFEST_PATH = pathlib.Path(
     "/snap/maas/current/usr/share/maas/web/static/asset-manifest.json"
-)
-DEB_MANIFEST_PATH = pathlib.Path(
-    "/usr/share/maas/web/static/asset-manifest.json"
-)
-
-MAAS_UI_MANIFEST_PATH = (
-    DEB_MANIFEST_PATH if DEB_MANIFEST_PATH.exists() else SNAP_MANIFEST_PATH
 )
 # The default value for assume_scheme in URLField will change from "http" to "https" in Django 6.0.
 FORMS_URLFIELD_ASSUME_HTTPS = False

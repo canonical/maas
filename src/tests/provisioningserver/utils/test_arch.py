@@ -16,14 +16,10 @@ def clear_arch_cache():
 
 @pytest.mark.usefixtures("clear_arch_cache")
 class TestGetArchitecture:
-    def test_get_architecture_from_snap_env(
-        self, mocker, monkeypatch, factory
-    ):
+    def test_get_architecture_from_snap_env(self, monkeypatch, factory):
         arch = factory.make_name("arch")
-        mock_get_architectures = mocker.patch("apt_pkg.get_architectures")
         monkeypatch.setenv("SNAP_ARCH", arch)
         assert get_architecture() == arch
-        mock_get_architectures.assert_not_called()
 
 
 @pytest.mark.parametrize(

@@ -102,9 +102,8 @@ func getOSNameVersion() OSInfo {
 		// LP:1876217 - As of 2.44 snapd only gives confined Snaps
 		// access to /etc/lsb-release from the host OS. /etc/os-release
 		// currently contains the Ubuntu Core version the Snap is
-		// running. Try /etc/os-release first for controllers installed
-		// with the Debian packages. At some point in the future snapd
-		// may provide the host OS version of /etc/os-release.
+		// running. Try /etc/os-release first, since it's present on
+		// modern distros.
 		if err == nil && parsedFile["ID"] != "ubuntu-core" {
 			return OSInfo{
 				OSName:    strings.ToLower(parsedFile["ID"]),

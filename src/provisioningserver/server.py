@@ -97,7 +97,7 @@ def run():
     """Run the maas-rackd service."""
     # Clean up any stale DHCP notification socket from a previous run.
     # The socket may be left behind if rackd was killed without a clean
-    # shutdown. Snap handles this in run-rackd; for deb we do it here.
+    # shutdown.
     logger = logging.getLogger("provisioningserver.server")
     try:
         sock_path = (

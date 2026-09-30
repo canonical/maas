@@ -120,17 +120,13 @@ MAAS restarted after an update, causing DNS to fail due to duplicate subnets and
    - After removing the duplicate subnets, restart the MAAS services to apply the changes:
 
      ```bash
-     sudo systemctl restart maas-regiond maas-rackd
+     sudo systemctl restart snap.maas.pebble
      ```
 
 5. **Verify DNS configuration:**
    - Check the DNS configuration files to ensure there are no remaining issues. The relevant files can be found in:
 
      ```bash
-     # deb
-     /etc/bind/maas/
-
-     # snap
      /var/snap/maas/current/bind/
      ```
 
