@@ -9,6 +9,9 @@ from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
 )
 from maasapiserver.v3.api import services
+from maasapiserver.v3.api.public.models.requests.machines import (
+    MachineCommissionRequest,
+)
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.machines import (
     MachineResponse,
@@ -304,6 +307,7 @@ class MachinesHandler(Handler):
     async def commission_machine(
         self,
         system_id: str,
+        commission_request: MachineCommissionRequest,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         authenticated_user: AuthenticatedUser = Depends(  # noqa: B008
             get_authenticated_user
@@ -340,7 +344,10 @@ class MachinesHandler(Handler):
             op_type=OperationType.MACHINE_COMMISSION,
             resource_id=machine.id,
             resource_type=OperationResourceType.MACHINE,
-            parameters={"system_id": system_id},
+            parameters={
+                "system_id": system_id,
+                **commission_request.model_dump(),
+            },
             user_id=authenticated_user.id,
         )
         return OperationResponse.from_model(
