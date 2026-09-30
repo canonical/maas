@@ -9,6 +9,7 @@ from aiohttp import ClientSession, TCPConnector
 from oauthlib import oauth1
 
 from maascommon.constants import SYSTEM_CA_FILE
+from maasservicelayer.logging.tls import fips_tls_trace_config
 
 
 class APIClient:
@@ -26,6 +27,7 @@ class APIClient:
             connector=TCPConnector(
                 ssl=ssl.create_default_context(cafile=SYSTEM_CA_FILE)
             ),
+            trace_configs=[fips_tls_trace_config()],
         )
 
     async def request(

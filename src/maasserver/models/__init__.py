@@ -84,6 +84,7 @@ __all__ = [
     "Subnet",
     "Tag",
     "Template",
+    "TrustedSshHostKey",
     "UnknownInterface",
     "UserProfile",
     "VaultSecret",
@@ -195,6 +196,7 @@ from maasserver.models.staticroute import StaticRoute
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.template import Template
+from maasserver.models.trustedsshhostkey import TrustedSshHostKey
 from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
 from maasserver.models.versionedtextfile import VersionedTextFile

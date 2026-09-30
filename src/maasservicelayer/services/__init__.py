@@ -82,6 +82,7 @@ from maasservicelayer.db.repositories.operations import OperationsRepository
 from maasservicelayer.db.repositories.package_repositories import (
     PackageRepositoriesRepository,
 )
+from maasservicelayer.db.repositories.power_types import PowerTypeRepository
 from maasservicelayer.db.repositories.racks import RacksRepository
 from maasservicelayer.db.repositories.rdns import RDNSRepository
 from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
@@ -188,6 +189,7 @@ from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.services.package_repositories import (
     PackageRepositoriesService,
 )
+from maasservicelayer.services.power_types import PowerTypesService
 from maasservicelayer.services.racks import RacksService
 from maasservicelayer.services.rdns import RDNSService
 from maasservicelayer.services.reservedips import ReservedIPsService
@@ -297,6 +299,7 @@ class ServiceCollectionV3:
     openfga_tuples: OpenFGATupleService
     operations: OperationsService
     package_repositories: PackageRepositoriesService
+    power_types: PowerTypesService
     racks: RacksService
     rdns: RDNSService
     refresh_tokens: RefreshTokenService
@@ -760,5 +763,9 @@ class ServiceCollectionV3:
             operations_repository=OperationsRepository(context),
             operation_tasks_repository=OperationTasksRepository(context),
             temporal_service=services.temporal,
+        )
+        services.power_types = PowerTypesService(
+            context=context,
+            repository=PowerTypeRepository(),
         )
         return services

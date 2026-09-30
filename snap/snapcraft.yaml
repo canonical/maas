@@ -124,6 +124,8 @@ parts:
     plugin: go
     build-packages:
       - golang-go
+    build-environment:
+      - GOFIPS140: "latest"
     source-type: git
     source: https://github.com/canonical/pebble
     source-tag: v1.10.2
@@ -218,6 +220,7 @@ parts:
       - python3-temporalio
       - python3-twisted
       - python3-txtftp
+      - python3-typing-extensions
       - python3-tz
       - python3-ulid
       - python3-uvicorn
@@ -353,6 +356,8 @@ parts:
     source: src/host-info
     build-packages:
       - golang-go
+    build-environment:
+      - GOFIPS140: "latest"
     prime:
       - usr/share/maas/machine-resources
 
@@ -362,6 +367,7 @@ parts:
     build-packages:
       - golang-go
     build-environment:
+      - GOFIPS140: "latest"
       - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
     prime:
       - usr/sbin/
@@ -372,6 +378,7 @@ parts:
     build-packages:
       - golang-go
     build-environment:
+      - GOFIPS140: "latest"
       - GOFLAGS: "${GOFLAGS:-} -mod=readonly"
     prime:
       - usr/sbin/

@@ -34,6 +34,7 @@ Keep your data center intact and reliable.
 - Learn about the MAAS catalog of [events](/explanation/events.md#about-audit-events) for auditing and debugging issues.
 - Dive deep into the MAAS [logging](/explanation/logging.md) domain to understand what is captured.
 - Get a better handle on the thinking behind [MAAS security](/how-to-guides/enhance-maas-security.md) to help you design and maintain a hardened stance.
+- Understand [FIPS mode](/explanation/fips.md) and its effect on MAAS behaviour.
 
 ```{toctree}
 :titlesonly:
@@ -56,4 +57,5 @@ performance
 events
 logging
 security
+fips
 ```

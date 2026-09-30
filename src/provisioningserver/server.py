@@ -107,4 +107,13 @@ def run():
     except Exception:
         logger.warning("Failed to clean up stale dhcpd.sock", exc_info=True)
 
+    # Set the hardening mode flag so services read the correct posture.
+    from maascommon.hardening import configure_hardening
+    from provisioningserver.config import ClusterConfiguration
+
+    try:
+        with ClusterConfiguration.open() as config:
+            configure_hardening(config.hardening_enabled)
+    except Exception:
+        configure_hardening("auto")
     runService("maas-rackd")

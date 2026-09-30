@@ -8,10 +8,17 @@ import logging
 from django.db.utils import DatabaseError
 from twisted.internet.defer import inlineCallbacks
 
+from maascommon.fips import is_fips_enabled
+from maascommon.hardening import configure_hardening
 from maascommon.osystem.ubuntu import UbuntuOS
 from maasserver import locks, security
 from maasserver.bootresources import initialize_image_storage
-from maasserver.config import get_db_creds_vault_path, RegionConfiguration
+from maasserver.certificates import get_maas_certificate
+from maasserver.config import (
+    build_hardening_validation_kwargs,
+    get_db_creds_vault_path,
+    RegionConfiguration,
+)
 from maasserver.deprecations import (
     log_deprecations,
     sync_deprecation_notifications,
@@ -24,8 +31,15 @@ from maasserver.models import (
     Notification,
     RegionController,
 )
-from maasserver.models.config import ensure_uuid_in_config
+from maasserver.models.config import (
+    ensure_uuid_in_config,
+    read_fips_declared_from_db,
+    read_hardening_enabled_from_db,
+)
 from maasserver.models.domain import dns_kms_setting_changed
+from maasserver.regiondservices.hardening_check import (
+    sync_hardening_notifications,
+)
 from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils import synchronised
 from maasserver.utils.certificates import (
@@ -43,6 +57,9 @@ from maasserver.vault import (
     clear_vault_client_caches,
     get_region_vault_client,
     VaultClient,
+)
+from maasservicelayer.services.hardening import (
+    configure_and_validate_hardening,
 )
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.certificates import (
@@ -246,12 +263,16 @@ def start_up(master=False):
 @transactional
 def inner_start_up(master=False):
     """Startup jobs that must run serialized w.r.t. other starting servers."""
-    # All commissioning and testing scripts are stored in the database. For
-    # a commissioning ScriptSet to be created Scripts must exist first. Call
-    # this early, only on the master process, to ensure they exist and are
-    # only created once. If get_or_create_running_controller() is called before
-    # this it will fail on first run.
+    configure_hardening(read_hardening_enabled_from_db())
+    if is_fips_enabled():
+        Config.objects.set_config("fips_enabled", True)
+
     if master:
+        # All commissioning and testing scripts are stored in the database. For
+        # a commissioning ScriptSet to be created Scripts must exist first. Call
+        # this early, only on the master process, to ensure they exist and are
+        # only created once. If get_or_create_running_controller() is called before
+        # this it will fail on first run.
         load_builtin_scripts()
 
     # Ensure the this region is represented in the database. The first regiond
@@ -327,9 +348,25 @@ def inner_start_up(master=False):
         with RegionConfiguration.open() as config:
             Config.objects.set_config("maas_url", config.maas_url)
 
-        # Log deprecations and Update related notifications if needed
+        # Log deprecations and update related notifications if needed.
         log_deprecations(logger=log)
         sync_deprecation_notifications()
+
+        # Validate hardening and post/clear violation Notifications.
+        try:
+            cert = get_maas_certificate()
+            with RegionConfiguration.open() as config:
+                kwargs = build_hardening_validation_kwargs(config, cert=cert)
+                kwargs["fips_declared"] = read_fips_declared_from_db()
+                violations = configure_and_validate_hardening(**kwargs)
+        except Exception:
+            logger.error(
+                "Hardening validation failed unexpectedly; treating as "
+                "zero violations. Check region configuration and logs.",
+                exc_info=True,
+            )
+            violations = []
+        sync_hardening_notifications(violations, controller_id=node.system_id)
 
         # initialize the image storage
         initialize_image_storage(node)

@@ -490,6 +490,19 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         )
         self.assertIn(b"Invalid", response.content)
 
+    def test_adding_rejects_ed25519_key_when_fips_enabled(self):
+        from maasserver.models import sshkey
+
+        self.patch(sshkey, "is_fips_enabled").return_value = True
+        key_string = get_data("data/test_ed25519.pub")
+        response = self.client.post(
+            reverse("sshkeys_handler"), data=dict(key=key_string)
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response
+        )
+        self.assertIn(b"FIPS", response.content)
+
     def test_adding_returns_badrequest_when_key_not_in_form(self):
         response = self.client.post(reverse("sshkeys_handler"))
         self.assertEqual(
