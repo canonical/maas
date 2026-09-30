@@ -5,6 +5,7 @@ from fastapi import Depends
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    ConflictBodyResponse,
     NotFoundBodyResponse,
 )
 from maasapiserver.v3.api import services
@@ -18,17 +19,40 @@ from maasapiserver.v3.api.public.models.responses.machines import (
     UsbDeviceResponse,
     UsbDevicesListResponse,
 )
+from maasapiserver.v3.api.public.models.responses.operations import (
+    OperationResponse,
+)
 from maasapiserver.v3.auth.base import (
     check_permissions,
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.node import NodeStatus
+from maascommon.enums.operations import OperationResourceType, OperationType
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachineClauseFactory
-from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.db.repositories.nodes import NodeClauseFactory
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ConflictException,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_MACHINE_STATUS_VIOLATION_TYPE,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
+
+COMMISSIONABLE_STATUSES = frozenset(
+    {
+        NodeStatus.NEW,
+        NodeStatus.READY,
+        NodeStatus.FAILED_COMMISSIONING,
+        NodeStatus.BROKEN,
+    }
+)
 
 
 class MachinesHandler(Handler):
@@ -254,4 +278,72 @@ class MachinesHandler(Handler):
         return PowerDriverResponse.from_model(
             bmc=bmc,
             self_base_hyperlink=f"{V3_API_PREFIX}/machines/{system_id}/power_parameters",
+        )
+
+    @handler(
+        path="/machines/{system_id}:commission",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            202: {
+                "model": OperationResponse,
+            },
+            404: {"model": NotFoundBodyResponse},
+            409: {"model": ConflictBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=202,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_MACHINES
+                )
+            )
+        ],
+    )
+    async def commission_machine(
+        self,
+        system_id: str,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
+    ) -> OperationResponse:
+        machine = await services.machines.get_one(
+            query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id))
+        )
+        if machine is None:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"Machine with system_id '{system_id}' was not found.",
+                    )
+                ]
+            )
+
+        if machine.status not in COMMISSIONABLE_STATUSES:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_MACHINE_STATUS_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because it is in the {machine.status.name} status.",
+                    )
+                ]
+            )
+
+        # TODO: Remainder of the validation phase. Check if power type is configured,
+        # if commissioning boot resources are available for the machine's architecture,
+        # if there is an active commission operation for this machine
+
+        operation = await services.operations.create_accepted_operation(
+            op_type=OperationType.MACHINE_COMMISSION,
+            resource_id=machine.id,
+            resource_type=OperationResourceType.MACHINE,
+            parameters={"system_id": system_id},
+            user_id=authenticated_user.id,
+        )
+        return OperationResponse.from_model(
+            operation=operation,
+            self_base_hyperlink=f"{V3_API_PREFIX}/operations",
         )
