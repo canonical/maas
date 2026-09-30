@@ -43,6 +43,7 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.exceptions.constants import (
     INVALID_MACHINE_STATUS_VIOLATION_TYPE,
+    OPERATION_IN_PROGRESS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
@@ -337,8 +338,20 @@ class MachinesHandler(Handler):
             )
 
         # TODO: Remainder of the validation phase. Check if power type is configured,
-        # if commissioning boot resources are available for the machine's architecture,
-        # if there is an active commission operation for this machine
+        # if commissioning boot resources are available for the machine's architecture
+
+        if await services.operations.has_active_operation_for_resource(
+            resource_type=OperationResourceType.MACHINE,
+            resource_id=machine.id,
+        ):
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=OPERATION_IN_PROGRESS_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because another operation is already in progress on it.",
+                    )
+                ]
+            )
 
         operation = await services.operations.create_accepted_operation(
             op_type=OperationType.MACHINE_COMMISSION,
