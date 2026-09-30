@@ -181,6 +181,10 @@ In rack-only mode, we no longer run a BIND instance to forward queries to the re
 
 ## Version 3.6 release notes
 
+### MAAS 3.6.6 has been released
+
+We are happy to announce that MAAS 3.6.6 has been released, with the following bug fixes:
+
 ### MAAS 3.6.5 has been released
 
 We are happy to announce that MAAS 3.6.5 has been released, with the following bug fixes:
