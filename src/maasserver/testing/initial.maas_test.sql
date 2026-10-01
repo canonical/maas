@@ -9173,7 +9173,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0039
+0040
 \.
 
 
@@ -14423,10 +14423,24 @@ CREATE INDEX maasserver_oidcrevokedtoken_user_email_5f4d1d18 ON public.maasserve
 
 
 --
+-- Name: maasserver_operation_one_in_progress_per_resource_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX maasserver_operation_one_in_progress_per_resource_idx ON public.maasserver_operation USING btree (resource_type, resource_id) WHERE ((status)::text = ANY ((ARRAY['ACCEPTED'::character varying, 'RUNNING'::character varying, 'CANCELLING'::character varying])::text[]));
+
+
+--
 -- Name: maasserver_operation_parent_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX maasserver_operation_parent_id_idx ON public.maasserver_operation USING btree (parent_id);
+
+
+--
+-- Name: maasserver_operation_resource_type_resource_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_operation_resource_type_resource_id_idx ON public.maasserver_operation USING btree (resource_type, resource_id);
 
 
 --
