@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import random
+import re
 from textwrap import dedent
 
 from netaddr import IPAddress
@@ -20,6 +21,7 @@ from maasserver.utils.converters import systemd_interval_to_calendar
 from maasserver.utils.orm import post_commit_hooks
 from metadataserver import vendor_data
 from metadataserver.vendor_data import (
+    _generate_password,
     _get_metadataserver_template,
     DEPLOY_SECRETS_LXD_KEY,
     DEPLOY_SECRETS_VIRSH_KEY,
@@ -984,3 +986,53 @@ class TestGetNodeRackURL(MAASServerTestCase):
 
         expected_url = "http://10.0.0.1:5248/MAAS"
         self.assertEqual(expected_url, get_node_rack_url(node))
+
+
+class TestGeneratePassword(MAASServerTestCase):
+    """Tests for `_generate_password`."""
+
+    def test_generates_minimum_14_characters(self):
+        password = _generate_password()
+        self.assertGreaterEqual(len(password), 14)
+
+    def test_generates_requested_length(self):
+        for length in [14, 16, 20, 32]:
+            password = _generate_password(length=length)
+            self.assertEqual(len(password), length)
+
+    def test_raises_error_if_length_less_than_14(self):
+        with self.assertRaises(ValueError) as cm:
+            _generate_password(length=10)
+        self.assertIn("at least 14 characters", str(cm.exception))
+
+    def test_contains_uppercase_letter(self):
+        for _ in range(10):
+            password = _generate_password()
+            self.assertTrue(
+                re.search(r"[A-Z]", password),
+                f"Password missing uppercase: {password}",
+            )
+
+    def test_contains_digit(self):
+        for _ in range(10):
+            password = _generate_password()
+            self.assertTrue(
+                re.search(r"\d", password),
+                f"Password missing digit: {password}",
+            )
+
+    def test_contains_special_character(self):
+        for _ in range(10):
+            password = _generate_password()
+            self.assertTrue(
+                re.search(r"[^a-zA-Z0-9]", password),
+                f"Password missing special char: {password}",
+            )
+
+    def test_contains_lowercase_letter(self):
+        for _ in range(10):
+            password = _generate_password()
+            self.assertTrue(
+                re.search(r"[a-z]", password),
+                f"Password missing lowercase: {password}",
+            )

@@ -3,12 +3,13 @@
 
 """vendor-data for cloud-init's use."""
 
-from base64 import b64encode
 from ipaddress import ip_address
 from itertools import chain
-from os import urandom
 import pkgutil
+import random
 import re
+import secrets
+import string
 from textwrap import dedent
 
 from netaddr import IPAddress
@@ -538,6 +539,50 @@ def generate_hardware_sync_systemd_configuration(node):
     )
 
 
-def _generate_password():
-    """Generate a 32-character password by encoding 24 bytes as base64."""
-    return b64encode(urandom(24), altchars=b".!").decode("ascii")
+def _generate_password(length: int = 14):
+    """Generate a FIPS-compliant password.
+
+    Generates a password meeting FIPS 140-2/140-3 and STIG/CIS hardening
+    requirements:
+    - Minimum 14 characters (satisfies FIPS lower bound on PBKDF2/HMAC key length)
+    - At least one uppercase letter
+    - At least one digit
+    - At least one special character (non-alphanumeric)
+
+    Args:
+        length: Desired password length (minimum 14). Defaults to 14.
+
+    Raises:
+        ValueError: If length is less than 14.
+
+    Returns:
+        A FIPS-compliant password string.
+    """
+    if length < 14:
+        raise ValueError(
+            f"Password length must be at least 14 characters, got {length}"
+        )
+
+    uppercase = string.ascii_uppercase
+    lowercase = string.ascii_lowercase
+    digits = string.digits
+    special = "!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~"
+
+    # Ensure required character types are present
+    password_chars = [
+        secrets.choice(uppercase),
+        secrets.choice(digits),
+        secrets.choice(special),
+    ]
+
+    # Fill the rest with a mix of all allowed characters
+    all_chars = uppercase + lowercase + digits + special
+    password_chars += [
+        secrets.choice(all_chars) for _ in range(length - len(password_chars))
+    ]
+
+    # Shuffle using system randomness
+    rng = random.SystemRandom()
+    rng.shuffle(password_chars)
+
+    return "".join(password_chars)
