@@ -300,7 +300,7 @@ def generate_kvm_pod_configuration(node):
         )
 
     if node.install_kvm:
-        password = _generate_password()
+        password = _generate_password(length=32)
         deploy_secrets[DEPLOY_SECRETS_VIRSH_KEY] = password
         # Make sure SSH password authentication is enabled.
         yield "ssh_pwauth", True
