@@ -8,6 +8,9 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.v3.api.public.models.requests.machines import (
+    MachineCommissionRequest,
+)
 from maasapiserver.v3.api.public.models.responses.machines import (
     HardwareDeviceTypeEnum,
     MachinesListResponse,
@@ -381,6 +384,26 @@ class TestMachinesApi(ApiCommonTests):
             TEST_COMMISSION_OPERATION
         )
         return openfga_client_mock
+
+    async def test_commission_machine_without_body_uses_defaults(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        self._mock_commission_services(services_mock, TEST_MACHINE)
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{TEST_MACHINE.system_id}:commission"
+        )
+
+        assert response.status_code == 202
+        parameters = services_mock.operations.create_accepted_operation.call_args.kwargs[
+            "parameters"
+        ]
+        assert parameters == {
+            "system_id": TEST_MACHINE.system_id,
+            **MachineCommissionRequest().model_dump(),
+        }
 
     async def test_commission_machine_in_pool(
         self,
