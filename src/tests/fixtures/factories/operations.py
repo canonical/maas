@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maascommon.enums.operations import (
+    OperationResourceType,
     OperationStatus,
     OperationTaskStatus,
     OperationType,
@@ -19,7 +20,7 @@ async def create_test_operation_entry(
     status: OperationStatus = OperationStatus.ACCEPTED,
     is_bulk: bool = False,
     resource_id: int | None = None,
-    resource_type: str | None = None,
+    resource_type: OperationResourceType | None = None,
 ) -> Operation:
     now = utcnow()
     [row] = await fixture.create(
