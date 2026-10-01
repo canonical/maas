@@ -1005,6 +1005,15 @@ class TestGeneratePassword(MAASServerTestCase):
             _generate_password(length=10)
         self.assertIn("at least 14 characters", str(cm.exception))
 
+    def test_falls_back_to_rule_based_generation_if_max_attempts_exhausted(
+        self,
+    ):
+        password = _generate_password(length=14, max_attempts=0)
+        self.assertEqual(len(password), 14)
+        self.assertTrue(re.search(r"[A-Z]", password))
+        self.assertTrue(re.search(r"\d", password))
+        self.assertTrue(re.search(r"[^a-zA-Z0-9]", password))
+
     def test_contains_uppercase_letter(self):
         for _ in range(10):
             password = _generate_password()
