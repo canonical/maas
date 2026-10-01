@@ -196,9 +196,12 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         )
         assert len(retrieved_machines.items) == 5
         assert retrieved_machines.total == 5
-        # Here we do the assert on the owner since we don't store info on pools yet.
+
         assert all(
             machine.owner == "user1" for machine in retrieved_machines.items
+        )
+        assert all(
+            machine.pool_id == rp1.id for machine in retrieved_machines.items
         )
 
         retrieved_machines = await repository_instance.list(
@@ -213,6 +216,9 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         assert retrieved_machines.total == 5
         assert all(
             machine.owner == "user2" for machine in retrieved_machines.items
+        )
+        assert all(
+            machine.pool_id == rp2.id for machine in retrieved_machines.items
         )
 
     async def test_list_machine_usb_devices(
