@@ -6,7 +6,9 @@ from fastapi import Depends
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     ConflictBodyResponse,
+    ForbiddenBodyResponse,
     NotFoundBodyResponse,
+    UnauthorizedBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.machines import (
@@ -296,6 +298,8 @@ class MachinesHandler(Handler):
             202: {
                 "model": OperationResponse,
             },
+            401: {"model": UnauthorizedBodyResponse},
+            403: {"model": ForbiddenBodyResponse},
             404: {"model": NotFoundBodyResponse},
             409: {"model": ConflictBodyResponse},
         },
@@ -312,12 +316,15 @@ class MachinesHandler(Handler):
     async def commission_machine(
         self,
         system_id: str,
-        commission_request: MachineCommissionRequest,
+        commission_request: MachineCommissionRequest | None = None,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         authenticated_user: AuthenticatedUser = Depends(  # noqa: B008
             get_authenticated_user
         ),
     ) -> OperationResponse:
+        if commission_request is None:
+            commission_request = MachineCommissionRequest()
+
         machine = await services.machines.get_one(
             query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id))
         )
@@ -349,7 +356,7 @@ class MachinesHandler(Handler):
                 details=[
                     BaseExceptionDetail(
                         type=MISSING_PERMISSIONS_VIOLATION_TYPE,
-                        message=f"The permission 'can_edit_machines' is required on the pool of machine '{system_id}'.",
+                        message=f"The permission 'can_edit_machines' is required to commission machine '{system_id}'.",
                     )
                 ]
             )
