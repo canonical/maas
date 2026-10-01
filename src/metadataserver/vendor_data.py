@@ -566,7 +566,8 @@ def _generate_password(length: int = 14):
     uppercase = string.ascii_uppercase
     lowercase = string.ascii_lowercase
     digits = string.digits
-    special = "!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~"
+    # Matches the altchars used by the previous base64-based implementation.
+    special = ".!"
 
     # Ensure required character types are present
     password_chars = [
