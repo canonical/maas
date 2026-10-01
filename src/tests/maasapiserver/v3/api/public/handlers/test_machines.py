@@ -35,8 +35,11 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachineClauseFactory
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.exceptions.constants import (
+    INVALID_MACHINE_STATUS_VIOLATION_TYPE,
     MACHINE_LOCKED_VIOLATION_TYPE,
     MISSING_PERMISSIONS_VIOLATION_TYPE,
+    OPERATION_IN_PROGRESS_VIOLATION_TYPE,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bmc import Bmc
@@ -479,6 +482,79 @@ class TestMachinesApi(ApiCommonTests):
         assert response.status_code == 409
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.details[0].type == MACHINE_LOCKED_VIOLATION_TYPE
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
+
+    async def test_commission_machine_404_unknown_machine(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        self._mock_commission_services(services_mock, TEST_MACHINE)
+        services_mock.machines.get_one.return_value = None
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/unknown:commission"
+        )
+
+        assert response.status_code == 404
+        error_response = ErrorBodyResponse(**response.json())
+        assert (
+            error_response.details[0].type
+            == UNEXISTING_RESOURCE_VIOLATION_TYPE
+        )
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
+
+    @pytest.mark.parametrize(
+        "status",
+        [
+            NodeStatus.COMMISSIONING,
+            NodeStatus.ALLOCATED,
+            NodeStatus.DEPLOYED,
+        ],
+    )
+    async def test_commission_machine_409_status_not_commissionable(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+        status: NodeStatus,
+    ) -> None:
+        machine = TEST_MACHINE.model_copy(update={"status": status})
+        self._mock_commission_services(services_mock, machine)
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{machine.system_id}:commission"
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert (
+            error_response.details[0].type
+            == INVALID_MACHINE_STATUS_VIOLATION_TYPE
+        )
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
+
+    async def test_commission_machine_409_active_operation(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        self._mock_commission_services(services_mock, TEST_MACHINE)
+        services_mock.operations.has_active_operation_for_resource.return_value = True
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{TEST_MACHINE.system_id}:commission"
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert (
+            error_response.details[0].type
+            == OPERATION_IN_PROGRESS_VIOLATION_TYPE
+        )
+        services_mock.operations.has_active_operation_for_resource.assert_awaited_once_with(
+            resource_type=OperationResourceType.MACHINE,
+            resource_id=TEST_MACHINE.id,
+        )
         services_mock.operations.create_accepted_operation.assert_not_awaited()
 
 
