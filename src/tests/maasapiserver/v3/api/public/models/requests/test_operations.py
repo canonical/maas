@@ -101,10 +101,33 @@ class TestOperationFilterParams:
             )
 
     @pytest.mark.parametrize(
-        "status,op_type,is_bulk,expected",
+        "resource_type,resource_id",
+        [
+            ("machine", 42),
+            ("machine", None),
+            (None, 42),
+        ],
+    )
+    def test_resource_field_values(
+        self, resource_type: str | None, resource_id: int | None
+    ) -> None:
+        params = OperationFilterParams(
+            resource_type=resource_type, resource_id=resource_id
+        )
+        assert params.resource_type == resource_type
+        assert params.resource_id == resource_id
+
+    def test_invalid_resource_id(self) -> None:
+        with pytest.raises(ValidationError):
+            OperationFilterParams(resource_type=None, resource_id="not_an_int")
+
+    @pytest.mark.parametrize(
+        "status,op_type,is_bulk,resource_type,resource_id,expected",
         [
             (
                 OperationStatus.RUNNING,
+                None,
+                None,
                 None,
                 None,
                 OperationsClauseFactory.with_status(OperationStatus.RUNNING),
@@ -112,6 +135,8 @@ class TestOperationFilterParams:
             (
                 None,
                 OperationType.MACHINE_DEPLOY,
+                None,
+                None,
                 None,
                 OperationsClauseFactory.with_op_type(
                     OperationType.MACHINE_DEPLOY
@@ -121,18 +146,53 @@ class TestOperationFilterParams:
                 None,
                 None,
                 True,
+                None,
+                None,
                 OperationsClauseFactory.with_is_bulk(True),
             ),
             (
                 None,
                 None,
                 False,
+                None,
+                None,
                 OperationsClauseFactory.with_is_bulk(False),
+            ),
+            (
+                None,
+                None,
+                None,
+                "machine",
+                None,
+                OperationsClauseFactory.with_resource_type("machine"),
+            ),
+            (
+                None,
+                None,
+                None,
+                None,
+                42,
+                OperationsClauseFactory.with_resource_id(42),
+            ),
+            (
+                None,
+                None,
+                None,
+                "machine",
+                42,
+                OperationsClauseFactory.and_clauses(
+                    [
+                        OperationsClauseFactory.with_resource_type("machine"),
+                        OperationsClauseFactory.with_resource_id(42),
+                    ]
+                ),
             ),
             (
                 OperationStatus.RUNNING,
                 OperationType.MACHINE_DEPLOY,
                 True,
+                None,
+                None,
                 OperationsClauseFactory.and_clauses(
                     [
                         OperationsClauseFactory.with_status(
@@ -145,21 +205,45 @@ class TestOperationFilterParams:
                     ]
                 ),
             ),
+            (
+                None,
+                OperationType.MACHINE_COMMISSION,
+                None,
+                "machine",
+                42,
+                OperationsClauseFactory.and_clauses(
+                    [
+                        OperationsClauseFactory.with_op_type(
+                            OperationType.MACHINE_COMMISSION
+                        ),
+                        OperationsClauseFactory.with_resource_type("machine"),
+                        OperationsClauseFactory.with_resource_id(42),
+                    ]
+                ),
+            ),
         ],
     )
-    def test_to_clause(self, status, op_type, is_bulk, expected) -> None:
+    def test_to_clause(
+        self, status, op_type, is_bulk, resource_type, resource_id, expected
+    ) -> None:
         params = OperationFilterParams(
-            status=status, op_type=op_type, is_bulk=is_bulk
+            status=status,
+            op_type=op_type,
+            is_bulk=is_bulk,
+            resource_type=resource_type,
+            resource_id=resource_id,
         )
         clause = params.to_clause()
         assert clause is not None
         assert clause == expected
 
     @pytest.mark.parametrize(
-        "status,op_type,is_bulk,expected",
+        "status,op_type,is_bulk,resource_type,resource_id,expected",
         [
             (
                 OperationStatus.RUNNING,
+                None,
+                None,
                 None,
                 None,
                 "status=RUNNING",
@@ -168,30 +252,77 @@ class TestOperationFilterParams:
                 None,
                 OperationType.MACHINE_DEPLOY,
                 None,
+                None,
+                None,
                 "op_type=machine.deploy",
             ),
             (
                 None,
                 None,
                 True,
+                None,
+                None,
                 "is_bulk=true",
             ),
             (
                 None,
                 None,
                 False,
+                None,
+                None,
                 "is_bulk=false",
+            ),
+            (
+                None,
+                None,
+                None,
+                "machine",
+                None,
+                "resource_type=machine",
+            ),
+            (
+                None,
+                None,
+                None,
+                None,
+                42,
+                "resource_id=42",
+            ),
+            (
+                None,
+                None,
+                None,
+                "machine",
+                42,
+                "resource_type=machine&resource_id=42",
             ),
             (
                 OperationStatus.RUNNING,
                 OperationType.MACHINE_DEPLOY,
                 True,
+                None,
+                None,
                 "status=RUNNING&op_type=machine.deploy&is_bulk=true",
+            ),
+            (
+                None,
+                OperationType.MACHINE_COMMISSION,
+                None,
+                "machine",
+                42,
+                "op_type=machine.commission&resource_type=machine"
+                "&resource_id=42",
             ),
         ],
     )
-    def test_to_href_format(self, status, op_type, is_bulk, expected) -> None:
+    def test_to_href_format(
+        self, status, op_type, is_bulk, resource_type, resource_id, expected
+    ) -> None:
         params = OperationFilterParams(
-            status=status, op_type=op_type, is_bulk=is_bulk
+            status=status,
+            op_type=op_type,
+            is_bulk=is_bulk,
+            resource_type=resource_type,
+            resource_id=resource_id,
         )
         assert params.to_href_format() == expected

@@ -25,6 +25,17 @@ class OperationFilterParams(BaseModel):
         )
     )
 
+    resource_type: str | None = Field(
+        Query(
+            default=None,
+            description="Filter by resource type, e.g. 'machine'",
+        )
+    )
+
+    resource_id: int | None = Field(
+        Query(default=None, description="Filter by resource id")
+    )
+
     def to_clause(self) -> Clause | None:
         clauses = []
         if self.status is not None:
@@ -33,6 +44,14 @@ class OperationFilterParams(BaseModel):
             clauses.append(OperationsClauseFactory.with_op_type(self.op_type))
         if self.is_bulk is not None:
             clauses.append(OperationsClauseFactory.with_is_bulk(self.is_bulk))
+        if self.resource_type is not None:
+            clauses.append(
+                OperationsClauseFactory.with_resource_type(self.resource_type)
+            )
+        if self.resource_id is not None:
+            clauses.append(
+                OperationsClauseFactory.with_resource_id(self.resource_id)
+            )
         if len(clauses) == 0:
             return None
         elif len(clauses) == 1:
@@ -48,5 +67,9 @@ class OperationFilterParams(BaseModel):
             parts.append(f"op_type={self.op_type}")
         if self.is_bulk is not None:
             parts.append(f"is_bulk={str(self.is_bulk).lower()}")
+        if self.resource_type is not None:
+            parts.append(f"resource_type={self.resource_type}")
+        if self.resource_id is not None:
+            parts.append(f"resource_id={self.resource_id}")
 
         return "&".join(parts) if parts else ""
