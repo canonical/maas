@@ -134,7 +134,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y llvm clang libbpf-dev
 
-          go install honnef.co/go/tools/cmd/staticcheck@v0.6.1
+          go install honnef.co/go/tools/cmd/staticcheck@v0.8.1
           go install github.com/axw/gocov/gocov@v1.1.0
           go install github.com/AlekSi/gocov-xml@v1.1.0
 
