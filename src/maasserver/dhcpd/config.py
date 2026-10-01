@@ -68,7 +68,7 @@ CONDITIONAL_BOOTLOADER = tempita.Template(
 {{else}}
 {{if user_class}}
 {{if user_class=="onie_dhcp_user_class"}}
-  {{behaviour}} option user-class = \"{{user_class}}\" {
+  {{behaviour}} option user-class = \"{{user_class}}\" or substring(option user-class, 1, {{len(user_class)}}) = \"{{user_class}}\" {
     # {{name}}
     # This along with the option space vivso defined above is a workaround to a known issue in ISC DHCP server.
     # See https://opencomputeproject.github.io/onie/user-guide/index.html#advanced-dhcp-2-vivso
