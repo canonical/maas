@@ -16,6 +16,41 @@ Before you can provision switches with MAAS:
 - Ensure your switches support ONIE (most modern data center switches do)
 - Have network connectivity between MAAS and the switch management ports
 
+## Get an API token
+
+All `curl` examples below authenticate with a v3 API Bearer token. This is **not** the v2 API key. Obtain it by logging in to the v3 API and storing it in a `$TOKEN` shell variable, which the rest of the examples reuse:
+
+```bash
+TOKEN=$(curl -s -X POST "http://<maas-server>:5240/MAAS/a/v3/auth/login" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=<your-username>" \
+  -d "password=<your-password>" | jq -r '.access_token')
+```
+
+:::{warning}
+Passing the password inline leaves it in your shell history (e.g. `~/.bash_history`). To avoid this, read it from an interactive prompt instead:
+
+```bash
+read -rsp "MAAS password: " MAAS_PASSWORD; echo
+TOKEN=$(curl -s -X POST "http://<maas-server>:5240/MAAS/a/v3/auth/login" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=<your-username>" \
+  --data-urlencode "password=${MAAS_PASSWORD}" | jq -r '.access_token')
+unset MAAS_PASSWORD
+```
+
+Alternatively, if your shell has `HISTCONTROL=ignorespace` set, prefix the command with a space to keep it out of history.
+:::
+
+Verify it works:
+
+```bash
+curl -X GET "http://<maas-server>:5240/MAAS/a/v3/switches" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+💡 Tokens are short-lived. If a request returns `401 Unauthorized`, log in again to refresh `$TOKEN`.
+
 ## List switches
 
 View all switches registered in MAAS.
@@ -23,8 +58,8 @@ View all switches registered in MAAS.
 ### API
 
 ```bash
-curl -X GET "http://<maas-server>:5248/MAAS/a/v3/switches" \
-  -H "Authorization: Bearer <api-token>"
+curl -X GET "http://<maas-server>:5240/MAAS/a/v3/switches" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 Example response:
@@ -55,8 +90,8 @@ Retrieve details about a single switch.
 ### API
 
 ```bash
-curl -X GET "http://<maas-server>:5248/MAAS/a/v3/switches/{switch_id}" \
-  -H "Authorization: Bearer <api-token>"
+curl -X GET "http://<maas-server>:5240/MAAS/a/v3/switches/{switch_id}" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Register a new switch
@@ -68,8 +103,8 @@ Register a switch in MAAS by providing its management interface MAC address and 
 **Register a switch without an image:**
 
 ```bash
-curl -X POST "http://<maas-server>:5248/MAAS/a/v3/switches" \
-  -H "Authorization: Bearer <api-token>" \
+curl -X POST "http://<maas-server>:5240/MAAS/a/v3/switches" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "mac_address": "00:11:22:33:44:55"
@@ -79,8 +114,8 @@ curl -X POST "http://<maas-server>:5248/MAAS/a/v3/switches" \
 **Register a switch with an image:**
 
 ```bash
-curl -X POST "http://<maas-server>:5248/MAAS/a/v3/switches" \
-  -H "Authorization: Bearer <api-token>" \
+curl -X POST "http://<maas-server>:5240/MAAS/a/v3/switches" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "mac_address": "00:11:22:33:44:55",
@@ -100,8 +135,8 @@ Update the target operating system image for a switch.
 ### API
 
 ```bash
-curl -X PATCH "http://<maas-server>:5248/MAAS/a/v3/switches/{switch_id}" \
-  -H "Authorization: Bearer <api-token>" \
+curl -X PATCH "http://<maas-server>:5240/MAAS/a/v3/switches/{switch_id}" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "image": "arista-4.25.0"
@@ -111,8 +146,8 @@ curl -X PATCH "http://<maas-server>:5248/MAAS/a/v3/switches/{switch_id}" \
 To remove the image assignment:
 
 ```bash
-curl -X PATCH "http://<maas-server>:5248/MAAS/a/v3/switches/{switch_id}" \
-  -H "Authorization: Bearer <api-token>" \
+curl -X PATCH "http://<maas-server>:5240/MAAS/a/v3/switches/{switch_id}" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "image": null
@@ -126,8 +161,8 @@ Remove a switch from MAAS inventory.
 ### API
 
 ```bash
-curl -X DELETE "http://<maas-server>:5248/MAAS/a/v3/switches/{switch_id}" \
-  -H "Authorization: Bearer <api-token>"
+curl -X DELETE "http://<maas-server>:5240/MAAS/a/v3/switches/{switch_id}" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Upload NOS images
@@ -143,8 +178,8 @@ NOS installer images must be uploaded to MAAS as custom images. These are typica
 ### Upload the image
 
 ```bash
-curl -X POST "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
-  -H "Authorization: Bearer <api-token>" \
+curl -X POST "http://<maas-server>:5240/MAAS/a/v3/custom_images" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/octet-stream" \
   -H "name: onie/mellanox-3.8.0" \
   -H "architecture: amd64/generic" \
@@ -166,8 +201,8 @@ curl -X POST "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
 ### Verify the upload
 
 ```bash
-curl -X GET "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
-  -H "Authorization: Bearer <api-token>" | jq '.items[] | select(.name | startswith("onie/"))'
+curl -X GET "http://<maas-server>:5240/MAAS/a/v3/custom_images" \
+  -H "Authorization: Bearer $TOKEN" | jq '.items[] | select(.name | startswith("onie/"))'
 ```
 
 ### Example: Upload multiple NOS versions
@@ -175,8 +210,8 @@ curl -X GET "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
 ```bash
 # Mellanox Onyx 3.8.0
 SHA256=$(sha256sum /opt/nos-images/onie-installer-x86_64-mlnx_x86-r3.8.0000.bin | awk '{print $1}')
-curl -X POST "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
-  -H "Authorization: Bearer <api-token>" \
+curl -X POST "http://<maas-server>:5240/MAAS/a/v3/custom_images" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/octet-stream" \
   -H "name: onie/mellanox-3.8.0" \
   -H "architecture: amd64/generic" \
@@ -187,8 +222,8 @@ curl -X POST "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
 
 # Cumulus Linux 4.4.0
 SHA256=$(sha256sum /opt/nos-images/cumulus-linux-4.4.0-mlx-amd64.bin | awk '{print $1}')
-curl -X POST "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
-  -H "Authorization: Bearer <api-token>" \
+curl -X POST "http://<maas-server>:5240/MAAS/a/v3/custom_images" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/octet-stream" \
   -H "name: onie/cumulus-4.4.0" \
   -H "architecture: amd64/generic" \
@@ -219,8 +254,8 @@ MAAS automatically handles the DHCP configuration needed for ONIE. When a switch
 
    ```bash
    SHA256=$(sha256sum /path/to/installer.bin | awk '{print $1}')
-   curl -X POST "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
-     -H "Authorization: Bearer <api-token>" \
+   curl -X POST "http://<maas-server>:5240/MAAS/a/v3/custom_images" \
+     -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/octet-stream" \
      -H "name: onie/mellanox-3.8.0" \
      -H "architecture: amd64/generic" \
@@ -233,8 +268,8 @@ MAAS automatically handles the DHCP configuration needed for ONIE. When a switch
 2. Register the switch with its target image:
 
    ```bash
-   curl -X POST "http://<maas-server>:5248/MAAS/a/v3/switches" \
-     -H "Authorization: Bearer <api-token>" \
+   curl -X POST "http://<maas-server>:5240/MAAS/a/v3/switches" \
+     -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{
        "mac_address": "00:11:22:33:44:55",
@@ -271,15 +306,15 @@ When assigning images to switches, MAAS uses a logical image name (`onie/<name>`
 1. Check which image is currently assigned to a switch:
 
    ```bash
-   curl -s -X GET "http://<maas-server>:5248/MAAS/a/v3/switches/{switch_id}" \
-     -H "Authorization: Bearer <api-token>" | jq
+   curl -s -X GET "http://<maas-server>:5240/MAAS/a/v3/switches/{switch_id}" \
+     -H "Authorization: Bearer $TOKEN" | jq
    ```
 
 2. List available ONIE custom images:
 
    ```bash
-   curl -s -X GET "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
-     -H "Authorization: Bearer <api-token>" \
+   curl -s -X GET "http://<maas-server>:5240/MAAS/a/v3/custom_images" \
+     -H "Authorization: Bearer $TOKEN" \
      | jq -r '.items[] | select(.os == "onie") | "onie/\(.release) (id=\(.id))"'
    ```
 
@@ -352,8 +387,8 @@ Upload the wrapped script as a custom image:
 
 ```bash
 SHA256=$(sha256sum ./onie-wrapper.sh | awk '{print $1}')
-curl -X POST "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
-  -H "Authorization: Bearer <api-token>" \
+curl -X POST "http://<maas-server>:5240/MAAS/a/v3/custom_images" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/octet-stream" \
   -H "name: onie/mellanox-wrapper-3.8.0" \
   -H "architecture: amd64/generic" \
@@ -593,8 +628,8 @@ This path cannot target the MAAS syslog service on `maas_syslog_port` (default `
 
    ```bash
    SHA256=$(sha256sum /path/to/wrapped-installer.bin | awk '{print $1}')
-   curl -X POST "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
-     -H "Authorization: Bearer <api-token>" \
+   curl -X POST "http://<maas-server>:5240/MAAS/a/v3/custom_images" \
+     -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/octet-stream" \
      -H "name: onie/mellanox-wrapper-3.8.0" \
      -H "architecture: amd64/generic" \
@@ -607,8 +642,8 @@ This path cannot target the MAAS syslog service on `maas_syslog_port` (default `
 3. Register the switch and assign the wrapped image:
 
    ```bash
-   curl -X POST "http://<maas-server>:5248/MAAS/a/v3/switches" \
-     -H "Authorization: Bearer <api-token>" \
+   curl -X POST "http://<maas-server>:5240/MAAS/a/v3/switches" \
+     -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{
        "mac_address": "00:11:22:33:44:55",
@@ -630,8 +665,8 @@ This path cannot target the MAAS syslog service on `maas_syslog_port` (default `
 **Check switch registration:**
 
 ```bash
-curl -X GET "http://<maas-server>:5248/MAAS/a/v3/switches" \
-  -H "Authorization: Bearer <api-token>"
+curl -X GET "http://<maas-server>:5240/MAAS/a/v3/switches" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 💡 MAAS automatically configures DHCP for ONIE—if the switch isn't getting the installer URL, the issue is typically network connectivity or subnet configuration, not DHCP options.
@@ -641,15 +676,15 @@ curl -X GET "http://<maas-server>:5248/MAAS/a/v3/switches" \
 **Verify the image is assigned:**
 
 ```bash
-curl -X GET "http://<maas-server>:5248/MAAS/a/v3/switches/{switch_id}" \
-  -H "Authorization: Bearer <api-token>"
+curl -X GET "http://<maas-server>:5240/MAAS/a/v3/switches/{switch_id}" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 **Check the boot resource exists:**
 
 ```bash
-curl -X GET "http://<maas-server>:5248/MAAS/a/v3/custom_images" \
-  -H "Authorization: Bearer <api-token>" | jq '.items[] | select(.name | startswith("onie/"))'
+curl -X GET "http://<maas-server>:5240/MAAS/a/v3/custom_images" \
+  -H "Authorization: Bearer $TOKEN" | jq '.items[] | select(.name | startswith("onie/"))'
 ```
 
 **Ensure the image file was downloaded:**
@@ -671,14 +706,15 @@ If you registered the wrong MAC address:
 1. Delete the incorrect switch entry:
 
    ```bash
-   curl -X DELETE "http://<maas-server>:5248/MAAS/a/v3/switches/{switch_id}" \
-     -H "Authorization: Bearer <api-token>"
+   curl -X DELETE "http://<maas-server>:5240/MAAS/a/v3/switches/{switch_id}" \
+     -H "Authorization: Bearer $TOKEN"
    ```
 
 2. Create a new entry with the correct management interface MAC:
+
    ```bash
-   curl -X POST "http://<maas-server>:5248/MAAS/a/v3/switches" \
-     -H "Authorization: Bearer <api-token>" \
+   curl -X POST "http://<maas-server>:5240/MAAS/a/v3/switches" \
+     -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{
        "mac_address": "correct:mac:address:here:00:00",
