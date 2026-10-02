@@ -26,5 +26,5 @@ class LeaseBuilder(ResourceBuilder):
     lease_time_seconds: Union[int, Unset] = Field(
         default=UNSET, required=False
     )
-    mac: Union[str, Unset] = Field(default=UNSET, required=False)
+    mac: Union[str, None, Unset] = Field(default=UNSET, required=False)
     timestamp_epoch: Union[int, Unset] = Field(default=UNSET, required=False)
