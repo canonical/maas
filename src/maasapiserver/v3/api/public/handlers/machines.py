@@ -338,14 +338,9 @@ class MachinesHandler(Handler):
 
         # Check if the authenticated user has the necessary permissions to edit the machine.
         fga_client = services.openfga_tuples.get_client()
-        if machine.pool_id is None:
-            can_edit = await fga_client.can_edit_machines(
-                authenticated_user.id
-            )
-        else:
-            can_edit = await fga_client.can_edit_machines_in_pool(
-                authenticated_user.id, machine.pool_id
-            )
+        can_edit = await fga_client.can_edit_machines_in_pool(
+            authenticated_user.id, machine.pool_id
+        )
         if not can_edit:
             raise ForbiddenException(
                 details=[

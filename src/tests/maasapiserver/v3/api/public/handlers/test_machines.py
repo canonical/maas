@@ -75,6 +75,7 @@ TEST_MACHINE = Machine(
     fqdn="maas.local",
     hostname="hostname",
     power_state=PowerState.ON,
+    pool_id=0,
 )
 
 TEST_COMMISSION_OPERATION = Operation(
@@ -111,6 +112,7 @@ TEST_MACHINE_2 = Machine(
     fqdn="maas.local",
     hostname="hostname",
     power_state=PowerState.ON,
+    pool_id=0,
 )
 
 TEST_USB_DEVICE = UsbDevice(
@@ -373,7 +375,6 @@ class TestMachinesApi(ApiCommonTests):
         openfga_client_mock = AsyncMock(OpenFGAClient)
         # OpenFGA itself deals with determining if a user has global or pool-specific permissions.
         # Here we just mock the response.
-        openfga_client_mock.can_edit_machines.return_value = can_edit
         openfga_client_mock.can_edit_machines_in_pool.return_value = can_edit
         services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
@@ -428,24 +429,6 @@ class TestMachinesApi(ApiCommonTests):
         openfga_client_mock.can_edit_machines_in_pool.assert_awaited_once_with(
             0, 5
         )
-        openfga_client_mock.can_edit_machines.assert_not_awaited()
-
-    async def test_commission_machine_without_pool_uses_global_permission(
-        self,
-        services_mock: ServiceCollectionV3,
-        mocked_api_client_user: AsyncClient,
-    ) -> None:
-        openfga_client_mock = self._mock_commission_services(
-            services_mock, TEST_MACHINE
-        )
-
-        response = await mocked_api_client_user.post(
-            f"{self.BASE_PATH}/{TEST_MACHINE.system_id}:commission"
-        )
-
-        assert response.status_code == 202
-        openfga_client_mock.can_edit_machines.assert_awaited_once_with(0)
-        openfga_client_mock.can_edit_machines_in_pool.assert_not_awaited()
 
     async def test_commission_machine_403_without_edit_permission(
         self,
