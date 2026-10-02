@@ -1001,9 +1001,8 @@ class TestGeneratePassword(MAASServerTestCase):
             self.assertEqual(len(password), length)
 
     def test_raises_error_if_length_less_than_14(self):
-        with self.assertRaises(ValueError) as cm:
-            _generate_password(length=10)
-        self.assertIn("at least 14 characters", str(cm.exception))
+        error = self.assertRaises(ValueError, _generate_password, length=10)
+        self.assertIn("at least 14 characters", str(error))
 
     def test_falls_back_to_rule_based_generation_if_max_attempts_exhausted(
         self,
