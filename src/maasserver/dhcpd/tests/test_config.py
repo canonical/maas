@@ -784,6 +784,13 @@ class TestComposeConditionalBootloader(MAASTestCase):
                     f'option user-class = "{method.user_class}" or',
                     output,
                 )
+            elif method.user_class == "onie_dhcp_user_class":
+                self.assertIn(
+                    f'option user-class = "{method.user_class}" or '
+                    f"substring(option user-class, 1, "
+                    f'{len(method.user_class)}) = "{method.user_class}"',
+                    output,
+                )
             elif method.user_class is not None:
                 self.assertIn(
                     f'option user-class = "{method.user_class}" {{',
