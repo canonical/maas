@@ -70,3 +70,7 @@ docstrings?
 Makefile
 retrigger(ing)?
 homelab
+ETag
+loopback
+subcommands
+Syslog

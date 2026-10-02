@@ -14,38 +14,11 @@ A certificate expiration check runs every twelve hours. When the certificate has
 
 > Note that MAAS does not auto-renew certificates.
 
-## Security hardening
+## Security hardening and FIPS mode
 
-MAAS security hardening enforces STIG/CIS transport-security controls on the region controller. Hardening is a posture, not a gate: MAAS validates its prerequisites at startup but never refuses to start over an unmet one. A single missing setting on a compliance host is a visible, fixable signal rather than a boot failure that takes a controller offline.
+MAAS can apply STIG- and CIS-aligned transport-security controls to its controllers. These controls activate automatically when a controller's host is in FIPS mode, and you can also activate them on any other host. When a prerequisite is missing, MAAS keeps running and reports the problem as a non-dismissable notification for administrators.
 
-### Activation
-
-Hardening is controlled by the `hardening_enabled` setting. The default value, `auto`, activates hardening when the host is in FIPS mode. An administrator can also activate hardening explicitly on any host with `maas config-hardening enable`, or disable it with `maas config-hardening disable`. On a FIPS host, hardening cannot be turned off. For the relationship between FIPS mode and MAAS, see [FIPS mode](/explanation/fips.md).
-
-### Violations as notifications
-
-When hardening is active, startup validation checks the public-API TLS certificate, DH parameters, service bind addresses, and the PostgreSQL SSL mode. Each unmet prerequisite is posted as an admin-targeted, non-dismissable `error` notification keyed by a stable identifier — the same mechanism the [certificate-expiration check](#certificate-expiration) uses. Because the notifications are non-dismissable, a compliance violation cannot be hidden; it can only be resolved. When the underlying setting is corrected, the notification clears on the next startup. Administrators can also run `maas config-hardening validate` for the same result on demand, which is useful as audit evidence.
-
-This differs from the certificate-expiration notification, which is dismissable — an expiring certificate is a reminder, whereas an active hardening violation is a compliance finding that must be fixed rather than acknowledged.
-
-### Region and rack scope
-
-The notification model lives on the region controller: violations found there are posted as `Notification` rows, visible in the web UI and API. A rack controller applies its own hardening controls locally (its own bind addresses in `rackd.conf`) but has no region-facing channel for posting notifications, so rack-local configuration violations are not surfaced cross-host or recorded in the region database. To audit a rack controller's own hardening posture, run `maas-rack config-hardening validate` on that rack.
-
-### Reverse proxy protections
-
-Independent of the validated prerequisites above, every region and rack
-controller rate-limits requests and caps concurrent connections per client
-IP at the reverse proxy — always, regardless of hardening state, since
-flood protection is a baseline operational concern rather than a
-compliance control. When hardening is active, the reverse proxy
-additionally adds browser-hardening response headers (a strict
-`Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`,
-and friends) and rejects `TRACE`/`OPTIONS` requests. These headers have
-nothing to validate — they are either emitted or not — so unlike the
-checks above they produce no violation codes or notifications.
-
-See [Security hardening reference](/reference/configuration-guides/security-hardening.md) for the parameters, stores, and violation codes, and [Activate MAAS hardening](/how-to-guides/enhance-maas-security.md#activate-maas-hardening) for setup steps.
+For the concepts, see [FIPS mode and security hardening](/explanation/fips.md). To set up a hardened controller, see [Activate MAAS hardening](/how-to-guides/activate-maas-hardening.md).
 
 ## Shared secrets
 
