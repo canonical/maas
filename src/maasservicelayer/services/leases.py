@@ -65,6 +65,13 @@ class LeasesService(Service):
         self.iprange_service = iprange_service
 
     async def store_lease_info(self, lease: Lease) -> None:
+        if lease.mac is None:
+            logger.info(
+                "Discarding lease update for %s: no MAC address was provided."
+                % lease.ip
+            )
+            return
+
         # Get the subnet for this IP address. If no subnet exists then something
         # is wrong as we should not be receiving message about unknown subnets.
         subnet = await self.subnet_service.find_best_subnet_for_ip(lease.ip)

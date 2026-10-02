@@ -10,7 +10,7 @@ class Lease(BaseModel):
     action: LeaseAction
     ip_family: IpAddressFamily
     hostname: str
-    mac: str
+    mac: str | None
     ip: IPvAnyAddress
     timestamp_epoch: int
     lease_time_seconds: int  # seconds

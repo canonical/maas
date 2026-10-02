@@ -7,6 +7,7 @@ from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
+import structlog
 
 from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import (
@@ -600,6 +601,25 @@ class TestLeasesService:
             interface_service=self.mock_interfaces_service,
             iprange_service=self.mock_ip_ranges_service,
         )
+
+    async def test_store_lease_info_discards_none_mac(self):
+        with structlog.testing.capture_logs() as logs:
+            await self.leases_service.store_lease_info(
+                Lease(
+                    action=LeaseAction.COMMIT,
+                    ip_family=IpAddressFamily.IPV4,
+                    hostname="hostname",
+                    mac=None,
+                    ip=IPv4Address("10.0.0.2"),
+                    timestamp_epoch=int(time.time()),
+                    lease_time_seconds=30,
+                )
+            )
+
+        self.mock_subnets_service.find_best_subnet_for_ip.assert_not_called()
+        assert len(logs) == 1
+        assert logs[0]["log_level"] == "info"
+        assert "10.0.0.2" in logs[0]["event"]
 
     async def test_store_lease_info_no_subnet(self):
         self.setup()

@@ -17,7 +17,9 @@ class LeaseInfoRequest(BaseModel):
     action: LeaseAction
     ip_family: LeaseIPFamily
     hostname: str
-    mac: MacAddress
+    # The MAC address may be absent, e.g. when the DHCP server reports a
+    # DHCPDECLINE. We accept the request, and we let the service layer decide what to do.
+    mac: MacAddress | None = None
     ip: IPvAnyAddress
     timestamp: int
     lease_time: int  # seconds
