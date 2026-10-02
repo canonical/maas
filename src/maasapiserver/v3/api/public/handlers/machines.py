@@ -28,6 +28,7 @@ from maasapiserver.v3.api.public.models.responses.operations import (
     OperationResponse,
 )
 from maasapiserver.v3.auth.base import (
+    check_authentication,
     check_permissions,
     get_authenticated_user,
 )
@@ -305,13 +306,7 @@ class MachinesHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=202,
-        dependencies=[
-            Depends(
-                check_permissions(
-                    openfga_permission=None  # Permissions are handled in the handler.
-                )
-            )
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def commission_machine(
         self,
