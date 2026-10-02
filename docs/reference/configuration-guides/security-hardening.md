@@ -2,8 +2,9 @@
 
 This page is the reference for MAAS security-hardening configuration:
 the activation model, the `maas config-hardening` command, the hardening
-parameters and their stores, the password policy enforced in hardening mode,
-and the violation codes reported at startup.
+parameters and their stores, the reverse proxy protections applied at the
+API endpoint, the password policy enforced in hardening mode, and the
+violation codes reported at startup.
 
 For step-by-step setup, see
 [Activate MAAS hardening](/how-to-guides/enhance-maas-security.md#activate-maas-hardening).
@@ -72,8 +73,8 @@ full derivation rule.
 | `hardening_enabled` | DB Config | `auto` | `auto`/`on`/`off` — see [Activation model](#activation-model). Set with `maas config-hardening set hardening_enabled <value>`. |
 | `api_tls_dhparam` | `regiond.conf` (per-host) | empty | Path to a DH parameters PEM file. When present, it must be at least 2048 bits. |
 | `database_sslmode` | `regiond.conf` (per-host) | `prefer` | PostgreSQL client SSL mode. Under hardening, use `verify-ca` or `verify-full`. |
-| `database_sslcert` | `regiond.conf` (per-host) | empty | Path to the PostgreSQL client certificate. Required when `database_sslmode` is `verify-full`. |
-| `database_sslkey` | `regiond.conf` (per-host) | empty | Path to the PostgreSQL client private key. Required when `database_sslmode` is `verify-full`. |
+| `database_sslcert` | `regiond.conf` (per-host) | empty | Path to the PostgreSQL client certificate. Only needed if the PostgreSQL server requires client-certificate (mTLS) authentication. |
+| `database_sslkey` | `regiond.conf` (per-host) | empty | Path to the PostgreSQL client private key. Only needed if the PostgreSQL server requires client-certificate (mTLS) authentication. |
 | `database_sslrootcert` | `regiond.conf` (per-host) | empty | Path to the CA certificate used to verify the PostgreSQL server. Required when `database_sslmode` is `verify-ca` or `verify-full`. |
 | TLS certificate / key | secret store | not set | Public-API HTTPS certificate and key. Managed by `maas config-tls enable`, **not** `config-hardening`. |
 
@@ -126,21 +127,19 @@ stored in `regiond.conf` unless noted.
   address(es); comma-separated list. Left unset: derived from `maas_url`
   (the same address enrolled machines and rack controllers already reach
   MAAS on), the same as `rpc_bind`/`temporal_bind`.
-- **`dns_bind`** — snap installs only. DNS (BIND9) bind address(es);
-  comma-separated list, may mix IPv4 and IPv6, rendered into BIND9's
-  separate `listen-on`/`listen-on-v6` directives. **Not** derived from
-  `maas_url`: DNS must serve every managed subnet, not just the interface
-  that reaches the API, so an explicit address per family is always
-  required under hardening. Not available (nor validated) on Debian
-  package installs, where MAAS does not own the base
-  `named.conf.options`.
+- **`dns_bind`** — DNS (BIND9) bind address(es); comma-separated list, may
+  mix IPv4 and IPv6, rendered into BIND9's separate
+  `listen-on`/`listen-on-v6` directives. **Not** derived from `maas_url`:
+  DNS must serve every managed subnet, not just the interface that
+  reaches the API, so an explicit address per family is always required
+  under hardening.
 - **`http_proxy_bind`** (`regiond.conf`/`rackd.conf`) — HTTP proxy (squid)
   bind address(es); comma-separated list, may mix IPv4 and IPv6. Left
   unset: binds all interfaces outside hardening, or each family derives
   its own address from `maas_url` when hardening is active, the same as
   `rpc_bind`/`syslog_bind`.
 
-`regiond.conf` is at `/var/snap/maas/current/regiond.conf` for snap installs and `/etc/maas/regiond.conf` for Debian package installs.
+`regiond.conf` is at `/var/snap/maas/current/regiond.conf`.
 
 `regiond.conf` is YAML. String values that YAML would otherwise coerce must be
 quoted when editing the file directly — for example `hardening_enabled: "on"`
@@ -166,7 +165,7 @@ subcommands:
 ```
 
 Keys: `hardening_enabled`, `api_bind`, `rpc_bind`, `tftp_bind`,
-`syslog_bind`, `http_proxy_bind`, and (snap installs only) `dns_bind`.
+`syslog_bind`, `http_proxy_bind`, and `dns_bind`.
 `api_bind` and `http_proxy_bind` each derive a specific address per
 family from `maas_url` when left unset, the same as their region
 counterparts; `syslog_bind` derives a single address matching
@@ -199,7 +198,7 @@ it. A violation clears automatically once the underlying setting is corrected.
 | `WEAK_DH_PARAMS` | `api_tls_dhparam` file is under 2048 bits | See commands below. |
 | `DH_PARAMS_PARSE_ERROR` | `api_tls_dhparam` file is not valid PEM DH parameters | See commands below. |
 | `INVALID_BIND_ADDRESS` | A bind key's value is not a valid IP address (see [Bind and address parameters](#bind-and-address-parameters) for the full key list) | `maas config-hardening set <key> <specific-ip-address>` |
-| `WILDCARD_BIND_NOT_ALLOWED` | A bind key is set to an all-interfaces address (`0.0.0.0` / `::`), or left unset with no `maas_url`-derived fallback (`api_int_bind` always; `dns_bind` on snap installs only — see [Bind and address parameters](#bind-and-address-parameters)) | `maas config-hardening set <key> <specific-ip-address>` |
+| `WILDCARD_BIND_NOT_ALLOWED` | A bind key is set to an all-interfaces address (`0.0.0.0` / `::`), or left unset with no `maas_url`-derived fallback (`api_int_bind` always, `dns_bind` always — see [Bind and address parameters](#bind-and-address-parameters)) | `maas config-hardening set <key> <specific-ip-address>` |
 | `INSECURE_DB_SSLMODE` | `database_sslmode` is `disable`, `allow`, `prefer`, or `require`, and `database_host` is not a Unix socket path | See commands below. |
 | `FIPS_CONFIG_STATUS_MISMATCH` | Another controller in the fleet has FIPS mode active (`fips_enabled` in the DB), but this host's kernel does not | Enable FIPS mode on this host's kernel to match the rest of the fleet. `fips_enabled` cannot be unset via `config-hardening`. |
 
@@ -211,19 +210,26 @@ openssl dhparam -out /var/snap/maas/current/certs/dhparam.pem 2048
 sudo maas config-hardening set api_tls_dhparam /var/snap/maas/current/certs/dhparam.pem
 ```
 
-**Resolving `INSECURE_DB_SSLMODE`:** set the SSL mode and supply the client
-certificate, key, and CA certificate:
+**Resolving `INSECURE_DB_SSLMODE`:** set the SSL mode and supply the CA
+certificate used to verify the server:
 
 ```text
 sudo maas config-hardening set database_sslmode verify-full
-sudo maas config-hardening set database_sslcert /var/snap/maas/current/certs/db-client.pem
-sudo maas config-hardening set database_sslkey /var/snap/maas/current/certs/db-client.key
 sudo maas config-hardening set database_sslrootcert /var/snap/maas/current/certs/db-ca.pem
 ```
 
-Not flagged when `database_host` is a filesystem path (e.g. the socket
-directory used by `maas-test-db`): connections over a Unix domain socket
-never negotiate TLS, so `database_sslmode` is not applicable.
+Only set `database_sslcert`/`database_sslkey` if the PostgreSQL server
+requires client-certificate (mTLS) authentication — they are not needed
+for server-certificate verification alone:
+
+```text
+sudo maas config-hardening set database_sslcert /var/snap/maas/current/certs/db-client.pem
+sudo maas config-hardening set database_sslkey /var/snap/maas/current/certs/db-client.key
+```
+
+Not flagged when `database_host` is a filesystem path (e.g. a local Unix
+socket directory): connections over a Unix domain socket never negotiate
+TLS, so `database_sslmode` is not applicable.
 
 ## Password policy
 
@@ -258,10 +264,50 @@ Structured JSON events. View them with `journalctl -o json`.
 | `hardening_violation` | ERROR | A prerequisite is unmet (`ident`, `code`, `config_key`, `file_path`, `message`). |
 | `hardening_notification_posted` | INFO | An admin notification was posted for a violation (`ident`, `code`). |
 
-## Content Security Policy (CSP)
+## Reverse proxy hardening
 
-When hardening is active, the region controller's nginx configuration emits a
-strict `Content-Security-Policy` header on every response:
+Both the region (`regiond.nginx.conf`) and rack (`rackd.nginx.conf`) reverse
+proxies apply two independent protections. Rate/connection limiting is
+always on, with or without hardening; the security headers below are
+hardening-only. See [Reverse proxy protections](/explanation/security.md#reverse-proxy-protections)
+for why these are split this way.
+
+### Rate and connection limiting
+
+Every request is subject to a per-client-IP rate limit and concurrent
+connection cap, regardless of hardening state:
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `api_rate_limit_rate` | `20r/s` | Requests per second allowed per client IP before throttling. |
+| `api_rate_limit_burst` | `60` | Extra requests a client may burst above the rate before being rejected. |
+| `api_conn_limit` | `100` | Concurrent connections allowed per client IP. |
+
+These are plain `regiond.conf`/`rackd.conf` keys; edit
+the conf file directly and restart/reload the controller to apply a
+change. Setting `api_rate_limit_rate` to an empty string removes rate and
+connection limiting entirely.
+
+### Security headers
+
+When hardening is active, both the region and rack reverse proxy
+configurations add:
+
+- `server_tokens off` — hides the reverse proxy's version from responses
+  and error pages.
+- `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: strict-origin-when-cross-origin`,
+  `X-XSS-Protection: 1; mode=block` — standard browser hardening headers.
+- A `Content-Security-Policy` header — see below.
+- `TRACE`/`OPTIONS` requests are rejected with `444` (connection closed,
+  no response).
+
+None of these are user-configurable: they are emitted unconditionally
+once hardening is active, and absent otherwise.
+
+### Content Security Policy (CSP)
+
+The region controller emits a strict CSP on every response:
 
 ```
 default-src 'self';
@@ -277,11 +323,14 @@ The `script-src` directive includes a single SHA-256 hash that whitelists
 one static inline `<script>` block required by the documentation theme.
 Inline scripts are otherwise forbidden by `script-src 'self'`.
 
-The CSP header is defined in the region controller's nginx configuration
-template inside a hardening-only conditional block. It is only emitted
-when hardening is active.
+The rack controller's reverse proxy serves no HTML UI, so its CSP is
+minimal: `default-src 'none'; frame-ancestors 'none'`.
 
-### Other directives
+The CSP header is defined in each controller's reverse proxy
+configuration template inside a hardening-only conditional block. It is
+only emitted when hardening is active.
+
+#### Other directives
 
 | Directive | Value | Rationale |
 |-----------|-------|-----------|

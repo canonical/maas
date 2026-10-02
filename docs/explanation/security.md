@@ -32,6 +32,19 @@ This differs from the certificate-expiration notification, which is dismissable 
 
 The notification model lives on the region controller: violations found there are posted as `Notification` rows, visible in the web UI and API. A rack controller applies its own hardening controls locally (its own bind addresses in `rackd.conf`) but has no region-facing channel for posting notifications, so rack-local configuration violations are not surfaced cross-host or recorded in the region database. To audit a rack controller's own hardening posture, run `maas-rack config-hardening validate` on that rack.
 
+### Reverse proxy protections
+
+Independent of the validated prerequisites above, every region and rack
+controller rate-limits requests and caps concurrent connections per client
+IP at the reverse proxy — always, regardless of hardening state, since
+flood protection is a baseline operational concern rather than a
+compliance control. When hardening is active, the reverse proxy
+additionally adds browser-hardening response headers (a strict
+`Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`,
+and friends) and rejects `TRACE`/`OPTIONS` requests. These headers have
+nothing to validate — they are either emitted or not — so unlike the
+checks above they produce no violation codes or notifications.
+
 See [Security hardening reference](/reference/configuration-guides/security-hardening.md) for the parameters, stores, and violation codes, and [Activate MAAS hardening](/how-to-guides/enhance-maas-security.md#activate-maas-hardening) for setup steps.
 
 ## Shared secrets
@@ -64,12 +77,10 @@ You should pick good passwords and store them securely (e.g. in a KeePassX passw
 
 MAAS configuration files should be set to have permission `640`: readable by logins belonging to the `maas` group and writeable only by the `root` user. Currently, the `regiond.conf` file contains the login credentials for the PostgreSQL database used by MAAS to keep track of all machines, networks, and configuration.
 
-| Pkg Fmt  | chmod 640 on files...                | Final Perms  |
-|----------|---------------------------------------|--------------|
-| Snap     | `/var/snap/maas/current/regiond.conf` | `-rw-r-----` |
-|          | `/var/snap/maas/current/rackd.conf`   | `-rw-r-----` |
-| Packages | `/etc/maas/rackd.conf/regiond.conf`   | `-rw-r-----` |
-|          | `/etc/maas/rackd.conf/rackd.conf`     | `-rw-r-----` |
+| File                                   | Permissions  |
+|----------------------------------------|--------------|
+| `/var/snap/maas/current/regiond.conf`  | `-rw-r-----` |
+| `/var/snap/maas/current/rackd.conf`    | `-rw-r-----` |
 
 ## Snap security
 

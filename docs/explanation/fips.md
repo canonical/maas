@@ -9,10 +9,11 @@ MAAS reads the host FIPS state at startup from `/proc/sys/crypto/fips_enabled`.
 A value of `1` means FIPS mode is active. MAAS never enables or disables FIPS
 mode itself.
 
-> **Snap installs:** MAAS requires the `core24` snap base to come from a
+> **Snap installs:** MAAS requires the `core26` snap base to come from a
 > FIPS-updates channel for FIPS-approved cryptographic modules to apply
-> inside the snap. Refreshing `core24` to the appropriate channel is a
-> manual step — see
+> inside the snap. `core26` is not yet FIPS-certified (ETA late 2027); no
+> FIPS-updates channel exists for it today, so FIPS-validated crypto
+> inside the snap is not currently achievable on snap installs. See
 > [Enable FIPS on the host](/how-to-guides/enhance-maas-security.md#enable-fips-on-the-host).
 
 ## FIPS-conditional controls
@@ -87,16 +88,21 @@ On a FIPS host, the API enforces FIPS compliance on power driver configuration:
 - **SSL verification**: Drivers that support an SSL verification option
   (Webhook, Proxmox, HMCz) require it enabled (`power_verify_ssl: y`).
 
-Attempting to configure a non-compliant setting returns HTTP 422 with a
-structured error identifying the violation.
+Attempting to configure a non-compliant setting returns HTTP 400 with the
+rejection reason in the response body.
 
 ## Mixed deployments
 
-All controllers in a MAAS deployment must be in the same FIPS state. A
-deployment where some controllers have FIPS mode active and others do not is
-not supported. Hardening behaviour, password policy, SSH algorithm enforcement,
-and power driver validation all differ between FIPS and non-FIPS hosts, so a
-mixed deployment produces inconsistent enforcement across the region.
+All controllers in a MAAS deployment are expected to share the same FIPS
+state, but MAAS does not block a mismatch — hardening violations are
+never fatal, and this is no exception. Once any controller observes FIPS
+mode active, every other controller's hardening validation reports a
+`FIPS_CONFIG_STATUS_MISMATCH` violation (see [Violation
+codes](/reference/configuration-guides/security-hardening.md#violation-codes))
+until its own kernel FIPS state matches. Hardening behaviour, password
+policy, SSH algorithm enforcement, and power driver validation all differ
+between FIPS and non-FIPS hosts, so an uncorrected mismatch leaves
+enforcement inconsistent across the region.
 
 ## FIPS on managed machines
 
