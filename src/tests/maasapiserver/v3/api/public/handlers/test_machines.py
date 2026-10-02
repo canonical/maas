@@ -40,6 +40,7 @@ from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
     OPERATION_IN_PROGRESS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
+    UNKNOWN_POWER_TYPE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bmc import Bmc
@@ -71,7 +72,7 @@ TEST_MACHINE = Machine(
     cpu_count=8,
     status=NodeStatus.NEW,
     node_type=NodeTypeEnum.MACHINE,
-    power_type=None,
+    power_type=PowerTypeEnum.LXD,
     fqdn="maas.local",
     hostname="hostname",
     power_state=PowerState.ON,
@@ -537,6 +538,26 @@ class TestMachinesApi(ApiCommonTests):
         services_mock.operations.has_active_operation_for_resource.assert_awaited_once_with(
             resource_type=OperationResourceType.MACHINE,
             resource_id=TEST_MACHINE.id,
+        )
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
+
+    async def test_commission_machine_409_no_power_type(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        machine = TEST_MACHINE.model_copy(update={"power_type": None})
+        self._mock_commission_services(services_mock, machine)
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{machine.system_id}:commission"
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert (
+            error_response.details[0].type
+            == UNKNOWN_POWER_TYPE_VIOLATION_TYPE
         )
         services_mock.operations.create_accepted_operation.assert_not_awaited()
 

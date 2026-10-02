@@ -51,6 +51,7 @@ from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
     OPERATION_IN_PROGRESS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
+    UNKNOWN_POWER_TYPE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.machines import Machine
@@ -370,8 +371,17 @@ class MachinesHandler(Handler):
                 ]
             )
 
-        # TODO: Remainder of the validation phase. Check if power type is configured,
-        # if commissioning boot resources are available for the machine's architecture
+        if not machine.power_type:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNKNOWN_POWER_TYPE_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because its power type is not configured. Configure the power type before commissioning.",
+                    )
+                ]
+            )
+
+        # TODO: Remainder of the validation phase. Check if commissioning boot resources are available for the machine's architecture
 
         if await services.operations.has_active_operation_for_resource(
             resource_type=OperationResourceType.MACHINE,
