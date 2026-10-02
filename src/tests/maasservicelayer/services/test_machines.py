@@ -59,6 +59,7 @@ class TestCommonMachinesService(ServiceCommonTests):
             fqdn="maas.local",
             hostname="hostname",
             power_state=PowerState.ON,
+            pool_id=0,
         )
 
 

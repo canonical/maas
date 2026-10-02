@@ -8,6 +8,9 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.v3.api.public.models.requests.machines import (
+    MachineCommissionRequest,
+)
 from maasapiserver.v3.api.public.models.responses.machines import (
     HardwareDeviceTypeEnum,
     MachinesListResponse,
@@ -15,19 +18,36 @@ from maasapiserver.v3.api.public.models.responses.machines import (
     PowerDriverResponse,
     UsbDevicesListResponse,
 )
+from maasapiserver.v3.api.public.models.responses.operations import (
+    OperationResponse,
+)
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
+from maascommon.enums.operations import (
+    OperationResourceType,
+    OperationStatus,
+    OperationType,
+)
 from maascommon.enums.power import PowerState
 from maascommon.openfga.async_client import OpenFGAClient
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachineClauseFactory
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
+from maasservicelayer.exceptions.constants import (
+    INVALID_MACHINE_STATUS_VIOLATION_TYPE,
+    MACHINE_LOCKED_VIOLATION_TYPE,
+    MISSING_PERMISSIONS_VIOLATION_TYPE,
+    OPERATION_IN_PROGRESS_VIOLATION_TYPE,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
+from maasservicelayer.models.operations import Operation
 from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
 from maasservicelayer.services.machines import MachinesService
+from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -55,6 +75,20 @@ TEST_MACHINE = Machine(
     fqdn="maas.local",
     hostname="hostname",
     power_state=PowerState.ON,
+    pool_id=0,
+)
+
+TEST_COMMISSION_OPERATION = Operation(
+    id=1,
+    uuid="commission-uuid",
+    op_type=OperationType.MACHINE_COMMISSION,
+    resource_id=TEST_MACHINE.id,
+    resource_type=OperationResourceType.MACHINE,
+    status=OperationStatus.ACCEPTED,
+    is_bulk=False,
+    created=utcnow(),
+    updated=utcnow(),
+    user_id=0,
 )
 
 TEST_MACHINE_2 = Machine(
@@ -78,6 +112,7 @@ TEST_MACHINE_2 = Machine(
     fqdn="maas.local",
     hostname="hostname",
     power_state=PowerState.ON,
+    pool_id=0,
 )
 
 TEST_USB_DEVICE = UsbDevice(
@@ -177,6 +212,10 @@ class TestMachinesApi(ApiCommonTests):
             Endpoint(
                 method="GET",
                 path=self.BASE_PATH,
+            ),
+            Endpoint(
+                method="POST",
+                path=f"{self.BASE_PATH}/abcdef:commission",
             ),
         ]
 
@@ -317,6 +356,189 @@ class TestMachinesApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 404
+
+    async def test_commission_machine_requires_authentication(
+        self, mocked_api_client: AsyncClient
+    ) -> None:
+        response = await mocked_api_client.post(
+            f"{self.BASE_PATH}/abcdef:commission"
+        )
+        assert response.status_code == 401
+
+    def _mock_commission_services(
+        self,
+        services_mock: ServiceCollectionV3,
+        machine: Machine,
+        can_edit: bool = True,
+    ) -> AsyncMock:
+        """Create an openfga client mock and set up the necessary service mocks."""
+        openfga_client_mock = AsyncMock(OpenFGAClient)
+        # OpenFGA itself deals with determining if a user has global or pool-specific permissions.
+        # Here we just mock the response.
+        openfga_client_mock.can_edit_machines_in_pool.return_value = can_edit
+        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock.openfga_tuples.get_client.return_value = (
+            openfga_client_mock
+        )
+        services_mock.machines = Mock(MachinesService)
+        services_mock.machines.get_one.return_value = machine
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.has_active_operation_for_resource.return_value = False
+        services_mock.operations.create_accepted_operation.return_value = (
+            TEST_COMMISSION_OPERATION
+        )
+        return openfga_client_mock
+
+    async def test_commission_machine_without_body_uses_defaults(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        self._mock_commission_services(services_mock, TEST_MACHINE)
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{TEST_MACHINE.system_id}:commission"
+        )
+
+        assert response.status_code == 202
+        parameters = services_mock.operations.create_accepted_operation.call_args.kwargs[
+            "parameters"
+        ]
+        assert parameters == {
+            "system_id": TEST_MACHINE.system_id,
+            **MachineCommissionRequest().model_dump(),
+        }
+
+    async def test_commission_machine_in_pool(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        machine = TEST_MACHINE.model_copy(update={"pool_id": 5})
+        openfga_client_mock = self._mock_commission_services(
+            services_mock, machine
+        )
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{machine.system_id}:commission"
+        )
+
+        assert response.status_code == 202
+        operation_response = OperationResponse(**response.json())
+        assert operation_response.uuid == TEST_COMMISSION_OPERATION.uuid
+        openfga_client_mock.can_edit_machines_in_pool.assert_awaited_once_with(
+            0, 5
+        )
+
+    async def test_commission_machine_403_without_edit_permission(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        machine = TEST_MACHINE.model_copy(update={"pool_id": 5})
+        self._mock_commission_services(services_mock, machine, can_edit=False)
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{machine.system_id}:commission"
+        )
+
+        assert response.status_code == 403
+        error_response = ErrorBodyResponse(**response.json())
+        assert (
+            error_response.details[0].type
+            == MISSING_PERMISSIONS_VIOLATION_TYPE
+        )
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
+
+    async def test_commission_machine_409_locked(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        machine = TEST_MACHINE.model_copy(update={"locked": True})
+        self._mock_commission_services(services_mock, machine)
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{machine.system_id}:commission"
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.details[0].type == MACHINE_LOCKED_VIOLATION_TYPE
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
+
+    async def test_commission_machine_404_unknown_machine(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        self._mock_commission_services(services_mock, TEST_MACHINE)
+        services_mock.machines.get_one.return_value = None
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/unknown:commission"
+        )
+
+        assert response.status_code == 404
+        error_response = ErrorBodyResponse(**response.json())
+        assert (
+            error_response.details[0].type
+            == UNEXISTING_RESOURCE_VIOLATION_TYPE
+        )
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
+
+    @pytest.mark.parametrize(
+        "status",
+        [
+            NodeStatus.COMMISSIONING,
+            NodeStatus.ALLOCATED,
+            NodeStatus.DEPLOYED,
+        ],
+    )
+    async def test_commission_machine_409_status_not_commissionable(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+        status: NodeStatus,
+    ) -> None:
+        machine = TEST_MACHINE.model_copy(update={"status": status})
+        self._mock_commission_services(services_mock, machine)
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{machine.system_id}:commission"
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert (
+            error_response.details[0].type
+            == INVALID_MACHINE_STATUS_VIOLATION_TYPE
+        )
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
+
+    async def test_commission_machine_409_active_operation(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        self._mock_commission_services(services_mock, TEST_MACHINE)
+        services_mock.operations.has_active_operation_for_resource.return_value = True
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{TEST_MACHINE.system_id}:commission"
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert (
+            error_response.details[0].type
+            == OPERATION_IN_PROGRESS_VIOLATION_TYPE
+        )
+        services_mock.operations.has_active_operation_for_resource.assert_awaited_once_with(
+            resource_type=OperationResourceType.MACHINE,
+            resource_id=TEST_MACHINE.id,
+        )
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
 
 
 class TestUsbDevicesApi(ApiCommonTests):
