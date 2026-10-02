@@ -1,271 +1,274 @@
 # Security hardening reference
 
-This page is the reference for MAAS security-hardening configuration:
-the activation model, the `maas config-hardening` command, the hardening
-parameters and their stores, the password policy enforced in hardening mode,
-and the violation codes reported at startup.
+This page lists the settings, commands, checks, and behavior of MAAS security hardening. For background, see [FIPS mode and security hardening](/explanation/fips.md). For procedures, see [Activate MAAS hardening](/how-to-guides/activate-maas-hardening.md).
 
-For step-by-step setup, see
-[Activate MAAS hardening](/how-to-guides/enhance-maas-security.md#activate-maas-hardening).
-For the concepts behind hardening, see
-[Security hardening](/explanation/security.md#security-hardening).
+Controls that apply only when the host kernel is in FIPS mode are listed separately in the [FIPS mode reference](/reference/configuration-guides/fips-mode.md).
 
-## Activation model
+## Activation
 
-Hardening state is resolved once per process at startup and never blocks a
-controller from starting.
+Each MAAS process resolves its hardening state once, at startup. A restart is required for a change to take effect.
 
-| `hardening_enabled` | Host in FIPS mode | Result |
-|---------------------|-------------------|--------|
-| `auto` (default)    | yes               | hardening active |
-| `auto` (default)    | no                | hardening inactive |
-| `on`                | yes or no         | hardening active |
-| `off`               | no                | hardening inactive |
-| `off`               | yes               | hardening active (FIPS overrides `off`) |
+| `hardening_enabled` | Host in FIPS mode | Hardening |
+|---|---|---|
+| `auto` (default) | No | Inactive |
+| `auto` (default) | Yes | Active |
+| `on` | No | Active |
+| `on` | Yes | Active |
+| `off` | No | Inactive |
+| `off` | Yes | Active. FIPS mode overrides `off`. |
 
-FIPS mode is detected from `/proc/sys/crypto/fips_enabled`. On a FIPS host,
-hardening is always active; `off` cannot disable it.
+Accepted values are `auto`, `on`, and `off`. Values are case-insensitive. An absent setting is treated as `auto`.
 
-## `maas config-hardening`
+FIPS mode is active when `/proc/sys/crypto/fips_enabled` contains `1`. If the file is missing, MAAS treats the host as not in FIPS mode. If the file exists but cannot be read, MAAS treats the host as not in FIPS mode and logs a `fips_mode_unreadable` warning.
 
-```text
-usage: maas config-hardening {set,get,list,validate,enable,disable} ...
+### Where each controller reads the setting
 
-Manage MAAS hardening configuration parameters.
+| Component | Source of `hardening_enabled` |
+|---|---|
+| Region controller (`regiond`, API server) | MAAS database. One value for all region controllers. |
+| Rack controller (`rackd`) | Local `rackd.conf`. One value per rack controller. |
 
-subcommands:
-  set <key> <value>   Set a hardening parameter. hardening_enabled (DB-backed)
-                      and conf-backed keys (api_bind, database_sslmode, etc.)
-                      can be set; fips_enabled cannot (see below).
-  get <key>           Get a hardening parameter value and its source store.
-  list                List all hardening parameters with values and stores.
-  validate            Run hardening validation; print violations; exit
-                      non-zero if any exist.
-  enable              Set hardening_enabled=on. A pure database operation;
-                      it does not touch regiond.conf. Every bind key is
-                      left unset so MAAS can derive or discover an
-                      address at startup.
-  disable             Set hardening_enabled=off; refused on FIPS hosts.
-```
+## Region command: `maas config-hardening`
 
-`get`, `list`, and `validate` are the inspection commands. `validate` reads the
-region's current configuration, runs every check, prints violations, and exits
-non-zero when any exist — use it as on-demand audit evidence. It does not start
-or restart services.
-
-`set` accepts any known hardening key except `fips_enabled` (see below).
-`hardening_enabled` is written to the DB Config store; keys backed by
-`regiond.conf` (`api_bind`, `database_sslmode`, and so on) are written to
-`regiond.conf` on the local host. The `set` command handles YAML quoting
-automatically.
-
-`enable` is a convenience shortcut for
-`maas config-hardening set hardening_enabled on`: it writes only the DB
-`Config` store. No bind key is seeded. See
-[Bind and address parameters](#bind-and-address-parameters) for the
-full derivation rule.
-
-## Parameters and stores
-
-| Key | Store | Default | Purpose |
-|-----|-------|---------|---------|
-| `hardening_enabled` | DB Config | `auto` | `auto`/`on`/`off` — see [Activation model](#activation-model). Set with `maas config-hardening set hardening_enabled <value>`. |
-| `api_tls_dhparam` | `regiond.conf` (per-host) | empty | Path to a DH parameters PEM file. When present, it must be at least 2048 bits. |
-| `database_sslmode` | `regiond.conf` (per-host) | `prefer` | PostgreSQL client SSL mode. Under hardening, use `verify-ca` or `verify-full`. |
-| `database_sslcert` | `regiond.conf` (per-host) | empty | Path to the PostgreSQL client certificate. Required when `database_sslmode` is `verify-full`. |
-| `database_sslkey` | `regiond.conf` (per-host) | empty | Path to the PostgreSQL client private key. Required when `database_sslmode` is `verify-full`. |
-| `database_sslrootcert` | `regiond.conf` (per-host) | empty | Path to the CA certificate used to verify the PostgreSQL server. Required when `database_sslmode` is `verify-ca` or `verify-full`. |
-| TLS certificate / key | secret store | not set | Public-API HTTPS certificate and key. Managed by `maas config-tls enable`, **not** `config-hardening`. |
-
-`fips_enabled` (DB Config, not user-settable) is a read-only, auto-detected
-drift flag: the first controller in the fleet to observe kernel FIPS mode
-active writes `true`, holding every other controller in the fleet to the
-same requirement thereafter. It cannot be set via `config-hardening set`
-(see [Violation codes](#violation-codes)) but is visible with `get`/`list`.
-
-### Bind and address parameters
-
-The remaining parameters configure where a service listens. Under
-hardening, a wildcard bind (`0.0.0.0`/`::`) is a violation; when left
-unset, `api_bind`, `agent_api_bind`, and `http_proxy_bind` each derive a
-specific address **per family** from `maas_url` at startup;
-`temporal_bind`, `rpc_bind`, and `syslog_bind` derive a single address
-matching whichever family `maas_url` resolves to. `prometheus_bind`
-instead defaults to loopback (`127.0.0.1`) when left unset, since it's
-scraped locally rather than reached via `maas_url`. All are per-host,
-stored in `regiond.conf` unless noted.
-
-- **`api_bind`** — public API bind address(es); comma-separated list, may
-  mix IPv4 and IPv6. Left unset: auto-derived from `maas_url` as
-  described above; otherwise binds all interfaces. Any family missing
-  from an explicit value is still auto-derived.
-- **`api_int_bind`** — internal (rack-facing) plain HTTP listener bind
-  address(es), used whenever TLS is enabled; comma-separated list, may mix
-  IPv4 and IPv6. **Not** derived from `maas_url` — binds all interfaces
-  when unset, which is flagged under hardening.
-- **`prometheus_bind`** — single IPv4 address for the Prometheus metrics
-  endpoint. Left unset: binds to `127.0.0.1` when hardening is active,
-  unlike the other keys here, since it's scraped locally by a co-located
-  agent (e.g. grafana-agent) rather than reached via `maas_url`.
-- **`temporal_bind`** — single address for the Temporal services. Left
-  unset: derived from `maas_url` at startup, on every install mode
-  (region, rack+region, all-in-one).
-- **`temporal_server`** (`rackd.conf`; not a hardening key) — single
-  address the MAAS Agent dials to reach Temporal. Left unset: derived
-  from `maas_url`, the same as `temporal_bind`.
-- **`rpc_bind`** — region RPC service bind address(es); comma-separated
-  list, may mix IPv4 and IPv6. Left unset: derived from `maas_url` (the
-  same address rack controllers already use to reach the region), falling
-  back to binding and advertising every interface only if `maas_url`
-  can't be resolved. When set, rack controllers dial exactly the
-  configured address(es).
-- **`agent_api_bind`** — internal API server bind address(es), dialed by
-  `maas-agent` on rack controllers (port 5242); comma-separated list, may
-  mix IPv4 and IPv6. Same derivation as `rpc_bind`, per family.
-- **`syslog_bind`** (`regiond.conf`/`rackd.conf`) — syslog service bind
-  address(es); comma-separated list. Left unset: derived from `maas_url`
-  (the same address enrolled machines and rack controllers already reach
-  MAAS on), the same as `rpc_bind`/`temporal_bind`.
-- **`dns_bind`** — snap installs only. DNS (BIND9) bind address(es);
-  comma-separated list, may mix IPv4 and IPv6, rendered into BIND9's
-  separate `listen-on`/`listen-on-v6` directives. **Not** derived from
-  `maas_url`: DNS must serve every managed subnet, not just the interface
-  that reaches the API, so an explicit address per family is always
-  required under hardening. Not available (nor validated) on Debian
-  package installs, where MAAS does not own the base
-  `named.conf.options`.
-- **`http_proxy_bind`** (`regiond.conf`/`rackd.conf`) — HTTP proxy (squid)
-  bind address(es); comma-separated list, may mix IPv4 and IPv6. Left
-  unset: binds all interfaces outside hardening, or each family derives
-  its own address from `maas_url` when hardening is active, the same as
-  `rpc_bind`/`syslog_bind`.
-
-`regiond.conf` is at `/var/snap/maas/current/regiond.conf` for snap installs and `/etc/maas/regiond.conf` for Debian package installs.
-
-`regiond.conf` is YAML. String values that YAML would otherwise coerce must be
-quoted when editing the file directly — for example `hardening_enabled: "on"`
-(unquoted `on` parses as a boolean). The `maas config-hardening set` command
-handles quoting automatically and is the recommended way to set all parameters.
-
-## Rack controller hardening
-
-`maas config-hardening` manages the region's `regiond.conf`. A rack
-controller has its own bind keys in `rackd.conf` and its own CLI,
-`maas-rack config-hardening`, run locally on the rack:
+Run on a region controller, with `sudo`.
 
 ```text
-usage: maas-rack config-hardening {list,get,set,validate} ...
-
-subcommands:
-  list       List all rack hardening parameters.
-  get <key>  Get a rack hardening parameter value.
-  set <key> <value>
-             Set a rack hardening parameter value.
-  validate   Run hardening validation against rackd.conf; print
-             violations; exit non-zero if any exist.
+maas config-hardening {set,get,list,validate,enable,disable} ...
 ```
 
-Keys: `hardening_enabled`, `api_bind`, `rpc_bind`, `tftp_bind`,
-`syslog_bind`, `http_proxy_bind`, and (snap installs only) `dns_bind`.
-`api_bind` and `http_proxy_bind` each derive a specific address per
-family from `maas_url` when left unset, the same as their region
-counterparts; `syslog_bind` derives a single address matching
-whichever family `maas_url` resolves to. `rpc_bind`, `tftp_bind`, and
-`dns_bind` have no such derivation: leaving `rpc_bind` unset binds all
-interfaces and is flagged under hardening; `tftp_bind` and `dns_bind`
-must serve every managed subnet rather than just the interface that
-reaches the API, so each takes a comma-separated list — one address
-per subnet/family — and is flagged under hardening when left unset.
+| Subcommand | Behavior |
+|---|---|
+| `set <key> <value>` | Writes a parameter. `hardening_enabled` is written to the database; every other key is written to the local `regiond.conf`. Prints `Set <key> in regiond.conf` for file-backed keys. |
+| `get <key>` | Prints `<key> [<store>] = <value>`. The store is `config` (database) or `conf` (`regiond.conf`). |
+| `list` | Prints every parameter with its store and value. The first line shows whether a public API TLS certificate is configured. For an unset bind key that MAAS derives automatically, the line ends with `(effective: <addresses>)`. |
+| `validate` | Runs every hardening check against the local configuration and prints the result. Does not restart services or post notifications. |
+| `enable` | Sets `hardening_enabled` to `on`. Changes only the database. |
+| `disable` | Sets `hardening_enabled` to `off`. Refused on a FIPS host. |
 
-`maas-rack config-hardening validate` checks only bind-wildcard rules —
-the rack has no TLS certificate, DH parameters, or database to validate;
-those checks are region-only. It does not post notifications to the
-region database (see [Security hardening](/explanation/security.md#security-hardening)
-for the region/rack notification scope).
+`set` rejects unknown keys and `fips_enabled`. For list-valued keys, separate addresses with commas. `set` handles YAML quoting for you.
+
+### `validate` output and exit status
+
+| Exit status | Meaning | Output |
+|---|---|---|
+| `0` | No violations | `OK: no hardening violations.` |
+| `1` | One or more violations | `VIOLATIONS (<n>):` followed by one block per violation |
+| `2` | The configuration could not be read | `Could not read configuration: <error>` |
+
+Each violation block has this form:
+
+```text
+  [<CODE>] <message>
+    Resolution: <suggested command>
+    Config key: <key>  File: <path>
+```
+
+`File:` appears only when the violation refers to a file, such as a DH parameters file.
+
+When hardening is inactive, `validate` prints `Hardening is not active; only FIPS-drift is checked.` It then checks only for `FIPS_CONFIG_STATUS_MISMATCH`.
+
+## Rack command
+
+The rack controller has its own command, which manages `rackd.conf`.
+
+| Installation | Command |
+|---|---|
+| Snap in `rack` mode | `sudo maas config-hardening {list,get,set,validate}` |
+| Snap in `region+rack` mode | No command. Edit `/var/snap/maas/current/rackd.conf` directly. |
+
+| Subcommand | Behavior |
+|---|---|
+| `list` | Prints every rack hardening key and its value. |
+| `get <key>` | Prints the value of one key. |
+| `set <key> <value>` | Writes one key to `rackd.conf` and prints `<key> set.` |
+| `validate` | Checks the rack bind keys. Prints `OK: no hardening violations.` on success, or a `VIOLATIONS (<n>):` list and exits with status `1`. When hardening is inactive, prints `Hardening is not active on this rack controller.` |
+
+Rack validation checks bind addresses only. TLS, DH parameter, and database checks apply to region controllers only. Rack results are not posted as notifications.
+
+## Region parameters
+
+All file-backed keys are per host and stored in `/var/snap/maas/current/regiond.conf`.
+
+### Activation and drift
+
+| Key | Store | Default | Description |
+|---|---|---|---|
+| `hardening_enabled` | Database | `auto` | Activation setting. See [Activation](#activation). |
+| `fips_enabled` | Database | Not set | Read-only. MAAS sets it to `true` when a region controller starts in FIPS mode. It cannot be set or cleared with `maas config-hardening`. |
+
+### TLS and database
+
+| Key | Default | Description |
+|---|---|---|
+| `api_tls_dhparam` | Empty | Path to a PEM file of Diffie-Hellman parameters for the web server. Optional. When set, the parameters must be at least 2048 bits. |
+| `database_sslmode` | `prefer` | PostgreSQL client SSL mode. Under hardening, use `verify-ca` or `verify-full`. |
+| `database_sslrootcert` | Empty | Path to the CA certificate that signed the PostgreSQL server certificate. Required for `verify-ca` and `verify-full`. |
+| `database_sslcert` | Empty | Path to a client certificate. Needed only if the PostgreSQL server requires client certificate authentication. |
+| `database_sslkey` | Empty | Path to the client private key that matches `database_sslcert`. |
+
+The public API TLS certificate and private key are not hardening parameters. They are stored in the MAAS secret store and managed with `maas config-tls`.
+
+### Bind addresses
+
+A bind key sets the address or addresses that a service listens on. List-valued keys accept a comma-separated list that may mix IPv4 and IPv6 addresses.
+
+| Key | Service | Value | Unset, hardening inactive | Unset, hardening active |
+|---|---|---|---|---|
+| `api_bind` | Public web UI and API | List | All interfaces | Derived from `maas_url`, per address family |
+| `api_int_bind` | Internal HTTP listener used by rack controllers when TLS is enabled | List | All interfaces | Violation |
+| `agent_api_bind` | Internal API server used by MAAS Agent (port 5242) | List | All interfaces | Derived from `maas_url`, per address family |
+| `rpc_bind` | Region RPC service | List | All interfaces | Derived from `maas_url` |
+| `temporal_bind` | Temporal services | Single | All interfaces | Derived from `maas_url` |
+| `syslog_bind` | Syslog service | List | All interfaces | Derived from `maas_url` |
+| `http_proxy_bind` | HTTP proxy (Squid) | List | All interfaces | Derived from `maas_url`, per address family |
+| `prometheus_bind` | Prometheus metrics endpoint | Single IPv4 | All interfaces | `127.0.0.1` |
+| `dns_bind` | DNS server (BIND 9) | List | All interfaces | Violation |
+
+Derivation rules:
+
+- "Derived from `maas_url`" means the local address that the host uses to reach the `maas_url` host. If MAAS cannot determine that address, it falls back to loopback (`127.0.0.1` or `::1`).
+- "Per address family" means MAAS derives an IPv4 and an IPv6 address independently. If you set only one family explicitly, MAAS still derives the other.
+- An explicit value always takes precedence.
+- `api_int_bind` and `dns_bind` are never derived. DNS must serve every managed subnet, not only the interface that reaches `maas_url`.
+
+When `rpc_bind` is set, rack controllers connect to exactly those addresses.
+
+### DNS server options
+
+These keys are not managed by `maas config-hardening`. Edit `regiond.conf` (region) or `rackd.conf` (rack) directly, then restart MAAS.
+
+| Key | Default | Value when unset and hardening is active | Value when unset and hardening is inactive |
+|---|---|---|---|
+| `dns_allow_transfer` | Empty | `none` | Directive omitted |
+| `dns_fetches_per_zone` | `0` | `100` | Directive omitted |
+| `dns_fetches_per_server` | `0` | `100` | Directive omitted |
+
+When hardening is active, MAAS also sets `version "not disclosed"` in the BIND 9 options.
+
+### Editing `regiond.conf` directly
+
+`regiond.conf` is a YAML file. Quote values that YAML would otherwise convert, for example `hardening_enabled: "on"`. An unquoted `on` is read as a Boolean. Prefer `maas config-hardening set`, which quotes values for you.
+
+## Rack parameters
+
+Rack keys are stored in `/var/snap/maas/current/rackd.conf`.
+
+| Key | Value | Unset, hardening active |
+|---|---|---|
+| `hardening_enabled` | `auto`, `on`, or `off` | Not applicable. Default is `auto`. |
+| `api_bind` | List | Derived from `maas_url`, per address family |
+| `syslog_bind` | List | Derived from `maas_url` |
+| `http_proxy_bind` | List | Derived from `maas_url`, per address family |
+| `rpc_bind` | Single | Violation |
+| `tftp_bind` | List | Violation |
+| `dns_bind` | List | Violation |
+
+When hardening is inactive, an unset rack bind key listens on all interfaces.
+
+`temporal_server` in `rackd.conf` is not a hardening key, and `maas config-hardening` does not manage it. It sets the host name or IP address that MAAS Agent connects to for Temporal, on port 5271. When unset, MAAS Agent uses the host from the first `maas_url`. Set it when the region controllers bind Temporal to an address that differs from that host, for example after you pin `temporal_bind`.
 
 ## Violation codes
 
-When hardening is active, startup validation posts each unmet prerequisite as a
-non-dismissable admin notification and `maas config-hardening validate` prints
-it. A violation clears automatically once the underlying setting is corrected.
+When hardening is active, region validation can report the following codes. `FIPS_CONFIG_STATUS_MISMATCH` is reported whether or not hardening is active.
 
-| Code | Trigger | Resolution |
-|------|---------|------------|
-| `MISSING_TLS_CERT` | No public-API TLS certificate configured | `maas config-tls enable <key> <cert>` |
-| `MISSING_TLS_KEY` | No public-API TLS private key configured | `maas config-tls enable <key> <cert>` |
-| `TLS_CERT_KEY_MISMATCH` | Certificate and key are not a matching pair | Re-run `maas config-tls enable` with a matching pair |
-| `WEAK_TLS_CERT_KEY` | Certificate's key is DSA, an RSA key under 2048 bits, or the certificate is signed with SHA-1/MD5 (only checked when FIPS mode is active on the host) | Re-run `maas config-tls enable` with a FIPS-compliant certificate (RSA 2048 bits or larger, ECDSA, signed with SHA-256 or stronger) |
-| `TLS_CERT_PARSE_ERROR` | Certificate or key is not valid PEM | Re-run `maas config-tls enable` with a valid PEM certificate |
-| `WEAK_DH_PARAMS` | `api_tls_dhparam` file is under 2048 bits | See commands below. |
-| `DH_PARAMS_PARSE_ERROR` | `api_tls_dhparam` file is not valid PEM DH parameters | See commands below. |
-| `INVALID_BIND_ADDRESS` | A bind key's value is not a valid IP address (see [Bind and address parameters](#bind-and-address-parameters) for the full key list) | `maas config-hardening set <key> <specific-ip-address>` |
-| `WILDCARD_BIND_NOT_ALLOWED` | A bind key is set to an all-interfaces address (`0.0.0.0` / `::`), or left unset with no `maas_url`-derived fallback (`api_int_bind` always; `dns_bind` on snap installs only — see [Bind and address parameters](#bind-and-address-parameters)) | `maas config-hardening set <key> <specific-ip-address>` |
-| `INSECURE_DB_SSLMODE` | `database_sslmode` is `disable`, `allow`, `prefer`, or `require`, and `database_host` is not a Unix socket path | See commands below. |
-| `FIPS_CONFIG_STATUS_MISMATCH` | Another controller in the fleet has FIPS mode active (`fips_enabled` in the DB), but this host's kernel does not | Enable FIPS mode on this host's kernel to match the rest of the fleet. `fips_enabled` cannot be unset via `config-hardening`. |
+| Code | Reported when | Applies to |
+|---|---|---|
+| `MISSING_TLS_CERT` | No public API TLS certificate is configured. | Region |
+| `MISSING_TLS_KEY` | No public API TLS private key is configured. | Region |
+| `TLS_CERT_KEY_MISMATCH` | The certificate and private key do not form a pair. | Region |
+| `TLS_CERT_PARSE_ERROR` | The certificate or key is not valid PEM. | Region |
+| `WEAK_TLS_CERT_KEY` | FIPS mode only. The certificate uses a key type other than RSA or ECDSA, an RSA key under 2048 bits, or a SHA-1 or MD5 signature. | Region |
+| `WEAK_DH_PARAMS` | The `api_tls_dhparam` file contains parameters under 2048 bits. | Region |
+| `DH_PARAMS_PARSE_ERROR` | The `api_tls_dhparam` file is not valid PEM DH parameters. | Region |
+| `INVALID_BIND_ADDRESS` | A bind key contains a value that is not an IP address. | Region and rack |
+| `WILDCARD_BIND_NOT_ALLOWED` | A bind key contains `0.0.0.0` or `::`, or a key with no derived default is unset. | Region and rack |
+| `INSECURE_DB_SSLMODE` | `database_sslmode` is `disable`, `allow`, `prefer`, or `require`, and the database host is not a Unix socket path. | Region |
+| `FIPS_CONFIG_STATUS_MISMATCH` | `fips_enabled` is `true` in the database, but this host is not in FIPS mode. | Region |
 
-**Resolving `WEAK_DH_PARAMS` or `DH_PARAMS_PARSE_ERROR`:** generate a new DH
-parameters file and set the path:
+Notes:
 
-```text
-openssl dhparam -out /var/snap/maas/current/certs/dhparam.pem 2048
-sudo maas config-hardening set api_tls_dhparam /var/snap/maas/current/certs/dhparam.pem
-```
+- TLS checks stop at the first failure. For example, a missing certificate hides any key problem.
+- If `api_tls_dhparam` points to a file that does not exist, no violation is reported.
+- A bind key reports at most one `INVALID_BIND_ADDRESS` or one `WILDCARD_BIND_NOT_ALLOWED` violation, listing every offending value.
+- `database_sslmode` is not checked when `database_host` is a filesystem path, because a Unix socket connection does not use TLS.
 
-**Resolving `INSECURE_DB_SSLMODE`:** set the SSL mode and supply the client
-certificate, key, and CA certificate:
+For resolution steps, see [Resolve hardening violations](/how-to-guides/resolve-hardening-violations.md).
 
-```text
-sudo maas config-hardening set database_sslmode verify-full
-sudo maas config-hardening set database_sslcert /var/snap/maas/current/certs/db-client.pem
-sudo maas config-hardening set database_sslkey /var/snap/maas/current/certs/db-client.key
-sudo maas config-hardening set database_sslrootcert /var/snap/maas/current/certs/db-ca.pem
-```
+## Notifications
 
-Not flagged when `database_host` is a filesystem path (e.g. the socket
-directory used by `maas-test-db`): connections over a Unix domain socket
-never negotiate TLS, so `database_sslmode` is not applicable.
+The primary region controller process posts and clears hardening notifications each time it starts.
+
+| Property | Value |
+|---|---|
+| Category | `error` |
+| Audience | Administrators only |
+| Can be dismissed | No |
+| Message | The violation message followed by its resolution |
+| Context fields | `code`, `config_key`, and `file_path` when present |
+
+Bind address violations are scoped to the controller that found them. Their message starts with `[<system_id>]`, so each region controller in a high availability deployment has its own notification. All other violations are global.
+
+A notification is removed the next time a region controller starts without that violation.
 
 ## Password policy
 
-When hardening is active, MAAS enforces password complexity on every password
-set through the CLI (`maas createadmin`, `maas changepassword`) and the web UI.
-The same policy applies independently on any FIPS host, regardless of the
-`hardening_enabled` setting.
-
-A compliant password must satisfy all four rules:
+The policy applies when hardening is active or the host is in FIPS mode. A compliant password must meet every rule:
 
 | Rule | Requirement |
-|------|-------------|
+|---|---|
 | Length | At least 14 characters |
-| Uppercase | At least one uppercase letter (A–Z) |
-| Digit | At least one digit (0–9) |
-| Special character | At least one character that is not a letter or digit — including `-`, `_`, space, and punctuation |
+| Uppercase | At least one uppercase letter (`A`–`Z`) |
+| Digit | At least one digit (`0`–`9`) |
+| Special character | At least one character that is not a letter or digit. Spaces, `-`, and `_` count. |
 
-All four rules are evaluated together. When a password fails, the error message
-lists every unmet rule in a single response.
+MAAS checks every rule and reports all failures in one message. The policy cannot be configured.
 
-The policy is not configurable. It cannot be relaxed or disabled while hardening
-is active or FIPS mode is on.
+The policy applies to:
 
-## Startup log events
+- MAAS user passwords set in the web UI, with `maas createadmin` or `maas changepassword`, or through the user endpoints of the MAAS API.
+- The `power_pass` value of a machine or VM host power configuration, when hardening is active. An empty `power_pass` is not checked.
 
-Structured JSON events. View them with `journalctl -o json`.
+The 14-character minimum also meets the FIPS minimum HMAC key length of 112 bits, which applies when MAAS hashes passwords.
 
-| Event | Level | Meaning |
-|-------|-------|---------|
-| `fips_mode_detected` | INFO | FIPS state read at startup (`fips_mode`). |
-| `hardening_mode_determined` | INFO | Resolved hardening state (`setting`, `fips_enabled`, `hardening_active`). |
-| `hardening_violation` | ERROR | A prerequisite is unmet (`ident`, `code`, `config_key`, `file_path`, `message`). |
-| `hardening_notification_posted` | INFO | An admin notification was posted for a violation (`ident`, `code`). |
+## Reverse proxy
 
-## Content Security Policy (CSP)
+The region and rack controllers each run an NGINX reverse proxy.
 
-When hardening is active, the region controller's nginx configuration emits a
-strict `Content-Security-Policy` header on every response:
+### Rate and connection limits
 
-```
+These limits apply whether or not hardening is active.
+
+| Key | Default | Description |
+|---|---|---|
+| `api_rate_limit_rate` | `20r/s` | Requests per second allowed for each client IP address. |
+| `api_rate_limit_burst` | `60` | Requests a client can make above the rate before MAAS rejects them. |
+| `api_conn_limit` | `100` | Concurrent connections allowed for each client IP address. |
+
+Set these keys in `regiond.conf` or `rackd.conf`, then restart MAAS. An empty `api_rate_limit_rate` turns off both rate and connection limiting.
+
+### Hardening response headers
+
+When hardening is active, both proxies:
+
+- Set `server_tokens off`, which hides the NGINX version.
+- Add `X-Frame-Options: DENY`.
+- Add `X-Content-Type-Options: nosniff`.
+- Add `Referrer-Policy: strict-origin-when-cross-origin`.
+- Add `X-XSS-Protection: 1; mode=block`.
+- Add a `Content-Security-Policy` header.
+- Close the connection without a response (NGINX status `444`) for `TRACE` and `OPTIONS` requests.
+
+These controls are not configurable. They produce no violations, because there is nothing to validate.
+
+Independently of hardening, the region proxy adds `Strict-Transport-Security: max-age=63072000; includeSubdomains` whenever TLS is enabled.
+
+### Content Security Policy
+
+Region controller:
+
+```text
 default-src 'self';
-script-src 'self' 'sha256-…';
+script-src 'self' 'sha256-<hash>';
 style-src 'self' 'unsafe-inline';
 img-src 'self' data:;
 font-src 'self';
@@ -273,21 +276,28 @@ connect-src 'self';
 frame-ancestors 'none'
 ```
 
-The `script-src` directive includes a single SHA-256 hash that whitelists
-one static inline `<script>` block required by the documentation theme.
-Inline scripts are otherwise forbidden by `script-src 'self'`.
+| Directive | Value | Reason |
+|---|---|---|
+| `default-src` | `'self'` | Deny by default. Every resource type must be same-origin unless overridden. |
+| `script-src` | `'self' 'sha256-<hash>'` | Inline scripts are forbidden. One hash allows a single static inline script required by the documentation theme. |
+| `style-src` | `'self' 'unsafe-inline'` | The documentation generator emits inline `style` attributes. Styles cannot execute code. |
+| `img-src` | `'self' data:` | Allows inline image data used by theme icons and diagrams. |
+| `font-src` | `'self'` | Fonts are bundled with MAAS and served from the region controller. |
+| `connect-src` | `'self'` | Restricts `fetch()` and `XMLHttpRequest` to the same origin. |
+| `frame-ancestors` | `'none'` | Prevents MAAS pages from being embedded in a frame. |
 
-The CSP header is defined in the region controller's nginx configuration
-template inside a hardening-only conditional block. It is only emitted
-when hardening is active.
+The rack controller serves no HTML interface, so its policy is `default-src 'none'; frame-ancestors 'none'`.
 
-### Other directives
+## Log events
 
-| Directive | Value | Rationale |
-|-----------|-------|-----------|
-| `default-src` | `'self'` | Deny by default; every resource type must be same-origin unless overridden below. |
-| `style-src` | `'self' 'unsafe-inline'` | Sphinx and Furo emit inline `style` attributes on generated elements. Hashing every style is not tractable; `'unsafe-inline'` is accepted for styles only, which cannot execute code. |
-| `img-src` | `'self' data:` | `data:` allows inline SVG/PNG data URIs used by the theme's icons and diagrams. |
-| `font-src` | `'self'` | Fonts must be same-origin. The Ubuntu fonts referenced by the theme are vendored under `docs/_static/fonts/` and served from the region controller. See `docs/_static/fonts/README.md`. |
-| `connect-src` | `'self'` | `fetch()` / `XMLHttpRequest` restricted to same-origin. |
-| `frame-ancestors` | `'none'` | Prevents MAAS pages from being embedded in any frame (clickjacking defence). |
+Hardening and FIPS detection events are written to the controller logs. On a snap installation, read them with `journalctl`, for example `journalctl -t maas-regiond`.
+
+| Event | Level | Fields |
+|---|---|---|
+| `fips_mode_detected` | `INFO` | `fips_mode` |
+| `fips_mode_unreadable` | `WARNING` | `fips_mode`, `detection_error` |
+| `hardening_mode_determined` | `INFO` | `setting`, `fips_enabled`, `hardening_active` |
+| `hardening_violation` | `ERROR` | `ident`, `code`, `config_key`, `file_path`, `message` |
+| `hardening_notification_posted` | `INFO` | `ident`, `code`, `controller_id` |
+
+For FIPS cryptography events, see the [FIPS mode reference](/reference/configuration-guides/fips-mode.md#log-events).
