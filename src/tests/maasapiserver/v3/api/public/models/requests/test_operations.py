@@ -9,6 +9,7 @@ from maasapiserver.v3.api.public.models.requests.operations import (
 )
 from maascommon.enums.operations import OperationStatus, OperationType
 from maasservicelayer.db.repositories.operations import OperationsClauseFactory
+from maasservicelayer.exceptions.catalog import ValidationException
 
 
 class TestOperationFilterParams:
@@ -105,7 +106,6 @@ class TestOperationFilterParams:
         [
             ("machine", 42),
             ("machine", None),
-            (None, 42),
         ],
     )
     def test_resource_field_values(
@@ -119,7 +119,15 @@ class TestOperationFilterParams:
 
     def test_invalid_resource_id(self) -> None:
         with pytest.raises(ValidationError):
-            OperationFilterParams(resource_type=None, resource_id="not_an_int")
+            OperationFilterParams(
+                resource_type="machine", resource_id="not_an_int"
+            )
+
+    def test_resource_id_requires_resource_type(self) -> None:
+        with pytest.raises(ValidationException) as exc_info:
+            OperationFilterParams(resource_type=None, resource_id=42)
+        assert exc_info.value.details is not None
+        assert exc_info.value.details[0].field == "resource_type"
 
     @pytest.mark.parametrize(
         "status,op_type,is_bulk,resource_type,resource_id,expected",
@@ -165,14 +173,6 @@ class TestOperationFilterParams:
                 "machine",
                 None,
                 OperationsClauseFactory.with_resource_type("machine"),
-            ),
-            (
-                None,
-                None,
-                None,
-                None,
-                42,
-                OperationsClauseFactory.with_resource_id(42),
             ),
             (
                 None,
@@ -279,14 +279,6 @@ class TestOperationFilterParams:
                 "machine",
                 None,
                 "resource_type=machine",
-            ),
-            (
-                None,
-                None,
-                None,
-                None,
-                42,
-                "resource_id=42",
             ),
             (
                 None,

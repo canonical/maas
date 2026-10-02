@@ -1,12 +1,15 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Self
+
 from fastapi import Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from maascommon.enums.operations import OperationStatus, OperationType
 from maasservicelayer.db.filters import Clause
 from maasservicelayer.db.repositories.operations import OperationsClauseFactory
+from maasservicelayer.exceptions.catalog import ValidationException
 
 
 class OperationFilterParams(BaseModel):
@@ -35,6 +38,17 @@ class OperationFilterParams(BaseModel):
     resource_id: int | None = Field(
         Query(default=None, description="Filter by resource id")
     )
+
+    @model_validator(mode="after")
+    def validate_resource_filter(self) -> Self:
+        if self.resource_id is not None and self.resource_type is None:
+            raise ValidationException.build_for_field(
+                "resource_type",
+                "Missing 'resource_type' query parameter. You must "
+                "specify resource_type when filtering by resource_id.",
+                location="query",
+            )
+        return self
 
     def to_clause(self) -> Clause | None:
         clauses = []

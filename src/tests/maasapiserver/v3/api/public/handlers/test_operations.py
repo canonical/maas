@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, Mock
 from httpx import AsyncClient
 import pytest
 
+from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.responses.operations import (
     OperationResponse,
     OperationsListResponse,
@@ -183,6 +184,57 @@ class TestOperationsApi(ApiCommonTests):
                 )
             ),
         )
+
+    async def test_list_operations_filter_by_resource(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions()
+        _setup_openfga_mock(services_mock)
+        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.list_for_user.return_value = ListResult(
+            items=[TEST_OPERATION], total=1
+        )
+
+        response = await client.get(
+            f"{self.BASE_PATH}?resource_type=machine&resource_id=42"
+        )
+        operations_response = OperationsListResponse(**response.json())
+        assert response.status_code == 200
+        assert len(operations_response.items) == 1
+        services_mock.operations.list_for_user.assert_called_once_with(
+            1,
+            20,
+            user_id=0,
+            can_view_all=True,
+            query=QuerySpec(
+                where=OperationsClauseFactory.and_clauses(
+                    [
+                        OperationsClauseFactory.with_resource_type("machine"),
+                        OperationsClauseFactory.with_resource_id(42),
+                    ]
+                )
+            ),
+        )
+
+    async def test_list_operations_resource_id_requires_resource_type(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions()
+        _setup_openfga_mock(services_mock)
+        services_mock.operations = Mock(OperationsService)
+
+        response = await client.get(f"{self.BASE_PATH}?resource_id=42")
+        assert response.status_code == 422
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+        assert error_response.details is not None
+        assert error_response.details[0].field == "resource_type"
+        services_mock.operations.list_for_user.assert_not_called()
 
     async def test_get_operation(
         self,
