@@ -197,7 +197,7 @@ Include your root and intermediate CA certificates in the same PEM file, if requ
 
 ## Activate MAAS hardening
 
-MAAS hardening enforces STIG/CIS transport-security controls on the region controller. It is best-effort: when a prerequisite is missing, MAAS keeps running and reports the problem as a non-dismissable admin notification rather than refusing to start.
+MAAS hardening enforces STIG/CIS transport-security controls on the region controller. A missing prerequisite is not fatal: MAAS keeps running and reports the problem as a non-dismissable admin notification rather than refusing to start.
 
 This section covers hardening the MAAS controllers. To deploy a FIPS kernel to a *managed machine*, see [Deploy a FIPS kernel](/how-to-guides/deploy-a-fips-kernel.md) instead.
 
@@ -207,20 +207,27 @@ For the full parameter, store, and violation-code reference, see [Security harde
 
 FIPS mode is a host kernel feature provided by Ubuntu Pro; it is independent of MAAS hardening. When FIPS mode is active, MAAS hardening activates automatically and cannot be turned off.
 
-MAAS runs on the `core24` snap base, which provides the cryptographic libraries
-used at runtime. For FIPS-validated cryptography to apply inside the snap,
-`core24` must be switched to its FIPS-updates channel before the reboot.
-
-> **Note:** Ubuntu 24.04 LTS FIPS certification is in progress. The `fips-updates/stable`
-> channel is not yet available; use `fips-updates/candidate` until certification
-> is complete. Check the [current certification status](https://ubuntu.com/security/certifications/docs/2404#p-142510-fips-140-3).
+MAAS runs on the `core26` snap base, which provides the cryptographic
+libraries used at runtime. For FIPS-validated cryptography to apply inside
+the snap, `core26` must be switched to its FIPS-updates channel — but
+`core26` is not yet FIPS-certified; Canonical's current ETA is late 2027.
+No FIPS-updates channel exists for it yet, so on snap installs the host
+kernel can be in FIPS mode (and MAAS hardening activates accordingly) but
+the snap's own bundled cryptographic libraries are not themselves
+FIPS-validated until that certification lands. Track the current status
+at [Ubuntu security certifications](https://ubuntu.com/security/certifications).
 
 ```text
 sudo pro attach <ubuntu_pro_token>
 sudo pro enable fips-updates
-sudo snap refresh core24 --channel=fips-updates/candidate
+# core26 has no FIPS-updates channel yet
+# sudo snap refresh core26 --channel=fips-updates/stable
 sudo reboot
 ```
+
+This enables FIPS mode on the host kernel, which is what MAAS hardening
+reacts to. The `snap refresh` step for `core26` itself is commented out
+above since no FIPS-updates channel exists for it yet.
 
 After the reboot, confirm FIPS mode is active:
 
@@ -264,6 +271,7 @@ startup. Use `maas config-hardening set` to configure each parameter:
 # bind several at once (comma-separated, may mix IPv4 and IPv6 -- any
 # family not present in the explicit value is still auto-derived).
 sudo maas config-hardening set api_bind 10.0.0.5
+# ... or, binding both address families at once:
 sudo maas config-hardening set api_bind 10.0.0.5,fd00::5
 
 # Bind Prometheus metrics to loopback (already seeded by
@@ -279,6 +287,12 @@ sudo maas config-hardening set temporal_bind 10.0.0.5
 # comma-separated list) to pin exactly which address(es) racks dial.
 sudo maas config-hardening set rpc_bind 10.0.0.5
 
+# agent_api_bind is left unset by default: MAAS derives it from maas_url,
+# the same as rpc_bind, per address family. Set it explicitly (optionally
+# as a comma-separated list) to pin which address(es) maas-agent dials on
+# rack controllers.
+sudo maas config-hardening set agent_api_bind 10.0.0.5
+
 # syslog_bind is left unset by default: MAAS derives it from maas_url, the
 # same as rpc_bind/temporal_bind. Set it explicitly (optionally as a
 # comma-separated list) to pin the syslog receiver to a different
@@ -286,20 +300,27 @@ sudo maas config-hardening set rpc_bind 10.0.0.5
 # than the one maas_url resolves to.
 sudo maas config-hardening set syslog_bind 10.0.0.5
 
+# http_proxy_bind is left unset by default: MAAS derives it from maas_url,
+# the same as rpc_bind/syslog_bind, per address family. Set it explicitly
+# (optionally as a comma-separated list) to pin the HTTP proxy (squid) to
+# a different interface.
+sudo maas config-hardening set http_proxy_bind 10.0.0.5
+
 # dns_bind has no maas_url-derived default: DNS must serve every
 # managed subnet, not just the interface that reaches the API, so
 # hardening always requires picking address(es) explicitly (may mix
-# IPv4 and IPv6 in one comma-separated list). Snap installs only: MAAS
-# owns the whole named.conf there; on Debian-packaged installs this key
-# is not available (nor validated), since MAAS does not own the base
-# named.conf.options.
+# IPv4 and IPv6 in one comma-separated list). MAAS owns the whole
+# named.conf there.
 sudo maas config-hardening set dns_bind 10.0.0.5,fd00::5
 
 # Verify the PostgreSQL server certificate.
 sudo maas config-hardening set database_sslmode verify-full
+sudo maas config-hardening set database_sslrootcert /var/snap/maas/current/certs/db-ca.pem
+
+# Only needed if the PostgreSQL server requires client-certificate (mTLS)
+# authentication:
 sudo maas config-hardening set database_sslcert /var/snap/maas/current/certs/db-client.pem
 sudo maas config-hardening set database_sslkey /var/snap/maas/current/certs/db-client.key
-sudo maas config-hardening set database_sslrootcert /var/snap/maas/current/certs/db-ca.pem
 
 # Optional: a DH parameters file of at least 2048 bits.
 sudo maas config-hardening set api_tls_dhparam /var/snap/maas/current/certs/dhparam.pem
