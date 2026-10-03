@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Self
+from urllib.parse import quote
 
 from fastapi import Query
 from pydantic import BaseModel, Field, model_validator
@@ -82,7 +83,7 @@ class OperationFilterParams(BaseModel):
         if self.is_bulk is not None:
             parts.append(f"is_bulk={str(self.is_bulk).lower()}")
         if self.resource_type is not None:
-            parts.append(f"resource_type={self.resource_type}")
+            parts.append(f"resource_type={quote(self.resource_type)}")
         if self.resource_id is not None:
             parts.append(f"resource_id={self.resource_id}")
 

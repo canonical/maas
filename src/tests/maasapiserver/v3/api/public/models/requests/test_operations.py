@@ -318,3 +318,15 @@ class TestOperationFilterParams:
             resource_id=resource_id,
         )
         assert params.to_href_format() == expected
+
+    def test_to_href_format_encodes_resource_type(self) -> None:
+        params = OperationFilterParams(
+            status=None,
+            op_type=None,
+            is_bulk=None,
+            resource_type="machine&bootresource",
+            resource_id=None,
+        )
+        assert (
+            params.to_href_format() == "resource_type=machine%26bootresource"
+        )
