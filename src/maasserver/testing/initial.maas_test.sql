@@ -14426,7 +14426,7 @@ CREATE INDEX maasserver_oidcrevokedtoken_user_email_5f4d1d18 ON public.maasserve
 -- Name: maasserver_operation_one_in_progress_per_resource_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX maasserver_operation_one_in_progress_per_resource_idx ON public.maasserver_operation USING btree (resource_type, resource_id) WHERE ((status)::text = ANY ((ARRAY['ACCEPTED'::character varying, 'RUNNING'::character varying, 'CANCELLING'::character varying])::text[]));
+CREATE UNIQUE INDEX maasserver_operation_one_in_progress_per_resource_idx ON public.maasserver_operation USING btree (resource_type, resource_id) WHERE ((status)::text = ANY (ARRAY[('ACCEPTED'::character varying)::text, ('RUNNING'::character varying)::text, ('CANCELLING'::character varying)::text]));
 
 
 --
