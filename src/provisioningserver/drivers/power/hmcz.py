@@ -38,6 +38,53 @@ except ImportError:
 else:
     no_zhmcclient = False
 
+    def _patch_zhmcclient_urllib3_retry_compat():
+        """Make ``Session._new_session`` build an ``urllib3.Retry`` that the
+        installed urllib3 actually accepts.
+
+        zhmcclient < 1.8.0 (what Ubuntu ships) always passes the
+        ``method_whitelist`` keyword, which urllib3 2.0 removed in favour of
+        ``allowed_methods``
+        (https://github.com/zhmcclient/python-zhmcclient/issues/1145).
+        Logging on to an HMC then raises ``TypeError:
+        Retry.__init__() got an unexpected keyword argument
+        'method_whitelist'``. Rebuild the session the same way zhmcclient
+        does, using whichever keyword this urllib3 supports.
+        """
+        import inspect
+
+        import requests
+        import urllib3
+
+        retry_params = inspect.signature(urllib3.Retry).parameters
+        if "method_whitelist" in retry_params:
+            return  # installed zhmcclient/urllib3 pair already agrees
+        if "allowed_methods" not in retry_params:
+            return  # unknown urllib3 shape; leave zhmcclient's code alone
+
+        @staticmethod
+        def _new_session(retry_timeout_config):
+            retry = urllib3.Retry(
+                total=retry_timeout_config.connect_retries,
+                connect=retry_timeout_config.connect_retries,
+                read=retry_timeout_config.read_retries,
+                allowed_methods=retry_timeout_config.method_whitelist,
+                redirect=retry_timeout_config.max_redirects,
+            )
+            session = requests.Session()
+            session.mount(
+                "https://",
+                requests.adapters.HTTPAdapter(max_retries=retry),
+            )
+            session.mount(
+                "http://", requests.adapters.HTTPAdapter(max_retries=retry)
+            )
+            return session
+
+        Session._new_session = _new_session
+
+    _patch_zhmcclient_urllib3_retry_compat()
+
 maaslog = get_maas_logger("drivers.power.hmcz")
 
 
