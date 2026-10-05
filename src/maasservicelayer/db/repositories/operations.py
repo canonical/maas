@@ -40,12 +40,20 @@ class OperationsClauseFactory(ClauseFactory):
         return Clause(condition=eq(OperationTable.c.is_bulk, is_bulk))
 
     @classmethod
+    def with_parent_id(cls, parent_id: str) -> Clause:
+        return Clause(condition=eq(OperationTable.c.parent_id, parent_id))
+
+    @classmethod
     def with_user_id(cls, user_id: int) -> Clause:
         return Clause(condition=eq(OperationTable.c.user_id, user_id))
 
     @classmethod
     def created_before(cls, moment: datetime) -> Clause:
         return Clause(condition=le(OperationTable.c.created, moment))
+
+    @classmethod
+    def without_parent_id(cls) -> Clause:
+        return Clause(condition=OperationTable.c.parent_id.is_(None))
 
 
 class OperationsRepository(BaseRepository[Operation]):
