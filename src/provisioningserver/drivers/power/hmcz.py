@@ -48,19 +48,37 @@ else:
         (https://github.com/zhmcclient/python-zhmcclient/issues/1145).
         Logging on to an HMC then raises ``TypeError:
         Retry.__init__() got an unexpected keyword argument
-        'method_whitelist'``. Rebuild the session the same way zhmcclient
-        does, using whichever keyword this urllib3 supports.
+        'method_whitelist'``.
+
+        Probe the installed zhmcclient/urllib3 pair with a throwaway,
+        no-I/O session build and only patch when it actually fails that
+        way, instead of inferring compatibility from urllib3's signature
+        alone. That keeps this a true no-op once Ubuntu ships a fixed
+        zhmcclient, regardless of which kwarg name it ends up using.
         """
-        import inspect
+        from zhmcclient._session import RetryTimeoutConfig
+
+        probe_config = RetryTimeoutConfig()
+        try:
+            Session._new_session(probe_config)
+        except TypeError as error:
+            if "method_whitelist" not in str(error):
+                raise
+        else:
+            return  # installed zhmcclient/urllib3 pair already agrees
 
         import requests
         import urllib3
 
-        retry_params = inspect.signature(urllib3.Retry).parameters
-        if "method_whitelist" in retry_params:
-            return  # installed zhmcclient/urllib3 pair already agrees
-        if "allowed_methods" not in retry_params:
-            return  # unknown urllib3 shape; leave zhmcclient's code alone
+        def _allowed_methods(retry_timeout_config):
+            # Read whichever attribute this zhmcclient version exposes, so
+            # a future rename from `method_whitelist` to `allowed_methods`
+            # (mirroring urllib3's own rename) doesn't crash this shim.
+            return getattr(
+                retry_timeout_config,
+                "allowed_methods",
+                getattr(retry_timeout_config, "method_whitelist", None),
+            )
 
         @staticmethod
         def _new_session(retry_timeout_config):
@@ -68,7 +86,7 @@ else:
                 total=retry_timeout_config.connect_retries,
                 connect=retry_timeout_config.connect_retries,
                 read=retry_timeout_config.read_retries,
-                allowed_methods=retry_timeout_config.method_whitelist,
+                allowed_methods=_allowed_methods(retry_timeout_config),
                 redirect=retry_timeout_config.max_redirects,
             )
             session = requests.Session()

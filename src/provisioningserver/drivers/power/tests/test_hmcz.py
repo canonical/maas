@@ -12,8 +12,6 @@ from unittest.mock import call, Mock
 import pytest
 import requests
 from twisted.internet.defer import inlineCallbacks, returnValue, succeed
-import urllib3
-from urllib3.util.retry import Retry as RealRetry
 from zhmcclient import HTTPError, StatusTimeout
 from zhmcclient_mock import FakedSession
 
@@ -865,88 +863,69 @@ class TestProbeHMCZAndEnlist(MAASTestCase):
 
 
 @dataclass
-class FakeRetryTimeoutConfig:
+class FakeRetryTimeoutConfigMethodWhitelist:
     connect_retries: int
     read_retries: int
     max_redirects: int
     method_whitelist: set
 
 
-class _RetryWithMethodWhitelist(RealRetry):
-    """Mirrors zhmcclient's expected (pre urllib3 2.0) Retry shape."""
-
-    def __init__(self, *, total, connect, read, method_whitelist, redirect):
-        super().__init__(
-            total=total,
-            connect=connect,
-            read=read,
-            allowed_methods=method_whitelist,
-            redirect=redirect,
-        )
+@dataclass
+class FakeRetryTimeoutConfigAllowedMethods:
+    connect_retries: int
+    read_retries: int
+    max_redirects: int
+    allowed_methods: set
 
 
-class _RetryWithAllowedMethods(RealRetry):
-    """Mirrors urllib3 2.0+'s Retry shape (no ``method_whitelist``)."""
+def make_already_compatible_session_class():
+    class DummySession:
+        @staticmethod
+        def _new_session(retry_timeout_config):
+            return "already-working-session"
 
-    def __init__(self, *, total, connect, read, allowed_methods, redirect):
-        super().__init__(
-            total=total,
-            connect=connect,
-            read=read,
-            allowed_methods=allowed_methods,
-            redirect=redirect,
-        )
+    return DummySession
 
 
-class _RetryWithNeitherKwarg(RealRetry):
-    """A hypothetical Retry shape with neither legacy nor current kwarg."""
+def make_broken_session_class(message):
+    class DummySession:
+        @staticmethod
+        def _new_session(retry_timeout_config):
+            raise TypeError(message)
 
-    def __init__(self, *, total, connect, read, redirect):
-        super().__init__(
-            total=total, connect=connect, read=read, redirect=redirect
-        )
+    return DummySession
 
 
 class TestPatchZhmcclientUrllib3RetryCompat(MAASTestCase):
-    def make_dummy_session_class(self):
-        class DummySession:
-            pass
+    def test_noop_when_probe_succeeds(self):
+        dummy_session = make_already_compatible_session_class()
+        original_new_session = dummy_session._new_session
+        self.patch(hmcz_module, "Session", dummy_session)
 
-        DummySession._new_session = staticmethod(
-            lambda retry_timeout_config: "original"
+        hmcz_module._patch_zhmcclient_urllib3_retry_compat()
+
+        self.assertIs(original_new_session, dummy_session._new_session)
+
+    def test_reraises_unrelated_type_error(self):
+        dummy_session = make_broken_session_class("something unrelated")
+        self.patch(hmcz_module, "Session", dummy_session)
+
+        self.assertRaises(
+            TypeError, hmcz_module._patch_zhmcclient_urllib3_retry_compat
         )
-        return DummySession
 
-    def test_noop_when_urllib3_still_accepts_method_whitelist(self):
-        self.patch(urllib3, "Retry", _RetryWithMethodWhitelist)
-        dummy_session = self.make_dummy_session_class()
-        original_new_session = dummy_session._new_session
-        self.patch(hmcz_module, "Session", dummy_session)
-
-        hmcz_module._patch_zhmcclient_urllib3_retry_compat()
-
-        self.assertIs(original_new_session, dummy_session._new_session)
-
-    def test_noop_when_urllib3_has_neither_kwarg(self):
-        self.patch(urllib3, "Retry", _RetryWithNeitherKwarg)
-        dummy_session = self.make_dummy_session_class()
-        original_new_session = dummy_session._new_session
-        self.patch(hmcz_module, "Session", dummy_session)
-
-        hmcz_module._patch_zhmcclient_urllib3_retry_compat()
-
-        self.assertIs(original_new_session, dummy_session._new_session)
-
-    def test_rebuilds_session_with_allowed_methods(self):
-        self.patch(urllib3, "Retry", _RetryWithAllowedMethods)
-        dummy_session = self.make_dummy_session_class()
+    def test_rebuilds_session_when_probe_hits_method_whitelist_error(self):
+        dummy_session = make_broken_session_class(
+            "_new_session() got an unexpected keyword argument "
+            "'method_whitelist'"
+        )
         original_new_session = dummy_session._new_session
         self.patch(hmcz_module, "Session", dummy_session)
 
         hmcz_module._patch_zhmcclient_urllib3_retry_compat()
 
         self.assertIsNot(original_new_session, dummy_session._new_session)
-        retry_timeout_config = FakeRetryTimeoutConfig(
+        retry_timeout_config = FakeRetryTimeoutConfigMethodWhitelist(
             connect_retries=3,
             read_retries=2,
             max_redirects=5,
@@ -956,8 +935,26 @@ class TestPatchZhmcclientUrllib3RetryCompat(MAASTestCase):
         self.assertIsInstance(session, requests.Session)
         for prefix in ("https://", "http://"):
             retry = session.get_adapter(f"{prefix}example.com").max_retries
-            self.assertIsInstance(retry, _RetryWithAllowedMethods)
             self.assertEqual(retry.allowed_methods, {"GET"})
             self.assertEqual(retry.connect, 3)
             self.assertEqual(retry.read, 2)
             self.assertEqual(retry.redirect, 5)
+
+    def test_patched_new_session_prefers_allowed_methods_attribute(self):
+        dummy_session = make_broken_session_class(
+            "_new_session() got an unexpected keyword argument "
+            "'method_whitelist'"
+        )
+        self.patch(hmcz_module, "Session", dummy_session)
+
+        hmcz_module._patch_zhmcclient_urllib3_retry_compat()
+
+        retry_timeout_config = FakeRetryTimeoutConfigAllowedMethods(
+            connect_retries=1,
+            read_retries=1,
+            max_redirects=1,
+            allowed_methods={"GET", "HEAD"},
+        )
+        session = dummy_session._new_session(retry_timeout_config)
+        retry = session.get_adapter("https://example.com").max_retries
+        self.assertEqual(retry.allowed_methods, {"GET", "HEAD"})
