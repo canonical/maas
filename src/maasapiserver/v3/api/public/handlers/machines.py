@@ -53,7 +53,6 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
-from maasservicelayer.models.machines import Machine
 from maasservicelayer.services import ServiceCollectionV3
 
 COMMISSIONABLE_STATUSES = frozenset(
@@ -324,9 +323,7 @@ class MachinesHandler(Handler):
             query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id))
         )
 
-        # Both keeps the type checker happy and at the same time checks if machine is None.
-        # Ensures the object is a Machine not a generic Node.
-        if not isinstance(machine, Machine):
+        if machine is None:
             raise NotFoundException(
                 details=[
                     BaseExceptionDetail(
