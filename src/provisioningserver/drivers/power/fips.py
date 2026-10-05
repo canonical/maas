@@ -47,7 +47,6 @@ DRIVER_FIPS_REGISTRY = {
         DriverFIPSStatus.UNSUPPORTED,
         "IPMI without Cipher Suite 17 support",
     ),
-    "msftocs": (DriverFIPSStatus.UNSUPPORTED, "Plain HTTP basic auth"),
     "raritan": (
         DriverFIPSStatus.UNSUPPORTED,
         "SNMPv2c — community string only",

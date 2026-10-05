@@ -4251,6 +4251,18 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         self.save = self.patch(self.node, "save")
         self.request = Mock()
 
+    def test_removed_power_driver_is_rejected(self):
+        self.node.set_power_config("", {})
+        self.request.POST = {"power_type": "msftocs"}
+
+        with self.assertRaisesRegex(
+            MAASAPIBadRequest, "Bad power_type 'msftocs'"
+        ):
+            store_node_power_parameters(self.node, self.request)
+
+        self.assertEqual("", self.node.power_type)
+        self.save.assert_not_called()
+
     def test_no_connected_rack_controllers(self):
         # When get_driver_types returns empty dictionary.
         mock_get_driver_types = self.patch(api, "get_driver_types")

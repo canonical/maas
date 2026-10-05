@@ -81,7 +81,7 @@ On a FIPS host, the API enforces FIPS compliance on power driver configuration:
   HMAC-SHA256 with AES-CBC-128; all lower suites rely on HMAC-MD5, RC4, or
   SHA-1.
 - **Unsupported drivers**: The following drivers are rejected because they
-  cannot be made FIPS-compliant: APC, Eaton, Raritan, DLI, MSFTOCS,
+  cannot be made FIPS-compliant: APC, Eaton, Raritan, DLI,
   RECS (`recs_box`), SeaMicro (`sm15k`), UCSM, and Moonshot. The API
   returns the rejection reason and a list of supported alternatives.
 - **SSL verification**: Drivers that support an SSL verification option

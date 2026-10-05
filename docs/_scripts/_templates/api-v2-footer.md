@@ -91,16 +91,6 @@ Power parameters:
 - power_pass (MSCM CLI API password).
 - node_id (Node ID - Must adhere to cXnY format (X=cartridge number, Y=node number).).
 
-### msftocs (Microsoft OCS - Chassis Manager)
-
-Power parameters:
-
-- power_address (Power address).
-- power_port (Power port).
-- power_user (Power user).
-- power_pass (Power password).
-- blade_id (Blade ID (Typically 1-24)).
-
 ### nova (OpenStack Nova)
 
 Power parameters:
@@ -221,4 +211,3 @@ Power parameters:
 - power_address (Address).
 - power_pass (Password (optional)).
 - power_id (Virsh VM ID).
-
