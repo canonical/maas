@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import base64
 import typing
@@ -10,6 +10,7 @@ from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthVendorChoices,
 )
 from maasapiserver.v3.api.public.models.responses.base import PaginatedResponse
+from maasservicelayer.auth.external_auth import ExternalAuthType
 from maasservicelayer.models.external_auth import (
     AccessTokenType,
     OAuthProvider,
@@ -26,6 +27,11 @@ class TokenResponse(BaseModel):
     refresh_token: str | None = None
 
 
+class ExternalLegacyLogin(BaseModel):
+    url: str
+    type: ExternalAuthType
+
+
 class PreLoginInfoResponse(BaseModel):
     """Content for a response returning pre-login information."""
 
@@ -33,7 +39,7 @@ class PreLoginInfoResponse(BaseModel):
     is_authenticated: bool
     no_users: bool
     # TODO: Delete this once we drop support for rbac/candid.
-    external_legacy_login_url: str | None = None
+    external_legacy_login: ExternalLegacyLogin | None = None
 
 
 class AuthInfoResponse(BaseModel):
