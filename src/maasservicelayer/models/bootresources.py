@@ -50,3 +50,23 @@ class BootResource(MaasTimestampedBaseModel):
 
     def get_title(self) -> str | None:
         return self.extra.get("title")
+
+    def supports_subarch(self, subarch: str) -> bool:
+        _, self_subarch = self.split_arch()
+        if subarch == self_subarch:
+            return True
+        if "subarches" not in self.extra:
+            return False
+        subarches = self.extra["subarches"].split(",")
+        return subarch in subarches
+
+    def supports_platform(self, platform: str) -> bool:
+        _, self_subarch = self.split_arch()
+        if platform == self_subarch:
+            return True
+        if platform == self.extra.get("platform"):
+            return True
+        if "supported_platforms" not in self.extra:
+            return False
+        platforms = self.extra["supported_platforms"].split(",")
+        return platform in platforms

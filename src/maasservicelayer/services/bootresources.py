@@ -1,5 +1,7 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+from maascommon.enums.boot_resources import BootResourceType
+from maascommon.osystem import BOOT_IMAGE_PURPOSE, OperatingSystemRegistry
 from maasservicelayer.builders.bootresources import BootResourceBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -16,8 +18,13 @@ from maasservicelayer.models.bootresources import (
     CustomBootResourceStatistic,
     CustomBootResourceStatus,
 )
+from maasservicelayer.models.configurations import (
+    CommissioningDistroSeriesConfig,
+    CommissioningOSystemConfig,
+)
 from maasservicelayer.services.base import BaseService, ServiceCache
 from maasservicelayer.services.bootresourcesets import BootResourceSetsService
+from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.utils.date import utcnow
 
 
@@ -31,10 +38,88 @@ class BootResourceService(
         context: Context,
         repository: BootResourcesRepository,
         boot_resource_sets_service: BootResourceSetsService,
+        configurations_service: ConfigurationsService,
         cache: ServiceCache | None = None,
     ):
         super().__init__(context, repository, cache)
         self.boot_resource_sets_service = boot_resource_sets_service
+        self.configurations_service = configurations_service
+
+    async def get_resource_for(
+        self,
+        osystem: str,
+        architecture: str,
+        subarchitecture: str,
+        series: str,
+        purpose: str | None = None,
+    ) -> BootResource | None:
+        """Return the resource that supports the given osystem,
+        architecture, subarchitecture and series."""
+        if purpose is not None:
+            os_driver = OperatingSystemRegistry.get_item(osystem)
+            if (
+                os_driver is None
+                or purpose not in os_driver.get_boot_image_purposes()
+            ):
+                return None
+
+        # TODO: When deployment moves to v3, consider porting the
+        # custom image handling from V2's BootResourceManager.get_resource_for in
+        # src/maasserver/models/bootresource.py. Custom images aren't used
+        # for commissioning, so this wasn't ported yet.
+        resources = await self.get_many(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.or_clauses(
+                            [
+                                BootResourceClauseFactory.with_rtype(
+                                    BootResourceType.SYNCED
+                                ),
+                                BootResourceClauseFactory.with_rtype(
+                                    BootResourceType.UPLOADED
+                                ),
+                            ]
+                        ),
+                        BootResourceClauseFactory.with_name(
+                            f"{osystem}/{series}"
+                        ),
+                        BootResourceClauseFactory.with_architecture_starting_with(
+                            architecture
+                        ),
+                    ]
+                )
+            )
+        )
+        for resource in resources:
+            if resource.supports_subarch(
+                subarchitecture
+            ) or resource.supports_platform(subarchitecture):
+                return resource
+        return None
+
+    async def has_commissioning_resource(self, architecture: str) -> bool:
+        """Whether the ephemeral OS used for commissioning is available for
+        the given "arch/subarch" architecture."""
+        configs = await self.configurations_service.get_many(
+            {
+                CommissioningOSystemConfig.name,
+                CommissioningDistroSeriesConfig.name,
+            }
+        )
+        commissioning_osystem = configs[CommissioningOSystemConfig.name]
+        commissioning_distro_series = configs[
+            CommissioningDistroSeriesConfig.name
+        ]
+        arch, platform = architecture.split("/")
+        resource = await self.get_resource_for(
+            commissioning_osystem,
+            arch,
+            platform,
+            commissioning_distro_series,
+            BOOT_IMAGE_PURPOSE.COMMISSIONING,
+        )
+        return resource is not None
 
     async def pre_delete_hook(
         self, resource_to_be_deleted: BootResource
