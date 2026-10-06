@@ -551,7 +551,14 @@ def compose_debconf_cloud_init_preseed(request, node, token):
             # Prevent the node from requesting cloud-init data on every reboot.
             # This is done so a machine does not need to contact MAAS every time
             # it reboots.
-            "manual_cache_clean": True
+            "manual_cache_clean": True,
+            # Do not let cloud-init manage /etc/hosts on the deployed system.
+            # get_base_preseed() enables it for the ephemeral environment, but
+            # on an installed system this rewrites /etc/hosts on every boot,
+            # discarding manual or automated changes. Using the default
+            # behavior also lets `dns_resolve(hostname)` query the DNS server
+            # instead of returning a loopback address (see LP:1087183).
+            "manage_etc_hosts": False,
         }
     )
     # This is used as preseed for a node that's been installed.

@@ -12,6 +12,7 @@ from maascommon.osystem import BOOT_IMAGE_PURPOSE, NoSuchOperatingSystem
 import maasserver.compose_preseed as cp_module
 from maasserver.compose_preseed import (
     build_metadata_url,
+    compose_debconf_cloud_init_preseed,
     compose_enlistment_preseed,
     compose_preseed,
     generate_deb822_for_sources,
@@ -527,6 +528,18 @@ class TestComposePreseed(MAASServerTestCase):
             compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
         )
         self.assertTrue(preseed["manage_etc_hosts"])
+
+    def test_compose_debconf_preseed_does_not_manage_etc_hosts(self):
+        # Regression test for LP:2088179: the installed system must not let
+        # cloud-init rewrite /etc/hosts on every reboot.
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING,
+        )
+        token = NodeKey.objects.get_token_for_node(node)
+        preseed = compose_debconf_cloud_init_preseed(
+            make_HttpRequest(), node, token
+        )
+        self.assertIn("manage_etc_hosts: false", preseed)
 
     def test_compose_preseed_for_commissioning_includes_metadata_status_url(
         self,
