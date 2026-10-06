@@ -56,19 +56,19 @@ def bind_reload(timeout=2):
         return False
 
 
-def bind_reload_with_retries(attempts=10, interval=2, timeout=2):
+def bind_reload_with_retries(max_attempts=10, interval=2, timeout=2):
     """Ask BIND to reload its configuration and all zone files.
 
-    :param attempts: The number of attempts.
+    :param max_attempts: Max number of attempts.
     :param interval: The time in seconds to sleep between each attempt.
+    :return: True if any attempt succeeded, False otherwise.
     """
-    for countdown in range(attempts - 1, -1, -1):
+    for attempt in range(max_attempts):
         if bind_reload(timeout=timeout):
-            break
-        if countdown == 0:
-            break
-        else:
+            return True
+        if attempt < max_attempts - 1:
             sleep(interval)
+    return False
 
 
 def bind_reload_zones(zone_list):
