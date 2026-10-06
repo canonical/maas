@@ -1307,6 +1307,7 @@ class Node(CleanSave, TimestampedModel):
         self._previous_hostname = None
         self._previous_boot_interface_id = None
         self._previous_domain_id = None
+        self._previous_bmc_id = None
         self._updated = False
 
     def __setattr__(self, name, value):
@@ -2121,7 +2122,14 @@ class Node(CleanSave, TimestampedModel):
     def _remove_orphaned_bmcs(self):
         from maasserver.models.bmc import BMC
 
-        BMC.objects.filter(node__isnull=True).delete()
+        previous_bmc_id = self._previous_bmc_id
+        if previous_bmc_id is None or previous_bmc_id == self.bmc_id:
+            # The node's BMC did not change on this save, so there
+            # is nothing to do.
+            return
+        # Only the previously referenced BMC can have been orphaned by this
+        # save.
+        BMC.objects.filter(id=previous_bmc_id, node__isnull=True).delete()
 
     def display_status(self):
         """Return status text as displayed to the user."""

@@ -6571,13 +6571,22 @@ class TestNodePowerParameters(MAASServerTestCase):
         self.assertEqual(ip_address, node.bmc.ip_address.ip)
 
     def test_orphaned_bmcs_are_removed(self):
-        bmc = factory.make_BMC()
+        machine = factory.make_Node(bmc=factory.make_BMC())
+        machine_bmc = machine.bmc
+
+        with post_commit_hooks:
+            machine.bmc = None
+            machine.save()
+        self.assertIsNone(reload_object(machine_bmc))
+
+    def test_unrelated_orphaned_bmcs_are_not_removed(self):
+        unrelated_bmc = factory.make_BMC()
         machine = factory.make_Node(bmc=factory.make_BMC())
 
         with post_commit_hooks:
             machine.bmc = None
             machine.save()
-        self.assertIsNone(reload_object(bmc))
+        self.assertIsNotNone(reload_object(unrelated_bmc))
 
     def test_is_sync_healthy_returns_false_when_enable_hw_sync_is_false(self):
         node = factory.make_Node()
