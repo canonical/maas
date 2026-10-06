@@ -38,6 +38,71 @@ except ImportError:
 else:
     no_zhmcclient = False
 
+    def _patch_zhmcclient_urllib3_retry_compat():
+        """Make ``Session._new_session`` build an ``urllib3.Retry`` that the
+        installed urllib3 actually accepts.
+
+        zhmcclient < 1.8.0 (what Ubuntu ships) always passes the
+        ``method_whitelist`` keyword, which urllib3 2.0 removed in favour of
+        ``allowed_methods``
+        (https://github.com/zhmcclient/python-zhmcclient/issues/1145).
+        Logging on to an HMC then raises ``TypeError:
+        Retry.__init__() got an unexpected keyword argument
+        'method_whitelist'``.
+
+        Probe the installed zhmcclient/urllib3 pair with a throwaway,
+        no-I/O session build and only patch when it actually fails that
+        way, instead of inferring compatibility from urllib3's signature
+        alone. That keeps this a true no-op once Ubuntu ships a fixed
+        zhmcclient, regardless of which kwarg name it ends up using.
+        """
+        from zhmcclient._session import RetryTimeoutConfig
+
+        probe_config = RetryTimeoutConfig()
+        try:
+            Session._new_session(probe_config)
+        except TypeError as error:
+            if "method_whitelist" not in str(error):
+                raise
+        else:
+            return  # installed zhmcclient/urllib3 pair already agrees
+
+        import requests
+        import urllib3
+
+        def _allowed_methods(retry_timeout_config):
+            # Read whichever attribute this zhmcclient version exposes, so
+            # a future rename from `method_whitelist` to `allowed_methods`
+            # (mirroring urllib3's own rename) doesn't crash this shim.
+            return getattr(
+                retry_timeout_config,
+                "allowed_methods",
+                getattr(retry_timeout_config, "method_whitelist", None),
+            )
+
+        @staticmethod
+        def _new_session(retry_timeout_config):
+            retry = urllib3.Retry(
+                total=retry_timeout_config.connect_retries,
+                connect=retry_timeout_config.connect_retries,
+                read=retry_timeout_config.read_retries,
+                allowed_methods=_allowed_methods(retry_timeout_config),
+                redirect=retry_timeout_config.max_redirects,
+            )
+            session = requests.Session()
+            session.mount(
+                "https://",
+                requests.adapters.HTTPAdapter(max_retries=retry),
+            )
+            session.mount(
+                "http://", requests.adapters.HTTPAdapter(max_retries=retry)
+            )
+            return session
+
+        Session._new_session = _new_session
+
+    _patch_zhmcclient_urllib3_retry_compat()
+
 maaslog = get_maas_logger("drivers.power.hmcz")
 
 
