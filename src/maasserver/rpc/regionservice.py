@@ -492,24 +492,25 @@ class Region(SecuredRPCProtocol):
         )
         return d.addCallback(lambda _: {})
 
-    @region.VerifyTrustedSshHostKey.responder
-    def verify_trusted_ssh_host_key(self, host, key_type, public_key):
-        """verify_trusted_ssh_host_key()
+    @region.GetTrustedSshHostKeys.responder
+    def get_trusted_ssh_host_keys(self, host):
+        """get_trusted_ssh_host_keys()
 
         Implementation of
-        :py:class:`~provisioningserver.rpc.region.VerifyTrustedSshHostKey`.
+        :py:class:`~provisioningserver.rpc.region.GetTrustedSshHostKeys`.
         """
 
         @transactional
-        def verify():
+        def get_keys():
             from maasserver.models.trustedsshhostkey import TrustedSshHostKey
 
-            verified = TrustedSshHostKey.objects.filter(
-                host=host, key_type=key_type, public_key=public_key
-            ).exists()
-            return {"verified": verified}
+            keys = [
+                {"key_type": key.key_type, "public_key": key.public_key}
+                for key in TrustedSshHostKey.objects.filter(host=host)
+            ]
+            return {"keys": keys}
 
-        return deferToDatabase(verify)
+        return deferToDatabase(get_keys)
 
 
 @inlineCallbacks

@@ -18,6 +18,8 @@ import pexpect
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
+from maascommon.fips import is_fips_enabled
+from maascommon.logging.security import log_fips_ssh_authentication
 from provisioningserver.drivers import (
     IP_EXTRACTOR_PATTERNS,
     make_ip_extractor,
@@ -34,6 +36,9 @@ from provisioningserver.drivers.pod import (
     DiscoveredPodStoragePool,
     InterfaceAttachType,
     PodDriver,
+)
+from provisioningserver.drivers.power.ssh_utils import (
+    get_trusted_ssh_host_keys,
 )
 from provisioningserver.enum import LIBVIRT_NETWORK
 from provisioningserver.logger import get_maas_logger
@@ -282,6 +287,43 @@ class VirshError(Exception):
     """Failure communicating to virsh."""
 
 
+def _write_known_hosts(host, trusted_keys):
+    """Materialize `trusted_keys` as an SSH known_hosts file for `host`.
+
+    Returns the path to a temporary file; the caller is responsible for
+    removing it once the connection is done with it.
+    """
+    known_hosts = NamedTemporaryFile(
+        mode="w", prefix="maas-virsh-known-hosts-", delete=False
+    )
+    try:
+        for entry in trusted_keys:
+            known_hosts.write(
+                f"{host} {entry['key_type']} {entry['public_key']}\n"
+            )
+    finally:
+        known_hosts.close()
+    return known_hosts.name
+
+
+def _log_fips_virsh_ssh_event(host, key_type, result):
+    """Emit the structured FIPS SSH authentication audit event for virsh.
+
+    The CLI `ssh` binary does not expose the negotiated kex/cipher/mac back
+    to MAAS, so those fields are a platform-negotiated sentinel; the
+    algorithm *restriction* is enforced by the `verified-ssh` wrapper
+    regardless of what gets logged here.
+    """
+    log_fips_ssh_authentication(
+        key_type=key_type,
+        kex="(platform-negotiated)",
+        cipher="(platform-negotiated)",
+        mac="(platform-negotiated)",
+        peer=host,
+        result=result,
+    )
+
+
 class VirshSSH(pexpect.spawn):
     PROMPT = r"virsh \#"
     PROMPT_SSHKEY = "(?i)are you sure you want to continue connecting"
@@ -360,32 +402,81 @@ class VirshSSH(pexpect.spawn):
                 " is not supported."
             )
 
-        # Append unverified-ssh command. See,
-        # https://bugs.launchpad.net/maas/+bug/1807231
-        # for more details.
-        poweraddr = (
-            poweraddr + "?command=" + get_path("/usr/lib/maas/unverified-ssh")
-        )
-        self._execute(poweraddr)
-        i = self.expect(self.PROMPTS, timeout=self.timeout)
-        if i == self.I_PROMPT_SSHKEY:
-            # New certificate, lets always accept but if
-            # it changes it will fail to login.
-            self.sendline("yes")
-            i = self.expect(self.PROMPTS)
-        if i == self.I_PROMPT_PASSWORD:
-            # Requesting password, give it if available.
-            if password is None:
+        fips_known_hosts = None
+        fips_key_type = "(platform-negotiated)"
+        if is_fips_enabled():
+            trusted_keys = get_trusted_ssh_host_keys(parsed.hostname)
+            if not trusted_keys:
+                raise VirshError(
+                    f"No trusted SSH host key registered for "
+                    f"{parsed.hostname}. Add the KVM host's SSH host key "
+                    "via the /ssh-host-keys API before connecting under "
+                    "FIPS."
+                )
+            if len(trusted_keys) == 1:
+                fips_key_type = trusted_keys[0]["key_type"]
+            fips_known_hosts = _write_known_hosts(
+                parsed.hostname, trusted_keys
+            )
+            self.env = {
+                **get_env_with_locale(),
+                "MAAS_KNOWN_HOSTS": fips_known_hosts,
+            }
+            command = "/usr/lib/maas/verified-ssh"
+        else:
+            # Append unverified-ssh command. See,
+            # https://bugs.launchpad.net/maas/+bug/1807231
+            # for more details.
+            command = "/usr/lib/maas/unverified-ssh"
+
+        poweraddr = poweraddr + "?command=" + get_path(command)
+        try:
+            self._execute(poweraddr)
+            i = self.expect(self.PROMPTS, timeout=self.timeout)
+            if i == self.I_PROMPT_SSHKEY:
+                if fips_known_hosts is not None:
+                    # StrictHostKeyChecking=yes means ssh itself refuses on
+                    # a host-key mismatch; this prompt should not appear.
+                    # Fail closed rather than risk auto-accepting an
+                    # unverified key.
+                    self.close()
+                    _log_fips_virsh_ssh_event(
+                        parsed.hostname, fips_key_type, "failed"
+                    )
+                    return False
+                # New certificate, lets always accept but if
+                # it changes it will fail to login.
+                self.sendline("yes")
+                i = self.expect(self.PROMPTS)
+            if i == self.I_PROMPT_PASSWORD:
+                # Requesting password, give it if available.
+                if password is None:
+                    self.close()
+                    if fips_known_hosts is not None:
+                        _log_fips_virsh_ssh_event(
+                            parsed.hostname, fips_key_type, "failed"
+                        )
+                    return False
+                self.sendline(password)
+                i = self.expect(self.PROMPTS)
+            if i != self.I_PROMPT:
+                # Something bad happened, either disconnect,
+                # timeout, wrong password.
                 self.close()
+                if fips_known_hosts is not None:
+                    _log_fips_virsh_ssh_event(
+                        parsed.hostname, fips_key_type, "failed"
+                    )
                 return False
-            self.sendline(password)
-            i = self.expect(self.PROMPTS)
-        if i != self.I_PROMPT:
-            # Something bad happened, either disconnect,
-            # timeout, wrong password.
-            self.close()
-            return False
-        return True
+            if fips_known_hosts is not None:
+                _log_fips_virsh_ssh_event(
+                    parsed.hostname, fips_key_type, "success"
+                )
+            return True
+        finally:
+            if fips_known_hosts is not None:
+                with suppress(OSError):
+                    os.unlink(fips_known_hosts)
 
     def logout(self):
         """Quits the virsh session."""
