@@ -682,12 +682,24 @@ def _compose_cloud_init_preseed(
             if script_set.power_state_before_transition == POWER_STATE.ON:
                 testing_reboot = True
         if node.status == NODE_STATUS.DEPLOYING or testing_reboot:
-            cloud_config["power_state"] = {
-                "delay": "now",
-                "mode": "reboot",
-                "timeout": reboot_timeout,
-                "condition": "test ! -e /tmp/block-reboot",
-            }
+            # On power types where MAAS itself drives the boot-order flip
+            # and reboot out-of-band (e.g. IBM Z HMC/DPM, see
+            # DeployWorkflow._switch_to_local_boot()), an uncoordinated
+            # in-installer reboot here races that out-of-band power
+            # cycle: if this reboot lands before MAAS has flipped the
+            # boot device to disk, the guest re-IPLs against a netboot
+            # config that's already being torn down and fails outright.
+            # Leave the reboot to MAAS entirely for those power types; it
+            # never provided a real fallback for them anyway, since a
+            # boot order still pointing at the network wouldn't boot the
+            # deployed OS regardless of which side reboots first.
+            if not node.get_effective_power_info().can_set_boot_order:
+                cloud_config["power_state"] = {
+                    "delay": "now",
+                    "mode": "reboot",
+                    "timeout": reboot_timeout,
+                    "condition": "test ! -e /tmp/block-reboot",
+                }
         else:
             cloud_config["power_state"] = {
                 "delay": "now",
