@@ -267,7 +267,7 @@ def check_smartctl(blockdevice, device=None):
     print("INFO: Verifying SMART data on %s" % device_name)
     try:
         output = run_smartctl(
-            blockdevice, ["--xall"], device, output=True, stderr=STDOUT
+            blockdevice, ["--health"], device, output=True, stderr=STDOUT
         )
     except TimeoutExpired:
         print("ERROR: Validating %s timed out!" % device_name)

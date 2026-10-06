@@ -423,7 +423,7 @@ class TestCheckSmartCTL(MAASTestCase):
         device = factory.make_name("device")
         smartctl.check_smartctl(blockdevice, device)
         mock_run_smartctl.assert_called_once_with(
-            blockdevice, ["--xall"], device, output=True, stderr=STDOUT
+            blockdevice, ["--health"], device, output=True, stderr=STDOUT
         )
 
     def test_raises_timeoutexpired(self):
@@ -441,7 +441,7 @@ class TestCheckSmartCTL(MAASTestCase):
         device = factory.make_name("device")
         smartctl.check_smartctl(blockdevice, device)
         mock_run_smartctl.assert_called_once_with(
-            blockdevice, ["--xall"], device, output=True, stderr=STDOUT
+            blockdevice, ["--health"], device, output=True, stderr=STDOUT
         )
 
     def test_raises_calledprocesserror(self):
