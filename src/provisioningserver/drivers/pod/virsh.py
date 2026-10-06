@@ -415,8 +415,11 @@ class VirshSSH(pexpect.spawn):
                 )
             if len(trusted_keys) == 1:
                 fips_key_type = trusted_keys[0]["key_type"]
+            known_hosts_host = parsed.hostname
+            if parsed.port and parsed.port != 22:
+                known_hosts_host = f"[{parsed.hostname}]:{parsed.port}"
             fips_known_hosts = _write_known_hosts(
-                parsed.hostname, trusted_keys
+                known_hosts_host, trusted_keys
             )
             self.env = {
                 **get_env_with_locale(),
