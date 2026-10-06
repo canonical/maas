@@ -92,7 +92,9 @@ class TestReloadWithRetries(MAASTestCase):
         bind_reload = self.patch_autospec(actions, "bind_reload")
         bind_reload.return_value = False
         attempts = randint(3, 13)
-        self.assertFalse(actions.bind_reload_with_retries(attempts=attempts))
+        self.assertFalse(
+            actions.bind_reload_with_retries(max_attempts=attempts)
+        )
         expected_calls = [call(timeout=2)] * attempts
         actions.bind_reload.assert_has_calls(expected_calls)
 
@@ -104,7 +106,7 @@ class TestReloadWithRetries(MAASTestCase):
             bind_reload_return_values.pop(0)
         )
 
-        self.assertTrue(actions.bind_reload_with_retries(attempts=5))
+        self.assertTrue(actions.bind_reload_with_retries(max_attempts=5))
         expected_calls = [call(timeout=2), call(timeout=2), call(timeout=2)]
         actions.bind_reload.assert_has_calls(expected_calls)
 
@@ -114,7 +116,7 @@ class TestReloadWithRetries(MAASTestCase):
         bind_reload.return_value = False
         attempts = randint(3, 13)
         actions.bind_reload_with_retries(
-            attempts=attempts, interval=sentinel.interval
+            max_attempts=attempts, interval=sentinel.interval
         )
         expected_sleep_calls = [call(sentinel.interval)] * (attempts - 1)
         actions.sleep.assert_has_calls(expected_sleep_calls)

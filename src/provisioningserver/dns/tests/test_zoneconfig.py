@@ -334,15 +334,6 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         with open(dns_zone_config.zone_info[0].target_path) as zone_file:
             self.assertRegex(zone_file.read(), r"\s2\s*;\s*serial")
 
-    def test_write_config_removes_stale_journal(self):
-        patch_zone_file_config_path(self)
-        dns_zone_config = DNSForwardZoneConfig(factory.make_string(), serial=1)
-        journal = f"{dns_zone_config.zone_info[0].target_path}.jnl"
-        with open(journal, "w"):
-            pass
-        dns_zone_config.write_config()
-        self.assertFalse(os.path.exists(journal))
-
 
 class TestDNSReverseZoneConfig(MAASTestCase):
     """Tests for DNSReverseZoneConfig."""

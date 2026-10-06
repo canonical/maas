@@ -7,7 +7,6 @@ from datetime import datetime
 from ipaddress import IPv4Address, IPv6Address
 from itertools import chain
 import os
-from pathlib import Path
 from typing import Iterator
 
 from netaddr import IPAddress, IPNetwork, spanning_cidr
@@ -184,9 +183,6 @@ class DomainConfigBase:
                     uid=os.getuid(),
                     gid=os.getgid(),
                 )
-            # Zones are static, so a journal left behind from when they
-            # were dynamic would no longer match the zone file.
-            Path(f"{outfile}.jnl").unlink(missing_ok=True)
 
 
 class DNSForwardZoneConfig(DomainConfigBase):
