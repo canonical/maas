@@ -6588,6 +6588,21 @@ class TestNodePowerParameters(MAASServerTestCase):
             machine.save()
         self.assertIsNotNone(reload_object(unrelated_bmc))
 
+    def test_orphaned_bmcs_are_removed_across_multiple_saves(self):
+        machine = factory.make_Node(bmc=factory.make_BMC())
+        first_bmc = machine.bmc
+        second_bmc = factory.make_BMC()
+
+        with post_commit_hooks:
+            machine.bmc = second_bmc
+            machine.save()
+        self.assertIsNone(reload_object(first_bmc))
+
+        with post_commit_hooks:
+            machine.bmc = None
+            machine.save()
+        self.assertIsNone(reload_object(second_bmc))
+
     def test_is_sync_healthy_returns_false_when_enable_hw_sync_is_false(self):
         node = factory.make_Node()
         self.assertFalse(node.is_sync_healthy)
