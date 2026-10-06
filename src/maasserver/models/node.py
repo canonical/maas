@@ -2119,14 +2119,10 @@ class Node(CleanSave, TimestampedModel):
                 task_queue="region",
             )
 
-        # The instance now matches what is persisted, so reset the change
-        # tracking so that further in-memory changes and saves on the same
-        # instance are detected correctly.
-        self._previous_hostname = None
-        self._previous_boot_interface_id = None
-        self._previous_domain_id = None
+        # Reset only the BMC change tracking so that orphan cleanup works
+        # correctly across multiple saves on the same instance. The DHCP workflow
+        # currently relies on their lifetime values, so the other fields are left as is.
         self._previous_bmc_id = None
-        self._updated = False
 
     def _remove_orphaned_bmcs(self):
         from maasserver.models.bmc import BMC
