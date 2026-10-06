@@ -5786,6 +5786,21 @@ class TestNode(MAASServerTestCase):
         mock_node_power_cycle.assert_called_once_with()
         self.assertEqual(reload_object(node).status, NODE_STATUS.DEPLOYED)
 
+    def test_stop_rescue_mode_stops_node_from_failed_deployment(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.RESCUE_MODE,
+            previous_status=NODE_STATUS.FAILED_DEPLOYMENT,
+        )
+        admin = factory.make_admin()
+        mock_node_stop = self.patch(node, "_stop")
+        node.stop_rescue_mode(admin)
+
+        mock_node_stop.assert_called_once_with(admin)
+        self.assertEqual(
+            reload_object(node).status,
+            NODE_STATUS.EXITING_RESCUE_MODE,
+        )
+
     def test_stop_rescue_mode_logs_and_raises_errors(self):
         admin = factory.make_admin()
         node = factory.make_Node(
