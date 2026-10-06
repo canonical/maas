@@ -10,7 +10,7 @@ import random
 from random import randint
 from subprocess import CalledProcessError
 from textwrap import dedent
-from unittest.mock import call, sentinel
+from unittest.mock import call, Mock, sentinel
 
 from fixtures import FakeLogger
 from netaddr import IPNetwork
@@ -18,12 +18,7 @@ from netaddr import IPNetwork
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns import actions
-from provisioningserver.dns.actions import (
-    get_nsupdate_key_path,
-    NSUpdateCommand,
-)
 from provisioningserver.dns.config import (
-    DynamicDNSUpdate,
     MAAS_NAMED_CONF_NAME,
     MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME,
 )
@@ -61,30 +56,6 @@ class TestReconfigure(MAASTestCase):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
         self.assertRaises(ExternalProcessError, actions.bind_reconfigure)
-
-
-class TestFreezeZone(MAASTestCase):
-    """Tests for :py:func:`actions.bind_freeze_zone`."""
-
-    def test_executes_rndc_command(self):
-        self.patch_autospec(actions, "execute_rndc_command")
-        zone = factory.make_name()
-        actions.bind_freeze_zone(zone=zone)
-        actions.execute_rndc_command.assert_called_once_with(
-            ("freeze", zone), timeout=2
-        )
-
-
-class TestThawZone(MAASTestCase):
-    """Tests for :py:func:`actions.bind_freeze_zone`."""
-
-    def test_executes_rndc_command(self):
-        self.patch_autospec(actions, "execute_rndc_command")
-        zone = factory.make_name()
-        actions.bind_thaw_zone(zone=zone)
-        actions.execute_rndc_command.assert_called_once_with(
-            ("thaw", zone), timeout=2
-        )
 
 
 class TestReload(MAASTestCase):
@@ -263,6 +234,12 @@ class TestConfiguration(MAASTestCase):
         self.assertTrue(os.path.exists(join(zone_file_dir, forward_file_name)))
         self.assertTrue(os.path.exists(join(zone_file_dir, reverse_file_name)))
 
+    def test_bind_write_zones_does_not_freeze_zones(self):
+        zone = Mock(write_config=Mock())
+        actions.bind_write_zones([zone])
+        zone.write_config.assert_called_once_with()
+        actions.execute_rndc_command.assert_not_called()
+
     def test_bind_write_options_sets_up_config(self):
         # bind_write_configuration_and_zones writes the config file, writes
         # the zone files, and reloads the dns service.
@@ -299,112 +276,3 @@ class TestConfiguration(MAASTestCase):
         with open(expected_options_file, "r") as fh:
             contents = fh.read()
         self.assertIn(expected_options_content, contents)
-
-
-class TestNSUpdateCommand(MAASTestCase):
-    def test_format_update_deletion(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate(
-            operation="DELETE",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="A",
-        )
-        cmd = NSUpdateCommand(
-            domain,
-            [update],
-            serial=random.randint(1, 100),
-            ttl=random.randint(1, 100),
-        )
-        self.assertEqual(
-            f"update delete {update.name} A", cmd._format_update(update)
-        )
-
-    def test_format_update_addition(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="A",
-            answer=factory.make_ip_address(),
-        )
-        ttl = random.randint(1, 100)
-        cmd = NSUpdateCommand(
-            domain, [update], serial=random.randint(1, 100), ttl=ttl
-        )
-        self.assertEqual(
-            f"update add {update.name} {ttl} A {update.answer}",
-            cmd._format_update(update),
-        )
-
-    def test_nsupdate_sends_a_single_update(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="A",
-            answer=factory.make_ip_address(),
-        )
-        serial = random.randint(1, 100)
-        ttl = random.randint(1, 100)
-        cmd = NSUpdateCommand(domain, [update], serial=serial, ttl=ttl)
-        run_command = self.patch(actions, "run_command")
-        cmd.update()
-        run_command.assert_called_once_with(
-            "nsupdate",
-            "-k",
-            get_nsupdate_key_path(),
-            stdin="\n".join(
-                [
-                    "server localhost",
-                    f"zone {domain}",
-                    f"update add {update.name} {ttl} A {update.answer}",
-                    f"update add {domain} {ttl} SOA {domain}. nobody.example.com. {serial} 600 1800 604800 {ttl}",
-                    "send\n",
-                ]
-            ).encode("ascii"),
-        )
-
-    def test_nsupdate_sends_a_bulk_update(self):
-        domain = factory.make_name()
-        deletions = [
-            DynamicDNSUpdate(
-                operation="DELETE",
-                zone=domain,
-                name=f"{factory.make_name()}.{domain}",
-                rectype="A",
-            )
-            for _ in range(2)
-        ]
-        additions = [
-            DynamicDNSUpdate(
-                operation="INSERT",
-                zone=domain,
-                name=f"{factory.make_name()}.{domain}",
-                rectype="A",
-                answer=factory.make_ip_address(),
-            )
-            for _ in range(2)
-        ]
-        ttl = random.randint(1, 100)
-        cmd = NSUpdateCommand(domain, deletions + additions, ttl=ttl)
-        run_command = self.patch(actions, "run_command")
-        cmd.update()
-        expected_stdin = [
-            "server localhost",
-            f"zone {domain}",
-            f"update delete {deletions[0].name} {deletions[0].rectype}",
-            f"update delete {deletions[1].name} {deletions[1].rectype}",
-            f"update add {additions[0].name} {ttl} {additions[0].rectype} {additions[0].answer}",
-            f"update add {additions[1].name} {ttl} {additions[1].rectype} {additions[1].answer}",
-            "send\n",
-        ]
-        run_command.assert_called_once_with(
-            "nsupdate",
-            "-k",
-            get_nsupdate_key_path(),
-            "-v",
-            stdin="\n".join(expected_stdin).encode("ascii"),
-        )

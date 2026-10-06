@@ -4,23 +4,18 @@
 """Low-level actions to manage the DNS service, like reloading zones."""
 
 from collections.abc import Sequence
-from contextlib import contextmanager, nullcontext
 from subprocess import CalledProcessError, TimeoutExpired
 from time import sleep
 
 from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
-    get_nsupdate_key_path,
     set_up_options_conf,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.shell import ExternalProcessError, run_command
+from provisioningserver.utils.shell import ExternalProcessError
 
 maaslog = get_maas_logger("dns")
-
-
-MAAS_NSUPDATE_HOST = "localhost"
 
 
 def bind_reconfigure():
@@ -41,60 +36,6 @@ def bind_reconfigure():
         # Log before upgrade so that the output does not go to maaslog.
         ExternalProcessError.upgrade(exc)
         raise
-
-
-def bind_freeze_zone(zone=None, timeout=2):
-    cmd = ("freeze",)  # freeze all zones
-    if zone:
-        cmd = ("freeze", zone)  # freeze one zone
-
-    try:
-        execute_rndc_command(cmd, timeout=timeout)
-    except CalledProcessError as e:
-        maaslog.error(
-            f"Freezing {zone if zone else 'all zones'} for update failed"
-        )
-        ExternalProcessError.upgrade(e)
-        raise
-    except TimeoutExpired as e:
-        maaslog.error(
-            f"Freezing {zone if zone else 'all zones'} for update timed out"
-        )
-        ExternalProcessError.upgrade(e)
-        raise
-
-
-def bind_thaw_zone(zone=None, timeout=2):
-    cmd = ("thaw",)  # thaw all zones
-    if zone:
-        cmd = ("thaw", zone)  # thaw one zone
-
-    try:
-        execute_rndc_command(cmd, timeout=timeout)
-    except CalledProcessError as e:
-        maaslog.error(
-            f"Thawing {zone if zone else 'all zones'} for update failed"
-        )
-        ExternalProcessError.upgrade(e)
-        raise
-    except TimeoutExpired as e:
-        maaslog.error(
-            f"Thawing {zone if zone else 'all zones'} for update timed out"
-        )
-        ExternalProcessError.upgrade(e)
-        raise
-
-
-@contextmanager
-def freeze_thaw_zone(required, zone=None, timeout=2):
-    if not required:
-        yield nullcontext()
-    else:
-        bind_freeze_zone(zone=zone, timeout=timeout)
-        try:
-            yield
-        finally:
-            bind_thaw_zone(zone=zone, timeout=timeout)
 
 
 def bind_reload(timeout=2):
@@ -229,50 +170,3 @@ def bind_write_zones(zones):
     """
     for zone in zones:
         zone.write_config()
-
-
-class NSUpdateCommand:
-    executable = "nsupdate"
-
-    def __init__(self, zone, updates, **kwargs):
-        self._zone = zone
-        self._updates = updates
-        self._serial = kwargs.get("serial")
-        self._zone_ttl = kwargs["ttl"]
-
-    def _format_update(self, update):
-        if update.operation == "DELETE":
-            if update.answer:
-                return f"update delete {update.name} {update.rectype} {update.answer}"
-            return f"update delete {update.name} {update.rectype}"
-        ttl = update.ttl
-        if ttl is None:
-            ttl = self._zone_ttl
-        return (
-            f"update add {update.name} {ttl} {update.rectype} {update.answer}"
-        )
-
-    def update(self, server_address=MAAS_NSUPDATE_HOST):
-        stdin = [f"zone {self._zone}"] + [
-            self._format_update(update) for update in self._updates
-        ]
-        if server_address:
-            stdin = [f"server {server_address}"] + stdin
-
-        if self._serial:
-            stdin.append(
-                f"update add {self._zone} {self._zone_ttl} SOA {self._zone}. nobody.example.com. {self._serial} 600 1800 604800 {self._zone_ttl}"
-            )
-
-        stdin.append("send\n")
-
-        cmd = [self.executable, "-k", get_nsupdate_key_path()]
-        if len(self._updates) > 1:
-            cmd.append("-v")  # use TCP for bulk payloads
-
-        try:
-            run_command(*cmd, stdin="\n".join(stdin).encode("ascii"))
-        except CalledProcessError as exc:
-            maaslog.error(f"dynamic update of DNS failed: {exc}")
-            ExternalProcessError.upgrade(exc)
-            raise
