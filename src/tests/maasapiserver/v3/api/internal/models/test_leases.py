@@ -13,6 +13,19 @@ from maascommon.enums.ipaddress import LeaseAction
 
 
 class TestNamedBaseModel:
+    def test_empty_mac_normalized_to_none(self):
+        request = LeaseInfoRequest(
+            action=LeaseAction.EXPIRY,
+            ip_family="ipv4",
+            hostname="hostname",
+            mac="",
+            ip=IPv4Address("10.0.0.1"),
+            timestamp=int(time.time()),
+            lease_time=30,
+        )
+
+        assert request.mac is None
+
     @pytest.mark.parametrize(
         "raw_mac, normalized_mac",
         [
