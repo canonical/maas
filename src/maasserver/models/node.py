@@ -6614,11 +6614,11 @@ class Node(CleanSave, TimestampedModel):
         self.save()
 
         try:
-            if self.previous_status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
-                self._stop(user)
-            elif self.previous_status == NODE_STATUS.DEPLOYED:
+            if self.previous_status == NODE_STATUS.DEPLOYED:
                 # TODO: Power reset when DPU?
                 self._power_cycle()
+            else:
+                self._stop(user)
         except Exception as error:
             self.update_status(old_status)
             self.save()
