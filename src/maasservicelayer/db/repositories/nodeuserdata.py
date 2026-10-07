@@ -1,3 +1,6 @@
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 from base64 import b64decode
 from operator import eq
 from typing import Any, List
@@ -78,17 +81,13 @@ class NodeUserDataRepository(BaseRepository[NodeUserData]):
         row["data"] = b64decode(row["data"])
         return self.get_model_factory()(**row)
 
-    # The following methods are intentionally not implemented,`upsert` should be used
-    # instead of the standard create/update methods.
+    # The following methods are intentionally not implemented, `upsert`
+    # should be used instead of the standard create/update methods.
     async def list(self, page, size, query=None):
-        raise NotImplementedError(
-            "List is not supported for node user data."
-        )
+        raise NotImplementedError("List is not supported for node user data.")
 
     async def list_all(self, query=None):
-        raise NotImplementedError(
-            "List is not supported for node user data."
-        )
+        raise NotImplementedError("List is not supported for node user data.")
 
     async def create(self, builder):
         raise NotImplementedError(
