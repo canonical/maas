@@ -1,6 +1,8 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Annotated
+
 from fastapi import Depends
 
 from maasapiserver.common.api.base import Handler, handler
@@ -316,7 +318,6 @@ class MachinesHandler(Handler):
             Depends(get_authenticated_user),
         ],
         commission_request: MachineCommissionRequest | None = None,
-    ) -> OperationResponse: 
     ) -> OperationResponse:
         if commission_request is None:
             commission_request = MachineCommissionRequest()
