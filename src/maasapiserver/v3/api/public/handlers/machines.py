@@ -310,11 +310,13 @@ class MachinesHandler(Handler):
     async def commission_machine(
         self,
         system_id: str,
+        services: Annotated[ServiceCollectionV3, Depends(services)],
+        authenticated_user: Annotated[
+            AuthenticatedUser,
+            Depends(get_authenticated_user),
+        ],
         commission_request: MachineCommissionRequest | None = None,
-        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-        authenticated_user: AuthenticatedUser = Depends(  # noqa: B008
-            get_authenticated_user
-        ),
+    ) -> OperationResponse: 
     ) -> OperationResponse:
         if commission_request is None:
             commission_request = MachineCommissionRequest()
