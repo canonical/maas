@@ -28,6 +28,17 @@ class NodeUserDataService(
         else:
             await self._set(node_id, data, for_ephemeral=True)
 
+    async def get_user_data_for_ephemeral_env(
+        self, node_id: int
+    ) -> bytes | None:
+        return await self._get(node_id, for_ephemeral=True)
+
+    async def _get(self, node_id: int, for_ephemeral: bool) -> bytes | None:
+        entry = await self.get_one(
+            query=self._query_for(node_id, for_ephemeral)
+        )
+        return entry.data if entry else None
+
     async def _set(
         self, node_id: int, data: bytes, for_ephemeral: bool
     ) -> None:
@@ -41,7 +52,13 @@ class NodeUserDataService(
 
     async def _remove(self, node_id: int, for_ephemeral: bool) -> None:
         """Delete the node user data entry for a node and environment."""
-        query = QuerySpec(
+        # The unique constraint on (node_id, for_ephemeral_environment)
+        # ensures at most one entry. Use delete_many so no error is raised
+        # if no entry exists yet.
+        await self.delete_many(query=self._query_for(node_id, for_ephemeral))
+
+    def _query_for(self, node_id: int, for_ephemeral: bool) -> QuerySpec:
+        return QuerySpec(
             where=NodeUserDataClauseFactory.and_clauses(
                 [
                     NodeUserDataClauseFactory.with_node_id(node_id),
@@ -51,7 +68,3 @@ class NodeUserDataService(
                 ]
             )
         )
-        # The unique constraint on (node_id, for_ephemeral_environment)
-        # ensures at most one entry. Use delete_many so no error is raised
-        # if no entry exists yet.
-        await self.delete_many(query=query)
