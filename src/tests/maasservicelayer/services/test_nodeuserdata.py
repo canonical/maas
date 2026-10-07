@@ -243,3 +243,41 @@ class TestIntegrationNodeUserDataService:
         assert (
             await service.get_user_data_for_ephemeral_env(node["id"]) is None
         )
+
+    async def test_has_any_user_data_returns_false_if_none(
+        self, fixture: Fixture, service: NodeUserDataService
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+
+        assert await service.has_any_user_data(node["id"]) is False
+
+    @pytest.mark.parametrize("for_ephemeral_environment", [True, False])
+    async def test_has_any_user_data_returns_true_for_either_env(
+        self,
+        fixture: Fixture,
+        service: NodeUserDataService,
+        for_ephemeral_environment: bool,
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+        await create_nodeuserdata_entry(
+            fixture,
+            node["id"],
+            b"user-data",
+            for_ephemeral_environment=for_ephemeral_environment,
+        )
+
+        assert await service.has_any_user_data(node["id"]) is True
+
+    async def test_has_any_user_data_ignores_other_nodes(
+        self, fixture: Fixture, service: NodeUserDataService
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+        other_node = await create_test_machine_entry(fixture)
+        await create_nodeuserdata_entry(
+            fixture,
+            other_node["id"],
+            b"user-data",
+            for_ephemeral_environment=True,
+        )
+
+        assert await service.has_any_user_data(node["id"]) is False

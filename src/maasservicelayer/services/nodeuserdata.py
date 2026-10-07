@@ -33,6 +33,14 @@ class NodeUserDataService(
     ) -> bytes | None:
         return await self._get(node_id, for_ephemeral=True)
 
+    async def has_any_user_data(self, node_id: int) -> bool:
+        """Whether the node has user data for either environment."""
+        return await self.exists(
+            query=QuerySpec(
+                where=NodeUserDataClauseFactory.with_node_id(node_id)
+            )
+        )
+
     async def _get(self, node_id: int, for_ephemeral: bool) -> bytes | None:
         entry = await self.get_one(
             query=self._query_for(node_id, for_ephemeral)
