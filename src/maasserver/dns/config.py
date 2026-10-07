@@ -30,7 +30,6 @@ from provisioningserver.dns.actions import (
 )
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
-from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.snap import running_in_snap
 
 maaslog = get_maas_logger("dns")
