@@ -1,0 +1,30 @@
+#!/bin/sh -euf
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+# FIPS-mode counterpart to unverified-ssh, used for KVM host communication
+# when the rack controller host has FIPS mode enabled. Unlike
+# unverified-ssh, this:
+#
+#  - restricts the negotiated SSH algorithms to the FIPS-approved
+#    allow-list (kept in sync with maascommon.fips.FIPS_SSH_CONFIG; see
+#    provisioningserver/drivers/power/tests/test_virsh.py for the drift
+#    guard), and
+#  - verifies the KVM host's SSH host key against a known_hosts file
+#    materialized from MAAS's trusted SSH host keys store, rather than
+#    disabling host-key checking.
+#
+# MAAS_KNOWN_HOSTS must be set by the caller to a known_hosts file built
+# from that trusted store (see VirshSSH.login).
+
+: "${MAAS_KNOWN_HOSTS:?MAAS_KNOWN_HOSTS must be set}"
+
+exec ssh \
+    -o StrictHostKeyChecking=yes \
+    -o UserKnownHostsFile="$MAAS_KNOWN_HOSTS" \
+    -o GlobalKnownHostsFile=/dev/null \
+    -o Ciphers=aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com \
+    -o KexAlgorithms=ecdh-sha2-nistp256,ecdh-sha2-nistp384,diffie-hellman-group14-sha256 \
+    -o MACs=hmac-sha2-256,hmac-sha2-512 \
+    -o HostKeyAlgorithms=ecdsa-sha2-nistp256,rsa-sha2-256,rsa-sha2-512 \
+    "$@"
