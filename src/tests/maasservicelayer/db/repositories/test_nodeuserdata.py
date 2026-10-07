@@ -33,9 +33,7 @@ class TestNodeUserDataClauseFactory:
         )
 
     def test_with_for_ephemeral_environment(self) -> None:
-        clause = NodeUserDataClauseFactory.with_for_ephemeral_environment(
-            True
-        )
+        clause = NodeUserDataClauseFactory.with_for_ephemeral_environment(True)
         assert (
             str(
                 clause.condition.compile(
@@ -133,9 +131,7 @@ class TestNodeUserDataRepository(RepositoryCommonTests[NodeUserData]):
 
     async def test_update_one(self, repository_instance, instance_builder):
         with pytest.raises(NotImplementedError):
-            await repository_instance.update_one(
-                QuerySpec(), instance_builder
-            )
+            await repository_instance.update_one(QuerySpec(), instance_builder)
 
     @pytest.mark.parametrize("num_objects", [2])
     async def test_update_one_multiple_results(

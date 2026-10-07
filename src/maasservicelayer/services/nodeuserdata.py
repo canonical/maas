@@ -1,3 +1,6 @@
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 from maasservicelayer.builders.nodeuserdata import NodeUserDataBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
@@ -37,7 +40,7 @@ class NodeUserDataService(
         )
 
     async def _remove(self, node_id: int, for_ephemeral: bool) -> None:
-        """Delete node user data entry for a given node_id and for_ephemeral_environment flag."""
+        """Delete the node user data entry for a node and environment."""
         query = QuerySpec(
             where=NodeUserDataClauseFactory.and_clauses(
                 [
@@ -48,7 +51,7 @@ class NodeUserDataService(
                 ]
             )
         )
-        # the unique constraint on (node_id, for_ephemeral_environment) ensures there
-        # should be at most one entry. Use delete_many to ensure no error is raised if
-        # no entry already exists
+        # The unique constraint on (node_id, for_ephemeral_environment)
+        # ensures at most one entry. Use delete_many so no error is raised
+        # if no entry exists yet.
         await self.delete_many(query=query)
