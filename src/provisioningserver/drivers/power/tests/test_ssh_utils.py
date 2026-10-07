@@ -5,7 +5,7 @@
 
 import json
 import os
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 from paramiko import AutoAddPolicy, SSHClient, SSHException
 
@@ -15,6 +15,7 @@ from provisioningserver.drivers.power import ssh_utils as ssh_utils_module
 from provisioningserver.drivers.power.ssh_utils import (
     connect_ssh_client,
     get_fips_transport_options,
+    get_trusted_ssh_host_keys,
     MAAS_TRUSTED_SSH_HOST_KEYS_ENV,
     make_ssh_client,
     TrustedHostKeyPolicy,
@@ -365,7 +366,9 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
         key = make_key_mock()
 
         rpc_client, rpc_factory, command_token, blocking = self._patch_rpc(
-            return_value={"verified": True}
+            return_value={
+                "keys": [{"key_type": "ssh-rsa", "public_key": "AAAA"}]
+            }
         )
 
         self.patch(os, "environ", {})
@@ -374,12 +377,7 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
 
         rpc_factory.assert_called_once_with()
         blocking.assert_called_once()
-        rpc_client.assert_called_once_with(
-            command_token,
-            host="host.example",
-            key_type="ssh-rsa",
-            public_key="AAAA",
-        )
+        rpc_client.assert_called_once_with(command_token, host="host.example")
         client._host_keys.add.assert_called_once_with(
             "host.example", "ssh-rsa", key
         )
@@ -434,7 +432,9 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
         key = make_key_mock()
 
         rpc_client, rpc_factory, command_token, blocking = self._patch_rpc(
-            return_value={"verified": True}
+            return_value={
+                "keys": [{"key_type": "ssh-rsa", "public_key": "AAAA"}]
+            }
         )
 
         env_json = json.dumps(
@@ -489,7 +489,9 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
         key = make_key_mock()
 
         rpc_client, rpc_factory, command_token, blocking = self._patch_rpc(
-            return_value={"verified": True}
+            return_value={
+                "keys": [{"key_type": "ssh-rsa", "public_key": "AAAA"}]
+            }
         )
 
         env_json = json.dumps(
@@ -577,7 +579,7 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
         client._host_keys = Mock()
         key = make_key_mock()
 
-        self._patch_rpc(return_value={"verified": False})
+        self._patch_rpc(return_value={"keys": []})
 
         self.patch(os, "environ", {})
 
@@ -589,3 +591,50 @@ class TestTrustedHostKeyPolicy(MAASTestCase):
             key,
         )
         client._host_keys.add.assert_not_called()
+
+
+class TestGetTrustedSshHostKeys(MAASTestCase):
+    """Tests for :func:`get_trusted_ssh_host_keys`."""
+
+    def _patch_rpc(self, return_value):
+        rpc_client = Mock(return_value=return_value)
+        rpc_factory = Mock(return_value=rpc_client)
+
+        blocking = self.patch(ssh_utils_module, "blockingCallFromThread")
+        blocking.side_effect = lambda _reactor, func, *args, **kwargs: func(
+            *args, **kwargs
+        )
+
+        original_factory = ssh_utils_module._rpc_client_factory
+        original_command = ssh_utils_module._rpc_command
+        ssh_utils_module._rpc_client_factory = rpc_factory
+        ssh_utils_module._rpc_command = object()
+        self.addCleanup(
+            setattr, ssh_utils_module, "_rpc_client_factory", original_factory
+        )
+        self.addCleanup(
+            setattr, ssh_utils_module, "_rpc_command", original_command
+        )
+        return rpc_client, rpc_factory, blocking
+
+    def test_calls_rpc_and_returns_keys(self):
+        rpc_client, rpc_factory, blocking = self._patch_rpc(
+            return_value={
+                "keys": [
+                    {"key_type": "ecdsa-sha2-nistp256", "public_key": "AAAA"}
+                ]
+            }
+        )
+
+        result = get_trusted_ssh_host_keys("10.0.0.2")
+
+        self.assertEqual(
+            result,
+            [{"key_type": "ecdsa-sha2-nistp256", "public_key": "AAAA"}],
+        )
+        rpc_factory.assert_called_once_with()
+        rpc_client.assert_called_once_with(ANY, host="10.0.0.2")
+
+    def test_returns_empty_list_for_unknown_host(self):
+        self._patch_rpc(return_value={"keys": []})
+        self.assertEqual(get_trusted_ssh_host_keys("10.0.0.2"), [])
