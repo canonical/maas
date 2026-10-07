@@ -206,3 +206,40 @@ class TestIntegrationNodeUserDataService:
         assert await get_nodeuserdata_rows(fixture, node["id"]) == [
             user_env_entry
         ]
+
+    async def test_get_user_data_for_ephemeral_env_returns_data(
+        self, fixture: Fixture, service: NodeUserDataService
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+        await create_nodeuserdata_entry(
+            fixture, node["id"], b"user-data", for_ephemeral_environment=True
+        )
+
+        assert (
+            await service.get_user_data_for_ephemeral_env(node["id"])
+            == b"user-data"
+        )
+
+    async def test_get_user_data_for_ephemeral_env_returns_none_if_unset(
+        self, fixture: Fixture, service: NodeUserDataService
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+
+        assert (
+            await service.get_user_data_for_ephemeral_env(node["id"]) is None
+        )
+
+    async def test_get_user_data_for_ephemeral_env_ignores_user_env_data(
+        self, fixture: Fixture, service: NodeUserDataService
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+        await create_nodeuserdata_entry(
+            fixture,
+            node["id"],
+            b"deploy-data",
+            for_ephemeral_environment=False,
+        )
+
+        assert (
+            await service.get_user_data_for_ephemeral_env(node["id"]) is None
+        )
