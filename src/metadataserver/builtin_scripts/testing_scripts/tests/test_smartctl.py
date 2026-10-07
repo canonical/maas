@@ -445,6 +445,44 @@ class TestCheckSmartCTL(MAASTestCase):
             blockdevice, ["--xall"], device, output=True, stderr=STDOUT
         )
 
+    def test_ignores_returncode_sixty_four(self):
+        # Bit 6 is set when the error log contains past errors, which does
+        # not indicate the drive is currently failing.
+        mock_run_smartctl = self.patch(smartctl, "run_smartctl")
+        mock_run_smartctl.side_effect = CalledProcessError(
+            64, "smartctl", factory.make_name("output").encode()
+        )
+        blockdevice = factory.make_name("blockdevice")
+        device = factory.make_name("device")
+        smartctl.check_smartctl(blockdevice, device)
+        mock_run_smartctl.assert_called_once_with(
+            blockdevice, ["--xall"], device, output=True, stderr=STDOUT
+        )
+
+    def test_ignores_returncode_sixty_eight(self):
+        # Bits 2 and 6 set together (4 | 64) are both ignored.
+        mock_run_smartctl = self.patch(smartctl, "run_smartctl")
+        mock_run_smartctl.side_effect = CalledProcessError(
+            68, "smartctl", factory.make_name("output").encode()
+        )
+        blockdevice = factory.make_name("blockdevice")
+        device = factory.make_name("device")
+        smartctl.check_smartctl(blockdevice, device)
+        mock_run_smartctl.assert_called_once_with(
+            blockdevice, ["--xall"], device, output=True, stderr=STDOUT
+        )
+
+    def test_raises_when_other_bits_set_with_ignored_bits(self):
+        # Bit 6 ignored, but bit 0 (1) still indicates a real failure.
+        mock_run_smartctl = self.patch(smartctl, "run_smartctl")
+        mock_run_smartctl.side_effect = CalledProcessError(
+            65, "smartctl", factory.make_name("output").encode()
+        )
+        blockdevice = factory.make_name("blockdevice")
+        self.assertRaises(
+            CalledProcessError, smartctl.check_smartctl, blockdevice
+        )
+
     def test_raises_calledprocesserror(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.side_effect = CalledProcessError(42, "smartctl")
