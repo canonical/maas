@@ -215,3 +215,12 @@ class TestNodeUserDataRepository(RepositoryCommonTests[NodeUserData]):
             await repository_instance.get_by_id(created_instance.id)
             == created_instance
         )
+
+    async def test_delete_returns_decoded_data(
+        self,
+        repository_instance: NodeUserDataRepository,
+        created_instance: NodeUserData,
+    ) -> None:
+        deleted = await repository_instance.delete_by_id(created_instance.id)
+
+        assert deleted == created_instance
