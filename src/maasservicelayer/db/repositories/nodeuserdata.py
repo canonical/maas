@@ -5,7 +5,7 @@ from base64 import b64decode
 from operator import eq
 from typing import Any, List
 
-from sqlalchemy import Table
+from sqlalchemy import delete, Table
 from sqlalchemy.dialects.postgresql import insert
 
 from maasservicelayer.builders.nodeuserdata import NodeUserDataBuilder
@@ -34,10 +34,6 @@ class NodeUserDataClauseFactory(ClauseFactory):
 
 
 class NodeUserDataRepository(BaseRepository[NodeUserData]):
-    """Note: `delete_*` methods return models with `data` still
-    base64-encoded from the mapper; decode it before use if you need
-    the deleted content."""
-
     def get_repository_table(self) -> Table:
         return NodeUserDataTable
 
@@ -70,6 +66,17 @@ class NodeUserDataRepository(BaseRepository[NodeUserData]):
         This is called by `get_one`, `get_by_id`, and `get_many`.
         """
         stmt = self.select_all_statement()
+        stmt = query.enrich_stmt(stmt)
+
+        result = (await self.execute_stmt(stmt)).all()
+        return [self._to_model(row._asdict()) for row in result]
+
+    async def _delete(self, query: QuerySpec) -> List[NodeUserData]:
+        """Decode `data` on deleted rows, as `_get` does.
+
+        This is called by `delete_one`, `delete_by_id`, and `delete_many`.
+        """
+        stmt = delete(NodeUserDataTable).returning(NodeUserDataTable)
         stmt = query.enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
