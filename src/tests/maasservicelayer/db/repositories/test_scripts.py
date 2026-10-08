@@ -118,6 +118,18 @@ class TestScriptsClauseFactory:
             == "maasserver_script.tags && ARRAY['enlisting', 'deploy-info']"
         )
 
+    def test_without_tags(self) -> None:
+        clause = ScriptsClauseFactory.without_tags(["noauto"])
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_script.tags IS NULL "
+            "OR NOT ((maasserver_script.tags @> ARRAY['noauto']))"
+        )
+
     def test_with_empty_for_hardware(self) -> None:
         clause = ScriptsClauseFactory.with_empty_for_hardware()
         assert (
@@ -272,6 +284,27 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
             "deploy-script",
         }
 
+    async def test_get_many_filter_by_without_tags(
+        self, repository_instance: ScriptsRepository, fixture: Fixture
+    ) -> None:
+        await create_test_script_entry(
+            fixture, name="noauto-script", tags=["noauto"]
+        )
+        await create_test_script_entry(
+            fixture, name="auto-script", tags=["commissioning"]
+        )
+        await create_test_script_entry(
+            fixture, name="no-tags-script", tags=None
+        )
+
+        scripts = await repository_instance.get_many(
+            QuerySpec(where=ScriptsClauseFactory.without_tags(["noauto"]))
+        )
+        assert {script.name for script in scripts} == {
+            "auto-script",
+            "no-tags-script",
+        }
+
     async def test_get_many_filter_by_empty_for_hardware(
         self, repository_instance: ScriptsRepository, fixture: Fixture
     ) -> None:
@@ -330,9 +363,7 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
                             ScriptType.COMMISSIONING
                         ),
                         ScriptsClauseFactory.with_empty_for_hardware(),
-                        ScriptsClauseFactory.not_clause(
-                            ScriptsClauseFactory.with_tags_contains(["noauto"])
-                        ),
+                        ScriptsClauseFactory.without_tags(["noauto"]),
                     ]
                 )
             )
