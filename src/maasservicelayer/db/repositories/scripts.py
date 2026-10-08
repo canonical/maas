@@ -4,7 +4,7 @@
 from operator import eq
 from typing import Type
 
-from sqlalchemy import Table
+from sqlalchemy import not_, or_, Table
 
 from maascommon.enums.script import ScriptType
 from maasservicelayer.db.filters import Clause, ClauseFactory
@@ -45,6 +45,22 @@ class ScriptsClauseFactory(ClauseFactory):
     @classmethod
     def with_tags_overlap(cls, tags: list[str]) -> Clause:
         return Clause(condition=ScriptTable.c.tags.overlap(tags))
+
+    @classmethod
+    def without_tags(cls, tags: list[str]) -> Clause:
+        """Match scripts that don't have any of the given tags.
+
+        A script with no tags set (`tags IS NULL`) is treated as not
+        having any of the given tags. Without this, Postgres evaluates
+        `NOT (tags @> ...)` as NULL on a NULL column, which `WHERE`
+        treats as false and would wrongly exclude the script.
+        """
+        return Clause(
+            condition=or_(
+                ScriptTable.c.tags.is_(None),
+                not_(ScriptTable.c.tags.contains(tags)),
+            )
+        )
 
     @classmethod
     def with_empty_for_hardware(cls) -> Clause:
