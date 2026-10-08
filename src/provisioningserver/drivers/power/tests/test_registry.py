@@ -13,6 +13,20 @@ from provisioningserver.drivers.power.tests.test_base import (
 from provisioningserver.utils.testing import RegistryFixture
 
 
+class TestRegisteredPowerDrivers(MAASTestCase):
+    def test_msftocs_is_not_available(self):
+        self.assertIsNone(PowerDriverRegistry.get_item("msftocs"))
+        self.assertNotIn(
+            "msftocs",
+            {
+                driver["name"]
+                for driver in PowerDriverRegistry.get_schema(
+                    detect_missing_packages=False
+                )
+            },
+        )
+
+
 class TestPowerDriverRegistry(MAASTestCase):
     def setUp(self):
         super().setUp()

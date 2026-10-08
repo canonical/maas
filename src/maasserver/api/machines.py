@@ -2564,7 +2564,6 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
         - ``hmcz``: IBM Hardware Management Console (HMC) for Z
         - ``mscm``: Moonshot Chassis Manager.
-        - ``msftocs``: Microsoft OCS Chassis Manager.
         - ``powerkvm``: Virtual Machines on Power KVM, managed by Virsh.
         - ``proxmox``: Virtual Machines managed by Proxmox
         - ``recs_box``: Christmann RECS|Box servers.
@@ -2578,11 +2577,11 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
         @param (string) "username" [required=false] The username used to access
         the chassis. This field is required for the recs_box, seamicro15k,
-        vmware, mscm, msftocs, ucsm, and hmcz chassis types.
+        vmware, mscm, ucsm, and hmcz chassis types.
 
         @param (string) "password" [required=false] The password used to access
         the chassis. This field is required for the ``recs_box``,
-        ``seamicro15k``, ``vmware``, ``mscm``, ``msftocs``, ``ucsm``, and
+        ``seamicro15k``, ``vmware``, ``mscm``, ``ucsm``, and
         ``hmcz`` chassis types.
 
         @param (string) "accept_all" [required=false] If true, all enlisted
@@ -2614,11 +2613,11 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @param (boolean) "verify_ssl" [required=false] Whether SSL
         connections should be verified.
 
-        The following are optional if you are adding a recs_box, vmware or
-        msftocs chassis.
+        The following are optional if you are adding a recs_box or vmware
+        chassis.
 
-        @param (int) "port" [required=false] (``recs_box``, ``vmware``,
-        ``msftocs`` only) The port to use when accessing the chassis.
+        @param (int) "port" [required=false] (``recs_box``, ``vmware`` only)
+        The port to use when accessing the chassis.
 
         The following are optional if you are adding a vmware chassis:
 
@@ -2653,7 +2652,6 @@ class MachinesHandler(NodesHandler, PowersMixin):
         if chassis_type in (
             "hmcz",
             "mscm",
-            "msftocs",
             "recs_box",
             "seamicro15k",
             "ucsm",
@@ -2733,12 +2731,11 @@ class MachinesHandler(NodesHandler, PowersMixin):
                 ),
             )
 
-        # Only available with vmware, recs_box or msftocs
+        # Only available with vmware or recs_box
         port = get_optional_param(
             request.POST, "port", validator=validators.Int(min=1, max=65535)
         )
         if port is not None and chassis_type not in (
-            "msftocs",
             "recs_box",
             "vmware",
         ):

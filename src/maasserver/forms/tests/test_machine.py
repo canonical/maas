@@ -30,7 +30,7 @@ from maasserver.testing.osystems import (
     patch_usable_osystems,
 )
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import post_commit_hooks
+from maasserver.utils.orm import post_commit_hooks, reload_object
 from provisioningserver.certificates import Certificate
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.testing.certificates import get_sample_cert
@@ -566,6 +566,28 @@ class TestMachineForm(MAASServerTestCase):
 
 
 class TestAdminMachineForm(MAASServerTestCase):
+    def test_removed_power_driver_cannot_be_selected(self):
+        for skip_check in ("true", "false"):
+            new_form = AdminMachineForm(
+                data={
+                    "power_type": "msftocs",
+                    "power_parameters_skip_check": skip_check,
+                }
+            )
+            self.assertFalse(new_form.is_valid())
+            self.assertIn("power_type", new_form.errors)
+            node = factory.make_Node(power_type="manual", interface=True)
+            form = AdminMachineForm(
+                instance=node,
+                data={
+                    "power_type": "msftocs",
+                    "power_parameters_skip_check": skip_check,
+                },
+            )
+            self.assertFalse(form.is_valid())
+            self.assertIn("power_type", form.errors)
+            self.assertEqual("manual", reload_object(node).power_type)
+
     def test_AdminMachineForm_contains_limited_set_of_fields(self):
         user = factory.make_User()
         self.client.login(user=user)

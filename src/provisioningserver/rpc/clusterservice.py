@@ -39,7 +39,6 @@ from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.power.hmcz import probe_hmcz_and_enlist
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
-from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
 from provisioningserver.drivers.power.proxmox import probe_proxmox_and_enlist
 from provisioningserver.drivers.power.recs import probe_and_enlist_recs
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -407,18 +406,6 @@ class Cluster(SecuredRPCProtocol):
                 domain,
             )
             d.addErrback(partial(catch_probe_and_enlist_error, "Moonshot"))
-        elif chassis_type == "msftocs":
-            d = deferToThread(
-                probe_and_enlist_msftocs,
-                user,
-                hostname,
-                port,
-                username,
-                password,
-                accept_all,
-                domain,
-            )
-            d.addErrback(partial(catch_probe_and_enlist_error, "MicrosoftOCS"))
         elif chassis_type == "ucsm":
             d = deferToThread(
                 probe_and_enlist_ucsm,
