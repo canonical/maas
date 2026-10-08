@@ -1977,7 +1977,7 @@ ScriptSetTable = Table(
         nullable=False,
     ),
     Column("power_state_before_transition", String(10), nullable=False),
-    Column("tags", Text, nullable=True),
+    Column("tags", ARRAY(Text), nullable=True),
     Index("metadataserver_scriptset_node_id_72b6537b", "node_id"),
 )
 
