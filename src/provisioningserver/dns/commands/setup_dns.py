@@ -16,7 +16,6 @@ from textwrap import dedent
 from maascommon.hardening import is_hardening_enabled
 from provisioningserver.dns.config import (
     DNSConfig,
-    set_up_nsupdate_key,
     set_up_options_conf,
     set_up_rndc,
     set_up_zone_file_dir,
@@ -54,7 +53,6 @@ def run(args, stdout=sys.stdout, stderr=sys.stderr):
     """
     from provisioningserver.config import ClusterConfiguration
 
-    set_up_nsupdate_key()
     set_up_zone_file_dir()
     set_up_rndc()
 
