@@ -265,7 +265,7 @@ class TestScriptResultsRepository(RepositoryCommonTests[ScriptResult]):
         assert {r.id for r in created} == {r.id for r in results}
         assert {r.physical_blockdevice_id for r in results} == {1, 2}
 
-    async def test_create_pending_with_started_and_ended(
+    async def test_create_passed_with_started_and_ended(
         self, repository_instance: ScriptResultsRepository, scriptset_instance
     ) -> None:
         started = datetime.now(timezone.utc)
