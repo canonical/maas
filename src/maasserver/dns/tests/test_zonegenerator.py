@@ -40,7 +40,6 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import post_commit_hooks, transactional
 from maastesting.factory import factory as maastesting_factory
 from maastesting.fakemethod import FakeMethod
-from provisioningserver.dns.config import DynamicDNSUpdate
 from provisioningserver.dns.testing import patch_zone_file_config_path
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
