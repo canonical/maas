@@ -92,6 +92,7 @@ from maasservicelayer.db.repositories.resource_pools import (
 from maasservicelayer.db.repositories.scriptresults import (
     ScriptResultsRepository,
 )
+from maasservicelayer.db.repositories.scripts import ScriptsRepository
 from maasservicelayer.db.repositories.service_status import (
     ServiceStatusRepository,
 )
@@ -195,6 +196,7 @@ from maasservicelayer.services.rdns import RDNSService
 from maasservicelayer.services.reservedips import ReservedIPsService
 from maasservicelayer.services.resource_pools import ResourcePoolsService
 from maasservicelayer.services.scriptresult import ScriptResultsService
+from maasservicelayer.services.scripts import ScriptsService
 from maasservicelayer.services.secrets import (
     SecretsService,
     SecretsServiceFactory,
@@ -306,6 +308,7 @@ class ServiceCollectionV3:
     reservedips: ReservedIPsService
     resource_pools: ResourcePoolsService
     scriptresults: ScriptResultsService
+    scripts: ScriptsService
     secrets: SecretsService
     service_status: ServiceStatusService
     spaces: SpacesService
@@ -405,6 +408,10 @@ class ServiceCollectionV3:
         services.scriptresults = ScriptResultsService(
             context=context,
             scriptresults_repository=ScriptResultsRepository(context),
+        )
+        services.scripts = ScriptsService(
+            context=context,
+            repository=ScriptsRepository(context),
         )
         services.dnspublications = DNSPublicationsService(
             context=context,

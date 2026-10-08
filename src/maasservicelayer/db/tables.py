@@ -1977,7 +1977,7 @@ ScriptSetTable = Table(
         nullable=False,
     ),
     Column("power_state_before_transition", String(10), nullable=False),
-    Column("tags", Text, nullable=True),
+    Column("tags", ARRAY(Text), nullable=True),
     Index("metadataserver_scriptset_node_id_72b6537b", "node_id"),
 )
 
@@ -1989,7 +1989,7 @@ ScriptTable = Table(
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("name", String(255), nullable=False, unique=True),
     Column("description", Text, nullable=False),
-    Column("tags", Text, nullable=True),
+    Column("tags", ARRAY(Text), nullable=True),
     Column("script_type", Integer, nullable=False),
     Column("timeout", Interval, nullable=False),
     Column("destructive", Boolean, nullable=False),
@@ -2011,7 +2011,7 @@ ScriptTable = Table(
     Column("parallel", Integer, nullable=False),
     Column("parameters", JSONB, nullable=False),
     Column("results", JSONB, nullable=False),
-    Column("for_hardware", String(255), nullable=False),
+    Column("for_hardware", ARRAY(String(255)), nullable=False),
     Column("may_reboot", Boolean, nullable=False),
     Column("recommission", Boolean, nullable=False),
     Column("apply_configured_networking", Boolean, nullable=False),
