@@ -44,18 +44,12 @@ When hardening is active, MAAS:
 
 When the kernel is in FIPS mode, MAAS also restricts cryptography:
 
-<<<<<<< HEAD
 - MAAS-initiated SSH sessions negotiate only FIPS-approved algorithms.
 - SSH connections to power devices require a trusted host key, rather than accepting any key on first use.
 - SSH and SSL keys that users add must use approved key types and sizes.
 - The public API TLS certificate must use an approved key and signature algorithm.
 - Power drivers that cannot communicate securely are rejected.
 - The web server offers only FIPS-approved TLS cipher suites.
-=======
-On a FIPS host, MAAS enforces strict SSH host key verification. It checks every
-SSH connection against a database of trusted host keys and rejects connections
-from unrecognized hosts. This replaces the default trust-on-first-use behaviour.
->>>>>>> 7d96eed76 (fix spelling and typos)
 
 ## Cryptographic choices
 

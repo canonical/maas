@@ -14,7 +14,7 @@ MAAS enables on-demand provisioning of physical servers with zero-touch, self-se
 
 ### Multi-architecture support
 
-MAAS supports a variety of hardware architectures and platforms out-of-the-box. It can provision servers based on x86_64, ARM64 (e.g. Ampere), POWER, and IBM Z (s390x) architectures, among others. This makes it suitable for heterogeneous environments including standard x86 racks, ARM-based servers, mainframes, and more. The MAAS image repository includes many Linux distributions (Ubuntu and other Debian/RedHat based OSes) as well as Windows and hypervisor OS like ESXi, all deployable in an automated fashion, or fully customizable as desired.
+MAAS supports a variety of hardware architectures and platforms out-of-the-box. It can provision servers based on x86_64, ARM64 (e.g. Ampere), POWER, and IBM Z (s390x) architectures, among others. This makes it suitable for heterogeneous environments including standard x86 racks, ARM-based servers, mainframes, and more. The MAAS image repository includes many Linux distributions (Ubuntu and other Debian/Red Hat based OSes) as well as Windows and hypervisor OS like ESXi, all deployable in an automated fashion, or fully customizable as desired.
 
 ### Cloud-like instance management
 
