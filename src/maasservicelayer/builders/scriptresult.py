@@ -17,10 +17,18 @@ class ScriptResultBuilder(ResourceBuilder):
     """
 
     created: datetime | Unset = Field(default=UNSET)
+    ended: datetime | None | Unset = Field(default=UNSET)
+    exit_status: int | None | Unset = Field(default=UNSET)
+    interface_id: int | None | Unset = Field(default=UNSET)
     output: str | Unset = Field(default=UNSET)
     parameters: dict | Unset = Field(default=UNSET)
+    physical_blockdevice_id: int | None | Unset = Field(default=UNSET)
     result: str | Unset = Field(default=UNSET)
+    script_id: int | None | Unset = Field(default=UNSET)
+    script_name: str | None | Unset = Field(default=UNSET)
     script_set_id: int | Unset = Field(default=UNSET)
+    script_version_id: int | None | Unset = Field(default=UNSET)
+    started: datetime | None | Unset = Field(default=UNSET)
     status: ScriptStatus | Unset = Field(default=UNSET)
     stderr: str | Unset = Field(default=UNSET)
     stdout: str | Unset = Field(default=UNSET)

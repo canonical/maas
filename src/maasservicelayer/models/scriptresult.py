@@ -2,6 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+from datetime import datetime
+
 from maascommon.enums.scriptresult import ScriptStatus
 from maasservicelayer.models.base import (
     generate_builder,
@@ -11,12 +13,19 @@ from maasservicelayer.models.base import (
 
 @generate_builder()
 class ScriptResult(MaasTimestampedBaseModel):
-    # TODO: model to be completed.
     script_set_id: int
     status: ScriptStatus
+    exit_status: int | None = None
+    script_name: str | None = None
     stdout: str = ""
     stderr: str = ""
     result: str = ""
+    script_id: int | None = None
+    script_version_id: int | None = None
     output: str = ""
+    ended: datetime | None = None
+    started: datetime | None = None
     parameters: dict
+    physical_blockdevice_id: int | None = None
     suppressed: bool = False
+    interface_id: int | None = None
