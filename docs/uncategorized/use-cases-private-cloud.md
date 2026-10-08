@@ -54,7 +54,7 @@ Many private cloud frameworks (OpenStack, VMware alternatives, Kubernetes cluste
 
 ## API-driven integration and custom automation
 
-Integrators often have existing toolchains – Terraform, Ansible playbooks, custom portals – that they use to manage client infrastructure. MAAS’s REST API and webhooks enable deep integration into such toolchains.anonical.com
+Integrators often have existing toolchains – Terraform, Ansible playbooks, custom portals – that they use to manage client infrastructure. MAAS’s REST API and webhooks enable deep integration into such toolchains.
 . For instance, an MSP might have a portal where customers can request bare-metal nodes; behind the scenes that portal can call MAAS API to allocate a machine, deploy it with the requested OS, and hand off access to the customer. Because MAAS provides Python bindings and a CLI, integrators can script complex workflows (like multi-step provisioning, or integrating with IP address management systems). There’s also a Terraform provider for MAAS, so infrastructure-as-code pipelines can include physical server provisioning as part of automated deployments
 registry.terraform.io
 . This means a service provider can version-control not just VM or container infrastructure, but also physical node states using code. In summary, MAAS’s programmability lets integrators offer highly automated, repeatable services on bare metal – a big win for delivering Infrastructure-as-a-Service or scalable on-prem solutions.
@@ -65,7 +65,7 @@ While MAAS itself is not a multi-tenant cloud platform, integrators can architec
 
 ## Flexible networking for complex environments
 
-Integrators often need to implement custom network topologies (VLANs, bonding, multi-network setups) for clients. MAAS’s networking model is a huge enabler here. It allows definition of multiple VLANs, fabrics, and even multiple default gateways or DHCP relays, which is useful in complex enterprise setups or telco environments.anonical.com
+Integrators often need to implement custom network topologies (VLANs, bonding, multi-network setups) for clients. MAAS’s networking model is a huge enabler here. It allows definition of multiple VLANs, fabrics, and even multiple default gateways or DHCP relays, which is useful in complex enterprise setups or telco environments.
 . For instance, in a multi-rack, multi-network OpenStack, MAAS can ensure that each node is deployed on the correct networks (e.g., storage vs public vs management networks) with proper IPs and VLAN tags set – all automatically. This saves integrators from having to write custom provisioning scripts for network config. Additionally, MAAS now supports features like multiple default gateways, DHCP relay, and even UEFI HTTP Boot, which integrators can leverage to meet unique client requirements. The ability to simulate and apply complex network setups in software is a differentiator when delivering tailored solutions.
 
 ## Telco and NFV use-cases

@@ -1,6 +1,6 @@
 # Deploying running machines
 
-MAAS version 3.2 and higher provide the capability to customise deployed machines, in that you can update hardware for a running machine on-the-fly.  Specifically, MAAS will update a deployed machine’s data when you do any of the following things:
+MAAS version 3.2 and higher provide the capability to customize deployed machines, in that you can update hardware for a running machine on-the-fly. Specifically, MAAS will update a deployed machine’s data when you do any of the following things:
 
 - add or remove disks
 - add or remove network interfaces

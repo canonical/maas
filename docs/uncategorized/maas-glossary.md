@@ -38,7 +38,7 @@ In the client/server age, the lines between client and server are blurred and so
 
 #### Cloud-init
 
-Cloud-init is the industry-standard method for initialising cloud instances, independent of platform. It allows you to automatically provision operating system images, bringing them to a fully running state. It also allows you to customise networking, storage, user space, applications, and various other components of a functioning system.
+Cloud-init is the industry-standard method for initialising cloud instances, independent of platform. It allows you to automatically provision operating system images, bringing them to a fully running state. It also allows you to customize networking, storage, user space, applications, and various other components of a functioning system.
 
 There are four stages of cloud-init action:
 
@@ -52,9 +52,9 @@ There are four stages of cloud-init action:
 
 These four steps combine (at least) four general data sources to bring an instance into being:
 
-- Disk image - the operating system for the instance; this is a bare-bones, un-customised version of the chosen OS.
+- Disk image - the operating system for the instance; this is a bare-bones, un-customized version of the chosen OS.
 
-- Metadata - this configuration information is supplied by the cloud provider, specifying things like disk images storage, networking, default users, and other basic customisations.
+- Metadata - this configuration information is supplied by the cloud provider, specifying things like disk images storage, networking, default users, and other basic customizations.
 
 - User data - data provided by end users or cloud administrators to initialise the instance. This completely optional data can be anything from shell scripts to highly-structured cloud-config data that trigger cloud-init built-ins.
 
@@ -76,7 +76,7 @@ The node is in the process of commissioning. See node action 'Commission'.
 
 #### Controllers
 
-There are two types of controllers: a region controller and a rack controller. The region controller deals with operator requests while one or more rack controllers provide the high-bandwidth services to multiple server racks, as typically found in a data centre.
+There are two types of controllers: a region controller and a rack controller. The region controller deals with operator requests while one or more rack controllers provide the high-bandwidth services to multiple server racks, as typically found in a data center.
 
 A region controller consists of the following components:
 
@@ -86,7 +86,7 @@ A region controller consists of the following components:
 - caching HTTP proxy
 - web UI
 
-Think of a region controller can as being responsible for a data centre, or a single region. Multiple fabrics are used by MAAS to accommodate subdivisions within a single region, such as multiple floors in a data centre.
+Think of a region controller can as being responsible for a data center, or a single region. Multiple fabrics are used by MAAS to accommodate subdivisions within a single region, such as multiple floors in a data center.
 
 A rack controller provides the following services:
 
@@ -95,7 +95,7 @@ A rack controller provides the following services:
 - HTTP (for images)
 - power management
 
-A rack controller is attached to each "fabric". As the name implies, a typical setup is to have a rack controller in each data centre server rack. The rack controller will cache large items for performance, such as operating system install images, but maintains no independent state other than the credentials required to talk to the region controller.
+A rack controller is attached to each "fabric". As the name implies, a typical setup is to have a rack controller in each data center server rack. The rack controller will cache large items for performance, such as operating system install images, but maintains no independent state other than the credentials required to talk to the region controller.
 
 Both the region controller and the rack controller can be scaled-out as well as made highly available.
 
@@ -159,7 +159,7 @@ A DHCP relay, or relay agent, is a network device that forwards requests and rep
 
 #### Edge clouds
 
-Edge clouds are designed to minimise latency, so that your cloud computing experience is nearer to real-time. The use of "edge" doesn't specifically refer to the edges of the cloud, but to the machines that are at the "edge of the problem," or more to the point, "the edge of the cloud that is closest to your application."  Sometimes these are separate clouds in your own data centre, though they can also be parts of a remote cloud that are closer to you in network terms.
+Edge clouds are designed to minimise latency, so that your cloud computing experience is nearer to real-time. The use of "edge" doesn't specifically refer to the edges of the cloud, but to the machines that are at the "edge of the problem," or more to the point, "the edge of the cloud that is closest to your application."  Sometimes these are separate clouds in your own data center, though they can also be parts of a remote cloud that are closer to you in network terms.
 
 There are a number of complex decision lops and optimisation algorithms used by edge clouds, but the primary purpose is low-latency computing where possible. If the servers closest to you (network-wise) can handle the load, they do; if not, they can call on other servers just a little further away.
 
@@ -205,9 +205,9 @@ Think of each of the local exchange conferences as a VLAN; the long-distance ope
 
 You could describe a fabric as a VLAN namespace. It's a switch or a combination of switches that use trunking to provide access to specific VLANs. MAAS creates a default fabric ('fabric-0') for each detected subnet during installation.
 
-The following conceptual diagram shows two fabrics in the same data centre or region, each using distinct VLAN ranges and their associated subnets:
+The following conceptual diagram shows two fabrics in the same data center or region, each using distinct VLAN ranges and their associated subnets:
 
-![Conceptual diagram showing two fabrics in a data centre, each with distinct VLAN ranges and associated subnets](/images/uncategorized/maas-glossary/maas-region-diagram.webp)
+![Conceptual diagram showing two fabrics in a data center, each with distinct VLAN ranges and associated subnets](/images/uncategorized/maas-glossary/maas-region-diagram.webp)
 
 #### Failed Commissioning
 
@@ -449,7 +449,7 @@ A node bearing this status has been commissioned and is ready for use, including
 
 #### Regions
 
-A region is an organisational unit one level above a zone. It contains all information about all machines running in any possible zones. In particular, the PostgreSQL database runs at this level and maintains state for all these machines.
+A region is an organizational unit one level above a zone. It contains all information about all machines running in any possible zones. In particular, the PostgreSQL database runs at this level and maintains state for all these machines.
 
 #### Release
 
@@ -590,7 +590,7 @@ A [WAN (wide area network)](https://en.wikipedia.org/wiki/Wide_area_network#firs
 
 #### Zones
 
-A physical zone, or just zone, is an organisational unit that contains nodes where each node is in one, and only one, zone. Later, while in production, a node can be taken (allocated) from a specific zone (or not from a specific zone). Since zones, by nature, are custom-designed (except for the 'default' zone), they provide more flexibility than a similar feature offered by a public cloud service (ex: availability zones).
+A physical zone, or just zone, is an organizational unit that contains nodes where each node is in one, and only one, zone. Later, while in production, a node can be taken (allocated) from a specific zone (or not from a specific zone). Since zones, by nature, are custom-designed (except for the 'default' zone), they provide more flexibility than a similar feature offered by a public cloud service (ex: availability zones).
 
 Some prime examples of zone usage include fault-tolerance, service performance, and power management.
 

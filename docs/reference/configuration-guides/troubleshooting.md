@@ -2554,7 +2554,7 @@ lxc network set $LXD_BRIDGE_NAME ipv6.dhcp=false
 
 ## Nodes hang on "Commissioning"
 
-**Timing issues**: Make sure the hardware clocks on your nodes and MAAS server are synchronised.
+**Timing issues**: Make sure the hardware clocks on your nodes and MAAS server are synchronized.
 
 **Network drivers**: Use Linux-compatible network adaptors if commissioning hangs due to driver issues.
 
@@ -2620,7 +2620,7 @@ MAAS will auto-logoff users when the session timeout duration is reached. If thi
 
 ## Can't set different timeouts for user groups
 
-MAAS only supports a global session timeout setting. While you can't customise this by user group, you could deploy separate MAAS instances with different configurations to achieve similar effects.
+MAAS only supports a global session timeout setting. While you can't customize this by user group, you could deploy separate MAAS instances with different configurations to achieve similar effects.
 
 ## Can't extend sessions beyond the timeout
 
@@ -2685,7 +2685,7 @@ Create a new SquashFS file with your changes:
 sudo mksquashfs xenial/ xenial-customized.squashfs -xattrs -comp xz
 ```
 
-Replace the existing MAAS image with this customised one.
+Replace the existing MAAS image with this customized one.
 
 ## Migrating snap installs
 

@@ -26,7 +26,7 @@ When new machines are added, MAAS performs automatic hardware discovery. It uses
 
 ### Storage configuration and testing
 
-MAAS provides fine-grained control over server storage configurations. Users can configure complex storage setups during deployment – for example, set up software RAID arrays, LVM volume groups, ZFS pools, or bcache devices – all through the MAAS UI, CLI, API. MAAS also automatically tags disks by type (SSD vs HDD) to assist in placement decisions. MAAS can perform aksi disk benchmarking and health testing during commissioning: it can run nondestructive or destructive write tests to gauge disk performance and flag any faults. This ensures that each machine’s storage is configured and performing as expected before going into production.
+MAAS provides fine-grained control over server storage configurations. Users can configure complex storage setups during deployment – for example, set up software RAID arrays, LVM volume groups, ZFS pools, or bcache devices – all through the MAAS UI, CLI, API. MAAS also automatically tags disks by type (SSD vs HDD) to assist in placement decisions. MAAS can perform disk benchmarking and health testing during commissioning: it can run nondestructive or destructive write tests to gauge disk performance and flag any faults. This ensures that each machine’s storage is configured and performing as expected before going into production.
 
 ### Network management (DHCP, DNS, IPAM)
 
@@ -56,7 +56,7 @@ Lifecycle management and repurposing
 
 Beyond initial provisioning, MAAS assists in the full lifecycle of servers. Machines can be commissioned (inspected and tested), deployed to an OS, then later released back into the pool, ready for redeployment for a new purpose. This makes it easy to repurpose hardware on the fly. For example, you could deploy a machine as an Ubuntu Kubernetes node one week, then release it and redeploy it as a Windows database server the next -- all remotely, within minutes. MAAS supports automated OS reinstallations and also provides workflows for decommissioning (e.g., wiping disks for security).
 
-This flexiblity enables automated repurposing of hardware, allowing different workloads at different times on the same physical resources. By cycling machines between roles or powering them off when not in use, organizations can optimize utilization and reduce cost. MAAS even encourages power management strategies like decommissioning nodes during non-peak periods to save energy and operational costs.
+This flexibility enables automated repurposing of hardware, allowing different workloads at different times on the same physical resources. By cycling machines between roles or powering them off when not in use, organizations can optimize utilization and reduce cost. MAAS even encourages power management strategies like decommissioning nodes during non-peak periods to save energy and operational costs.
 
 ### Testing and validation
 

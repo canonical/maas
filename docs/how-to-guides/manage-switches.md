@@ -693,7 +693,7 @@ ls -lh /var/lib/maas/boot-resources/current/
 
 ### Switch may be using a different MAC address than expected
 
-ONIE will generally use the switches base MAC address, which in some instances may differ from the management MAC adress printed on the switch.
+ONIE will generally use the switches base MAC address, which in some instances may differ from the management MAC address printed on the switch.
 It may be possible to find the correct MAC address by looking at [MAAS discoveries](../reference/cli-reference/discovery.md), which list unknown interfaces with MAC Address and their Vendors.
 From there it is generally simple to select the correct MAC address that ONIE is using and create a switch with it.
 
