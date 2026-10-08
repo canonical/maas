@@ -47,7 +47,7 @@ class ScriptsClauseFactory(ClauseFactory):
         return Clause(condition=ScriptTable.c.tags.overlap(tags))
 
     @classmethod
-    def without_tags(cls, tags: list[str]) -> Clause:
+    def without_tags_contains(cls, tags: list[str]) -> Clause:
         """NULL-safe exclude(tags__contains=...)."""
         return Clause(
             condition=or_(

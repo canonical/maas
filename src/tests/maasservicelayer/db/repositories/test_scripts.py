@@ -118,8 +118,8 @@ class TestScriptsClauseFactory:
             == "maasserver_script.tags && ARRAY['enlisting', 'deploy-info']"
         )
 
-    def test_without_tags(self) -> None:
-        clause = ScriptsClauseFactory.without_tags(["noauto"])
+    def test_without_tags_contains(self) -> None:
+        clause = ScriptsClauseFactory.without_tags_contains(["noauto"])
         assert (
             str(
                 clause.condition.compile(
@@ -284,7 +284,7 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
             "deploy-script",
         }
 
-    async def test_get_many_filter_by_without_tags(
+    async def test_get_many_filter_by_without_tags_contains(
         self, repository_instance: ScriptsRepository, fixture: Fixture
     ) -> None:
         await create_test_script_entry(
@@ -298,7 +298,9 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
         )
 
         scripts = await repository_instance.get_many(
-            QuerySpec(where=ScriptsClauseFactory.without_tags(["noauto"]))
+            QuerySpec(
+                where=ScriptsClauseFactory.without_tags_contains(["noauto"])
+            )
         )
         assert {script.name for script in scripts} == {
             "auto-script",
@@ -363,7 +365,7 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
                             ScriptType.COMMISSIONING
                         ),
                         ScriptsClauseFactory.with_empty_for_hardware(),
-                        ScriptsClauseFactory.without_tags(["noauto"]),
+                        ScriptsClauseFactory.without_tags_contains(["noauto"]),
                     ]
                 )
             )
