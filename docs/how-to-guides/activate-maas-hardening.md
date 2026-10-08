@@ -10,7 +10,7 @@ For rack controllers, see [Harden a rack controller](/how-to-guides/harden-a-rac
 
 You need:
 
-- MAAS 3.8 or later, installed as a snap.
+- MAAS 3.7.4 or later, installed as a snap.
 - `sudo` access to every region controller.
 - A TLS certificate and private key for the MAAS API, in PEM format. The certificate must cover the MAAS URL. For high availability, it must cover every region controller.
 - If PostgreSQL runs on a different host: the CA certificate that signed the PostgreSQL server certificate, and TLS enabled on the PostgreSQL server.
@@ -88,21 +88,45 @@ For the full list of keys and their defaults, see [Bind addresses](/reference/co
 
 Skip this section if MAAS connects to PostgreSQL through a local Unix socket. TLS does not apply to socket connections.
 
-1. Copy the CA certificate that signed the PostgreSQL server certificate to the controller, then point MAAS at it:
+1. Confirm that the PostgreSQL server certificate carries a Subject Alternative Name (SAN) for every host name or IP address that MAAS uses to reach the database:
+
+   ```bash
+   openssl x509 -in server.crt -noout -text | grep -A1 "Subject Alternative Name"
+   ```
+
+   Expected output:
+
+   ```text
+   X509v3 Subject Alternative Name:
+       DNS:db.example.com, IP Address:10.0.0.9
+   ```
+
+   Empty output means the certificate has no SANs. Reissue it with SANs before you continue. MAAS rejects a certificate that relies on its Common Name field, under both `verify-ca` and `verify-full`. See [PostgreSQL server certificate requirements](/reference/configuration-guides/security-hardening.md#postgresql-server-certificate-requirements).
+
+2. Copy the CA certificate that signed the PostgreSQL server certificate to the controller, then point MAAS at it:
 
    ```bash
    sudo maas config-hardening set database_sslrootcert /var/snap/maas/common/db-ca.pem
    ```
 
-2. Require certificate verification:
+3. Require certificate verification:
 
    ```bash
    sudo maas config-hardening set database_sslmode verify-full
    ```
 
-   Use `verify-full` to check both the certificate chain and the host name. Use `verify-ca` if the certificate does not contain the database host name.
+   `verify-full` checks the certificate chain and the host name. `verify-ca` checks the chain only. Both modes require SANs.
 
-3. If the PostgreSQL server requires client certificate authentication, also set the client certificate and key:
+4. If the certificate was issued by a private CA and you do not use client certificates, also install the CA certificate in the controller's system trust store:
+
+   ```bash
+   sudo cp /var/snap/maas/common/db-ca.pem /usr/local/share/ca-certificates/db-ca.crt
+   sudo update-ca-certificates
+   ```
+
+   Without this, MAAS cannot verify a private certificate chain when no client certificate is configured.
+
+5. If the PostgreSQL server requires client certificate authentication, also set the client certificate and key:
 
    ```bash
    sudo maas config-hardening set database_sslcert /var/snap/maas/common/db-client.pem

@@ -70,6 +70,35 @@ journalctl -t maas-regiond | grep -E 'fips_mode_detected|hardening_mode_determin
 
 Look for `fips_mode=True` and `hardening_active=True`.
 
+## Confirm the state through the API
+
+Any authenticated user can read the FIPS and hardening state of a controller.
+
+1. Get an access token:
+
+   ```bash
+   read -rsp "MAAS password: " MAAS_PASSWORD; echo
+   TOKEN=$(curl -s --cacert ca.pem -X POST "https://<maas-host>:5443/MAAS/a/v3/auth/login" \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "username=<your-username>" \
+     --data-urlencode "password=${MAAS_PASSWORD}" | jq -r '.access_token')
+   ```
+
+2. Read the system information:
+
+   ```bash
+   curl -s --cacert ca.pem "https://<maas-host>:5443/MAAS/a/v3/system/info" \
+     -H "Authorization: Bearer $TOKEN"
+   ```
+
+   On a FIPS host, the response is:
+
+   ```json
+   {"fips_active": true, "hardening_active": true, "version": "3.7.0"}
+   ```
+
+The response describes the controller that answered the request. See [Reported state](/reference/configuration-guides/fips-mode.md#reported-state).
+
 ## Complete the hardening configuration
 
 Hardening is now active on the controller. Any missing prerequisite appears as an error notification for administrators. Run validation to list them:
@@ -85,8 +114,16 @@ FIPS mode adds controls that may require further action:
 - Replace any public API TLS certificate that uses a weak key or signature. See [Replace a weak TLS certificate](/how-to-guides/resolve-hardening-violations.md#replace-a-weak-tls-certificate).
 - Add trusted host keys for machines that use SSH-based power drivers. See [Manage trusted SSH host keys](/how-to-guides/manage-trusted-ssh-host-keys.md).
 - Move machines off power drivers that are rejected in FIPS mode. See [Power drivers](/reference/configuration-guides/fips-mode.md#power-drivers).
+- Set the default IPMI cipher suite to `17` before you commission machines. Commissioning writes this setting into each machine's power configuration, and its default is `3`, which FIPS mode rejects:
+
+  ```bash
+  maas $PROFILE maas set-config name=maas_auto_ipmi_cipher_suite_id value=17
+  ```
+
+If MAAS already manages machines, users, and keys, read [Adopt FIPS mode on an existing deployment](/how-to-guides/adopt-fips-on-an-existing-deployment.md) before you enable FIPS mode. MAAS does not validate material that is already stored.
 
 ## Related topics
 
 - [FIPS mode and security hardening](/explanation/fips.md)
 - [FIPS mode reference](/reference/configuration-guides/fips-mode.md)
+- [Adopt FIPS mode on an existing deployment](/how-to-guides/adopt-fips-on-an-existing-deployment.md)

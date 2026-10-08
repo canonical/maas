@@ -14,6 +14,26 @@ FIPS mode always activates security hardening. The controls in the [Security har
 | File unreadable | Not in FIPS mode, and a `fips_mode_unreadable` warning is logged |
 | When read | Once per process, at startup |
 
+## Reported state
+
+MAAS reports its FIPS and hardening state through the v3 API.
+
+| Item | Value |
+|---|---|
+| Path | `GET /MAAS/a/v3/system/info` |
+| Permission | Any authenticated user |
+| Response fields | `fips_active`, `hardening_active`, `version` |
+
+| Field | Type | Meaning |
+|---|---|---|
+| `fips_active` | boolean | The kernel of the controller that answered the request is in FIPS mode. |
+| `hardening_active` | boolean | Security hardening is active on that controller. |
+| `version` | string | MAAS version, such as `3.7.0` or `3.7.0~beta1`. |
+
+The values are resolved when MAAS starts. After you change `hardening_enabled`, restart MAAS before you read the endpoint again.
+
+In a high availability deployment, the response describes the controller that answered the request. Query each controller in turn to audit the whole fleet.
+
 ## Summary of FIPS-conditional controls
 
 | Area | Control |

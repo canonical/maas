@@ -103,6 +103,7 @@ Protect your MAAS controllers and the machines they manage. Learn how to configu
 * [Harden a rack controller](/how-to-guides/harden-a-rack-controller.md)
 * [Resolve hardening violations](/how-to-guides/resolve-hardening-violations.md)
 * [Enable FIPS mode on a MAAS controller](/how-to-guides/enable-fips-mode-on-a-controller.md)
+* [Adopt FIPS mode on an existing deployment](/how-to-guides/adopt-fips-on-an-existing-deployment.md)
 * [Manage trusted SSH host keys](/how-to-guides/manage-trusted-ssh-host-keys.md)
 * [Deploy a FIPS kernel](/how-to-guides/deploy-a-fips-kernel.md)
 
@@ -152,6 +153,7 @@ activate-maas-hardening
 harden-a-rack-controller
 resolve-hardening-violations
 enable-fips-mode-on-a-controller
+adopt-fips-on-an-existing-deployment
 manage-trusted-ssh-host-keys
 deploy-a-real-time-kernel
 deploy-a-fips-kernel

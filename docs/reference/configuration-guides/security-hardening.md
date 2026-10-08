@@ -108,6 +108,23 @@ All file-backed keys are per host and stored in `/var/snap/maas/current/regiond.
 
 The public API TLS certificate and private key are not hardening parameters. They are stored in the MAAS secret store and managed with `maas config-tls`.
 
+### PostgreSQL server certificate requirements
+
+The PostgreSQL server certificate must carry a Subject Alternative Name (SAN) for every host name or IP address that MAAS uses to reach the database. MAAS rejects a certificate that relies on its Common Name field:
+
+```text
+x509: certificate relies on legacy Common Name field, use SANs instead
+```
+
+| `database_sslmode` | Certificate chain verified | SAN required |
+|---|---|---|
+| `disable`, `allow`, `prefer` | No | No |
+| `require` | No | No |
+| `verify-ca` | Yes | Yes |
+| `verify-full` | Yes | Yes |
+
+If the certificate comes from a private CA and you do not use client certificates, also install the CA certificate in the controller's system trust store.
+
 ### Bind addresses
 
 A bind key sets the address or addresses that a service listens on. List-valued keys accept a comma-separated list that may mix IPv4 and IPv6 addresses.

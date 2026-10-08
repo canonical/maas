@@ -144,7 +144,30 @@ MAAS connects to PostgreSQL over TCP without verifying the server certificate.
 
 3. If the server requires client certificates, also set `database_sslcert` and `database_sslkey`. Otherwise, you do not need them.
 
-If MAAS fails to connect after the restart, check that the server certificate's host name matches `database_host`, or use `verify-ca`.
+### Database migrations fail with a certificate error
+
+`verify-ca` and `verify-full` both require the PostgreSQL server certificate to carry a Subject Alternative Name (SAN) that matches `database_host`. With a certificate that has no SANs, `maas init` or a snap refresh fails during the database migration step:
+
+```text
+x509: certificate relies on legacy Common Name field, use SANs instead
+```
+
+1. Inspect the certificate:
+
+   ```bash
+   openssl x509 -in server.crt -noout -text | grep -A1 "Subject Alternative Name"
+   ```
+
+2. If the output is empty, reissue the certificate with a SAN for every name and address that MAAS uses in `database_host`.
+
+If the error instead reports an unknown authority, MAAS could not verify your certificate chain. Install the CA certificate in the controller's system trust store:
+
+```bash
+sudo cp /var/snap/maas/common/db-ca.pem /usr/local/share/ca-certificates/db-ca.crt
+sudo update-ca-certificates
+```
+
+See [PostgreSQL server certificate requirements](/reference/configuration-guides/security-hardening.md#postgresql-server-certificate-requirements).
 
 ## Resolve a FIPS mismatch
 
