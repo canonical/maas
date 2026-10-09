@@ -41,6 +41,7 @@ class TestMachineResponse:
             fqdn="maas.local",
             hostname="hostname",
             power_state=PowerState.ON,
+            pool_id=0,
         )
 
         response = MachineResponse.from_model(

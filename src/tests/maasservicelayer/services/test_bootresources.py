@@ -10,6 +10,7 @@ from maascommon.enums.boot_resources import (
     BootResourceFileType,
     BootResourceType,
 )
+from maascommon.osystem import BOOT_IMAGE_PURPOSE
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
@@ -21,8 +22,14 @@ from maasservicelayer.db.repositories.bootresourcesets import (
 )
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootresourcesets import BootResourceSet
+from maasservicelayer.models.configurations import (
+    CommissioningDistroSeriesConfig,
+    CommissioningOSystemConfig,
+)
+from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.bootresources import BootResourceService
 from maasservicelayer.services.bootresourcesets import BootResourceSetsService
+from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.utils.date import utcnow
 from maastesting.factory import factory
 from tests.fixtures.factories.bootresourcefiles import (
@@ -57,6 +64,7 @@ class TestCommonBootResourceService(ServiceCommonTests):
             context=Context(),
             repository=Mock(BootResourcesRepository),
             boot_resource_sets_service=Mock(BootResourceSetsService),
+            configurations_service=Mock(ConfigurationsService),
         )
 
     @pytest.fixture
@@ -74,13 +82,26 @@ class TestBootResourceService:
         return Mock(BootResourceSetsService)
 
     @pytest.fixture
+    def mock_configurations_service(self) -> Mock:
+        configurations_service = Mock(ConfigurationsService)
+        configurations_service.get_many.return_value = {
+            CommissioningOSystemConfig.name: "ubuntu",
+            CommissioningDistroSeriesConfig.name: "noble",
+        }
+        return configurations_service
+
+    @pytest.fixture
     def service(
-        self, mock_repository: Mock, mock_boot_resource_sets_service: Mock
+        self,
+        mock_repository: Mock,
+        mock_boot_resource_sets_service: Mock,
+        mock_configurations_service: Mock,
     ) -> BootResourceService:
         return BootResourceService(
             context=Context(),
             repository=mock_repository,
             boot_resource_sets_service=mock_boot_resource_sets_service,
+            configurations_service=mock_configurations_service,
         )
 
     async def make_incomplete_boot_resource(
@@ -500,3 +521,235 @@ class TestBootResourceService:
         mock_repository.list_custom_images_statistics.assert_awaited_once_with(
             page=1, size=10, query=None
         )
+
+    @pytest.mark.parametrize(
+        "osystem",
+        [
+            "centos",
+            "not-a-registered-os",
+        ],
+    )
+    async def test_get_resource_for_returns_none_if_os_lacks_purpose(
+        self,
+        mock_repository: Mock,
+        service: BootResourceService,
+        osystem: str,
+    ) -> None:
+        resource = await service.get_resource_for(
+            osystem,
+            "amd64",
+            "generic",
+            "8",
+            BOOT_IMAGE_PURPOSE.COMMISSIONING,
+        )
+
+        assert resource is None
+        mock_repository.get_many.assert_not_awaited()
+
+    async def test_get_resource_for_queries_synced_and_uploaded(
+        self,
+        mock_repository: Mock,
+        service: BootResourceService,
+    ) -> None:
+        mock_repository.get_many.return_value = [TEST_BOOT_RESOURCE]
+
+        resource = await service.get_resource_for(
+            "ubuntu", "amd64", "generic", "noble"
+        )
+
+        assert resource == TEST_BOOT_RESOURCE
+        mock_repository.get_many.assert_awaited_once_with(
+            query=QuerySpec(
+                where=BootResourceClauseFactory.and_clauses(
+                    [
+                        BootResourceClauseFactory.or_clauses(
+                            [
+                                BootResourceClauseFactory.with_rtype(
+                                    BootResourceType.SYNCED
+                                ),
+                                BootResourceClauseFactory.with_rtype(
+                                    BootResourceType.UPLOADED
+                                ),
+                            ]
+                        ),
+                        BootResourceClauseFactory.with_name("ubuntu/noble"),
+                        BootResourceClauseFactory.with_architecture_starting_with(
+                            "amd64"
+                        ),
+                    ]
+                )
+            )
+        )
+
+    @pytest.mark.parametrize(
+        "architecture, extra, subarchitecture, matches",
+        [
+            ("amd64/generic", {}, "generic", True),
+            (
+                "amd64/generic",
+                {"subarches": "hwe-22.04,ga-24.04"},
+                "ga-24.04",
+                True,
+            ),
+            (
+                "amd64/generic",
+                {"platform": "xgene-uboot"},
+                "xgene-uboot",
+                True,
+            ),
+            (
+                "amd64/generic",
+                {"supported_platforms": "rpi4,rpi5"},
+                "rpi5",
+                True,
+            ),
+            ("amd64/generic", {"subarches": "hwe-22.04"}, "ga-24.04", False),
+        ],
+    )
+    async def test_get_resource_for_matches_subarchitecture(
+        self,
+        mock_repository: Mock,
+        service: BootResourceService,
+        architecture: str,
+        extra: dict,
+        subarchitecture: str,
+        matches: bool,
+    ) -> None:
+        candidate = TEST_BOOT_RESOURCE.model_copy(
+            update={"architecture": architecture, "extra": extra}
+        )
+        mock_repository.get_many.return_value = [candidate]
+
+        resource = await service.get_resource_for(
+            "ubuntu", "amd64", subarchitecture, "noble"
+        )
+
+        assert resource == (candidate if matches else None)
+
+    async def test_has_commissioning_resource(
+        self,
+        mock_repository: Mock,
+        service: BootResourceService,
+    ) -> None:
+        mock_repository.get_many.return_value = [TEST_BOOT_RESOURCE]
+
+        assert await service.has_commissioning_resource("amd64/generic")
+
+        query = mock_repository.get_many.call_args.kwargs["query"]
+        assert query.where == BootResourceClauseFactory.and_clauses(
+            [
+                BootResourceClauseFactory.or_clauses(
+                    [
+                        BootResourceClauseFactory.with_rtype(
+                            BootResourceType.SYNCED
+                        ),
+                        BootResourceClauseFactory.with_rtype(
+                            BootResourceType.UPLOADED
+                        ),
+                    ]
+                ),
+                BootResourceClauseFactory.with_name("ubuntu/noble"),
+                BootResourceClauseFactory.with_architecture_starting_with(
+                    "amd64"
+                ),
+            ]
+        )
+
+    async def test_has_commissioning_resource_false_if_unavailable(
+        self,
+        mock_repository: Mock,
+        service: BootResourceService,
+    ) -> None:
+        mock_repository.get_many.return_value = []
+
+        assert not await service.has_commissioning_resource("arm64/generic")
+
+    async def test_has_commissioning_resource_rejects_non_commissioning_os(
+        self,
+        mock_repository: Mock,
+        mock_configurations_service: Mock,
+        service: BootResourceService,
+    ) -> None:
+        mock_configurations_service.get_many.return_value = {
+            CommissioningOSystemConfig.name: "centos",
+            CommissioningDistroSeriesConfig.name: "8",
+        }
+        mock_repository.get_many.return_value = [
+            TEST_BOOT_RESOURCE.model_copy(update={"name": "centos/8"})
+        ]
+
+        assert not await service.has_commissioning_resource("amd64/generic")
+        mock_repository.get_many.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+class TestIntegrationBootResourceService:
+    async def test_get_resource_for(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ) -> None:
+        expected = await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.SYNCED,
+            name="ubuntu/noble",
+            architecture="amd64/generic",
+        )
+        await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.SYNCED,
+            name="ubuntu/jammy",
+            architecture="amd64/generic",
+        )
+        await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.SYNCED,
+            name="ubuntu/noble",
+            architecture="arm64/generic",
+        )
+
+        resource = await services.boot_resources.get_resource_for(
+            "ubuntu", "amd64", "generic", "noble"
+        )
+
+        assert resource is not None
+        assert resource.id == expected.id
+
+    async def test_get_resource_for_nonexistent(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ) -> None:
+        await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.SYNCED,
+            name="ubuntu/noble",
+            architecture="amd64/generic",
+        )
+
+        resource = await services.boot_resources.get_resource_for(
+            "ubuntu", "amd64", "generic", "focal"
+        )
+
+        assert resource is None
+
+    async def test_has_commissioning_resource(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ) -> None:
+        await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.SYNCED,
+            name="ubuntu/noble",
+            architecture="amd64/generic",
+        )
+
+        result = await services.boot_resources.has_commissioning_resource(
+            "amd64/generic"
+        )
+
+        assert result is True
+
+    async def test_has_commissioning_resource_nonexistent(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ) -> None:
+        result = await services.boot_resources.has_commissioning_resource(
+            "amd64/generic"
+        )
+
+        assert result is False

@@ -5,9 +5,15 @@ from fastapi import Depends
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    ConflictBodyResponse,
+    ForbiddenBodyResponse,
     NotFoundBodyResponse,
+    UnauthorizedBodyResponse,
 )
 from maasapiserver.v3.api import services
+from maasapiserver.v3.api.public.models.requests.machines import (
+    MachineCommissionRequest,
+)
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.machines import (
     MachineResponse,
@@ -18,17 +24,48 @@ from maasapiserver.v3.api.public.models.responses.machines import (
     UsbDeviceResponse,
     UsbDevicesListResponse,
 )
+from maasapiserver.v3.api.public.models.responses.operations import (
+    OperationResponse,
+)
 from maasapiserver.v3.auth.base import (
+    check_authentication,
     check_permissions,
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.node import NodeStatus
+from maascommon.enums.operations import OperationResourceType, OperationType
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachineClauseFactory
-from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.db.repositories.nodes import NodeClauseFactory
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import (
+    BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE,
+    INVALID_MACHINE_STATUS_VIOLATION_TYPE,
+    MACHINE_LOCKED_VIOLATION_TYPE,
+    MISSING_PERMISSIONS_VIOLATION_TYPE,
+    OPERATION_IN_PROGRESS_VIOLATION_TYPE,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+    UNKNOWN_POWER_TYPE_VIOLATION_TYPE,
+)
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.machines import Machine
 from maasservicelayer.services import ServiceCollectionV3
+
+COMMISSIONABLE_STATUSES = frozenset(
+    {
+        NodeStatus.NEW,
+        NodeStatus.READY,
+        NodeStatus.FAILED_COMMISSIONING,
+        NodeStatus.BROKEN,
+    }
+)
 
 
 class MachinesHandler(Handler):
@@ -254,4 +291,142 @@ class MachinesHandler(Handler):
         return PowerDriverResponse.from_model(
             bmc=bmc,
             self_base_hyperlink=f"{V3_API_PREFIX}/machines/{system_id}/power_parameters",
+        )
+
+    @handler(
+        path="/machines/{system_id}:commission",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            202: {
+                "model": OperationResponse,
+            },
+            401: {"model": UnauthorizedBodyResponse},
+            403: {"model": ForbiddenBodyResponse},
+            404: {"model": NotFoundBodyResponse},
+            409: {"model": ConflictBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=202,
+        dependencies=[Depends(check_authentication())],
+    )
+    async def commission_machine(
+        self,
+        system_id: str,
+        commission_request: MachineCommissionRequest | None = None,
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
+    ) -> OperationResponse:
+        if commission_request is None:
+            commission_request = MachineCommissionRequest()
+
+        machine = await services.machines.get_one(
+            query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id))
+        )
+
+        # Both keeps the type checker happy and at the same time checks if machine is None.
+        # Ensures the object is a Machine not a generic Node.
+        if not isinstance(machine, Machine):
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"Machine with system_id '{system_id}' was not found.",
+                    )
+                ]
+            )
+
+        # Check if the authenticated user has the necessary permissions to edit the machine.
+        fga_client = services.openfga_tuples.get_client()
+        can_edit = await fga_client.can_edit_machines_in_pool(
+            authenticated_user.id, machine.pool_id
+        )
+        if not can_edit:
+            raise ForbiddenException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                        message=f"The permission 'can_edit_machines' is required to commission machine '{system_id}'.",
+                    )
+                ]
+            )
+        if machine.locked:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MACHINE_LOCKED_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because it is locked.",
+                    )
+                ]
+            )
+
+        if machine.status not in COMMISSIONABLE_STATUSES:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_MACHINE_STATUS_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because it is in the {machine.status.name} status.",
+                    )
+                ]
+            )
+
+        if not machine.power_type:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNKNOWN_POWER_TYPE_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because its power type is not configured. Configure the power type before commissioning.",
+                    )
+                ]
+            )
+
+        if machine.architecture is None:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because it has no architecture.",
+                    )
+                ]
+            )
+        if not await services.boot_resources.has_commissioning_resource(
+            machine.architecture
+        ):
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because no commissioning boot image is available for its architecture '{machine.architecture}'.",
+                    )
+                ]
+            )
+
+        if await services.operations.has_active_operation_for_resource(
+            resource_type=OperationResourceType.MACHINE,
+            resource_id=machine.id,
+        ):
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=OPERATION_IN_PROGRESS_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because another operation is already in progress on it.",
+                    )
+                ]
+            )
+
+        operation = await services.operations.create_accepted_operation(
+            op_type=OperationType.MACHINE_COMMISSION,
+            resource_id=machine.id,
+            resource_type=OperationResourceType.MACHINE,
+            parameters={
+                "system_id": system_id,
+                **commission_request.model_dump(),
+            },
+            user_id=authenticated_user.id,
+        )
+        return OperationResponse.from_model(
+            operation=operation,
+            self_base_hyperlink=f"{V3_API_PREFIX}/operations",
         )
