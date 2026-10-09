@@ -3,9 +3,12 @@
 
 """Tests for `BootSourceSelection`."""
 
+from unittest.mock import call
+
 from django.core.exceptions import ValidationError
 
 from maasserver.models import BootSource, BootSourceSelection, Config
+import maasserver.models.bootsourceselection as bootsourceselection_module
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -49,6 +52,7 @@ class TestBootSourceSelection(MAASServerTestCase):
         # BootSource deletion cascade-deletes related
         # BootSourceSelections. This is implicit in Django but it's
         # worth adding a test for it all the same.
+        self.patch(bootsourceselection_module, "stop_workflow")
         boot_source = factory.make_BootSource()
         boot_source_selection = factory.make_BootSourceSelection(
             boot_source=boot_source
@@ -88,3 +92,26 @@ class TestBootSourceSelection(MAASServerTestCase):
         )
         with self.assertRaisesRegex(ValidationError, expected):
             boot_source_selection.delete()
+
+    def test_delete_stops_temporal_workflows(self):
+        stop_wf_mock = self.patch(bootsourceselection_module, "stop_workflow")
+        boot_source_selection = factory.make_BootSourceSelection(
+            arches=["amd64"]
+        )
+        boot_source_selection.delete()
+        stop_wf_mock.assert_called_once_with(
+            f"sync-selection:{boot_source_selection.id}"
+        )
+
+    def test_delete_stops_temporal_workflows_multiple_selections(self):
+        stop_wf_mock = self.patch(bootsourceselection_module, "stop_workflow")
+        boot_source_selections = [
+            factory.make_BootSourceSelection(arches=["amd64"]),
+            factory.make_BootSourceSelection(arches=["amd64"]),
+        ]
+        for selection in boot_source_selections:
+            selection.delete()
+        calls = [
+            call(f"sync-selection:{s.id}") for s in boot_source_selections
+        ]
+        stop_wf_mock.assert_has_calls(calls, any_order=True)

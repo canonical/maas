@@ -12,6 +12,7 @@ from maasserver.api.boot_source_selections import (
 )
 from maasserver.audit import Event
 from maasserver.models import BootSourceSelection
+import maasserver.models.bootsourceselection as bootsourceselection_module
 from maasserver.models.signals import bootsources
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -79,6 +80,7 @@ class TestBootSourceSelectionAPI(APITestCase.ForUser):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_DELETE_deletes_boot_source_selection(self):
+        self.patch(bootsourceselection_module, "stop_workflow")
         self.become_admin()
         boot_source_selection = factory.make_BootSourceSelection()
         response = self.client.delete(
@@ -88,6 +90,7 @@ class TestBootSourceSelectionAPI(APITestCase.ForUser):
         self.assertIsNone(reload_object(boot_source_selection))
 
     def test_DELETE_create_audit_event(self):
+        self.patch(bootsourceselection_module, "stop_workflow")
         self.become_admin()
         boot_source_selection = factory.make_BootSourceSelection()
         response = self.client.delete(
