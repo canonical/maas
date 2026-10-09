@@ -4,7 +4,7 @@
 from operator import eq
 from typing import Type
 
-from sqlalchemy import Table
+from sqlalchemy import not_, or_, Table
 
 from maascommon.enums.script import ScriptType
 from maasservicelayer.db.filters import Clause, ClauseFactory
@@ -45,6 +45,16 @@ class ScriptsClauseFactory(ClauseFactory):
     @classmethod
     def with_tags_overlap(cls, tags: list[str]) -> Clause:
         return Clause(condition=ScriptTable.c.tags.overlap(tags))
+
+    @classmethod
+    def without_tags_contains(cls, tags: list[str]) -> Clause:
+        """NULL-safe exclude(tags__contains=...)."""
+        return Clause(
+            condition=or_(
+                ScriptTable.c.tags.is_(None),
+                not_(ScriptTable.c.tags.contains(tags)),
+            )
+        )
 
     @classmethod
     def with_empty_for_hardware(cls) -> Clause:
