@@ -1232,6 +1232,23 @@ NodeGroupToRackControllerTable = Table(
     ),
 )
 
+NodeUserDataTable = Table(
+    "maasserver_nodeuserdata",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("data", Text, nullable=False),
+    Column(
+        "node_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
+    ),
+    Column("for_ephemeral_environment", Boolean, nullable=False),
+    UniqueConstraint("node_id", "for_ephemeral_environment"),
+)
+
 NodeTable = Table(
     "maasserver_node",
     METADATA,
