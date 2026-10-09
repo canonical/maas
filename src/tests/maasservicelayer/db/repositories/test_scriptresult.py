@@ -1,12 +1,15 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import datetime, timezone
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.scriptresult import ScriptStatus
 from maasservicelayer.builders.scriptresult import ScriptResultBuilder
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.scriptresults import (
     ScriptResultClauseFactory,
     ScriptResultsRepository,
@@ -172,3 +175,119 @@ class TestScriptResultsRepository(RepositoryCommonTests[ScriptResult]):
         self, repository_instance, instance_builder
     ):
         raise NotImplementedError()
+
+    async def test_create_pending_with_script_reference(
+        self, repository_instance: ScriptResultsRepository, scriptset_instance
+    ) -> None:
+        script_result = await repository_instance.create(
+            builder=ScriptResultBuilder(
+                script_set_id=scriptset_instance["id"],
+                status=ScriptStatus.PENDING,
+                script_id=1,
+                script_name="smartctl-validate",
+                script_version_id=1,
+                parameters={"storage": {"value": "all"}},
+                stdout="",
+                stderr="",
+                result="",
+                output="",
+                suppressed=False,
+            )
+        )
+        assert script_result.status == ScriptStatus.PENDING
+        assert script_result.script_id == 1
+        assert script_result.script_name == "smartctl-validate"
+        assert script_result.script_version_id == 1
+        assert script_result.parameters == {"storage": {"value": "all"}}
+        assert script_result.exit_status is None
+        assert script_result.started is None
+        assert script_result.ended is None
+        assert script_result.physical_blockdevice_id is None
+        assert script_result.interface_id is None
+
+    async def test_create_pending_builtin_without_script_reference(
+        self, repository_instance: ScriptResultsRepository, scriptset_instance
+    ) -> None:
+        """Builtin commissioning scripts aren't linked to a Script row.
+
+        Only `script_name` is set, matching the legacy
+        `ScriptResult.script_name` comment about results outliving a
+        deleted Script.
+        """
+        script_result = await repository_instance.create(
+            builder=ScriptResultBuilder(
+                script_set_id=scriptset_instance["id"],
+                status=ScriptStatus.PENDING,
+                script_name="00-maas-05-kernel-cmdline",
+                parameters={},
+                stdout="",
+                stderr="",
+                result="",
+                output="",
+                suppressed=False,
+            )
+        )
+        assert script_result.status == ScriptStatus.PENDING
+        assert script_result.script_id is None
+        assert script_result.script_name == "00-maas-05-kernel-cmdline"
+
+    async def test_create_many_pending_results_per_storage_device(
+        self, repository_instance: ScriptResultsRepository, scriptset_instance
+    ) -> None:
+        """One ScriptResult per block device, mirroring add_pending_script
+        expanding a storage-type parameter into multiple results."""
+        builders = [
+            ScriptResultBuilder(
+                script_set_id=scriptset_instance["id"],
+                status=ScriptStatus.PENDING,
+                script_id=1,
+                script_name="smartctl-validate",
+                physical_blockdevice_id=blockdevice_id,
+                parameters={"storage": {"value": {"id": blockdevice_id}}},
+                stdout="",
+                stderr="",
+                result="",
+                output="",
+                suppressed=False,
+            )
+            for blockdevice_id in (1, 2)
+        ]
+
+        created = await repository_instance.create_many(builders=builders)
+
+        results = await repository_instance.get_many(
+            query=QuerySpec(
+                where=ScriptResultClauseFactory.with_script_set_id(
+                    scriptset_instance["id"]
+                )
+            )
+        )
+        assert {r.id for r in created} == {r.id for r in results}
+        assert {r.physical_blockdevice_id for r in results} == {1, 2}
+
+    async def test_create_passed_with_started_and_ended(
+        self, repository_instance: ScriptResultsRepository, scriptset_instance
+    ) -> None:
+        started = datetime.now(timezone.utc)
+        ended = datetime.now(timezone.utc)
+
+        script_result = await repository_instance.create(
+            builder=ScriptResultBuilder(
+                script_set_id=scriptset_instance["id"],
+                status=ScriptStatus.PASSED,
+                exit_status=0,
+                started=started,
+                ended=ended,
+                interface_id=1,
+                parameters={},
+                stdout="",
+                stderr="",
+                result="",
+                output="",
+                suppressed=False,
+            )
+        )
+        assert script_result.exit_status == 0
+        assert script_result.started == started
+        assert script_result.ended == ended
+        assert script_result.interface_id == 1
