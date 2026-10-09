@@ -174,6 +174,7 @@ class TestMachinesApi(ApiCommonTests):
                 method="GET",
                 path=f"{self.BASE_PATH}/abcdef/power_parameters",
                 permission=MAASResourceEntitlement.CAN_EDIT_MACHINES,
+                rbac_admin_permission=True,
             ),
         ]
 

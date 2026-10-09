@@ -295,7 +295,8 @@ class UsersHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -348,7 +349,8 @@ class UsersHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -607,6 +609,7 @@ class UsersHandler(Handler):
             Depends(
                 check_permissions(
                     openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],

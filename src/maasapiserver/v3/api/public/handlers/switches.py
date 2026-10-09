@@ -59,7 +59,8 @@ class SwitchesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -111,7 +112,8 @@ class SwitchesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -157,7 +159,7 @@ class SwitchesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
                     rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
@@ -231,7 +233,7 @@ class SwitchesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
                     rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
@@ -301,7 +303,7 @@ class SwitchesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
                     rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )

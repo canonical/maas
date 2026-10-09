@@ -90,7 +90,8 @@ class UserGroupsHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -139,7 +140,8 @@ class UserGroupsHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -226,7 +228,8 @@ class UserGroupsHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -334,7 +337,8 @@ class UserGroupsHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -565,7 +569,8 @@ class UserGroupsHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],

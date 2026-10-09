@@ -49,7 +49,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -92,7 +93,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -141,7 +143,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -317,7 +320,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -371,7 +375,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],

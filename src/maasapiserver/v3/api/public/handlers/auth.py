@@ -411,6 +411,7 @@ class AuthHandler(Handler):
             Depends(
                 check_permissions(
                     openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
