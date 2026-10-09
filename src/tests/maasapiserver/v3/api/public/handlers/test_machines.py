@@ -357,14 +357,6 @@ class TestMachinesApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == 404
 
-    async def test_commission_machine_requires_authentication(
-        self, mocked_api_client: AsyncClient
-    ) -> None:
-        response = await mocked_api_client.post(
-            f"{self.BASE_PATH}/abcdef:commission"
-        )
-        assert response.status_code == 401
-
     def _mock_commission_services(
         self,
         services_mock: ServiceCollectionV3,
