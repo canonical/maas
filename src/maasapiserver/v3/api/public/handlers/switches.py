@@ -27,6 +27,7 @@ from maascommon.enums.interface import InterfaceType
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ConflictException,
@@ -58,7 +59,8 @@ class SwitchesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -110,7 +112,8 @@ class SwitchesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -156,7 +159,8 @@ class SwitchesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -229,7 +233,8 @@ class SwitchesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -298,7 +303,8 @@ class SwitchesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],

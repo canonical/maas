@@ -30,6 +30,7 @@ from maasapiserver.v3.auth.base import (
 from maascommon.enums.events import EventTypeEnum
 from maascommon.events import EVENT_DETAILS_MAP
 from maascommon.openfga.base import MAASResourceEntitlement
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ForbiddenException,
@@ -74,21 +75,30 @@ class ConfigurationsHandler(Handler):
         requests_restricted_config = any(
             name not in ConfigFactory.UNRESTRICTED_CONFIGS for name in names
         )
-        if (
-            requests_restricted_config
-            and not await services.openfga_tuples.get_client().has_permission_on_maas(
+        if requests_restricted_config:
+            if authenticated_user.rbac_permissions is not None:
+                if not authenticated_user.rbac_permissions.is_admin:
+                    raise ForbiddenException(
+                        details=[
+                            BaseExceptionDetail(
+                                type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                                message="Admin permission is required.",
+                            )
+                        ]
+                    )
+
+            elif not await services.openfga_tuples.get_client().has_permission_on_maas(
                 MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
                 authenticated_user.id,
-            )
-        ):
-            raise ForbiddenException(
-                details=[
-                    BaseExceptionDetail(
-                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
-                        message=f"The permission '{MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS}' is required.",
-                    )
-                ]
-            )
+            ):
+                raise ForbiddenException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                            message=f"The permission '{MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS}' is required.",
+                        )
+                    ]
+                )
         configurations = await services.configurations.get_many(names)
         return ConfigurationsListResponse(
             items=[
@@ -122,21 +132,29 @@ class ConfigurationsHandler(Handler):
     ) -> ConfigurationResponse:
         assert authenticated_user is not None
         config_model = ConfigFactory.get_config_model(name.value)
-        if (
-            config_model.requires_entitlement_to_view
-            and not await services.openfga_tuples.get_client().has_permission_on_maas(
+        if config_model.requires_entitlement_to_view:
+            if authenticated_user.rbac_permissions is not None:
+                if not authenticated_user.rbac_permissions.is_admin:
+                    raise ForbiddenException(
+                        details=[
+                            BaseExceptionDetail(
+                                type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                                message="Admin permission is required.",
+                            )
+                        ]
+                    )
+            elif not await services.openfga_tuples.get_client().has_permission_on_maas(
                 MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
                 authenticated_user.id,
-            )
-        ):
-            raise ForbiddenException(
-                details=[
-                    BaseExceptionDetail(
-                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
-                        message=f"The permission '{MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS}' is required.",
-                    )
-                ]
-            )
+            ):
+                raise ForbiddenException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                            message=f"The permission '{MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS}' is required.",
+                        )
+                    ]
+                )
         configuration = await services.configurations.get(name.value)
         return ConfigurationResponse(name=name.value, value=configuration)
 
@@ -152,7 +170,8 @@ class ConfigurationsHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -200,7 +219,8 @@ class ConfigurationsHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],

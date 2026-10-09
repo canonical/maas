@@ -27,6 +27,7 @@ from maasapiserver.v3.auth.base import (
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
@@ -48,6 +49,18 @@ class IPRangesHandler(Handler):
     """IPRanges API handler."""
 
     TAGS = ["IPRanges"]
+
+    async def _has_global_admin_access(
+        self,
+        authenticated_user: AuthenticatedUser,
+        services: ServiceCollectionV3,
+    ) -> bool:
+        if authenticated_user.rbac_permissions is not None:
+            return authenticated_user.rbac_permissions.is_admin is True
+
+        return await services.openfga_tuples.get_client().can_edit_global_entities(
+            authenticated_user.id
+        )
 
     @handler(
         path="/fabrics/{fabric_id}/vlans/{vlan_id}/subnets/{subnet_id}/ipranges",
@@ -116,7 +129,7 @@ class IPRangesHandler(Handler):
         response_model_exclude_none=True,
         status_code=201,
         dependencies=[
-            # Additional permission checks are performed in the handler and in the builder.
+            # Ownership and dynamic-range permissions are checked in the handler.
             Depends(check_authentication())
         ],
     )
@@ -132,23 +145,27 @@ class IPRangesHandler(Handler):
             get_authenticated_user
         ),
     ) -> IPRangeResponse:
-        if (
-            iprange_request.owner_id is not None
-            and iprange_request.owner_id != authenticated_user.id
-            and not (
-                await services.openfga_tuples.get_client().can_edit_global_entities(
-                    authenticated_user.id
-                )
+        owner_id = (
+            iprange_request.owner_id
+            if iprange_request.owner_id is not None
+            else authenticated_user.id
+        )
+        permission_error = None
+        if owner_id != authenticated_user.id:
+            permission_error = BaseExceptionDetail(
+                type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                message="Only admins can create IP ranges on behalf of other users.",
             )
+        elif iprange_request.type == IPRangeType.DYNAMIC:
+            permission_error = BaseExceptionDetail(
+                type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                message="Only admins can create/update dynamic IP ranges.",
+            )
+
+        if permission_error and not await self._has_global_admin_access(
+            authenticated_user, services
         ):
-            raise ForbiddenException(
-                details=[
-                    BaseExceptionDetail(
-                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
-                        message="Only admins can create IP ranges on behalf of other users.",
-                    )
-                ]
-            )
+            raise ForbiddenException(details=[permission_error])
 
         subnet = await services.subnets.get_one(
             query=QuerySpec(
@@ -171,7 +188,9 @@ class IPRangesHandler(Handler):
                 ]
             )
         builder = await iprange_request.to_builder(
-            subnet, authenticated_user, services
+            subnet,
+            services,
+            owner_id,
         )
         iprange = await services.ipranges.create(builder)
 
@@ -236,7 +255,7 @@ class IPRangesHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=204,
-        # Additional permission checks are performed in the handler and in the builder.
+        # Ownership permissions are checked in the handler.
         dependencies=[Depends(check_authentication())],
     )
     async def delete_fabric_vlan_subnet_iprange(
@@ -266,9 +285,10 @@ class IPRangesHandler(Handler):
             )
         )
         if iprange:
-            if iprange.user_id != authenticated_user.id and not (
-                await services.openfga_tuples.get_client().can_edit_global_entities(
-                    authenticated_user.id
+            if (
+                iprange.user_id != authenticated_user.id
+                and not await self._has_global_admin_access(
+                    authenticated_user, services
                 )
             ):
                 raise ForbiddenException(
@@ -299,7 +319,7 @@ class IPRangesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            # Additional permission checks are performed in the handler and in the builder.
+            # Ownership and dynamic-range permissions are checked in the handler.
             Depends(check_authentication())
         ],
     )
@@ -316,12 +336,12 @@ class IPRangesHandler(Handler):
             get_authenticated_user
         ),
     ) -> IPRangeResponse:
-        can_edit_global_entities = await services.openfga_tuples.get_client().can_edit_global_entities(
-            authenticated_user.id
+        is_user_admin = await self._has_global_admin_access(
+            authenticated_user, services
         )
         if (
             iprange_request.owner_id != authenticated_user.id
-            and not can_edit_global_entities
+            and not is_user_admin
         ):
             raise ForbiddenException(
                 details=[
@@ -372,10 +392,7 @@ class IPRangesHandler(Handler):
             )
 
         # the user is trying to modify an iprange that doesn't belong to him.
-        if (
-            iprange.user_id != authenticated_user.id
-            and not can_edit_global_entities
-        ):
+        if iprange.user_id != authenticated_user.id and not is_user_admin:
             raise ForbiddenException(
                 details=[
                     BaseExceptionDetail(
@@ -384,9 +401,21 @@ class IPRangesHandler(Handler):
                     )
                 ]
             )
+        if iprange_request.type == IPRangeType.DYNAMIC and not is_user_admin:
+            raise ForbiddenException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                        message="Only admins can create/update dynamic IP ranges.",
+                    )
+                ]
+            )
 
         builder = await iprange_request.to_builder(
-            subnet, authenticated_user, services, iprange.id
+            subnet,
+            services,
+            iprange_request.owner_id,
+            iprange.id,
         )
         iprange = await services.ipranges.update_one(
             query=QuerySpec(

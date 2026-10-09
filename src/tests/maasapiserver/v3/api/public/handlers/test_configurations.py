@@ -36,11 +36,45 @@ from maasservicelayer.services import (
     HookedConfigurationsService,
     ServiceCollectionV3,
 )
+from tests.maasapiserver.v3.api.public.handlers.base import (
+    ApiCommonTests,
+    Endpoint,
+)
 
 
 @pytest.mark.asyncio
-class TestConfigurationsApi:
+class TestConfigurationsApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/configurations"
+
+    @pytest.fixture
+    def endpoints_with_authorization(self) -> list[Endpoint]:
+        return [
+            Endpoint(
+                method="PUT",
+                path=self.BASE_PATH,
+                permission=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
+                rbac_admin_permission=True,
+            ),
+            Endpoint(
+                method="PUT",
+                path=f"{self.BASE_PATH}/{ThemeConfig.name}",
+                permission=MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
+                rbac_admin_permission=True,
+            ),
+        ]
+
+    @pytest.fixture
+    def endpoints_with_authentication_only(self) -> list[Endpoint]:
+        return [
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}?name={ThemeConfig.name}",
+            ),
+            Endpoint(
+                method="GET",
+                path=f"{self.BASE_PATH}/{ThemeConfig.name}",
+            ),
+        ]
 
     async def test_get_configurations_unrestricted_without_entitlement(
         self,
@@ -477,3 +511,84 @@ class TestConfigurationsApi:
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+
+@pytest.mark.asyncio
+class TestConfigurationsApiRBAC:
+    BASE_PATH = f"{V3_API_PREFIX}/configurations"
+
+    async def test_get_configurations_unrestricted(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_rbac: AsyncClient,
+    ):
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.get.return_value = "test"
+        response = await mocked_api_client_user_rbac.get(
+            f"{self.BASE_PATH}/{ThemeConfig.name}"
+        )
+        assert response.status_code == 200
+
+    async def test_get_configurations_restricted_forbidden(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_rbac: AsyncClient,
+    ):
+        services_mock.configurations = Mock(ConfigurationsService)
+        response = await mocked_api_client_user_rbac.get(
+            f"{self.BASE_PATH}?name={ThemeConfig.name}&name={UseRackProxyConfig.name}"
+        )
+        assert response.status_code == 403
+
+    async def test_get_configurations_restricted_ok_admin(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_rbac_admin: AsyncClient,
+    ):
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.get_many.return_value = {
+            ThemeConfig.name: ThemeConfig.default,
+            UseRackProxyConfig.name: UseRackProxyConfig.default,
+        }
+        response = await mocked_api_client_user_rbac_admin.get(
+            f"{self.BASE_PATH}?name={ThemeConfig.name}&name={UseRackProxyConfig.name}"
+        )
+        assert response.status_code == 200
+
+    async def test_get_configuration_unrestricted(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_rbac: AsyncClient,
+    ):
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.get.return_value = "test"
+        response = await mocked_api_client_user_rbac.get(
+            f"{self.BASE_PATH}/{ThemeConfig.name}"
+        )
+        assert response.status_code == 200
+
+    async def test_get_configuration_restricted_forbidden(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_rbac: AsyncClient,
+    ):
+        services_mock.configurations = Mock(ConfigurationsService)
+        response = await mocked_api_client_user_rbac.get(
+            f"{self.BASE_PATH}/{UseRackProxyConfig.name}"
+        )
+        assert response.status_code == 403
+
+    async def test_get_configuration_restricted_ok_admin(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_rbac_admin: AsyncClient,
+    ):
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.get_many.return_value = {
+            ThemeConfig.name: ThemeConfig.default,
+            UseRackProxyConfig.name: UseRackProxyConfig.default,
+        }
+        response = await mocked_api_client_user_rbac_admin.get(
+            f"{self.BASE_PATH}/{UseRackProxyConfig.name}"
+        )
+        assert response.status_code == 200

@@ -13,22 +13,17 @@ from maasapiserver.v3.api.public.models.requests.ipranges import (
 )
 from maascommon.enums.ipranges import IPRangeType
 from maascommon.enums.subnet import RdnsMode
-from maascommon.openfga.base import MAASResourceEntitlement
 from maascommon.utils.network import MAASIPRange, MAASIPSet
 from maasservicelayer.exceptions.catalog import (
     ConflictException,
-    ForbiddenException,
     ValidationException,
 )
-from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import (
-    OpenFGATupleService,
     ReservedIPsService,
     ServiceCollectionV3,
     V3SubnetUtilizationService,
 )
-from tests.maasapiserver.fixtures.app import AsyncOpenFGAClientMock
 
 
 @pytest.mark.asyncio
@@ -156,14 +151,13 @@ class TestIPRangeCreateRequest:
         should_raise: bool,
         message: str | None,
     ):
-        user = AuthenticatedUser(id=0, username="test")
         if should_raise:
             with pytest.raises(ValidationException) as e:
                 iprange = IPRangeCreateRequest(
                     type=IPRangeType.RESERVED, start_ip=start_ip, end_ip=end_ip
                 )
                 await iprange.to_builder(
-                    subnet, user, Mock(ServiceCollectionV3)
+                    subnet, Mock(ServiceCollectionV3), owner_id=0
                 )
             assert e.value.details[0].message == message
         else:
@@ -177,7 +171,7 @@ class TestIPRangeCreateRequest:
             )
             await IPRangeCreateRequest(
                 type=IPRangeType.RESERVED, start_ip=start_ip, end_ip=end_ip
-            ).to_builder(subnet, user, services_mock)
+            ).to_builder(subnet, services_mock, owner_id=0)
 
     async def test_reserved_range_user_with_owner(self):
         services_mock = Mock(ServiceCollectionV3)
@@ -185,7 +179,6 @@ class TestIPRangeCreateRequest:
         services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.return_value = MAASIPSet(
             ranges=[MAASIPRange(start="10.0.0.1", end="10.0.0.2")]
         )
-        user = AuthenticatedUser(id=0, username="test")
         iprange = IPRangeCreateRequest(
             type=IPRangeType.RESERVED,
             start_ip=IPv4Address("10.0.0.1"),
@@ -193,7 +186,7 @@ class TestIPRangeCreateRequest:
             owner_id=0,
         )
         builder = await iprange.to_builder(
-            self.TEST_IPV4_SUBNET, user, services_mock
+            self.TEST_IPV4_SUBNET, services_mock, owner_id=0
         )
         assert builder is not None
 
@@ -239,7 +232,6 @@ class TestIPRangeCreateRequest:
         end_ip: IPvAnyAddress,
         should_raise: bool,
     ):
-        user = AuthenticatedUser(id=0, username="test")
         services_mock = Mock(ServiceCollectionV3)
         services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
         services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.return_value = MAASIPSet(
@@ -251,7 +243,7 @@ class TestIPRangeCreateRequest:
                 iprange = IPRangeCreateRequest(
                     type=IPRangeType.RESERVED, start_ip=start_ip, end_ip=end_ip
                 )
-                await iprange.to_builder(subnet, user, services_mock)
+                await iprange.to_builder(subnet, services_mock, owner_id=0)
             assert (
                 e.value.details[0].message
                 == "Requested reserved range conflicts with an existing range."
@@ -259,13 +251,12 @@ class TestIPRangeCreateRequest:
         else:
             await IPRangeCreateRequest(
                 type=IPRangeType.RESERVED, start_ip=start_ip, end_ip=end_ip
-            ).to_builder(subnet, user, services_mock)
+            ).to_builder(subnet, services_mock, owner_id=0)
         services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.assert_called_with(
             subnet_id=subnet.id, exclude_ip_range_id=None
         )
 
     async def test_with_existing_iprange(self):
-        user = AuthenticatedUser(id=0, username="test")
         services_mock = Mock(ServiceCollectionV3)
         services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
         services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.return_value = MAASIPSet(
@@ -277,28 +268,14 @@ class TestIPRangeCreateRequest:
             end_ip=IPv4Address("10.0.0.101"),
         )
         await iprange.to_builder(
-            self.TEST_IPV4_SUBNET, user, services_mock, existing_iprange_id=1
+            self.TEST_IPV4_SUBNET,
+            services_mock,
+            owner_id=0,
+            existing_iprange_id=1,
         )
         services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.assert_called_once_with(
             subnet_id=self.TEST_IPV4_SUBNET.id, exclude_ip_range_id=1
         )
-
-    async def test_dynamic_range_user_forbidden(self):
-        user = AuthenticatedUser(id=0, username="test")
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
-        services_mock.openfga_tuples.get_client.return_value = (
-            AsyncOpenFGAClientMock(None)
-        )
-        with pytest.raises(ForbiddenException):
-            iprange = IPRangeCreateRequest(
-                type=IPRangeType.DYNAMIC,
-                start_ip=IPv4Address("10.0.0.1"),
-                end_ip=IPv4Address("10.0.0.2"),
-            )
-            await iprange.to_builder(
-                self.TEST_IPV4_SUBNET, user, services_mock
-            )
 
     async def test_dynamic_range_overlapping_reserved_ips(self):
         services_mock = Mock(ServiceCollectionV3)
@@ -306,13 +283,6 @@ class TestIPRangeCreateRequest:
         services_mock.reservedips.exists_within_subnet_iprange.return_value = (
             True
         )
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
-        services_mock.openfga_tuples.get_client.return_value = (
-            AsyncOpenFGAClientMock(
-                MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
-            )
-        )
-        user = AuthenticatedUser(id=0, username="test")
         with pytest.raises(ValidationException):
             iprange = IPRangeCreateRequest(
                 type=IPRangeType.DYNAMIC,
@@ -320,7 +290,7 @@ class TestIPRangeCreateRequest:
                 end_ip=IPv4Address("10.0.0.2"),
             )
             await iprange.to_builder(
-                self.TEST_IPV4_SUBNET, user, services_mock
+                self.TEST_IPV4_SUBNET, services_mock, owner_id=0
             )
         services_mock.reservedips.exists_within_subnet_iprange.assert_called_once_with(
             subnet_id=self.TEST_IPV4_SUBNET.id,
@@ -329,7 +299,6 @@ class TestIPRangeCreateRequest:
         )
 
     async def test_dynamic_range_ipv6_minimum_size(self):
-        user = AuthenticatedUser(id=0, username="test")
         with pytest.raises(ValidationException) as e:
             iprange = IPRangeCreateRequest(
                 type=IPRangeType.DYNAMIC,
@@ -337,7 +306,9 @@ class TestIPRangeCreateRequest:
                 end_ip=IPv6Address("0:0:0:0:0:0:0:2"),
             )
             await iprange.to_builder(
-                self.TEST_IPV6_SUBNET, user, Mock(ServiceCollectionV3)
+                self.TEST_IPV6_SUBNET,
+                Mock(ServiceCollectionV3),
+                owner_id=0,
             )
         assert (
             e.value.details[0].message

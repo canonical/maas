@@ -67,7 +67,10 @@ from maasservicelayer.exceptions.constants import (
     NOT_AUTHENTICATED_VIOLATION_TYPE,
     USER_EXTERNAL_VALIDATION_FAILED,
 )
-from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.auth import (
+    AuthenticatedUser,
+    RBACPermissionsPools,
+)
 from maasservicelayer.models.users import User
 from maasservicelayer.utils.date import utcnow
 
@@ -229,9 +232,18 @@ class MacaroonAuthenticationProvider:
                 ]
             )
 
+        external_auth_info = (
+            await request.state.services.external_auth.get_external_auth()
+        )
+        rbac_permissions = (
+            RBACPermissionsPools(is_admin=user.is_superuser)
+            if external_auth_info.type == ExternalAuthType.RBAC
+            else None
+        )
         return AuthenticatedUser(
             id=user.id,
             username=user.username,
+            rbac_permissions=rbac_permissions,
         )
 
     async def _clear_cookies(self, request: Request) -> None:

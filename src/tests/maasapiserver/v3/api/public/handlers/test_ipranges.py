@@ -37,6 +37,7 @@ from maasservicelayer.services import (
     SubnetsService,
     V3SubnetUtilizationService,
 )
+from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -330,6 +331,44 @@ class TestIPRangesApi(ApiCommonTests):
         assert iprange_response.comment is None
         assert iprange_response.owner_id == 0
         services_mock.ipranges.create.assert_called_once()
+
+    async def test_post_with_rbac_admin_for_another_user(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_rbac_admin: AsyncClient,
+    ) -> None:
+        services_mock.external_auth = Mock(ExternalAuthService)
+        services_mock.subnets = Mock(SubnetsService)
+        services_mock.subnets.get_one.return_value = Subnet(
+            id=1,
+            cidr=IPv4Network("10.10.0.0/24", strict=False),
+            rdns_mode=RdnsMode.DEFAULT,
+            allow_dns=True,
+            allow_proxy=True,
+            active_discovery=True,
+            managed=True,
+            disabled_boot_architectures=[],
+            vlan_id=1,
+        )
+        services_mock.ipranges = Mock(IPRangesService)
+        services_mock.ipranges.create.return_value = TEST_IPRANGE
+
+        services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
+        services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.return_value = MAASIPSet(
+            ranges=[MAASIPRange(start="10.10.0.1", end="10.10.0.3")]
+        )
+
+        response = await mocked_api_client_user_rbac_admin.post(
+            self.BASE_PATH,
+            json={
+                "type": "reserved",
+                "start_ip": "10.10.0.1",
+                "end_ip": "10.10.0.3",
+                "owner_id": 99,
+            },
+        )
+
+        assert response.status_code == 201
 
     async def test_post_403(
         self,

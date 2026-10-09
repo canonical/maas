@@ -121,36 +121,43 @@ class TestUsersApi(ApiCommonTests):
                 method="GET",
                 path=f"{self.BASE_PATH}",
                 permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="GET",
                 path=f"{V3_API_PREFIX}/users:statistics",
                 permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="GET",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="PUT",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}/1:change_password",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
         ]
 

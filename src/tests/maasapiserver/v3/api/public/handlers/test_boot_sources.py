@@ -172,16 +172,19 @@ class TestBootSourcesApi(ApiCommonTests):
                 method="POST",
                 path=f"{self.BASE_PATH}",
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="PUT",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                rbac_admin_permission=True,
             ),
         ]
 
@@ -780,21 +783,25 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
                 method="POST",
                 path=self.BASE_PATH,
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/10",
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}/1:sync",
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}/1:stop_sync",
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                rbac_admin_permission=True,
             ),
         ]
 

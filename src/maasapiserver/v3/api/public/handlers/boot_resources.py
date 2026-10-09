@@ -63,6 +63,7 @@ from maasservicelayer.db.repositories.bootresources import (
     BootResourceClauseFactory,
 )
 from maasservicelayer.db.repositories.nodes import NodeClauseFactory
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -133,7 +134,8 @@ class CustomImagesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -415,7 +417,8 @@ class CustomImagesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -455,7 +458,8 @@ class CustomImagesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
