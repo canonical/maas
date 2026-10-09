@@ -79,7 +79,7 @@ A missing key produces a `fips_crypto_error` log event with `operation=ssh_host_
 
 ## Step 4: Review stored keys and certificates
 
-MAAS does not re-check keys and certificates that are already stored. Review them yourself.
+MAAS does not re-check keys and certificates that are already stored. You'll need to review them yourself.
 
 - **Public API TLS certificate.** This one is checked at startup. A certificate with an unapproved key or signature produces a `WEAK_TLS_CERT_KEY` violation after the cutover. Replace it first. See [Replace a weak TLS certificate](/how-to-guides/resolve-hardening-violations.md#replace-a-weak-tls-certificate).
 - **User SSH keys.** Keys are stored per user, and there is no fleet-wide listing. Ask each user to review their own keys and to delete any key that is not an RSA key of at least 2048 bits or an ECDSA key:

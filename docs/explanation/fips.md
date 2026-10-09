@@ -8,7 +8,7 @@ For step-by-step instructions, see [Activate MAAS hardening](/how-to-guides/acti
 
 **FIPS mode** belongs to the operating system. FIPS (Federal Information Processing Standard) 140 defines which cryptographic algorithms and key lengths a system may use. On Ubuntu, you enable FIPS mode through Ubuntu Pro. The kernel then reports its state in `/proc/sys/crypto/fips_enabled`. MAAS reads that file, but it never enables or disables FIPS mode itself.
 
-**Security hardening** belongs to MAAS. It is a set of transport-security controls, aligned with STIG and CIS benchmarks, that MAAS applies to its own services. Hardening controls *where* MAAS listens and *how* clients reach it, rather than which algorithms are allowed.
+**Security hardening** belongs to MAAS. It is a set of transport-security controls, aligned with STIG (Security Technical Implementation Guide) and CIS (Center for Internet Security) benchmarks, that MAAS applies to its own services. Hardening controls *where* MAAS listens and *how* clients reach it, rather than which algorithms are allowed.
 
 | | FIPS mode | Security hardening |
 |---|---|---|
@@ -19,7 +19,7 @@ For step-by-step instructions, see [Activate MAAS hardening](/how-to-guides/acti
 
 ## How the two interact
 
-FIPS mode implies hardening. When a controller's kernel is in FIPS mode, MAAS activates hardening on that controller, whatever the `hardening_enabled` setting says. You cannot turn hardening off on a FIPS host.
+FIPS mode implies hardening. When a controller's kernel is in FIPS mode, MAAS activates hardening on that controller, no matter what the `hardening_enabled` setting says. You cannot turn hardening off on a FIPS host.
 
 Hardening does not imply FIPS mode. You can activate hardening on a host that is not in FIPS mode. This is useful when you need STIG or CIS transport controls but do not have a FIPS requirement.
 
@@ -40,7 +40,7 @@ When hardening is active, MAAS:
 - Hides the DNS server version and applies safe defaults for zone transfers and recursive fetch limits.
 - Enforces a password complexity policy for MAAS users and for power driver credentials.
 
-### What FIPS mode adds on top
+### What FIPS mode adds
 
 When the kernel is in FIPS mode, MAAS also restricts cryptography:
 

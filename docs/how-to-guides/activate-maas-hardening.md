@@ -44,7 +44,16 @@ To see what is missing on a controller, run:
 sudo maas config-hardening validate
 ```
 
-Complete the following sections as needed. File-based settings are stored per host, so repeat them on every region controller.
+Complete the following sections as needed. Where you run each one depends on where MAAS stores the setting:
+
+| Section | Run it |
+|---|---|
+| Serve the API over TLS | Once for the deployment. MAAS stores the certificate and key in its database. |
+| Set bind addresses | On every region controller. Each controller keeps its own values. |
+| Verify the PostgreSQL server certificate | On every region controller. |
+| Set Diffie-Hellman parameters | On every region controller. |
+
+To check where a single setting is stored, run `sudo maas config-hardening get <key>`. The output is `<key> [<store>] = <value>`, where the store is `config` for a setting shared through the database, or `conf` for one that belongs to the controller you are logged in to.
 
 ### Serve the API over TLS
 

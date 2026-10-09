@@ -307,7 +307,7 @@ The rack controller serves no HTML interface, so its policy is `default-src 'non
 
 ## Log events
 
-Hardening and FIPS detection events are written to the controller logs. On a snap installation, read them with `journalctl`, for example `journalctl -t maas-regiond`.
+Hardening and FIPS detection events are written to the controller logs. Read them with `journalctl`, for example `journalctl -t maas-regiond`.
 
 | Event | Level | Fields |
 |---|---|---|
