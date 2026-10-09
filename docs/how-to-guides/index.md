@@ -149,6 +149,12 @@ manage-high-availability
 use-logging
 monitor-maas
 enhance-maas-security
+activate-maas-hardening
+harden-a-rack-controller
+resolve-hardening-violations
+enable-fips-mode-on-a-controller
+adopt-fips-on-an-existing-deployment
+manage-trusted-ssh-host-keys
 deploy-a-real-time-kernel
 deploy-a-fips-kernel
 set-up-air-gapped-maas
