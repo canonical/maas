@@ -525,7 +525,7 @@ The time MAAS takes to process a WebSocket call. It doesn't include any time ass
 
 ### maas_dns_update_latency
 
-The time MAAS takes to setup all zones in the DNS service per update type, which can be 'reload' (cold-start) or 'dynamic' (RNDC operation)
+The time MAAS takes to setup all zones in the DNS service per update type. The update type is always 'reload'
 
 * Type: Histogram
 * Unit: Seconds
@@ -535,27 +535,12 @@ The time MAAS takes to setup all zones in the DNS service per update type, which
    | --- | --- |
    | host | controller IP address |
    | maas_id | MAAS cluster UUID |
-   | update_type | reload or dynamic |
+   | update_type | always reload |
    [/details]
 
 ### maas_dns_full_zonefile_write_count
 
 Count of full DNS zone rewrite operations
-
-* Type: Counter
-* Unit: None
-* [details="Labels"]
-
-   | Label | Description |
-   | --- | --- |
-   | host | controller IP address |
-   | maas_id | MAAS cluster UUID |
-   | zone | DNS zone name |
-   [/details]
-
-### maas_dns_dynamic_update_count
-
-Count of dynamic DNS zone update operations
 
 * Type: Counter
 * Unit: None
