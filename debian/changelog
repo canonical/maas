@@ -1,3 +1,9 @@
+maas (1:3.8.0~rc2-0ubuntu1) resolute; urgency=medium
+
+  * New upstream release, MAAS 3.8.0 RC2.
+
+ -- Aloizio Macedo <aloizio.macedo@canonical.com>  Thu, 24 Sep 2026 03:11:39 +0000
+
 maas (1:3.8.0~rc1-0ubuntu1) resolute; urgency=medium
 
   * New upstream release, MAAS 3.8.0 RC1.

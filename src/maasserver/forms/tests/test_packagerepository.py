@@ -217,7 +217,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         self.assertEqual(
             [
                 "'i286' is not a valid architecture. Known architectures: "
-                "amd64, arm64, armhf, i386, ppc64el, s390x"
+                "amd64, arm64, armhf, i386, ppc64el, riscv64, s390x"
             ],
             form.errors.get("arches"),
         )

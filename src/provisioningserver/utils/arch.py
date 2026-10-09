@@ -14,6 +14,7 @@ DEBIAN_TO_KERNEL_ARCHITECTURES = {
     "amd64": "x86_64",
     "arm64": "aarch64",
     "ppc64el": "ppc64le",
+    "riscv64": "riscv64",
     "s390x": "s390x",
     "mips": "mips",
     "mips64el": "mips64",

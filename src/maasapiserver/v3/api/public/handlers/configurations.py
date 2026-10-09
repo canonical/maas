@@ -7,6 +7,7 @@ from starlette.responses import Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    ForbiddenBodyResponse,
     NotFoundBodyResponse,
 )
 from maasapiserver.common.utils.http import get_remote_ip
@@ -22,6 +23,7 @@ from maasapiserver.v3.api.public.models.responses.configurations import (
     ConfigurationsListResponse,
 )
 from maasapiserver.v3.auth.base import (
+    check_authentication,
     check_permissions,
     get_authenticated_user,
 )
@@ -29,7 +31,15 @@ from maascommon.enums.events import EventTypeEnum
 from maascommon.events import EVENT_DETAILS_MAP
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.enums.rbac import RbacPermission
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ForbiddenException,
+)
+from maasservicelayer.exceptions.constants import (
+    MISSING_PERMISSIONS_VIOLATION_TYPE,
+)
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.configurations import ConfigFactory
 from maasservicelayer.models.events import EndpointChoicesEnum
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -45,26 +55,51 @@ class ConfigurationsHandler(Handler):
         tags=TAGS,
         responses={
             200: {"model": ConfigurationsListResponse},
+            403: {"model": ForbiddenBodyResponse},
             404: {"model": NotFoundBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(
-                check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS
-                )
-            )
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_configurations(
         self,
         filters: ConfigurationsFiltersParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
     ) -> ConfigurationsListResponse:
-        configurations = await services.configurations.get_many(
-            filters.get_names()
+        assert authenticated_user is not None
+        names = filters.get_names()
+        requests_restricted_config = any(
+            name not in ConfigFactory.UNRESTRICTED_CONFIGS for name in names
         )
+        if requests_restricted_config:
+            if authenticated_user.rbac_permissions is not None:
+                if not authenticated_user.rbac_permissions.is_admin:
+                    raise ForbiddenException(
+                        details=[
+                            BaseExceptionDetail(
+                                type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                                message="Admin permission is required.",
+                            )
+                        ]
+                    )
+
+            elif not await services.openfga_tuples.get_client().has_permission_on_maas(
+                MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
+                authenticated_user.id,
+            ):
+                raise ForbiddenException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                            message=f"The permission '{MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS}' is required.",
+                        )
+                    ]
+                )
+        configurations = await services.configurations.get_many(names)
         return ConfigurationsListResponse(
             items=[
                 ConfigurationResponse(
@@ -80,23 +115,46 @@ class ConfigurationsHandler(Handler):
         tags=TAGS,
         responses={
             200: {"model": ConfigurationResponse},
+            403: {"model": ForbiddenBodyResponse},
             404: {"model": NotFoundBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=200,
-        dependencies=[
-            Depends(
-                check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS
-                )
-            )
-        ],
+        dependencies=[Depends(check_authentication())],
     )
     async def get_configuration(
         self,
         name: PublicConfigName,  # pyright: ignore [reportInvalidTypeForm]
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        authenticated_user: AuthenticatedUser | None = Depends(  # noqa: B008
+            get_authenticated_user
+        ),
     ) -> ConfigurationResponse:
+        assert authenticated_user is not None
+        config_model = ConfigFactory.get_config_model(name.value)
+        if config_model.requires_entitlement_to_view:
+            if authenticated_user.rbac_permissions is not None:
+                if not authenticated_user.rbac_permissions.is_admin:
+                    raise ForbiddenException(
+                        details=[
+                            BaseExceptionDetail(
+                                type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                                message="Admin permission is required.",
+                            )
+                        ]
+                    )
+            elif not await services.openfga_tuples.get_client().has_permission_on_maas(
+                MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
+                authenticated_user.id,
+            ):
+                raise ForbiddenException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                            message=f"The permission '{MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS}' is required.",
+                        )
+                    ]
+                )
         configuration = await services.configurations.get(name.value)
         return ConfigurationResponse(name=name.value, value=configuration)
 

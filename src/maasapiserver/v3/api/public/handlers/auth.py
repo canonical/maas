@@ -24,6 +24,7 @@ from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AuthInfoResponse,
     CallbackTargetResponse,
+    ExternalLegacyLogin,
     OAuthProviderResponse,
     OAuthProvidersListResponse,
     PreLoginInfoResponse,
@@ -87,15 +88,18 @@ class AuthHandler(Handler):
     ) -> PreLoginInfoResponse:
         is_authenticated = authenticated_user is not None
         users_exist = await services.users.has_users()
-        legacy_external_auth_config = (
-            await services.external_auth.get_external_auth()
-        )
+        external_legacy_login = None
+        if (
+            external_auth_config
+            := await services.external_auth.get_external_auth()
+        ):
+            external_legacy_login = ExternalLegacyLogin(
+                url=external_auth_config.url, type=external_auth_config.type
+            )
         return PreLoginInfoResponse(
             is_authenticated=is_authenticated,
             no_users=not users_exist,
-            external_legacy_login_url=legacy_external_auth_config.url
-            if legacy_external_auth_config
-            else None,
+            external_legacy_login=external_legacy_login,
         )
 
     @handler(

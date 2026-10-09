@@ -100,6 +100,7 @@ class PackageRepository(CleanSave, TimestampedModel):
     PORTS_ARCHES = [
         KnownArchesEnum.ARMHF.value,
         KnownArchesEnum.ARM64.value,
+        KnownArchesEnum.RISCV64.value,
         KnownArchesEnum.PPC64EL.value,
         KnownArchesEnum.S390X.value,
     ]

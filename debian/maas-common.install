@@ -6,10 +6,13 @@ package-files/usr/lib/maas/maas-write-file usr/lib/maas
 # Install network monitoring scripts
 package-files/usr/lib/maas/beacon-monitor usr/lib/maas
 
-# Install unverified-ssh
+# Install unverified-ssh / verified-ssh
 # This is used for KVM host communication:
 # https://bugs.launchpad.net/maas/+bug/1807231
+# verified-ssh is the FIPS-mode counterpart: it enforces FIPS-approved
+# SSH algorithms and verifies the KVM host's SSH host key.
 package-files/usr/lib/maas/unverified-ssh usr/lib/maas
+package-files/usr/lib/maas/verified-ssh usr/lib/maas
 
 
 

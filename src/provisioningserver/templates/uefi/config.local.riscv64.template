@@ -1,0 +1,14 @@
+{{if debug}}set debug="all"{{endif}}
+set default="0"
+set timeout=0
+
+menuentry 'Local' {
+    echo 'Booting local disk...'
+    search --set=root --file /efi/ubuntu/grubriscv64.efi
+    if [ $? -eq 0 ]; then
+        chainloader /efi/ubuntu/grubriscv64.efi
+        boot
+    fi
+    # If no bootloader is found exit and allow the next device to boot.
+    exit
+}

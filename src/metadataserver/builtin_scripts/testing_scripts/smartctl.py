@@ -275,7 +275,9 @@ def check_smartctl(blockdevice, device=None):
     except CalledProcessError as e:
         # A return code of 4 means a smartctl command failed or a checksum
         # error was discovered. This is surprisingly common so ignore it.
-        if e.returncode != 4 or not e.output:
+        # Ignore bit 2 (checksum/command error) and bit 6 (error log contains errors).
+        ignored_bits = (1 << 2) | (1 << 6)
+        if (e.returncode & ~ignored_bits) != 0 or not e.output:
             print("FAILURE: SMART tests have FAILED for: %s" % device_name)
             print(
                 "The test exited with return code %s! See the smarctl "
