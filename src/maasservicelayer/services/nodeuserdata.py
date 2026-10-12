@@ -28,6 +28,14 @@ class NodeUserDataService(
         else:
             await self._set(node_id, data, for_ephemeral=True)
 
+    async def set_user_data_for_user_env(
+        self, node_id: int, data: bytes | None
+    ) -> None:
+        if data is None:
+            await self._remove(node_id, for_ephemeral=False)
+        else:
+            await self._set(node_id, data, for_ephemeral=False)
+
     async def get_user_data_for_ephemeral_env(
         self, node_id: int
     ) -> bytes | None:

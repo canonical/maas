@@ -207,6 +207,92 @@ class TestIntegrationNodeUserDataService:
             user_env_entry
         ]
 
+    async def test_set_user_data_for_user_env_creates_new_nodeuserdata(
+        self, fixture: Fixture, service: NodeUserDataService
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+
+        await service.set_user_data_for_user_env(
+            node_id=node["id"], data=b"user-data"
+        )
+
+        [row] = await get_nodeuserdata_rows(fixture, node["id"])
+        assert row["data"] == b64encode(b"user-data").decode()
+        assert row["for_ephemeral_environment"] is False
+
+    async def test_set_user_data_for_user_env_overwrites_existing_userdata(
+        self, fixture: Fixture, service: NodeUserDataService
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+        existing = await create_nodeuserdata_entry(
+            fixture, node["id"], b"old-data", for_ephemeral_environment=False
+        )
+
+        await service.set_user_data_for_user_env(
+            node_id=node["id"], data=b"new-data"
+        )
+
+        [row] = await get_nodeuserdata_rows(fixture, node["id"])
+        assert row["id"] == existing["id"]
+        assert row["data"] == b64encode(b"new-data").decode()
+
+    async def test_set_user_data_for_user_env_leaves_ephemeral_data_alone(
+        self, fixture: Fixture, service: NodeUserDataService
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+        ephemeral_entry = await create_nodeuserdata_entry(
+            fixture,
+            node["id"],
+            b"ephemeral-data",
+            for_ephemeral_environment=True,
+        )
+
+        await service.set_user_data_for_user_env(
+            node_id=node["id"], data=b"deploy-data"
+        )
+
+        rows = await get_nodeuserdata_rows(fixture, node["id"])
+        assert len(rows) == 2
+        assert ephemeral_entry in rows
+
+    async def test_set_user_data_for_user_env_to_None_removes_user_data(
+        self, fixture: Fixture, service: NodeUserDataService
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+        await create_nodeuserdata_entry(
+            fixture,
+            node["id"],
+            b"deploy-data",
+            for_ephemeral_environment=False,
+        )
+
+        await service.set_user_data_for_user_env(node_id=node["id"], data=None)
+
+        assert await get_nodeuserdata_rows(fixture, node["id"]) == []
+
+    async def test_set_user_data_for_user_env_to_None_keeps_ephemeral_data(
+        self, fixture: Fixture, service: NodeUserDataService
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+        ephemeral_entry = await create_nodeuserdata_entry(
+            fixture,
+            node["id"],
+            b"ephemeral-data",
+            for_ephemeral_environment=True,
+        )
+        await create_nodeuserdata_entry(
+            fixture,
+            node["id"],
+            b"deploy-data",
+            for_ephemeral_environment=False,
+        )
+
+        await service.set_user_data_for_user_env(node_id=node["id"], data=None)
+
+        assert await get_nodeuserdata_rows(fixture, node["id"]) == [
+            ephemeral_entry
+        ]
+
     async def test_get_user_data_for_ephemeral_env_returns_data(
         self, fixture: Fixture, service: NodeUserDataService
     ) -> None:
@@ -227,6 +313,26 @@ class TestIntegrationNodeUserDataService:
 
         assert (
             await service.get_user_data_for_ephemeral_env(node["id"]) is None
+        )
+
+    async def test_get_user_data_for_ephemeral_env_ignores_other_nodes(
+        self, fixture: Fixture, service: NodeUserDataService
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+        other_node = await create_test_machine_entry(fixture)
+        await create_nodeuserdata_entry(
+            fixture, node["id"], b"user-data", for_ephemeral_environment=True
+        )
+        await create_nodeuserdata_entry(
+            fixture,
+            other_node["id"],
+            b"other-data",
+            for_ephemeral_environment=True,
+        )
+
+        assert (
+            await service.get_user_data_for_ephemeral_env(node["id"])
+            == b"user-data"
         )
 
     async def test_get_user_data_for_ephemeral_env_ignores_user_env_data(
