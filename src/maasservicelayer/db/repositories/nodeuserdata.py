@@ -90,6 +90,10 @@ class NodeUserDataRepository(BaseRepository[NodeUserData]):
 
     # The following methods are intentionally not implemented, `upsert`
     # should be used instead of the standard create/update methods.
+    #
+    # List operations aren't currently used, and have been blocked
+    # because the base implementation would return `data` still
+    # base64-encoded.
     async def list(self, page, size, query=None):
         raise NotImplementedError("List is not supported for node user data.")
 
