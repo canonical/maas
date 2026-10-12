@@ -51,6 +51,9 @@ class TestNodeUserDataService:
 
         await service.set_user_data_for_ephemeral_env(node_id=1, data=None)
 
+        repository.upsert.assert_not_called()
+        repository.delete_many.assert_called_once()
+
 
 async def create_nodeuserdata_entry(
     fixture: Fixture,
