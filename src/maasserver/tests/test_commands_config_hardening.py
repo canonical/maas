@@ -5,17 +5,16 @@
 from io import StringIO
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase
-
 from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.management.commands.config_hardening import Command
+from maastesting.testcase import MAASTestCase
 
 _PATCH_CONFIGURE = patch(
     "maasserver.management.commands.config_hardening.configure_hardening"
 )
 
 
-class _Base(TestCase):
+class _Base(MAASTestCase):
     def setUp(self):
         super().setUp()
         _PATCH_CONFIGURE.start()
