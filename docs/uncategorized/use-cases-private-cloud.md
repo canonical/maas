@@ -34,7 +34,7 @@ A large enterprise uses MAAS to stand up an internal Infrastructure-as-a-Service
 
 ### Dynamic workload shifting
 
-A financial services company runs batch analytics jobs at night. Using MAAS, they schedule non-critical application servers to be automatically re-provisioned as Hadoop nodes at 1am, then back to application servers by morning. MAAS handles the re-image and configuration each time. This “automated repurposing” yields huge cost savings – the same hardware does double duty, and the process is fully automated.
+A financial services company runs batch analytics jobs at night. Using MAAS, they schedule non-critical application servers to be automatically re-provisioned as Hadoop nodes at 1 am, then back to application servers by morning. MAAS handles the re-image and configuration each time. This “automated repurposing” yields huge cost savings – the same hardware does double duty, and the process is fully automated.
 
 ### Energy-efficient data center
 
