@@ -145,6 +145,11 @@ class TestAgentsRepository(RepositoryCommonTests[Agent]):
             rackcontroller_id=rack_controller["id"],
         )
 
+        # Commit the fixture setup so the deferred FK check below is
+        # evaluated against the deletion of the rack controller, instead
+        # of being folded into the same transaction as the agent insert.
+        await db_connection.commit()
+
         # Verify agent exists
         context = Context(connection=db_connection)
         repo = AgentsRepository(context)
