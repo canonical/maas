@@ -1,6 +1,6 @@
 # Commissioning scripts
 
-Commissioning scripts are small programs that MAAS runs when a machine is first commissioned. They detect hardware, configure settings, and prepare machines for deployment. MAAS comes with a number of built-in scripts, but you can also create your own to extend or customise commissioning.
+Commissioning scripts are small programs that MAAS runs when a machine is first commissioned. They detect hardware, configure settings, and prepare machines for deployment. MAAS comes with a number of built-in scripts, but you can also create your own to extend or customize commissioning.
 
 ## Why commissioning scripts matter
 
