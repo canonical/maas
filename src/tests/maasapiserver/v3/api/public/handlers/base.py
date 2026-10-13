@@ -16,6 +16,11 @@ class Endpoint:
     method: str
     path: str
     permission: MAASResourceEntitlement | None = None
+    rbac_admin_permission: bool = False
+    """We only test the RBAC admin permission in this way, since the others
+    behave in a different way: when requested by the endpoint, they are not
+    doing access control checks directly, but they are populating which
+    resource pools the user has access to."""
 
 
 @pytest.mark.asyncio
@@ -67,6 +72,35 @@ class ApiCommonTests(abc.ABC):
             assert response.status_code == 403, (
                 f"Endpoint {endpoint.method} {endpoint.path} should require authorization, but got {response.status_code}"
             )
+
+    async def test_endpoints_require_admin_rbac_permission_ok(
+        self,
+        endpoints_with_authorization: list[Endpoint],
+        mocked_api_client_user_rbac_admin: AsyncClient,
+    ):
+        for endpoint in endpoints_with_authorization:
+            if endpoint.rbac_admin_permission is True:
+                response = await mocked_api_client_user_rbac_admin.request(
+                    endpoint.method, endpoint.path
+                )
+                # The endpoints can crash with other errors, but they should not fail with authentication/authorization errors.
+                assert response.status_code not in (401, 403), (
+                    f"Endpoint {endpoint.method} {endpoint.path} should be accessible by an RBAC admin, but got {response.status_code}"
+                )
+
+    async def test_endpoints_require_admin_rbac_permissions_forbidden(
+        self,
+        endpoints_with_authorization: list[Endpoint],
+        mocked_api_client_user_rbac: AsyncClient,
+    ):
+        for endpoint in endpoints_with_authorization:
+            if endpoint.rbac_admin_permission is True:
+                response = await mocked_api_client_user_rbac.request(
+                    endpoint.method, endpoint.path
+                )
+                assert response.status_code == 403, (
+                    f"Endpoint {endpoint.method} {endpoint.path} should require RBAC admin permission, but got {response.status_code}"
+                )
 
     async def test_endpoints_require_authentication_only(
         self,

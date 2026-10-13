@@ -29,6 +29,7 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.agents import AgentsClauseFactory
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -48,7 +49,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -91,7 +93,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -140,7 +143,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -176,7 +180,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -211,7 +216,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -244,7 +250,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -274,7 +281,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -312,7 +320,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -366,7 +375,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -410,7 +420,8 @@ class RacksHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],

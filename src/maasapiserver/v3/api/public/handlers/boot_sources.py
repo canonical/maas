@@ -69,6 +69,7 @@ from maasservicelayer.db.repositories.bootsources import (
 from maasservicelayer.db.repositories.bootsourceselections import (
     BootSourceSelectionClauseFactory,
 )
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -187,7 +188,8 @@ class BootSourcesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -223,7 +225,8 @@ class BootSourcesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -262,7 +265,8 @@ class BootSourcesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -449,7 +453,8 @@ class BootSourcesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -499,7 +504,8 @@ class BootSourcesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -677,7 +683,8 @@ class BootSourcesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -777,7 +784,8 @@ class BootSourcesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -927,7 +935,8 @@ class BootSourcesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],

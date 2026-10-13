@@ -46,6 +46,7 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.users import UserClauseFactory
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -294,7 +295,8 @@ class UsersHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -347,7 +349,8 @@ class UsersHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -387,7 +390,8 @@ class UsersHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -445,7 +449,8 @@ class UsersHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -512,7 +517,8 @@ class UsersHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -569,7 +575,8 @@ class UsersHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -602,6 +609,7 @@ class UsersHandler(Handler):
             Depends(
                 check_permissions(
                     openfga_permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
