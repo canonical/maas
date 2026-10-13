@@ -65,6 +65,7 @@ AgentTable = Table(
         BigInteger,
         ForeignKey(
             "maasserver_node.id",
+            ondelete="CASCADE",
             deferrable=True,
             initially="DEFERRED",
         ),
