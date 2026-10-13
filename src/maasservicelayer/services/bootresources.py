@@ -111,7 +111,7 @@ class BootResourceService(
         commissioning_distro_series = configs[
             CommissioningDistroSeriesConfig.name
         ]
-        arch, platform = architecture.split("/")
+        arch, platform = architecture.split("/", 1)
         resource = await self.get_resource_for(
             commissioning_osystem,
             arch,

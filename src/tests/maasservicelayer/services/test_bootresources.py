@@ -664,6 +664,18 @@ class TestBootResourceService:
 
         assert not await service.has_commissioning_resource("arm64/generic")
 
+    @pytest.mark.parametrize("architecture", ["amd64/generic/extra"])
+    async def test_has_commissioning_resource_handles_many_slashes_in_architecture(
+        self,
+        mock_repository: Mock,
+        service: BootResourceService,
+        architecture: str,
+    ) -> None:
+        # Unlikely to ever be hit this case, this test is just for coverage.
+        mock_repository.get_many.return_value = []
+
+        assert not await service.has_commissioning_resource(architecture)
+
     async def test_has_commissioning_resource_rejects_non_commissioning_os(
         self,
         mock_repository: Mock,
