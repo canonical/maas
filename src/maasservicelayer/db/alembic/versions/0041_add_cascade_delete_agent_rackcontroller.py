@@ -7,7 +7,7 @@ When a node is deleted, any agents that reference it as their
 rackcontroller should be automatically deleted.
 
 Revision ID: 0041
-Revises: 0040
+Revises: 0034
 Create Date: 2026-10-09 15:18:22.014892-03:00
 
 """
@@ -18,7 +18,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0041"
-down_revision: str | None = "0040"
+down_revision: str | None = "0034"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
