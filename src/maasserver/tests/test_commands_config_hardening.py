@@ -197,6 +197,21 @@ class TestConfigHardeningGet(_Base):
 
 
 class TestConfigHardeningValidate(_Base):
+    def setUp(self):
+        super().setUp()
+        for target in (
+            "maasserver.models.config.read_hardening_enabled_from_db",
+            "maasserver.certificates.get_maas_certificate",
+        ):
+            patcher = patch(target, return_value=None)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        patcher = patch.object(
+            Command, "_read_fips_declared", return_value=None
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     @staticmethod
     def _mock_cfg():
         return MagicMock(
