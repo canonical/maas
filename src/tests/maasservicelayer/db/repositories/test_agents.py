@@ -157,9 +157,7 @@ class TestAgentsRepository(RepositoryCommonTests[Agent]):
         assert found_agent is not None
 
         # Delete the rack controller node
-        stmt = delete(NodeTable).where(
-            NodeTable.c.id == rack_controller["id"]
-        )
+        stmt = delete(NodeTable).where(NodeTable.c.id == rack_controller["id"])
         await db_connection.execute(stmt)
         await db_connection.commit()
 
