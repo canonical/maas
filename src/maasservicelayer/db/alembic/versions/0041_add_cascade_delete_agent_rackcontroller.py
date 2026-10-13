@@ -30,7 +30,7 @@ def upgrade() -> None:
         type_="foreignkey",
     )
     op.create_foreign_key(
-        None,
+        "maasserver_agent_rackcontroller_id_fkey",
         "maasserver_agent",
         "maasserver_node",
         ["rackcontroller_id"],
