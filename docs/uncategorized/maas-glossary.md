@@ -38,7 +38,7 @@ In the client/server age, the lines between client and server are blurred and so
 
 #### Cloud-init
 
-Cloud-init is the industry-standard method for initialising cloud instances, independent of platform. It allows you to automatically provision operating system images, bringing them to a fully running state. It also allows you to customize networking, storage, user space, applications, and various other components of a functioning system.
+Cloud-init is the industry-standard method for initializing cloud instances, independent of platform. It allows you to automatically provision operating system images, bringing them to a fully running state. It also allows you to customize networking, storage, user space, applications, and various other components of a functioning system.
 
 There are four stages of cloud-init action:
 
@@ -86,7 +86,7 @@ A region controller consists of the following components:
 - caching HTTP proxy
 - web UI
 
-Think of a region controller can as being responsible for a data center, or a single region. Multiple fabrics are used by MAAS to accommodate subdivisions within a single region, such as multiple floors in a data center.
+Think of a region controller as being responsible for a data center, or a single region. Multiple fabrics are used by MAAS to accommodate subdivisions within a single region, such as multiple floors in a data center.
 
 A rack controller provides the following services:
 
@@ -159,11 +159,11 @@ A DHCP relay, or relay agent, is a network device that forwards requests and rep
 
 #### Edge clouds
 
-Edge clouds are designed to minimise latency, so that your cloud computing experience is nearer to real-time. The use of "edge" doesn't specifically refer to the edges of the cloud, but to the machines that are at the "edge of the problem," or more to the point, "the edge of the cloud that is closest to your application."  Sometimes these are separate clouds in your own data center, though they can also be parts of a remote cloud that are closer to you in network terms.
+Edge clouds are designed to minimize latency, so that your cloud computing experience is nearer to real-time. The use of "edge" doesn't specifically refer to the edges of the cloud, but to the machines that are at the "edge of the problem," or more to the point, "the edge of the cloud that is closest to your application."  Sometimes these are separate clouds in your own data center, though they can also be parts of a remote cloud that are closer to you in network terms.
 
-There are a number of complex decision lops and optimisation algorithms used by edge clouds, but the primary purpose is low-latency computing where possible. If the servers closest to you (network-wise) can handle the load, they do; if not, they can call on other servers just a little further away.
+There are a number of complex decision loops and optimization algorithms used by edge clouds, but the primary purpose is low-latency computing where possible. If the servers closest to you (network-wise) can handle the load, they do; if not, they can call on other servers just a little further away.
 
-Edge clouds can be planned and enhanced by using NUMA and SR-IOV techniques. NUMA can help you create SMP nodes on VM cores the shortest (network) distance away from your application. SR-IOV can, in general, reduce network latency even more by eliminating core involvement in network traffic. You can create virtual machines and assign NUMA nodes to minimise network latency, and then ensure that   MAAS gives you NUMA tools to find out whether you're achieving this sort of optimisation, and help you make decisions about how to adjust and improve over time.
+Edge clouds can be planned and enhanced by using NUMA and SR-IOV techniques. NUMA can help you create SMP nodes on VM cores the shortest (network) distance away from your application. SR-IOV can, in general, reduce network latency even more by eliminating core involvement in network traffic. You can create virtual machines and assign NUMA nodes to minimize network latency, and then ensure that   MAAS gives you NUMA tools to find out whether you're achieving this sort of optimization, and help you make decisions about how to adjust and improve over time.
 
 #### Entering rescue mode
 
@@ -372,7 +372,7 @@ See [Machine actions](#machine-actions) and [Machine statuses](#machine-statuses
 
 NUMA stands for "Non-Uniform Memory Access."  In this context, "non-uniform" means that any given CPU core can access its dedicated memory faster than the memory dedicated to other cores. A NUMA configuration groups core(s) and memory as a dedicated node, which reduces memory access times, so the core won't spend a lot of time stalled in wait states -- that is, waiting for access to data in memory, either because the memory is relatively far away (proximity) or because other cores have access to the same memory (shared memory). In other words, NUMA works better when the core has dedicated memory that is relatively close by.
 
-In this context, "far away" could mean physical distance (more wire or a longer bus distance), more interceding processes (as in virtual machines), or both. The process of optimising thread and process scheduling so that the core running the code and the required data are close together is sometimes known as "creating affinity." This affinity creates NUMA "nodes," which can be treated as opaque nodes from a symmetric multi-processing (SMP) point of view. Tasks are assigned to nodes to minimise overhead and wait states.
+In this context, "far away" could mean physical distance (more wire or a longer bus distance), more interceding processes (as in virtual machines), or both. The process of optimizing thread and process scheduling so that the core running the code and the required data are close together is sometimes known as "creating affinity." This affinity creates NUMA "nodes," which can be treated as opaque nodes from a symmetric multi-processing (SMP) point of view. Tasks are assigned to nodes to minimize overhead and wait states.
 
 There is more flexibility in creating affinity when using virtual machines, because memory and core are constructs overlaid on existing hardware, rather than hard silicon. While this seems as if it might make SMP easier, in fact, it creates difficulties because of the nature of virtual machines and the potential number of interceding processes that manage virtual memory. For optimum performance, VMs should be aligned to a single NUMA node, so that resources are not split across nodes.
 

@@ -71,7 +71,7 @@ Two main tools apply preseeds:
 - Curtin – applies storage and OS configuration during installation, before first boot. Ideal for consistent, repeatable setups.
 - Cloud-init – applies customizations on first boot (packages, scripts, user data). Best for per-instance customization.
 
-Templates are matched in lexical order, from the most specific (`curtin_userdata_ubuntu_amd64_generic_xenial_node`) to generic fallbacks. This lets you override behaviour per OS, release, or machine.
+Templates are matched in lexical order, from the most specific (`curtin_userdata_ubuntu_amd64_generic_xenial_node`) to generic fallbacks. This lets you override behavior per OS, release, or machine.
 
 ## Deployment scripts
 

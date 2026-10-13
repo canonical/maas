@@ -2556,7 +2556,7 @@ lxc network set $LXD_BRIDGE_NAME ipv6.dhcp=false
 
 **Timing issues**: Make sure the hardware clocks on your nodes and MAAS server are synchronized.
 
-**Network drivers**: Use Linux-compatible network adaptors if commissioning hangs due to driver issues.
+**Network drivers**: Use Linux-compatible network adapters if commissioning hangs due to driver issues.
 
 Feel free to contribute additional issues and solutions.
 
