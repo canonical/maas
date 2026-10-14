@@ -313,7 +313,7 @@ def _build_bmc_password_constraint(
                 (password, old_password), key=len, reverse=True
             )
             differing_positions = sum(
-                1 for a, b in zip(longer, shorter, strict=False) if a != b
+                1 for a, b in zip(longer, shorter) if a != b
             ) + (len(longer) - len(shorter))
             if differing_positions < 2:
                 return False
