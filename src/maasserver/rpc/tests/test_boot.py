@@ -2300,6 +2300,36 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
         self.assertEqual("jammy", series)
         self.assertEqual(subarch, config_arch)
 
+    def test_get_boot_config_for_machine_synced_custom_image(self):
+        # Synced custom resources are stored with a "custom/" name prefix.
+        # The boot config lookup must find them using the bare series name.
+        subarch = "ga-22.04"
+        factory.make_usable_boot_resource(
+            name="ubuntu/jammy", architecture=f"amd64/{subarch}"
+        )
+        series = factory.make_name("br-ubuntu")
+        factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=f"custom/{series}",
+            architecture="amd64/generic",
+            base_image="ubuntu/jammy",
+        )
+        machine = factory.make_Machine(
+            architecture="amd64/generic",
+            status=NODE_STATUS.DEPLOYING,
+            osystem="custom",
+            distro_series=series,
+        )
+        configs = Config.objects.get_configs(_GET_BOOT_CONFIG_KEYS)
+
+        osystem, series, config_arch, _, _ = get_boot_config_for_machine(
+            machine, configs, "xinstall"
+        )
+
+        self.assertEqual("ubuntu", osystem)
+        self.assertEqual("jammy", series)
+        self.assertEqual(subarch, config_arch)
+
     def test_get_boot_config_for_machine_legacy_custom_image(self):
         subarch = "hwe-24.04"
         factory.make_usable_boot_resource(

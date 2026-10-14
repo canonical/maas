@@ -354,6 +354,32 @@ class TestBootResourceManager(MAASServerTestCase):
             ),
         )
 
+    def test_get_resource_for_returns_synced_custom_resource(self):
+        # Synced custom resources are stored with a "custom/" name prefix.
+        # get_resource_for must find them when called with the bare series.
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        series = factory.make_name("br-ubuntu")
+        custom = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=f"custom/{series}",
+            base_image=factory.make_name("ubuntu", "/"),
+        )
+        subarches = [factory.make_name("subarch") for _ in range(3)]
+        subarch = random.choice(subarches)
+        extra = custom.extra.copy()
+        extra["subarches"] = ",".join(subarches)
+        custom.extra = extra
+        custom.save()
+        osystem = "custom"
+        arch, _ = custom.split_arch()
+        self.assertEqual(
+            custom,
+            BootResource.objects.get_resource_for(
+                osystem, arch, subarch, series
+            ),
+        )
+
 
 class TestGetAvailableCommissioningResources(MAASServerTestCase):
     def setUp(self):
