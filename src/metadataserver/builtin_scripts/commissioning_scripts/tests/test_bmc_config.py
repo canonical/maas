@@ -270,57 +270,42 @@ EndSection
         )
 
     def test_generate_random_password(self):
+        special_chars = set("!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~")
         for attempt in range(0, 100):  # noqa: B007
             password = self.ipmi._generate_random_password()
-            self.assertTrue(10 <= len(password) <= 15)
-            self.assertIsNotNone(
-                re.match(r"^[\da-z]+$", password, re.IGNORECASE), password
+            self.assertTrue(14 <= len(password) <= 15)
+            self.assertTrue(
+                any((c in special_chars) for c in password), password
             )
+            self.assertIsNotNone(re.match(r".*[a-z].*", password), password)
+            self.assertIsNotNone(re.match(r".*[A-Z].*", password), password)
+            self.assertIsNotNone(re.match(r".*[0-9].*", password), password)
+            # Test password doesn't have two or more occurrences of the
+            # the same consecutive character.
+            self.assertFalse(re.search(r"(.)\1", password))
 
     def test_generate_random_password_with_length(self):
+        special_chars = set("!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~")
         for attempt in range(0, 10):  # noqa: B007
             password = self.ipmi._generate_random_password(
                 min_length=16, max_length=20
             )
             assert 16 <= len(password) <= 20
-            assert (
-                re.match(r"^[\da-z]+$", password, re.IGNORECASE) is not None
-            ), password
-
-    def test_generate_random_password_with_special_chars(self):
-        # Huawei and Lenovo use a non-standard IPMI password policy
-        special_chars = set("!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~")
-        for attempt in range(0, 100):  # noqa: B007
-            password = self.ipmi._generate_random_password(
-                with_special_chars=True
-            )
-            self.assertTrue(10 <= len(password) <= 15)
-            self.assertTrue(
-                any((c in special_chars) for c in password), password
-            )
-            self.assertIsNotNone(re.match(r".*[a-z].*", password), password)
-            self.assertIsNotNone(re.match(r".*[A-Z].*", password), password)
-            self.assertIsNotNone(re.match(r".*[0-9].*", password), password)
+            assert any((c in special_chars) for c in password), password
+            assert re.match(r".*[a-z].*", password) is not None, password
+            assert re.match(r".*[A-Z].*", password) is not None, password
+            assert re.match(r".*[0-9].*", password) is not None, password
             # Test password doesn't have two or more occurrences of the
             # the same consecutive character.
-            self.assertFalse(re.search(r"(.)\1", password))
+            assert re.search(r"(.)\1", password) is None
 
-    def test_generate_random_password_with_length_and_special_chars(self):
-        special_chars = set("!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~")
-        for attempt in range(0, 100):  # noqa: B007
+    def test_generate_random_password_clamps_below_fips_minimum(self):
+        # min_length/max_length below the FIPS 14-char floor are clamped up.
+        for attempt in range(0, 10):  # noqa: B007
             password = self.ipmi._generate_random_password(
-                min_length=13, max_length=20, with_special_chars=True
+                min_length=5, max_length=8
             )
-            self.assertTrue(13 <= len(password) <= 20)
-            self.assertTrue(
-                any((c in special_chars) for c in password), password
-            )
-            self.assertIsNotNone(re.match(r".*[a-z].*", password), password)
-            self.assertIsNotNone(re.match(r".*[A-Z].*", password), password)
-            self.assertIsNotNone(re.match(r".*[0-9].*", password), password)
-            # Test password doesn't have two or more occurrences of the
-            # the same consecutive character.
-            self.assertFalse(re.search(r"(.)\1", password))
+            assert len(password) == 14
 
     def test_make_ipmi_user_settings(self):
         username = factory.make_name("username")

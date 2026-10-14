@@ -60,7 +60,9 @@
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 import argparse
+from base64 import b64encode
 from collections import OrderedDict
+from collections.abc import Callable
 from functools import lru_cache
 import glob
 import ipaddress
@@ -70,6 +72,7 @@ from os.path import basename
 import platform
 import random
 import re
+import secrets
 from shutil import which
 import ssl
 import string
@@ -106,6 +109,151 @@ def exit_skipped():
         with open(result_path, "w") as results_file:
             yaml.safe_dump({"status": "skipped"}, results_file)
     sys.exit()
+
+
+# This script is distributed to and run standalone on the machine being
+# commissioned, which does not have the MAAS packages installed. It cannot
+# import maascommon, so the password-generation logic below is copied from
+# `maascommon.utils.password` (and the complexity policy it depends on,
+# `maascommon.password_policy.validate_password_complexity`). Keep both
+# copies in sync if either changes.
+def _validate_password_complexity(password: str) -> bool:
+    """Check password complexity requirements for hardening mode.
+
+    Enforces: min 14 chars, uppercase, digit, special char.
+    """
+    return (
+        len(password) >= 14
+        and re.search(r"[A-Z]", password) is not None
+        and re.search(r"\d", password) is not None
+        and re.search(r"[^a-zA-Z0-9]", password) is not None
+    )
+
+
+def _generate_password_by_rule(length: int) -> str:
+    """Generate a password guaranteed to satisfy the complexity policy.
+
+    Unlike random sampling, this forces one uppercase letter, one digit, and
+    one special character into fixed draws before filling the remaining
+    positions and shuffling. This trades a small amount of distribution
+    uniformity for a guaranteed-terminating construction, used as a fallback
+    when random sampling fails to find a compliant result within a bounded
+    number of attempts.
+    """
+    uppercase = string.ascii_uppercase
+    lowercase = string.ascii_lowercase
+    digits = string.digits
+    # Matches the altchars used by the base64-based candidate generator.
+    special = ".!"
+
+    password_chars = [
+        secrets.choice(uppercase),
+        secrets.choice(digits),
+        secrets.choice(special),
+    ]
+
+    all_chars = uppercase + lowercase + digits + special
+    password_chars += [
+        secrets.choice(all_chars) for _ in range(length - len(password_chars))
+    ]
+
+    rng = random.SystemRandom()
+    rng.shuffle(password_chars)
+
+    return "".join(password_chars)
+
+
+def _generate_base64_password(length: int) -> str:
+    """Generate a candidate password by base64-encoding random bytes.
+
+    Uses `.` and `!` in place of the standard `+`/`/` altchars, so the
+    output alphabet is limited to letters, digits, `.`, and `!`.
+
+    Requests enough random bytes, rounded up to a multiple of 3, so the
+    base64 encoding never produces padding (`=`) characters; every
+    character considered is genuinely random rather than a fixed filler.
+    """
+    num_groups = -(-length // 4)  # ceil(length / 4)
+    num_bytes = num_groups * 3
+    encoded = b64encode(os.urandom(num_bytes), altchars=b".!").decode("ascii")
+    return encoded[:length]
+
+
+def generate_password(
+    min_length: int = 14,
+    max_length: int = 14,
+    max_attempts: int = 1000,
+    extra_constraint: Callable[[str], bool] | None = None,
+) -> str:
+    """Generate a FIPS-compliant password.
+
+    Generates a password meeting FIPS 140-2/140-3 and STIG/CIS hardening
+    requirements, as enforced by `_validate_password_complexity`:
+    - Minimum 14 characters (satisfies FIPS lower bound on PBKDF2/HMAC key length)
+    - At least one uppercase letter
+    - At least one digit
+    - At least one special character (non-alphanumeric)
+
+    The password length is drawn once, uniformly at random, from
+    `[min_length, max_length]`, then held fixed across every attempt made
+    for this call. Generates candidates by base64-encoding random bytes and
+    retries until one satisfies the complexity policy. If no compliant
+    password is found within `max_attempts`, falls back to a single
+    rule-based construction attempt, which is itself required to satisfy
+    the policy (and any `extra_constraint`) before being returned.
+
+    Args:
+        min_length: Minimum password length (minimum 14). Defaults to 14.
+        max_length: Maximum password length. Must be >= `min_length`.
+            Defaults to 14.
+        max_attempts: Maximum candidates to try before falling back to the
+            rule-based construction. Defaults to 1000.
+        extra_constraint: Optional additional predicate a candidate must
+            satisfy. Checked alongside the complexity policy on every
+            attempt, including the rule-based fallback, and is required
+            before a password is returned.
+
+    Raises:
+        ValueError: If `min_length` is less than 14, if `max_length` is
+            less than `min_length`, or if no password satisfying all
+            constraints could be generated within `max_attempts` (plus the
+            single fallback attempt).
+
+    Returns:
+        A FIPS-compliant password string.
+    """
+    if min_length < 14:
+        raise ValueError(
+            f"Password length must be at least 14 characters, got {min_length}"
+        )
+    if max_length < min_length:
+        raise ValueError(
+            f"max_length ({max_length}) must be >= min_length ({min_length})"
+        )
+
+    length = min_length + secrets.randbelow(max_length - min_length + 1)
+
+    def satisfies_constraints(password: str) -> bool:
+        return _validate_password_complexity(password) and (
+            extra_constraint is None or extra_constraint(password)
+        )
+
+    for _ in range(max_attempts):
+        password = _generate_base64_password(length)
+        if satisfies_constraints(password):
+            return password
+
+    # Single semi-deterministic fallback attempt, in the sense that
+    # it is guaranteed to be FIPS-compliant. However, it might fail the
+    # extra constraints.
+    password = _generate_password_by_rule(length)
+    if satisfies_constraints(password):
+        return password
+
+    raise ValueError(
+        "Unable to generate a password satisfying all constraints after "
+        f"{max_attempts} attempts"
+    )
 
 
 class BMCConfig(metaclass=ABCMeta):
@@ -201,11 +349,14 @@ class IPMIBase(BMCConfig):
                 self._generate_random_password(),
                 # Some BMC require a longer password https://bugs.launchpad.net/maas/+bug/1993916/
                 self._generate_random_password(min_length=16, max_length=20),
-                self._generate_random_password(with_special_chars=True),
+                # LP: #1621175 - Huawei and Lenovo enforce a stricter
+                # password policy than the IPMI spec requires. Every
+                # generated password already satisfies that stricter
+                # policy (uppercase, digit, and special char), so this is
+                # simply another randomly drawn attempt.
+                self._generate_random_password(),
                 # Support DGX H200 https://bugs.launchpad.net/maas/+bug/2130621
-                self._generate_random_password(
-                    min_length=13, max_length=20, with_special_chars=True
-                ),
+                self._generate_random_password(min_length=13, max_length=20),
             ]
         else:
             passwords = [self.password]
@@ -314,47 +465,20 @@ class IPMIBase(BMCConfig):
                         % (section, key, value)
                     )
 
-    def _generate_random_password(
-        self, min_length=10, max_length=15, with_special_chars=False
-    ):
-        length = random.randint(min_length, max_length)
-        special_chars = "!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~"
-        letters = ""
-        if with_special_chars:
-            # LP: #1621175 - Password generation for non-compliant IPMI password
-            # policy. Huawei and Lenovo have implemented a different password policy that
-            # does not confirm with the IPMI spec, hence we generate a password
-            # that would be compliant to their use case.
-            # Randomly select 2 Upper Case
-            letters += "".join(
-                [random.choice(string.ascii_uppercase) for _ in range(2)]
-            )
-            # Randomly select 2 Lower Case
-            letters += "".join(
-                [random.choice(string.ascii_lowercase) for _ in range(2)]
-            )
-            # Randomly select 2 numbers
-            letters += "".join(
-                [random.choice(string.digits) for _ in range(2)]
-            )
-            # Randomly select a special character
-            letters += random.choice(special_chars)
-            # Create the extra characters to fullfill max_length
-            letters += "".join(
-                [
-                    random.choice(string.ascii_letters)
-                    for _ in range(length - 7)
-                ]
-            )
-            # LP: #1758760 - Randomly mix the password until we ensure there's
-            # not consecutive occurrences of the same character.
-            password = "".join(random.sample(letters, len(letters)))
-            while bool(re.search(r"(.)\1", password)):
-                password = "".join(random.sample(letters, len(letters)))
-            return password
-        else:
-            letters = string.ascii_letters + string.digits
-            return "".join([random.choice(letters) for _ in range(length)])
+    def _generate_random_password(self, min_length=10, max_length=15):
+        """Generate a FIPS-compliant BMC password within a length range.
+
+        Delegates to `generate_password`, clamping below the FIPS 14-char
+        floor if necessary, and additionally requires no two consecutive
+        occurrences of the same character (LP: #1758760), for readability.
+        """
+        min_length = max(min_length, 14)
+        max_length = max(max_length, min_length)
+        return generate_password(
+            min_length=min_length,
+            max_length=max_length,
+            extra_constraint=lambda pwd: not re.search(r"(.)\1", pwd),
+        )
 
     def _get_ipmi_priv(self):
         """Map ipmitool name to IPMI spec name

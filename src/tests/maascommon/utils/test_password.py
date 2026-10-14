@@ -15,17 +15,28 @@ class TestGeneratePassword:
 
     def test_generates_requested_length(self):
         for length in [14, 16, 20, 32]:
-            password = generate_password(length=length)
+            password = generate_password(min_length=length, max_length=length)
             assert len(password) == length
 
-    def test_raises_error_if_length_less_than_14(self):
+    def test_generates_length_within_range(self):
+        for _ in range(20):
+            password = generate_password(min_length=14, max_length=20)
+            assert 14 <= len(password) <= 20
+
+    def test_raises_error_if_min_length_less_than_14(self):
         with pytest.raises(ValueError, match="at least 14 characters"):
-            generate_password(length=10)
+            generate_password(min_length=10, max_length=10)
+
+    def test_raises_error_if_max_length_less_than_min_length(self):
+        with pytest.raises(ValueError, match="max_length"):
+            generate_password(min_length=20, max_length=14)
 
     def test_falls_back_to_rule_based_generation_if_max_attempts_exhausted(
         self,
     ):
-        password = generate_password(length=14, max_attempts=0)
+        password = generate_password(
+            min_length=14, max_length=14, max_attempts=0
+        )
         assert len(password) == 14
         assert re.search(r"[A-Z]", password)
         assert re.search(r"\d", password)

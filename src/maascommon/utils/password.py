@@ -62,7 +62,8 @@ def _generate_base64_password(length: int) -> str:
 
 
 def generate_password(
-    length: int = 14,
+    min_length: int = 14,
+    max_length: int = 14,
     max_attempts: int = 1000,
     extra_constraint: Callable[[str], bool] | None = None,
 ) -> str:
@@ -75,14 +76,18 @@ def generate_password(
     - At least one digit
     - At least one special character (non-alphanumeric)
 
-    Generates candidates by base64-encoding random bytes and retries until
-    one satisfies the complexity policy. If no compliant password is found
-    within `max_attempts`, falls back to a single rule-based construction
-    attempt, which is itself required to satisfy the policy (and any
-    `extra_constraint`) before being returned.
+    The password length is drawn once, uniformly at random, from
+    `[min_length, max_length]`, then held fixed across every attempt made
+    for this call. Generates candidates by base64-encoding random bytes and
+    retries until one satisfies the complexity policy. If no compliant
+    password is found within `max_attempts`, falls back to a single
+    rule-based construction attempt, which is itself required to satisfy
+    the policy (and any `extra_constraint`) before being returned.
 
     Args:
-        length: Desired password length (minimum 14). Defaults to 14.
+        min_length: Minimum password length (minimum 14). Defaults to 14.
+        max_length: Maximum password length. Must be >= `min_length`.
+            Defaults to 14.
         max_attempts: Maximum candidates to try before falling back to the
             rule-based construction. Defaults to 1000.
         extra_constraint: Optional additional predicate a candidate must
@@ -91,17 +96,24 @@ def generate_password(
             before a password is returned.
 
     Raises:
-        ValueError: If length is less than 14, or if no password satisfying
-            all constraints could be generated within `max_attempts` (plus
-            the single fallback attempt).
+        ValueError: If `min_length` is less than 14, if `max_length` is
+            less than `min_length`, or if no password satisfying all
+            constraints could be generated within `max_attempts` (plus the
+            single fallback attempt).
 
     Returns:
         A FIPS-compliant password string.
     """
-    if length < 14:
+    if min_length < 14:
         raise ValueError(
-            f"Password length must be at least 14 characters, got {length}"
+            f"Password length must be at least 14 characters, got {min_length}"
         )
+    if max_length < min_length:
+        raise ValueError(
+            f"max_length ({max_length}) must be >= min_length ({min_length})"
+        )
+
+    length = min_length + secrets.randbelow(max_length - min_length + 1)
 
     def satisfies_constraints(password: str) -> bool:
         return validate_password_complexity(password).is_valid and (
@@ -113,10 +125,9 @@ def generate_password(
         if satisfies_constraints(password):
             return password
 
-    # Single deterministic fallback attempt (not an extra budget of
-    # retries): it already guarantees base complexity by construction, so
-    # with no `extra_constraint` this preserves the historical behavior of
-    # returning a password even when max_attempts is exhausted (or 0).
+    # Single semi-deterministic fallback attempt, in the sense that
+    # it is guaranteed to be FIPS-compliant. However, it might fail the
+    # extra constraints.
     password = _generate_password_by_rule(length)
     if satisfies_constraints(password):
         return password
