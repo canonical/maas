@@ -1,12 +1,11 @@
 [Unit]
-Description=MAAS instance of ISC DHCP server for IPv4
-Documentation=man:dhcpd(8)
+Description=MAAS instance of Kea DHCP server for IPv4
+Documentation=man:kea-dhcp4(8)
 Wants=network-online.target
 After=network-online.target
 After=time-sync.target
 BindsTo=maas-rackd.service
-ConditionPathExists=/var/lib/maas/dhcpd.conf
-ConditionPathExists=/var/lib/maas/dhcpd-interfaces
+ConditionPathExists=/var/lib/maas/kea-dhcp4.conf
 
 [Service]
 # Allow dhcp server to write lease and pid file as 'dhcpd' user
@@ -14,17 +13,13 @@ ConditionPathExists=/var/lib/maas/dhcpd-interfaces
 ExecStartPre=/bin/mkdir -p /run/maas-dhcp
 ExecStart=/bin/sh -ec '\
     INTERFACES=$(cat /var/lib/maas/dhcpd-interfaces); \
-    LEASES_FILE=/var/lib/maas/dhcp/dhcpd.leases; \
-    [ -e $LEASES_FILE ] || touch $LEASES_FILE; \
-    /usr/sbin/maas-dhcp-helper clean $LEASES_FILE; \
-    chown root:dhcpd /var/lib/maas/dhcp $LEASES_FILE; \
     chmod 775 /var/lib/maas/dhcp ; chmod 664 $LEASES_FILE; \
-    exec dhcpd -user dhcpd -group dhcpd -f -q -4 -pf /run/maas-dhcp/dhcpd.pid \
-        -cf /var/lib/maas/dhcpd.conf -lf $LEASES_FILE $INTERFACES'
+    exec kea-dhcp4 -c /var/lib/maas/kea-dhcp4.conf
 # Require dhcpd stop in 8 seconds, if not kill it with 'mixed' mode.
 TimeoutStopSec=8
 KillMode=mixed
 Environment="MAAS_DHCP_SOCK=/var/lib/maas/dhcpd.sock"
+Environment="KEA_PIDFILE_DIR=/run/maas-dhcp/"
 
 [Install]
 WantedBy=multi-user.target

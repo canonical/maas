@@ -61,6 +61,8 @@ apps:
   maas:
     command: usr/bin/maas
     plugs:
+      - block-devices  # allow blkid (machine-resources) to read disk devices
+      - hardware-observe  # allow machine-resources to read hardware info from /sys
       - home
       - mount-observe  # to read /proc/*/mounts
       - network # for external authentication
@@ -135,8 +137,8 @@ parts:
       - chrony
       - freeipmi-tools # IPMI power driver
       - ipmitool # Moonshot power driver
-      - isc-dhcp-client
-      - isc-dhcp-server
+      - kea-dhcp4-server
+      - kea-dhcp6-server
       - libatm1
       - libsoap-lite-perl # AMT power driver
       - libvirt-clients # Virsh pod driver
@@ -229,6 +231,7 @@ parts:
       usr/lib/*-linux-gnu/blas/*: usr/lib/
       usr/local/bin/*: usr/bin/
       usr/local/lib/python3.14/*: usr/lib/python3.14/
+      usr/lib/x86_64-linux-gnu/kea/hooks: usr/lib/kea/hooks/
     stage:
       - etc/chrony
       - etc/freeipmi

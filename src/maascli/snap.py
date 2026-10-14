@@ -1015,3 +1015,20 @@ class cmd_migrate(SnapCommand):
             sys.exit(1)
         else:
             sys.exit(migrate_db())
+
+
+class cmd_upgrade_preflight_check(SnapCommand):
+    def __init__(self, parser):
+        super().__init__(parser)
+
+    def handle(self, options):
+        if get_current_mode() in ["region", "region+rack"]:
+            self._perform_preflight_check()
+
+    def _perform_preflight_check(self):
+        subprocess.check_call(
+            [
+                os.path.join(os.environ["SNAP"], "usr", "bin", "maas-region"),
+                "upgrade_preflight_check",
+            ]
+        )

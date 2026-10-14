@@ -299,6 +299,7 @@ def register_cli_commands(parser):
             ("config", snap.cmd_config),
             ("status", snap.cmd_status),
             ("migrate", snap.cmd_migrate),
+            ("upgrade-preflight-check", snap.cmd_upgrade_preflight_check),
         ]
     elif is_maasserver_available():
         extra_commands = [("init", cmd_init)]

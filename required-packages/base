@@ -5,8 +5,8 @@ distro-info
 dnsutils
 freeipmi-tools
 iputils-ping
-isc-dhcp-common
-isc-dhcp-server
+kea-dhcp4-server
+kea-dhcp6-server
 libpq-dev
 lshw
 postgresql

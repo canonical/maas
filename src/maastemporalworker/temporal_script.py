@@ -239,6 +239,7 @@ async def main() -> None:
                 dhcp_activity.fetch_hosts_for_update,
                 dhcp_activity.get_omapi_key,
                 dhcp_activity.get_dhcp_data_for_agent,
+                dhcp_activity.get_kea_config_for_agent,
                 # MSM connector activities,
                 msm_activity.check_enrol,
                 msm_activity.get_config_hash,

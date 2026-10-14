@@ -2,10 +2,12 @@ from datetime import datetime, timezone
 from typing import Any, cast
 from unittest.mock import AsyncMock, Mock
 
+from aiohttp import ClientResponse, ClientSession
 from netaddr import IPNetwork
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio.client import Client
+from temporalio.exceptions import ApplicationError
 from temporalio.testing import ActivityEnvironment
 
 from maascommon.enums.interface import InterfaceType
@@ -14,6 +16,7 @@ from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.db import Database
 from maasservicelayer.services import CacheForServices
 from maastemporalworker.workflow.dhcp import (
+    ApplyKeaConfigParam,
     ConfigureDHCPParam,
     DHCPConfigActivity,
     DHCPDataForAgent,
@@ -784,7 +787,7 @@ class TestDHCPConfigActivity:
         )
 
         result = await activities.get_kea_shared_networks_config_ipv4(
-            data, rack_ip="10.0.0.1"
+            data,
         )
 
         assert result == {
@@ -873,7 +876,7 @@ class TestDHCPConfigActivity:
         )
 
         result = await activities.get_kea_shared_networks_config_ipv4(
-            data, rack_ip="10.0.0.1"
+            data,
         )
 
         assert result == {
@@ -942,7 +945,7 @@ class TestDHCPConfigActivity:
         )
 
         result = await activities.get_kea_shared_networks_config_ipv4(
-            data, rack_ip="10.0.0.1"
+            data,
         )
 
         networks = result["shared-networks"]
@@ -1000,7 +1003,7 @@ class TestDHCPConfigActivity:
         )
 
         result = await activities.get_kea_shared_networks_config_ipv6(
-            data, rack_ip="2001:db8::1"
+            data,
         )
 
         assert result == {
@@ -1353,3 +1356,148 @@ class TestDHCPConfigActivity:
                 },
             ],
         }
+
+    def _mock_session(
+        self,
+        mocker,
+        activity: DHCPConfigActivity,
+        bodies: list[dict[str, Any]],
+    ) -> Mock:
+        mock_session = mocker.create_autospec(ClientSession)
+        responses = []
+        for body in bodies:
+            mock_response = mocker.create_autospec(ClientResponse)
+            mock_response.json.return_value = body
+            responses.append(mock_response)
+        mock_session.post.return_value.__aenter__.side_effect = responses
+        mocker.patch.object(
+            activity, "_create_session", return_value=mock_session
+        )
+        return mock_session
+
+    async def test_apply_kea_configuration_ipv4(
+        self, mocker, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        mock_session = self._mock_session(
+            mocker, activities, [{"result": 0}, {"result": 0}]
+        )
+        config = {"subnet4": [{"id": 1}]}
+
+        env = ActivityEnvironment()
+        await env.run(
+            activities.apply_kea_configuration,
+            ApplyKeaConfigParam(
+                config=config,
+                rack_ip="10.0.0.1",
+                use_tls=False,
+                kea_api_port="8000",
+                ip_version=4,
+            ),
+        )
+
+        assert mock_session.post.call_count == 2
+        url = "http://10.0.0.1:8000/"
+
+        config_set_call = mock_session.post.call_args_list[0]
+        assert config_set_call.args[0] == url
+        assert config_set_call.kwargs["json"] == {
+            "command": "config-set",
+            "service": ["dhcp4"],
+            "arguments": {"Dhcp4": config},
+        }
+
+        config_write_call = mock_session.post.call_args_list[1]
+        assert config_write_call.args[0] == url
+        assert config_write_call.kwargs["json"] == {
+            "command": "config-write",
+            "service": ["dhcp4"],
+            "arguments": {},
+        }
+
+    async def test_apply_kea_configuration_ipv6_with_tls(
+        self, mocker, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        mock_session = self._mock_session(
+            mocker, activities, [{"result": 0}, {"result": 0}]
+        )
+        config = {"subnet6": [{"id": 1}]}
+
+        env = ActivityEnvironment()
+        await env.run(
+            activities.apply_kea_configuration,
+            ApplyKeaConfigParam(
+                config=config,
+                rack_ip="fe80::1",
+                use_tls=True,
+                kea_api_port="8443",
+                ip_version=6,
+            ),
+        )
+
+        url = "https://fe80::1:8443/"
+        config_set_call = mock_session.post.call_args_list[0]
+        assert config_set_call.args[0] == url
+        assert config_set_call.kwargs["json"] == {
+            "command": "config-set",
+            "service": ["dhcp6"],
+            "arguments": {"Dhcp6": config},
+        }
+        assert mock_session.post.call_args_list[1].kwargs["json"] == {
+            "command": "config-write",
+            "service": ["dhcp6"],
+            "arguments": {},
+        }
+
+    async def test_apply_kea_configuration_config_set_failure(
+        self, mocker, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        mock_session = self._mock_session(
+            mocker,
+            activities,
+            [{"result": 1, "text": "bad config"}],
+        )
+
+        env = ActivityEnvironment()
+        with pytest.raises(ApplicationError) as exc_info:
+            await env.run(
+                activities.apply_kea_configuration,
+                ApplyKeaConfigParam(
+                    config={},
+                    rack_ip="10.0.0.1",
+                    use_tls=False,
+                    kea_api_port="8000",
+                    ip_version=4,
+                ),
+            )
+
+        assert "bad config" in str(exc_info.value)
+        mock_session.post.assert_called_once()
+
+    async def test_apply_kea_configuration_config_write_failure(
+        self, mocker, db: Database
+    ) -> None:
+        activities = self._make_activity(db)
+        mock_session = self._mock_session(
+            mocker,
+            activities,
+            [{"result": 0}, {"result": 1, "text": "write failed"}],
+        )
+
+        env = ActivityEnvironment()
+        with pytest.raises(ApplicationError) as exc_info:
+            await env.run(
+                activities.apply_kea_configuration,
+                ApplyKeaConfigParam(
+                    config={},
+                    rack_ip="10.0.0.1",
+                    use_tls=False,
+                    kea_api_port="8000",
+                    ip_version=4,
+                ),
+            )
+
+        assert "write failed" in str(exc_info.value)
+        assert mock_session.post.call_count == 2
