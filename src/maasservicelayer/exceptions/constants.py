@@ -78,6 +78,7 @@ SERVICE_UNAVAILABLE_VIOLATION_TYPE = "ServiceUnavailableViolation"
 # Machines
 INVALID_MACHINE_STATUS_VIOLATION_TYPE = "InvalidMachineStatusViolation"
 MACHINE_LOCKED_VIOLATION_TYPE = "MachineLockedViolation"
+MISSING_ARCHITECTURE_VIOLATION_TYPE = "MissingArchitectureViolation"
 UNKNOWN_POWER_TYPE_VIOLATION_TYPE = "UnknownPowerTypeViolation"
 
 # Operations

@@ -51,6 +51,7 @@ from maasservicelayer.exceptions.constants import (
     BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE,
     INVALID_MACHINE_STATUS_VIOLATION_TYPE,
     MACHINE_LOCKED_VIOLATION_TYPE,
+    MISSING_ARCHITECTURE_VIOLATION_TYPE,
     MISSING_PERMISSIONS_VIOLATION_TYPE,
     OPERATION_IN_PROGRESS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
@@ -386,8 +387,8 @@ class MachinesHandler(Handler):
             raise ConflictException(
                 details=[
                     BaseExceptionDetail(
-                        type=BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE,
-                        message=f"Machine '{system_id}' cannot be commissioned because it has no architecture.",
+                        type=MISSING_ARCHITECTURE_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because its architecture is not configured. Set the architecture before commissioning.",
                     )
                 ]
             )

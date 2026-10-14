@@ -38,6 +38,7 @@ from maasservicelayer.exceptions.constants import (
     BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE,
     INVALID_MACHINE_STATUS_VIOLATION_TYPE,
     MACHINE_LOCKED_VIOLATION_TYPE,
+    MISSING_ARCHITECTURE_VIOLATION_TYPE,
     MISSING_PERMISSIONS_VIOLATION_TYPE,
     OPERATION_IN_PROGRESS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
@@ -595,7 +596,7 @@ class TestMachinesApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert (
             error_response.details[0].type
-            == BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE
+            == MISSING_ARCHITECTURE_VIOLATION_TYPE
         )
         services_mock.boot_resources.has_commissioning_resource.assert_not_awaited()
         services_mock.operations.create_accepted_operation.assert_not_awaited()
