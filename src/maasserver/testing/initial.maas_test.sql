@@ -9173,7 +9173,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0040
+0042
 \.
 
 
@@ -16290,7 +16290,7 @@ ALTER TABLE ONLY public.maasserver_agent
 --
 
 ALTER TABLE ONLY public.maasserver_agent
-    ADD CONSTRAINT maasserver_agent_rackcontroller_id_fkey FOREIGN KEY (rackcontroller_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_agent_rackcontroller_id_fkey FOREIGN KEY (rackcontroller_id) REFERENCES public.maasserver_node(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 
 --
