@@ -26,7 +26,7 @@ Assigned one to a machine: MAAS only allows a machine to belong to a single AZ.
 
 Originally for Juju and OpenStack: These tools treat AZs as “fault domains” — if something fails in one zone, they can redeploy workloads into another.  MAAS, on the other hand, makes no decisions about AZs.
 
-Are compabtible with ailover semantics: In Juju or OpenStack, zones act like high-availability boundaries, so you get resilience by spreading workloads across them.
+Are compatible with failover semantics: In Juju or OpenStack, zones act like high-availability boundaries, so you get resilience by spreading workloads across them.
 
 In MAAS alone, an AZ is just a label. You can repurpose them any way you like, but they’re most valuable if you also run tools that respect fault domains.
 

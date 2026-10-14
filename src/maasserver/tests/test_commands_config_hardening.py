@@ -5,17 +5,16 @@
 from io import StringIO
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase
-
 from maasserver.management.commands.base import BaseCommandWithConnection
 from maasserver.management.commands.config_hardening import Command
+from maastesting.testcase import MAASTestCase
 
 _PATCH_CONFIGURE = patch(
     "maasserver.management.commands.config_hardening.configure_hardening"
 )
 
 
-class _Base(TestCase):
+class _Base(MAASTestCase):
     def setUp(self):
         super().setUp()
         _PATCH_CONFIGURE.start()
@@ -198,6 +197,21 @@ class TestConfigHardeningGet(_Base):
 
 
 class TestConfigHardeningValidate(_Base):
+    def setUp(self):
+        super().setUp()
+        for target in (
+            "maasserver.models.config.read_hardening_enabled_from_db",
+            "maasserver.certificates.get_maas_certificate",
+        ):
+            patcher = patch(target, return_value=None)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        patcher = patch.object(
+            Command, "_read_fips_declared", return_value=None
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     @staticmethod
     def _mock_cfg():
         return MagicMock(

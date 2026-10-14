@@ -2,9 +2,9 @@
 
 MAAS allows you to tailor machines before and during deployment. This includes configuring storage, setting kernel options, and applying preseeds. Some modifications can also be detected post-deployment, although MAAS itself cannot change a deployed machine’s hardware profile.
 
-## Pre-deployment customisation
+## Pre-deployment customization
 
-Before a machine is deployed, you can customise:
+Before a machine is deployed, you can customize:
 
 - Storage layouts – partitioning, LVM, RAID, bcache, and UEFI boot.
 - Preseeding – commissioning and deployment configurations applied by curtin or cloud-init.
@@ -69,9 +69,9 @@ MAAS uses [Tempita](https://raw.githubusercontent.com/ravenac95/tempita/master/d
 Two main tools apply preseeds:
 
 - Curtin – applies storage and OS configuration during installation, before first boot. Ideal for consistent, repeatable setups.
-- Cloud-init – applies customisations on first boot (packages, scripts, user data). Best for per-instance customisation.
+- Cloud-init – applies customizations on first boot (packages, scripts, user data). Best for per-instance customization.
 
-Templates are matched in lexical order, from the most specific (`curtin_userdata_ubuntu_amd64_generic_xenial_node`) to generic fallbacks. This lets you override behaviour per OS, release, or machine.
+Templates are matched in lexical order, from the most specific (`curtin_userdata_ubuntu_amd64_generic_xenial_node`) to generic fallbacks. This lets you override behavior per OS, release, or machine.
 
 ## Deployment scripts
 
@@ -103,7 +103,7 @@ You can pass any option supported by the Linux kernel. See the [kernel parameter
 
 ## Key takeaway
 
-Machine customisation in MAAS spans three layers:
+Machine customization in MAAS spans three layers:
 
 1. Storage – layouts, partitions, erasure.
 2. Configuration – preseeds (curtin/cloud-init), templates, and deployment scripts.
