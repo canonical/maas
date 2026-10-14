@@ -250,12 +250,12 @@ class ExternalOAuthService(
                 provider_id=client.provider.id,
                 email=id_token_object.email,
             )
-        except Exception as e:
+        except Exception:
             logger.error(
                 "Failed to add token to the local revoked list",
                 type=SECURITY,
                 token_hash=token_hash,
-                error=str(e),
+                exc_info=True,
             )
         else:
             logger.info(
@@ -266,12 +266,12 @@ class ExternalOAuthService(
 
         try:
             await client.revoke_token(token=refresh_token)
-        except Exception as e:
+        except Exception:
             logger.error(
                 "Token revocation failed at the provider's end",
                 type=SECURITY,
                 token_hash=token_hash,
-                error=str(e),
+                exc_info=True,
             )
 
     async def validate_access_token(self, access_token: str) -> None:
