@@ -275,10 +275,13 @@ def _build_bmc_password_constraint(
     `generate_password`'s own complexity policy already guarantees an
     uppercase letter, a digit, and a special character on every generated
     password, which alone satisfies every observed vendor's "at least N of
-    {upper, lower, digit, special}" requirement (N <= 2). What remains, and
-    is checked here, is vendor-specific:
+    {upper, lower, digit, special}" requirement (N <= 2). The "at least 2 of
+    {lowercase, uppercase, digit}" variant is re-checked explicitly below
+    anyway, so this constraint doesn't depend on that upstream guarantee.
+    What remains, and is checked here, is vendor-specific:
     - Only letters, digits, and a conservative punctuation set are allowed;
       no whitespace or other characters.
+    - At least 2 of {lowercase, uppercase, digit} character types present.
     - No more than 2 consecutive occurrences of the same character.
     - Must not equal `username`, or `username` reversed.
     - If `old_password` is given, must differ from it in at least 2
@@ -291,6 +294,15 @@ def _build_bmc_password_constraint(
 
     def constraint(password: str) -> bool:
         if not _BMC_PASSWORD_ALLOWED_CHARS.match(password):
+            return False
+        char_types_present = sum(
+            (
+                re.search(r"[a-z]", password) is not None,
+                re.search(r"[A-Z]", password) is not None,
+                re.search(r"\d", password) is not None,
+            )
+        )
+        if char_types_present < 2:
             return False
         if re.search(r"(.)\1\1", password):
             return False
