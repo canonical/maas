@@ -2563,12 +2563,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
         of hardware:
 
         - ``hmcz``: IBM Hardware Management Console (HMC) for Z
-        - ``mscm``: Moonshot Chassis Manager.
         - ``powerkvm``: Virtual Machines on Power KVM, managed by Virsh.
         - ``proxmox``: Virtual Machines managed by Proxmox
         - ``recs_box``: Christmann RECS|Box servers.
         - ``sm15k``: Seamicro 1500 Chassis.
-        - ``ucsm``: Cisco UCS Manager.
         - ``virsh``: virtual machines managed by Virsh.
         - ``vmware`` is the type for virtual machines managed by VMware.
 
@@ -2577,12 +2575,11 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
         @param (string) "username" [required=false] The username used to access
         the chassis. This field is required for the recs_box, seamicro15k,
-        vmware, mscm, ucsm, and hmcz chassis types.
+        vmware, and hmcz chassis types.
 
         @param (string) "password" [required=false] The password used to access
         the chassis. This field is required for the ``recs_box``,
-        ``seamicro15k``, ``vmware``, ``mscm``, ``ucsm``, and
-        ``hmcz`` chassis types.
+        ``seamicro15k``, ``vmware``, and ``hmcz`` chassis types.
 
         @param (string) "accept_all" [required=false] If true, all enlisted
         machines will be commissioned.
@@ -2651,10 +2648,8 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
         if chassis_type in (
             "hmcz",
-            "mscm",
             "recs_box",
             "seamicro15k",
-            "ucsm",
             "vmware",
         ):
             username = get_mandatory_param(request.POST, "username")

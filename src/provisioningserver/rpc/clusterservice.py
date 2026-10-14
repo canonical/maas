@@ -34,11 +34,9 @@ from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
 )
-from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.power.hmcz import probe_hmcz_and_enlist
-from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.power.proxmox import probe_proxmox_and_enlist
 from provisioningserver.drivers.power.recs import probe_and_enlist_recs
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -395,28 +393,6 @@ class Cluster(SecuredRPCProtocol):
             d.addErrback(
                 partial(catch_probe_and_enlist_error, "SeaMicro 15000")
             )
-        elif chassis_type == "mscm":
-            d = deferToThread(
-                probe_and_enlist_mscm,
-                user,
-                hostname,
-                username,
-                password,
-                accept_all,
-                domain,
-            )
-            d.addErrback(partial(catch_probe_and_enlist_error, "Moonshot"))
-        elif chassis_type == "ucsm":
-            d = deferToThread(
-                probe_and_enlist_ucsm,
-                user,
-                hostname,
-                username,
-                password,
-                accept_all,
-                domain,
-            )
-            d.addErrback(partial(catch_probe_and_enlist_error, "UCS"))
         else:
             message = "Unknown chassis type %s" % chassis_type
             maaslog.error(message)

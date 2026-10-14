@@ -9,26 +9,20 @@ from maascommon.utils.registry import Registry
 from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
 from provisioningserver.drivers.power.amt import AMTPowerDriver
 from provisioningserver.drivers.power.apc import APCPowerDriver
-from provisioningserver.drivers.power.dli import DLIPowerDriver
-from provisioningserver.drivers.power.eaton import EatonPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.hmcz import HMCZPowerDriver
 from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
 from provisioningserver.drivers.power.lxd import LXDPowerDriver
 from provisioningserver.drivers.power.manual import ManualPowerDriver
 from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
-from provisioningserver.drivers.power.mscm import MSCMPowerDriver
-from provisioningserver.drivers.power.openbmc import OpenBMCPowerDriver
 from provisioningserver.drivers.power.proxmox import ProxmoxPowerDriver
 from provisioningserver.drivers.power.raritan import RaritanPowerDriver
 from provisioningserver.drivers.power.recs import RECSPowerDriver
 from provisioningserver.drivers.power.redfish import RedfishPowerDriver
 from provisioningserver.drivers.power.seamicro import SeaMicroPowerDriver
-from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
 from provisioningserver.drivers.power.virsh import VirshPowerDriver
 from provisioningserver.drivers.power.vmware import VMwarePowerDriver
 from provisioningserver.drivers.power.webhook import WebhookPowerDriver
-from provisioningserver.drivers.power.wedge import WedgePowerDriver
 
 
 class PowerDriverRegistry(Registry):
@@ -49,26 +43,20 @@ class PowerDriverRegistry(Registry):
 power_drivers = [
     AMTPowerDriver(),
     APCPowerDriver(),
-    DLIPowerDriver(),
-    EatonPowerDriver(),
     HMCPowerDriver(),
     HMCZPowerDriver(),
     IPMIPowerDriver(),
     LXDPowerDriver(),
     ManualPowerDriver(),
     MoonshotIPMIPowerDriver(),
-    MSCMPowerDriver(),
-    OpenBMCPowerDriver(),
     ProxmoxPowerDriver(),
     RaritanPowerDriver(),
     RECSPowerDriver(),
     RedfishPowerDriver(),
     SeaMicroPowerDriver(),
-    UCSMPowerDriver(),
     VirshPowerDriver(),
     VMwarePowerDriver(),
     WebhookPowerDriver(),
-    WedgePowerDriver(),
 ]
 for driver in power_drivers:
     PowerDriverRegistry.register_item(driver.name, driver)

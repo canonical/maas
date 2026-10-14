@@ -14,17 +14,25 @@ from provisioningserver.utils.testing import RegistryFixture
 
 
 class TestRegisteredPowerDrivers(MAASTestCase):
-    def test_msftocs_is_not_available(self):
-        self.assertIsNone(PowerDriverRegistry.get_item("msftocs"))
-        self.assertNotIn(
+    def test_removed_drivers_are_not_available(self):
+        driver_names = {
+            driver["name"]
+            for driver in PowerDriverRegistry.get_schema(
+                detect_missing_packages=False
+            )
+        }
+        for power_type in (
+            "dli",
+            "eaton",
+            "mscm",
             "msftocs",
-            {
-                driver["name"]
-                for driver in PowerDriverRegistry.get_schema(
-                    detect_missing_packages=False
-                )
-            },
-        )
+            "nova",
+            "openbmc",
+            "ucsm",
+            "wedge",
+        ):
+            self.assertIsNone(PowerDriverRegistry.get_item(power_type))
+            self.assertNotIn(power_type, driver_names)
 
 
 class TestPowerDriverRegistry(MAASTestCase):

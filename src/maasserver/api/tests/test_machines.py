@@ -1900,27 +1900,35 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         self.assertEqual(b"No provided hostname!", response.content)
 
-    def test_POST_add_chassis_rejects_msftocs(self):
+    def test_POST_add_chassis_rejects_removed_chassis_types(self):
         self.become_admin()
         add_chassis = self.patch(node_module.RackController, "add_chassis")
-        response = self.client.post(
-            self.machines_url,
-            {
-                "op": "add_chassis",
-                "chassis_type": "msftocs",
-                "hostname": factory.make_url(),
-                "username": factory.make_name("username"),
-                "password": factory.make_name("password"),
-            },
-        )
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertTrue(
-            response.content.startswith(
-                b"Invalid chassis_type: Value must be one of: "
+        for chassis_type in (
+            "dli",
+            "eaton",
+            "mscm",
+            "msftocs",
+            "openbmc",
+            "ucsm",
+        ):
+            response = self.client.post(
+                self.machines_url,
+                {
+                    "op": "add_chassis",
+                    "chassis_type": chassis_type,
+                    "hostname": factory.make_url(),
+                    "username": factory.make_name("username"),
+                    "password": factory.make_name("password"),
+                },
             )
-        )
-        choices = response.content.split(b" (not ", 1)[0]
-        self.assertNotIn(b"msftocs", choices)
+            self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+            self.assertTrue(
+                response.content.startswith(
+                    b"Invalid chassis_type: Value must be one of: "
+                )
+            )
+            choices = response.content.split(b" (not ", 1)[0]
+            self.assertNotIn(chassis_type.encode("utf-8"), choices)
         add_chassis.assert_not_called()
 
     def test_POST_add_chassis_validates_chassis_type(self):
@@ -1947,10 +1955,8 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.patch(rack, "add_chassis")
         for chassis_type in (
             "hmcz",
-            "mscm",
             "recs_box",
             "seamicro15k",
-            "ucsm",
             "vmware",
         ):
             response = self.client.post(
@@ -1976,10 +1982,8 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.patch(rack, "add_chassis")
         for chassis_type in (
             "hmcz",
-            "mscm",
             "recs_box",
             "seamicro15k",
-            "ucsm",
             "vmware",
         ):
             response = self.client.post(
@@ -2225,12 +2229,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         self,
     ):
         self.become_admin()
-        for chassis_type in (
-            "mscm",
-            "recs_box",
-            "seamicro15k",
-            "ucsm",
-        ):
+        for chassis_type in ("recs_box", "seamicro15k"):
             response = self.client.post(
                 self.machines_url,
                 {
@@ -2307,8 +2306,6 @@ class TestMachinesAPI(APITestCase.ForUser):
     def test_POST_add_chassis_only_allow_power_control_on_seamicro15k(self):
         self.become_admin()
         for chassis_type in (
-            "mscm",
-            "ucsm",
             "virsh",
             "vmware",
             "powerkvm",
@@ -2382,10 +2379,8 @@ class TestMachinesAPI(APITestCase.ForUser):
     def test_POST_add_chassis_only_allows_port_with_vmware_and_recs_box(self):
         self.become_admin()
         for chassis_type in (
-            "mscm",
             "powerkvm",
             "seamicro15k",
-            "ucsm",
             "virsh",
         ):
             params = {
@@ -2495,10 +2490,8 @@ class TestMachinesAPI(APITestCase.ForUser):
     def test_POST_add_chassis_only_allows_protocol_with_vmware(self):
         self.become_admin()
         for chassis_type in (
-            "mscm",
             "powerkvm",
             "seamicro15k",
-            "ucsm",
             "virsh",
         ):
             params = {

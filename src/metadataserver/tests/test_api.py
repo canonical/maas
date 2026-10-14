@@ -3240,9 +3240,9 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(SCRIPT_STATUS.TIMEDOUT, script_result.status)
         self.assertIsNone(script_result.exit_status)
 
-    def test_signal_current_power_type_mscm_does_not_store_params(self):
+    def test_signal_unconfigured_moonshot_stores_params(self):
         node = factory.make_Node(
-            power_type="mscm",
+            power_type="",
             status=NODE_STATUS.COMMISSIONING,
             with_empty_script_sets=True,
         )
@@ -3262,8 +3262,8 @@ class TestCommissioningAPI(MAASServerTestCase):
             http.client.OK, response.status_code, response.content
         )
         node = reload_object(node)
-        self.assertEqual("mscm", node.power_type)
-        self.assertNotEqual(params, node.get_power_parameters())
+        self.assertEqual("moonshot", node.power_type)
+        self.assertEqual(params, node.get_power_parameters())
 
     def test_signal_refuses_bad_power_type(self):
         node = factory.make_Node(
@@ -4253,15 +4253,25 @@ class TestStoreNodeParameters(APITestCase.ForUser):
 
     def test_removed_power_driver_is_rejected(self):
         self.node.set_power_config("", {})
-        self.request.POST = {"power_type": "msftocs"}
-
-        with self.assertRaisesRegex(
-            MAASAPIBadRequest, "Bad power_type 'msftocs'"
+        for power_type in (
+            "dli",
+            "eaton",
+            "mscm",
+            "msftocs",
+            "nova",
+            "openbmc",
+            "ucsm",
+            "wedge",
         ):
-            store_node_power_parameters(self.node, self.request)
+            self.request.POST = {"power_type": power_type}
 
-        self.assertEqual("", self.node.power_type)
-        self.save.assert_not_called()
+            with self.assertRaisesRegex(
+                MAASAPIBadRequest, f"Bad power_type '{power_type}'"
+            ):
+                store_node_power_parameters(self.node, self.request)
+
+            self.assertEqual("", self.node.power_type)
+            self.save.assert_not_called()
 
     def test_no_connected_rack_controllers(self):
         # When get_driver_types returns empty dictionary.

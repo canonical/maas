@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+from itertools import product
 from unittest.mock import patch
 
 from crochet import TimeoutError
@@ -567,10 +568,22 @@ class TestMachineForm(MAASServerTestCase):
 
 class TestAdminMachineForm(MAASServerTestCase):
     def test_removed_power_driver_cannot_be_selected(self):
-        for skip_check in ("true", "false"):
+        for power_type, skip_check in product(
+            (
+                "dli",
+                "eaton",
+                "mscm",
+                "msftocs",
+                "nova",
+                "openbmc",
+                "ucsm",
+                "wedge",
+            ),
+            ("true", "false"),
+        ):
             new_form = AdminMachineForm(
                 data={
-                    "power_type": "msftocs",
+                    "power_type": power_type,
                     "power_parameters_skip_check": skip_check,
                 }
             )
@@ -580,7 +593,7 @@ class TestAdminMachineForm(MAASServerTestCase):
             form = AdminMachineForm(
                 instance=node,
                 data={
-                    "power_type": "msftocs",
+                    "power_type": power_type,
                     "power_parameters_skip_check": skip_check,
                 },
             )

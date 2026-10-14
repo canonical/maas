@@ -23,7 +23,7 @@ MAAS extracts six built-in commissioning scripts from the MAAS database and runs
 
 - **maas-list-modaliases:** identifies the available hardware modules.
 
-- **maas-get-fruid-api-data:** gathers information for the Facebook wedge power type.
+- **maas-get-fruid-api-data:** gathers hardware information for Facebook Wedge systems.
 
 - **maas-serial-ports:** finds the available serial ports.
 

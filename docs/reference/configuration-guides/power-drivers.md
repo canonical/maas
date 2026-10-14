@@ -4,8 +4,21 @@ The following page catalogs the fields in the `create machine` dialogue for each
 
 ## Removed drivers
 
-Microsoft OCS - Chassis Manager (`msftocs`) is no longer supported. During
-upgrade, MAAS removes the affected machines' power-driver associations and
+The following power drivers are no longer supported:
+
+- Digital Loggers, Inc. PDU (`dli`)
+- Eaton PDU (`eaton`)
+- HP Moonshot - iLO Chassis Manager (`mscm`)
+- Microsoft OCS - Chassis Manager (`msftocs`)
+- OpenStack Nova (`nova`)
+- OpenBMC (`openbmc`)
+- Cisco UCS Manager (`ucsm`)
+- Facebook's Wedge (`wedge`)
+
+Chassis discovery using `mscm`, `msftocs`, or `ucsm` is also no longer
+supported. The separate HP Moonshot IPMI driver (`moonshot`) remains supported.
+
+During upgrade, MAAS removes the affected machines' power-driver associations and
 stored power parameters, including credentials. The machines remain in MAAS
 with no power driver configured; they are not switched to manual power or
 automatically converted to Webhook.
@@ -18,7 +31,7 @@ Before upgrading, retain any configuration you need to set up a replacement
 service securely. To restore power control, configure a supported driver or
 use the Webhook driver with a compatible external service. See
 [Creating a web service for the MAAS Webhook power driver](https://discourse.maas.io/t/creating-a-web-service-for-the-maas-webhook-power-driver/3756)
-for a sample implementation; it is an example, not an OCS-specific replacement.
+for a sample implementation; it is an example, not a driver-specific replacement.
 
 ## UI parameter expressions
 
@@ -36,15 +49,6 @@ for a sample implementation; it is an example, not an OCS-specific replacement.
 | IP for APC PDU | IP address of unit | Required |
 | APC PDU node outlet number (1-16) | PDU node outlet number | Required |
 | Power ON outlet delay (seconds) | outlet power ON delay | Optional, default=5 |
-
-### Digital Loggers, Inc. PDU
-
-| Form field | Description | Required |
-|:-----|:-----|:-----|
-| Outlet ID | outlet ID | Required |
-| Power address | IP address of unit | Required |
-| Power user | Username to login | Optional |
-| Power password | Password to access unit | Optional |
 
 ### IBM Hardware Management Console (HMC)
 
@@ -102,27 +106,6 @@ Manual power configuration means exactly that -- manually configured at the unit
 | Power password | Password to access unit | Optional |
 | Power hardware address | Hardware address of unit | Required |
 
-### HP Moonshot - iLO Chassis Manager
-
-| Form field | Description | Required |
-|:-----|:-----|:-----|
-| IP for MSCM CLI API | IP address of unit | Required |
-| MSCM CLI API user | Username to login | Optional |
-| MSCM CLI API password | Password to access unit | Optional |
-| Node ID | cXnY | Required |
-|  - where  | X = cartridge number | |
-|           | Y = node number | |
-
-### OpenStack Nova
-
-| Form field | Description | Required |
-|:-----|:-----|:-----|
-| Host UUID | Host UUID | Required |
-| Tenant name | Tenant name | Required |
-| Username | Username to login | Required |
-| Password | Password to access unit | Required |
-| Auth URL | URL to access unit | Required |
-
 ### Proxmox
 
 | Form field | Description | Required |
@@ -135,14 +118,6 @@ Manual power configuration means exactly that -- manually configured at the unit
 | API token secret | Token secret | Provisional |
 | Node ID | VM name or ID | Optional |
 | Verify SSL connections… | Boolean, whether or not to verify SSL connections with the system's root CA certificate | Required |
-
-### OpenBMC Power Driver
-
-| Form field | Description | Required |
-|:-----|:-----|:-----|
-| OpenBMC address | IP address of unit | Required |
-| OpenBMC user | Username to login | Required |
-| OpenBMC password | Password to access unit | Required |
 
 ### Christmann RECS-Box Power Driver
 
@@ -177,15 +152,6 @@ Some of the fields for this power type have fixed choices, indicated in the `Cho
 |  |  | REST API v0.9 | |
 |  |  | REST API v2.0 | |
 
-### Cisco UCS Manager
-
-| Form field | Description | Required |
-|:-----|:-----|:-----|
-| Server UUID | Server UUID | Required |
-| URL for XML API | XML API URL | Required |
-| API user | API user | Optional |
-| API password | API password | Optional |
-
 ### virsh - libvirt KVM
 
 | Form field | Description | Required |
@@ -205,14 +171,6 @@ Some of the fields for this power type have fixed choices, indicated in the `Cho
 | VMware password | Password to access VM | Required |
 | VMware API port | VMware API port number | Optional |
 | VMware API protocol | VMware API protocol | Optional |
-
-### Facebook's Wedge
-
-| Form field | Description | Required |
-|:-----|:-----|:-----|
-| IP address | IP address of unit | Required |
-| Power user | Username to access unit | Optional |
-| Power password | Password to access unit | Optional |
 
 ### Virsh power type (UI)
 
@@ -260,29 +218,6 @@ All parameters are entered as `key=value`, e.g., `power_type=apc`. The MAAS CLI 
 | Parameter | Description | Required |
 |:-----|:-----|:-----|
 | `power_type` | `apc` | Required |
-| `power_address` | IP address of unit | Required |
-| `node_outlet` | PDU node outlet number | Required |
-| `power_on_delay` | outlet power ON delay | Optional, default=5 |
-
-### Digital Loggers, Inc. PDU
-
-All parameters are entered as `key=value`, e.g., `power_type=dli`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
-
-| Parameter | Description | Required |
-|:-----|:-----|:-----|
-| `power_type` | `dli` | Required |
-| `outlet_id` | outlet ID | Required |
-| `power_address` | IP address of unit | Required |
-| `power_user` | Username to login | Optional |
-| `power_pass` | Password to access unit | Optional |
-
-### Eaton PDU
-
-All parameters are entered as `key=value`, e.g., `power_type=eaton`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
-
-| Parameter | Description | Required |
-|:-----|:-----|:-----|
-| `power_type` | `eaton` | Required |
 | `power_address` | IP address of unit | Required |
 | `node_outlet` | PDU node outlet number | Required |
 | `power_on_delay` | outlet power ON delay | Optional, default=5 |
@@ -354,44 +289,6 @@ All parameters are entered as `key=value`, e.g., `power_type=moonshot`. The MAAS
 | `power_user` | Username to login | Optional |
 | `power_pass` | Password to access unit | Optional |
 
-### HP Moonshot - iLO Chassis Manager
-
-All parameters are entered as `key=value`, e.g., `power_type=mscm`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
-
-| Parameter | Description | Required |
-|:-----|:-----|:-----|
-| `power_type` | `mscm` | Required |
-| `power_address` | IP address of unit | Required |
-| `node_id` | cXnY | Required |
-|  - where  | X = cartridge number | |
-|           | Y = node number | |
-| `power_user` | Username to login | Optional |
-| `power_pass` | Password to access unit | Optional |
-
-### OpenStack Nova
-
-All parameters are entered as `key=value`, e.g., `power_type=nova`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
-
-| Parameter | Description | Required |
-|:-----|:-----|:-----|
-| `power_type` | `nova` | Required |
-| `nova_id` | Host UUID | Required |
-| `os_tenantname` | Tenant name | Required |
-| `os_username` | Username to login | Required |
-| `os_password` | Password to access unit | Required |
-| `os_authurl` | URL to access unit | Required |
-
-### OpenBMC Power Driver
-
-All parameters are entered as `key=value`, e.g., `power_type=openbmc`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
-
-| Parameter | Description | Required |
-|:-----|:-----|:-----|
-| `power_type` | `openbmc` | Required |
-| `power_address` | IP address of unit | Required |
-| `power_user` | Username to login | Required |
-| `power_pass` | Password to access unit | Required |
-
 ### Christmann RECS-Box Power Driver
 
 All parameters are entered as `key=value`, e.g., `power_type=recs_box`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
@@ -434,18 +331,6 @@ Some of the fields for this power type have fixed choices, indicated in the `Cho
 | `power_user` | Username to login || Optional |
 | `power_pass` | Password to access unit || Optional |
 
-### Cisco UCS Manager
-
-All parameters are entered as `key=value`, e.g., `power_type=ucsm`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
-
-| Parameter | Description | Required |
-|:-----|:-----|:-----|
-| `power_type` | `ucsm` | Required |
-| `uuid` | Server UUID | Required |
-| `power_address` | URL for XML API | Required |
-| `power_user` | API user | Optional |
-| `power_pass` | API password | Optional |
-
 ### virsh - libvirt KVM
 
 All parameters are entered as `key=value`, e.g., `power_type=virsh`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
@@ -471,17 +356,6 @@ All parameters are entered as `key=value`, e.g., `power_type=vmware`. The MAAS C
 | `power_pass` | Password to access VM | Required |
 | `power_port` | VMware API port number | Optional |
 | `power_protocol` | VMware API protocol | Optional |
-
-### Facebook's Wedge
-
-All parameters are entered as `key=value`, e.g., `power_type=wedge`. The MAAS CLI will refuse the request with informative errors if required parameters are excluded.
-
-| Parameter | Description | Required |
-|:-----|:-----|:-----|
-| `power_type` | `wedge` | Required |
-| `power_address` | IP address of unit | Required |
-| `power_user` | Username to access unit | Optional |
-| `power_pass` | Password to access unit | Optional |
 
 ### Virsh power type (CLI)
 
@@ -711,38 +585,6 @@ Machine-readable output follows this announcement. The JSON generated by this co
 <td></td>
 </tr>
 <tr class="even">
-<td align="left">Cisco UCS Manager</td>
-<td>X</td>
-<td>X</td>
-<td>X</td>
-<td></td>
-<td></td>
-</tr>
-<tr class="odd">
-<td align="left">Digital Loggers, Inc. - PDU</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="even">
-<td align="left">Facebook's Wedge <code>*</code></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="odd">
-<td align="left">HP Moonshot - iLO Chassis Manager</td>
-<td>X</td>
-<td>X</td>
-<td>X</td>
-<td></td>
-<td></td>
-</tr>
-<tr class="even">
 <td align="left">HP Moonshot - iLO4 (IPMI)</td>
 <td>X</td>
 <td>X</td>
@@ -778,14 +620,6 @@ Machine-readable output follows this announcement. The JSON generated by this co
 <td align="left">Manual</td>
 <td></td>
 <td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="even">
-<td align="left">OpenStack Nova</td>
-<td></td>
-<td>X</td>
 <td></td>
 <td></td>
 <td></td>
@@ -841,5 +675,3 @@ Machine-readable output follows this announcement. The JSON generated by this co
 </tr>
 </tbody>
 </table>
-
-`*` The 'Facebook's Wedge' OpenBMC power driver is considered experimental at this time.

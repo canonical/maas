@@ -567,7 +567,7 @@ class TestRackClient(MAASTestCase):
         conn.ident = factory.make_name("ident")
         client = RackClient(conn, {})
         call_cache = client._getCallCache()
-        power_types = {"power_types": [{"name": "ipmi"}, {"name": "wedge"}]}
+        power_types = {"power_types": [{"name": "ipmi"}, {"name": "hmc"}]}
         call_cache[cluster.DescribePowerTypes] = power_types
         result = yield client(cluster.DescribePowerTypes)
         # The result is a copy. It should equal the result but not be

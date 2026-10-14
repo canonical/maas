@@ -19,8 +19,13 @@ from maasserver.models import (
 from maasserver.sqlalchemy import get_sqlalchemy_django_connection
 
 migration = import_module(
-    "maasservicelayer.db.alembic.versions.0041_remove_msftocs"
+    "maasservicelayer.db.alembic.versions.0041_remove_power_drivers"
 )
+
+
+@pytest.fixture(params=list(migration.REMOVED_POWER_DRIVERS))
+def power_type(request):
+    return request.param
 
 
 def upgrade():
@@ -29,26 +34,26 @@ def upgrade():
         migration.upgrade()
 
 
-def make_old_bmc(factory):
+def make_old_bmc(factory, power_type):
     bmc = factory.make_BMC()
     # Reproduce stored upgrade data without requiring the removed driver.
     BMC.objects.filter(id=bmc.id).update(
-        power_type="msftocs",
+        power_type=power_type,
         power_parameters={"power_address": str(bmc.id), "power_user": "admin"},
     )
     return bmc
 
 
 @pytest.mark.usefixtures("maasdb")
-class TestRemoveMsftocs:
-    def test_shared_and_orphan_bmcs_are_removed(self, factory):
+class TestRemovePowerDrivers:
+    def test_shared_and_orphan_bmcs_are_removed(self, factory, power_type):
         nodes = [
             factory.make_Node(power_type="", with_boot_disk=False)
             for _ in range(2)
         ]
         rack = factory.make_RackController()
-        shared = make_old_bmc(factory)
-        orphan = make_old_bmc(factory)
+        shared = make_old_bmc(factory, power_type)
+        orphan = make_old_bmc(factory, power_type)
         for index, node in enumerate(nodes):
             Node.objects.filter(id=node.id).update(
                 bmc_id=shared.id,
@@ -96,13 +101,15 @@ class TestRemoveMsftocs:
         }
         assert not VaultSecret.objects.get(path=metadata_path).deleted
 
-    def test_unaffected_configuration_and_secrets_are_preserved(self, factory):
+    def test_unaffected_configuration_and_secrets_are_preserved(
+        self, factory, power_type
+    ):
         node = factory.make_Node(
             power_type="ipmi",
             power_parameters={"power_address": "192.0.2.1"},
             with_boot_disk=False,
         )
-        make_old_bmc(factory)
+        make_old_bmc(factory, power_type)
         Node.objects.filter(id=node.id).update(
             instance_power_parameters={"power_id": "keep"}
         )
@@ -137,8 +144,10 @@ class TestRemoveMsftocs:
             path="bmc/999999/power-parameters"
         ).deleted
 
-    def test_notice_survives_cleanup_and_startup(self, factory, mocker):
-        make_old_bmc(factory)
+    def test_notice_survives_cleanup_and_startup(
+        self, factory, mocker, power_type
+    ):
+        make_old_bmc(factory, power_type)
         user = factory.make_User()
         admin = factory.make_admin()
         mocker.patch(
@@ -151,12 +160,15 @@ class TestRemoveMsftocs:
         deprecations.sync_deprecation_notifications()
         upgrade()
 
-        notice = Notification.objects.get(ident="power_driver_msftocs_removed")
+        notice = Notification.objects.get(
+            ident=f"power_driver_{power_type}_removed"
+        )
         assert notice.category == "warning"
         assert notice.dismissable
         assert notice in Notification.objects.find_for_user(user)
         assert notice in Notification.objects.find_for_user(admin)
-        assert "Microsoft OCS (msftocs)" in notice.render()
+        description = migration.REMOVED_POWER_DRIVERS[power_type]
+        assert f"{description} ({power_type})" in notice.render()
         assert "power configuration has been cleared" in notice.render()
         assert "compatible external service" in notice.render()
         assert (
@@ -166,10 +178,38 @@ class TestRemoveMsftocs:
         notice.dismiss(user)
         assert notice not in Notification.objects.find_for_user(user)
         assert notice in Notification.objects.find_for_user(admin)
+        assert list(
+            Notification.objects.filter(
+                ident__startswith="power_driver_"
+            ).values_list("ident", flat=True)
+        ) == [notice.ident]
 
     def test_unaffected_install_has_no_notice(self):
         upgrade()
 
         assert not Notification.objects.filter(
-            ident="power_driver_msftocs_removed"
+            ident__startswith="power_driver_"
         ).exists()
+
+    def test_all_removed_drivers_are_migrated_together(self, factory):
+        nodes = []
+        for power_type in migration.REMOVED_POWER_DRIVERS:
+            node = factory.make_Node(power_type="", with_boot_disk=False)
+            bmc = make_old_bmc(factory, power_type)
+            Node.objects.filter(id=node.id).update(bmc_id=bmc.id)
+            nodes.append(node)
+
+        upgrade()
+
+        for node in nodes:
+            node.refresh_from_db()
+            assert node.bmc_id is None
+            assert node.power_type == ""
+        assert set(
+            Notification.objects.filter(
+                ident__startswith="power_driver_"
+            ).values_list("ident", flat=True)
+        ) == {
+            f"power_driver_{power_type}_removed"
+            for power_type in migration.REMOVED_POWER_DRIVERS
+        }

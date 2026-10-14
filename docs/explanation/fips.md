@@ -41,8 +41,8 @@ for the specific rules.
 
 ### SSH algorithm restrictions
 
-MAAS-initiated SSH sessions (used by SSH-based power drivers such as HMC, MSCM,
-and Wedge) negotiate only FIPS-approved algorithms:
+MAAS-initiated SSH sessions (used by the HMC power driver) negotiate only
+FIPS-approved algorithms:
 
 - **Ciphers**: FIPS-approved symmetric ciphers only (per NIST SP 800-131A).
 - **Key exchange**: FIPS-approved key exchange methods only (per NIST SP 800-56A).
@@ -81,8 +81,8 @@ On a FIPS host, the API enforces FIPS compliance on power driver configuration:
   HMAC-SHA256 with AES-CBC-128; all lower suites rely on HMAC-MD5, RC4, or
   SHA-1.
 - **Unsupported drivers**: The following drivers are rejected because they
-  cannot be made FIPS-compliant: APC, Eaton, Raritan, DLI,
-  RECS (`recs_box`), SeaMicro (`sm15k`), UCSM, and Moonshot. The API
+  cannot be made FIPS-compliant: APC, Raritan, RECS (`recs_box`),
+  SeaMicro (`sm15k`), and Moonshot. The API
   returns the rejection reason and a list of supported alternatives.
 - **SSL verification**: Drivers that support an SSL verification option
   (Webhook, Proxmox, HMCz) require it enabled (`power_verify_ssl: y`).
