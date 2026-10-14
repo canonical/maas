@@ -852,6 +852,55 @@ class TestExternalOAuthService(ServiceCommonTests):
             token_hash=hash_token_for_logging("abc123"),
         )
 
+    async def test_revoke_token_provider_failure_still_stores_token(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        mock_client = OAuth2Client(provider=test_instance)
+        mock_client.parse_raw_id_token = AsyncMock(
+            return_value=OAuthIDToken(
+                claims=JWTClaims(
+                    header=Mock(), payload={"email": "test@example.com"}
+                ),
+                encoded="id123",
+                provider=test_instance,
+            )
+        )
+        mock_client.revoke_token = AsyncMock(side_effect=HTTPError("boom"))
+        service_instance.get_client = AsyncMock(return_value=mock_client)
+        service_instance.revoked_tokens_service.create_revoked_token = (
+            AsyncMock()
+        )
+
+        await service_instance.revoke_token(
+            id_token="id123", refresh_token="abc123"
+        )
+
+        service_instance.revoked_tokens_service.create_revoked_token.assert_awaited_once_with(
+            token="abc123",
+            provider_id=1,
+            email="test@example.com",
+        )
+
+    async def test_revoke_token_local_failure_still_revokes_at_provider(
+        self,
+        service_instance: ExternalOAuthService,
+        test_instance: OAuthProvider,
+    ) -> None:
+        mock_client = OAuth2Client(provider=test_instance)
+        mock_client.parse_raw_id_token = AsyncMock(
+            side_effect=Exception("boom")
+        )
+        mock_client.revoke_token = AsyncMock(return_value=None)
+        service_instance.get_client = AsyncMock(return_value=mock_client)
+
+        await service_instance.revoke_token(
+            id_token="id123", refresh_token="abc123"
+        )
+
+        mock_client.revoke_token.assert_awaited_once_with(token="abc123")
+
     async def test_validate_access_token(
         self,
         service_instance: ExternalOAuthService,
