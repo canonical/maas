@@ -400,15 +400,17 @@ class IPMIBase(BMCConfig):
         print("INFO: IPMI user privilege level - %s" % self._get_ipmi_priv())
         if not self.password:
             # LP:1993916, LP:1621175, LP:2130621 - across vendors (Lenovo,
-            # Huawei, NVIDIA DGX H200), the only consistently observed
-            # length requirement beyond the base FIPS policy is a minimum
-            # of 16 (no vendor has been seen to reject lengths up to 20).
+            # Huawei, NVIDIA DGX H200), there is an observed minimum length
+            # requirement beyond of 16. IPMI 1.5 also
+            # imposes a maximum length of 16, and is apparently the only
+            # one to do so that we are aware of. Together, this boxes us
+            # into min_length=16 and max_length=16.
             # `_build_bmc_password_constraint` enforces the remaining,
-            # rules (allowed characters, no 3+ consecutive
+            # vendor-agnostic rules (allowed characters, no 3+ consecutive
             # repeats, not equal to the username or its reverse).
             password = generate_password(
                 min_length=16,
-                max_length=20,
+                max_length=16,
                 extra_constraint=_build_bmc_password_constraint(
                     username=self.username
                 ),
