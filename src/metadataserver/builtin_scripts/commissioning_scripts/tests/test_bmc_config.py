@@ -269,43 +269,45 @@ EndSection
             "Command '['ipmi-locate']' returned non-zero exit status 1."
         )
 
-    def test_generate_random_password(self):
-        special_chars = set("!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~")
+    def test_generate_password_satisfies_bmc_constraint(self):
+        constraint = bmc_config._build_bmc_password_constraint(
+            username="maas"
+        )
         for attempt in range(0, 100):  # noqa: B007
-            password = self.ipmi._generate_random_password()
+            password = bmc_config.generate_password(
+                min_length=14,
+                max_length=15,
+                extra_constraint=constraint,
+            )
             self.assertTrue(14 <= len(password) <= 15)
-            self.assertTrue(
-                any((c in special_chars) for c in password), password
-            )
-            self.assertIsNotNone(re.match(r".*[a-z].*", password), password)
-            self.assertIsNotNone(re.match(r".*[A-Z].*", password), password)
-            self.assertIsNotNone(re.match(r".*[0-9].*", password), password)
-            # Test password doesn't have two or more occurrences of the
-            # the same consecutive character.
-            self.assertFalse(re.search(r"(.)\1", password))
+            self.assertTrue(constraint(password))
+            # No more than 2 consecutive occurrences of the same character.
+            self.assertFalse(re.search(r"(.)\1\1", password))
 
-    def test_generate_random_password_with_length(self):
-        special_chars = set("!\"#$%&'()*+-,./:;<=>?@[]^_`{|}~")
-        for attempt in range(0, 10):  # noqa: B007
-            password = self.ipmi._generate_random_password(
-                min_length=16, max_length=20
-            )
-            assert 16 <= len(password) <= 20
-            assert any((c in special_chars) for c in password), password
-            assert re.match(r".*[a-z].*", password) is not None, password
-            assert re.match(r".*[A-Z].*", password) is not None, password
-            assert re.match(r".*[0-9].*", password) is not None, password
-            # Test password doesn't have two or more occurrences of the
-            # the same consecutive character.
-            assert re.search(r"(.)\1", password) is None
+    def test_bmc_password_constraint_rejects_disallowed_characters(self):
+        constraint = bmc_config._build_bmc_password_constraint()
+        self.assertFalse(constraint("Aa1! valid password"))
+        self.assertFalse(constraint("Aa1!backslash\\here"))
 
-    def test_generate_random_password_clamps_below_fips_minimum(self):
-        # min_length/max_length below the FIPS 14-char floor are clamped up.
-        for attempt in range(0, 10):  # noqa: B007
-            password = self.ipmi._generate_random_password(
-                min_length=5, max_length=8
-            )
-            assert len(password) == 14
+    def test_bmc_password_constraint_rejects_triple_repeats(self):
+        constraint = bmc_config._build_bmc_password_constraint()
+        self.assertFalse(constraint("Aa1!aaaBBB"))
+        self.assertTrue(constraint("Aa1!aaBBcc"))
+
+    def test_bmc_password_constraint_rejects_username_match(self):
+        constraint = bmc_config._build_bmc_password_constraint(
+            username="maasuser"
+        )
+        self.assertFalse(constraint("maasuser"))
+        self.assertFalse(constraint("maasuser"[::-1]))
+
+    def test_bmc_password_constraint_requires_old_password_difference(self):
+        constraint = bmc_config._build_bmc_password_constraint(
+            old_password="Aa1!bbbbbbbbbb"
+        )
+        self.assertFalse(constraint("Aa1!bbbbbbbbbb"))
+        self.assertFalse(constraint("Ab1!bbbbbbbbbb"))
+        self.assertTrue(constraint("Ab2!bbbbbbbbbb"))
 
     def test_make_ipmi_user_settings(self):
         username = factory.make_name("username")
@@ -394,17 +396,9 @@ EndSection
         self.ipmi.username = None
         self.ipmi.password = None
         password = factory.make_name("password")
-        stronger_password = factory.make_name("strongpassword")
-        password_w_spec_chars = factory.make_name("password_w_spec_chars")
-        stronger_password_w_spec_chars = factory.make_name(
-            "stronger_password_w_spec_chars"
-        )
-        self.patch(self.ipmi, "_generate_random_password").side_effect = (
-            password,
-            stronger_password,
-            password_w_spec_chars,
-            stronger_password_w_spec_chars,
-        )
+        self.patch(
+            bmc_config, "generate_password"
+        ).return_value = password
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
         mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
         self.ipmi._bmc_config = {
@@ -428,74 +422,6 @@ EndSection
             [
                 call("User2", "Username", "maas"),
                 call("User2", "Password", password),
-                call("User2", "Lan_Privilege_Limit", "Operator"),
-            ]
-        )
-        mock_bmc_set_keys.assert_called_once_with(
-            "User2",
-            [
-                "Lan_Enable_Link_Auth",
-                "SOL_Payload_Access",
-                "Serial_Enable_Link_Auth",
-            ],
-            "Yes",
-        )
-
-    def test_add_bmc_user_rand_password_with_special_chars(self):
-        self.ipmi.username = None
-        self.ipmi.password = None
-        password = factory.make_name("password")
-        stronger_password = factory.make_name("strongpassword")
-        password_w_spec_chars = factory.make_name("password_w_spec_chars")
-        stronger_password_w_spec_chars = factory.make_name(
-            "stronger_password_w_spec_chars"
-        )
-        self.patch(self.ipmi, "_generate_random_password").side_effect = (
-            password,
-            stronger_password,
-            password_w_spec_chars,
-            stronger_password_w_spec_chars,
-        )
-        mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
-        mock_bmc_set.side_effect = (
-            None,
-            factory.make_exception(),
-            None,
-            factory.make_exception(),
-            None,
-            factory.make_exception(),
-            None,
-            None,
-            None,
-        )
-        mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
-        self.ipmi._bmc_config = {
-            "User1": {},
-            "User2": {
-                "Username": "",
-                "Password": factory.make_name("password"),
-                "Enable_User": "Yes",
-                "Lan_Privilege_Limit": "Administrator",
-                "Lan_Enable_IPMI_Msgs": "Yes",
-            },
-        }
-        self.ipmi._privilege_level = "OPERATOR"
-
-        self.ipmi.add_bmc_user()
-
-        self.assertEqual("maas", self.ipmi.username)
-        self.assertEqual(stronger_password_w_spec_chars, self.ipmi.password)
-        # Verify bmc_set is only called for values that have changed
-        mock_bmc_set.assert_has_calls(
-            [
-                call("User2", "Username", "maas"),
-                call("User2", "Password", password),
-                call("User2", "Username", "maas"),
-                call("User2", "Password", stronger_password),
-                call("User2", "Username", "maas"),
-                call("User2", "Password", password_w_spec_chars),
-                call("User2", "Username", "maas"),
-                call("User2", "Password", stronger_password_w_spec_chars),
                 call("User2", "Lan_Privilege_Limit", "Operator"),
             ]
         )

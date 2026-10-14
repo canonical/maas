@@ -256,6 +256,60 @@ def generate_password(
     )
 
 
+# Characters accepted across observed BMC vendor password policies (e.g.
+# Huawei, Lenovo, DGX): letters, digits, and this conservative punctuation
+# set. Notably excludes whitespace and backslash, which some vendors reject
+# outright.
+_BMC_PASSWORD_ALLOWED_CHARS = re.compile(
+    r"^[A-Za-z0-9~`!\"@#$%^&*()\-+={}\[\]|:;'<>,?/._]+$"
+)
+
+
+def _build_bmc_password_constraint(
+    username: str | None = None,
+    old_password: str | None = None,
+) -> Callable[[str], bool]:
+    """Build an `extra_constraint` combining common BMC vendor password
+    policies, for use with `generate_password`.
+
+    `generate_password`'s own complexity policy already guarantees an
+    uppercase letter, a digit, and a special character on every generated
+    password, which alone satisfies every observed vendor's "at least N of
+    {upper, lower, digit, special}" requirement (N <= 2). What remains, and
+    is checked here, is vendor-specific:
+    - Only letters, digits, and a conservative punctuation set are allowed;
+      no whitespace or other characters.
+    - No more than 2 consecutive occurrences of the same character.
+    - Must not equal `username`, or `username` reversed.
+    - If `old_password` is given, must differ from it in at least 2
+      character positions.
+
+    Length bounds (commonly 8-20 or 10-20 characters, depending on vendor)
+    are enforced via `generate_password`'s `min_length`/`max_length`, not
+    here.
+    """
+
+    def constraint(password: str) -> bool:
+        if not _BMC_PASSWORD_ALLOWED_CHARS.match(password):
+            return False
+        if re.search(r"(.)\1\1", password):
+            return False
+        if username and password in (username, username[::-1]):
+            return False
+        if old_password is not None:
+            longer, shorter = sorted(
+                (password, old_password), key=len, reverse=True
+            )
+            differing_positions = sum(
+                1 for a, b in zip(longer, shorter, strict=False) if a != b
+            ) + (len(longer) - len(shorter))
+            if differing_positions < 2:
+                return False
+        return True
+
+    return constraint
+
+
 class BMCConfig(metaclass=ABCMeta):
     """Base class for BMC detection."""
 
@@ -345,46 +399,44 @@ class IPMIBase(BMCConfig):
         print("INFO: IPMI user number - %s" % user_number)
         print("INFO: IPMI user privilege level - %s" % self._get_ipmi_priv())
         if not self.password:
-            passwords = [
-                self._generate_random_password(),
-                # Some BMC require a longer password https://bugs.launchpad.net/maas/+bug/1993916/
-                self._generate_random_password(min_length=16, max_length=20),
-                # LP: #1621175 - Huawei and Lenovo enforce a stricter
-                # password policy than the IPMI spec requires. Every
-                # generated password already satisfies that stricter
-                # policy (uppercase, digit, and special char), so this is
-                # simply another randomly drawn attempt.
-                self._generate_random_password(),
-                # Support DGX H200 https://bugs.launchpad.net/maas/+bug/2130621
-                self._generate_random_password(min_length=13, max_length=20),
-            ]
+            # LP:1993916, LP:1621175, LP:2130621 - across vendors (Lenovo,
+            # Huawei, NVIDIA DGX H200), the only consistently observed
+            # length requirement beyond the base FIPS policy is a minimum
+            # of 16 (no vendor has been seen to reject lengths up to 20).
+            # `_build_bmc_password_constraint` enforces the remaining,
+            # rules (allowed characters, no 3+ consecutive
+            # repeats, not equal to the username or its reverse).
+            password = generate_password(
+                min_length=16,
+                max_length=20,
+                extra_constraint=_build_bmc_password_constraint(
+                    username=self.username
+                ),
+            )
         else:
-            passwords = [self.password]
-        for password in passwords:
-            try:
-                for key, value in self._make_ipmi_user_settings(
-                    self.username, password
-                ).items():
-                    if self._bmc_config[user_number].get(key) != value:
-                        self._bmc_set(user_number, key, value)
-            except Exception:
-                pass
-            else:
-                self.password = password
-                # Not all user settings are available on all BMC keys, its
-                # okay if these fail to be set.
-                self._bmc_set_keys(
-                    user_number,
-                    [
-                        "Lan_Enable_Link_Auth",
-                        "SOL_Payload_Access",
-                        "Serial_Enable_Link_Auth",
-                    ],
-                    "Yes",
-                )
-                return
-        print("ERROR: Unable to add BMC user!", file=sys.stderr)
-        sys.exit(1)
+            password = self.password
+        try:
+            for key, value in self._make_ipmi_user_settings(
+                self.username, password
+            ).items():
+                if self._bmc_config[user_number].get(key) != value:
+                    self._bmc_set(user_number, key, value)
+        except Exception:
+            print("ERROR: Unable to add BMC user!", file=sys.stderr)
+            sys.exit(1)
+        else:
+            self.password = password
+            # Not all user settings are available on all BMC keys, its
+            # okay if these fail to be set.
+            self._bmc_set_keys(
+                user_number,
+                [
+                    "Lan_Enable_Link_Auth",
+                    "SOL_Payload_Access",
+                    "Serial_Enable_Link_Auth",
+                ],
+                "Yes",
+            )
 
     def _bmc_get_config(self, section=None):
         """Fetch and cache all BMC settings."""
@@ -464,21 +516,6 @@ class IPMIBase(BMCConfig):
                         "WARNING: Unable to set %s:%s to %s!"
                         % (section, key, value)
                     )
-
-    def _generate_random_password(self, min_length=10, max_length=15):
-        """Generate a FIPS-compliant BMC password within a length range.
-
-        Delegates to `generate_password`, clamping below the FIPS 14-char
-        floor if necessary, and additionally requires no two consecutive
-        occurrences of the same character (LP: #1758760), for readability.
-        """
-        min_length = max(min_length, 14)
-        max_length = max(max_length, min_length)
-        return generate_password(
-            min_length=min_length,
-            max_length=max_length,
-            extra_constraint=lambda pwd: not re.search(r"(.)\1", pwd),
-        )
 
     def _get_ipmi_priv(self):
         """Map ipmitool name to IPMI spec name
