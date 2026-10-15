@@ -58,4 +58,5 @@ events
 logging
 security
 fips
+security-logging
 ```
