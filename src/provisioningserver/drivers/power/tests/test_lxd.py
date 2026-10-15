@@ -57,7 +57,7 @@ class FakeClient:
         "projects",
         "resources",
         "storage_pools",
-        "virtual_machines",
+        "instances",
     )
 
     def __post_init__(self):
@@ -107,7 +107,7 @@ class FakeLXD:
         self.profiles = MagicMock()
         self.projects = MagicMock()
         self.storage_pools = MagicMock()
-        self.virtual_machines = MagicMock()
+        self.instances = MagicMock()
 
         self._client_behaviors = None
 
@@ -364,13 +364,13 @@ class TestLXDPowerDriver(MAASTestCase):
                 self.fail("should not get here")
 
     def test_get_machine(self):
-        fake_machine = self.fake_lxd.virtual_machines.get.return_value
+        fake_machine = self.fake_lxd.instances.get.return_value
         with self.driver._get_machine(None, self.make_context()) as machine:
             self.assertIs(machine, fake_machine)
 
     def test_get_machine_not_found(self):
         context = self.make_context()
-        self.fake_lxd.virtual_machines.get.side_effect = NotFound("not found")
+        self.fake_lxd.instances.get.side_effect = NotFound("not found")
         instance_name = context.get("instance_name")
         system_id = factory.make_name("system_id")
         error_msg = f"{system_id}: LXD VM {instance_name} not found."
@@ -381,7 +381,7 @@ class TestLXDPowerDriver(MAASTestCase):
     @inlineCallbacks
     def test_power_on(self):
         system_id = factory.make_name("system_id")
-        machine = self.fake_lxd.virtual_machines.get.return_value
+        machine = self.fake_lxd.instances.get.return_value
         machine.status_code = 110
         mock_log = self.patch(lxd_module, "maaslog")
         yield self.driver.power_on(system_id, self.make_context())
@@ -391,7 +391,7 @@ class TestLXDPowerDriver(MAASTestCase):
     @inlineCallbacks
     def test_power_on_noop_if_on(self):
         system_id = factory.make_name("system_id")
-        machine = self.fake_lxd.virtual_machines.get.return_value
+        machine = self.fake_lxd.instances.get.return_value
         machine.status_code = 103
         mock_log = self.patch(lxd_module, "maaslog")
         yield self.driver.power_on(system_id, self.make_context())
@@ -401,7 +401,7 @@ class TestLXDPowerDriver(MAASTestCase):
     @inlineCallbacks
     def test_perform_power_timeouts(self):
         system_id = factory.make_name("system_id")
-        machine = self.fake_lxd.virtual_machines.get_return_value
+        machine = self.fake_lxd.instances.get.return_value
         machine.status_code = 110
         mock_pause = self.patch(power_module, "pause")
         mock_power_on = Mock()
@@ -430,7 +430,7 @@ class TestLXDPowerDriver(MAASTestCase):
     @inlineCallbacks
     def test_power_off(self):
         system_id = factory.make_name("system_id")
-        machine = self.fake_lxd.virtual_machines.get.return_value
+        machine = self.fake_lxd.instances.get.return_value
         machine.status_code = 103
         mock_log = self.patch(lxd_module, "maaslog")
         yield self.driver.power_off(system_id, self.make_context())
@@ -440,7 +440,7 @@ class TestLXDPowerDriver(MAASTestCase):
     @inlineCallbacks
     def test_power_off_noop_if_off(self):
         system_id = factory.make_name("system_id")
-        machine = self.fake_lxd.virtual_machines.get.return_value
+        machine = self.fake_lxd.instances.get.return_value
         machine.status_code = 110
         mock_log = self.patch(lxd_module, "maaslog")
         yield self.driver.power_off(system_id, self.make_context())
@@ -451,14 +451,14 @@ class TestLXDPowerDriver(MAASTestCase):
 
     @inlineCallbacks
     def test_power_query(self):
-        machine = self.fake_lxd.virtual_machines.get.return_value
+        machine = self.fake_lxd.instances.get.return_value
         machine.status_code = 103
         state = yield self.driver.power_query(None, self.make_context())
         self.assertEqual(state, "on")
 
     @inlineCallbacks
     def test_power_query_raises_error_on_unknown_state(self):
-        machine = self.fake_lxd.virtual_machines.get.return_value
+        machine = self.fake_lxd.instances.get.return_value
         machine.status_code = 106
         system_id = factory.make_name("system_id")
         error_msg = f"{system_id}: Unknown power status code: 106"
