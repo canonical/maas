@@ -4,6 +4,7 @@
 from contextlib import suppress
 from typing import Any, TypeVar
 
+from pydantic import ValidationError
 import structlog
 
 from maascommon.logging.security import AUTHZ_ADMIN, SECURITY
@@ -204,30 +205,31 @@ class ConfigurationsService(Service):
 
     async def clear_and_set_many(self, configuration: dict[str, Any]) -> None:
         """Clear the currently stored configuration and set it again. Does not support secrets."""
-        try:
-            if any(
-                [
-                    ConfigFactory.parse(name, value).stored_as_secret
-                    for name, value in configuration.items()
-                ]
-            ):
-                raise ValidationException(
-                    [
-                        BaseExceptionDetail(
-                            type=INVALID_ARGUMENT_VIOLATION_TYPE,
-                            message="clear_and_set_many does not support setting secrets.",
-                        )
-                    ]
+        details = []
+        for name, value in configuration.items():
+            try:
+                config = ConfigFactory.parse(name, value)
+            except ValidationError as err:
+                reason = ConfigFactory.get_validator_message(err)
+                message = f"Invalid value for configuration '{name}'"
+                message += f": {reason}" if reason else "."
+            except ValueError as err:
+                message = str(err)
+            else:
+                if not config.stored_as_secret:
+                    continue
+                message = (
+                    "clear_and_set_many does not support setting secrets."
                 )
-        except ValueError as err:
-            raise ValidationException(
-                [
-                    BaseExceptionDetail(
-                        type=INVALID_ARGUMENT_VIOLATION_TYPE,
-                        message="Some configuration options are unknown or invalid.",
-                    )
-                ]
-            ) from err
+            details.append(
+                BaseExceptionDetail(
+                    type=INVALID_ARGUMENT_VIOLATION_TYPE,
+                    field=name,
+                    message=message,
+                )
+            )
+        if details:
+            raise ValidationException(details)
         await self.database_configurations_service.clear_and_set_many(
             configuration
         )
