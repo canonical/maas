@@ -1348,6 +1348,18 @@ class Node(CleanSave, TimestampedModel):
     # Manager that returns all controller objects. See `ControllerManager`.
     controllers = ControllerManager()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._previous_bmc_id = None
+
+    def __setattr__(self, name, value):
+        if (
+            hasattr(self, f"_previous_{name}")
+            and getattr(self, f"_previous_{name}") is None
+        ):
+            setattr(self, f"_previous_{name}", getattr(self, name))
+        super().__setattr__(name, value)
+
     def __str__(self):
         if self.hostname:
             return f"{self.system_id} ({self.hostname})"
@@ -2116,10 +2128,21 @@ class Node(CleanSave, TimestampedModel):
         super().save(*args, **kwargs)
         self._remove_orphaned_bmcs()
 
+        # Reset the BMC change tracking so that orphan cleanup works correctly
+        # across multiple saves on the same instance.
+        self._previous_bmc_id = None
+
     def _remove_orphaned_bmcs(self):
         from maasserver.models.bmc import BMC
 
-        BMC.objects.filter(node__isnull=True).exclude(
+        previous_bmc_id = self._previous_bmc_id
+        if previous_bmc_id is None or previous_bmc_id == self.bmc_id:
+            # The node's BMC did not change on this save, so there
+            # is nothing to do.
+            return
+        # Only the previously referenced BMC can have been orphaned by this
+        # save.
+        BMC.objects.filter(id=previous_bmc_id, node__isnull=True).exclude(
             bmc_type=BMC_TYPE.POD
         ).delete()
 
