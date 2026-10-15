@@ -98,10 +98,9 @@ class TestBootSourceSelection(MAASServerTestCase):
         boot_source_selection = factory.make_BootSourceSelection(
             arches=["amd64"]
         )
+        selection_id = boot_source_selection.id
         boot_source_selection.delete()
-        stop_wf_mock.assert_called_once_with(
-            f"sync-selection:{boot_source_selection.id}"
-        )
+        stop_wf_mock.assert_called_once_with(f"sync-selection:{selection_id}")
 
     def test_delete_stops_temporal_workflows_multiple_selections(self):
         stop_wf_mock = self.patch(bootsourceselection_module, "stop_workflow")
@@ -109,9 +108,8 @@ class TestBootSourceSelection(MAASServerTestCase):
             factory.make_BootSourceSelection(arches=["amd64"]),
             factory.make_BootSourceSelection(arches=["amd64"]),
         ]
+        selection_ids = [s.id for s in boot_source_selections]
         for selection in boot_source_selections:
             selection.delete()
-        calls = [
-            call(f"sync-selection:{s.id}") for s in boot_source_selections
-        ]
+        calls = [call(f"sync-selection:{s_id}") for s_id in selection_ids]
         stop_wf_mock.assert_has_calls(calls, any_order=True)

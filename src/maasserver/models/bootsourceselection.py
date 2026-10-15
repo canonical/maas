@@ -60,7 +60,6 @@ class BootSourceSelection(CleanSave, TimestampedModel):
         }
 
     def delete(self, *args, **kwargs):
-        stop_workflow(f"sync-selection:{self.id}")
         commissioning_osystem = Config.objects.get_config(
             name="commissioning_osystem"
         )
@@ -76,4 +75,5 @@ class BootSourceSelection(CleanSave, TimestampedModel):
                 "It is the operating system used for commissioning."
             )
         else:
+            stop_workflow(f"sync-selection:{self.id}")
             return super().delete(*args, **kwargs)

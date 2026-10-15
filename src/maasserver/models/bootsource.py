@@ -6,6 +6,7 @@
 from django.core.exceptions import ValidationError
 from django.db.models import BinaryField, CharField, URLField
 
+from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -122,3 +123,12 @@ class BootSource(CleanSave, TimestampedModel):
                 }
             )
         return data
+
+    def delete(self, *args, **kwargs):
+        related_selections = BootSourceSelection.objects.filter(
+            boot_source=self
+        )
+        for selection in related_selections:
+            selection.delete()
+
+        return super().delete(*args, **kwargs)
