@@ -259,7 +259,8 @@ def generate_password(
 # Characters accepted across observed BMC vendor password policies (e.g.
 # Huawei, Lenovo, DGX): letters, digits, and this conservative punctuation
 # set. Notably excludes whitespace and backslash, which some vendors reject
-# outright.
+# outright. LP:2081842 - the exclusion of backslash in particular comes from
+# a BMC that rejected it.
 _BMC_PASSWORD_ALLOWED_CHARS = re.compile(
     r"^[A-Za-z0-9~`!\"@#$%^&*()\-+={}\[\]|:;'<>,?/._]+$"
 )
@@ -280,12 +281,16 @@ def _build_bmc_password_constraint(
     anyway, so this constraint doesn't depend on that upstream guarantee.
     What remains, and is checked here, is vendor-specific:
     - Only letters, digits, and a conservative punctuation set are allowed;
-      no whitespace or other characters.
+      no whitespace or other characters. (LP:2081842)
     - At least 2 of {lowercase, uppercase, digit} character types present.
+      (LP:1621175 - Huawei and Lenovo enforce a password policy stricter
+      than the IPMI spec, requiring multiple character classes.)
     - No more than 2 consecutive occurrences of the same character.
-    - Must not equal `username`, or `username` reversed.
-    - If `old_password` is given, must differ from it in at least 2
-      character positions.
+      (LP:1758760)
+    - Must not equal `username`, or `username` reversed, and if
+      `old_password` is given, must differ from it in at least 2 character
+      positions. (No specific MAAS bug; these come from generic vendor BMC
+      password policy documentation, not an observed failure.)
 
     Length bounds (commonly 8-20 or 10-20 characters, depending on vendor)
     are enforced via `generate_password`'s `min_length`/`max_length`, not
@@ -293,6 +298,8 @@ def _build_bmc_password_constraint(
     """
 
     def constraint(password: str) -> bool:
+        # LP:2081842 - only accept characters known to be safe across
+        # observed vendor BMC password policies.
         if not _BMC_PASSWORD_ALLOWED_CHARS.match(password):
             return False
         char_types_present = sum(
@@ -302,10 +309,16 @@ def _build_bmc_password_constraint(
                 re.search(r"\d", password) is not None,
             )
         )
+        # LP:1621175 - Huawei and Lenovo enforce a password policy stricter
+        # than the IPMI spec, requiring multiple character classes.
         if char_types_present < 2:
             return False
+        # LP:1758760 - no more than 2 consecutive occurrences of the same
+        # character.
         if re.search(r"(.)\1\1", password):
             return False
+        # No specific MAAS bug; comes from generic vendor BMC password
+        # policy documentation, not an observed failure.
         if username and password in (username, username[::-1]):
             return False
         if old_password is not None:
@@ -315,6 +328,8 @@ def _build_bmc_password_constraint(
             differing_positions = sum(
                 1 for a, b in zip(longer, shorter) if a != b
             ) + (len(longer) - len(shorter))
+            # No specific MAAS bug; comes from generic vendor BMC password
+            # policy documentation, not an observed failure.
             if differing_positions < 2:
                 return False
         return True
