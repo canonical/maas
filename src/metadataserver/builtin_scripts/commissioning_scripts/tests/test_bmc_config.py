@@ -270,9 +270,7 @@ EndSection
         )
 
     def test_generate_password_satisfies_bmc_constraint(self):
-        constraint = bmc_config._build_bmc_password_constraint(
-            username="maas"
-        )
+        constraint = bmc_config._build_bmc_password_constraint(username="maas")
         for attempt in range(0, 100):  # noqa: B007
             password = bmc_config.generate_password(
                 min_length=14,
@@ -396,9 +394,7 @@ EndSection
         self.ipmi.username = None
         self.ipmi.password = None
         password = factory.make_name("password")
-        self.patch(
-            bmc_config, "generate_password"
-        ).return_value = password
+        self.patch(bmc_config, "generate_password").return_value = password
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
         mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
         self.ipmi._bmc_config = {
