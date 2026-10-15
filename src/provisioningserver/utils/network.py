@@ -957,6 +957,52 @@ def resolve_bind_address(
     return "::1" if family == AF_INET6 else "127.0.0.1"
 
 
+#: Loopback bind address per IP version.
+LOOPBACK_BIND_ADDRESSES = ((4, "127.0.0.1"), (6, "::1"))
+
+
+def _with_loopback_addresses(addresses: List[str]) -> List[str]:
+    """Append whichever loopback addresses `addresses` is missing.
+
+    A `maas_url`-derived (or explicitly configured) address only covers
+    the interface it names, while same-host clients -- a local CLI,
+    health checks, co-located daemons -- dial loopback, which the
+    pre-hardening wildcard bind used to cover. Both families are added
+    regardless of which family the service otherwise binds, so a bind
+    list never depends on which family happened to be configured.
+    """
+    present = set()
+    for addr in addresses:
+        try:
+            ip = IPAddress(addr)
+        except AddrFormatError:
+            continue
+        if ip.is_loopback():
+            present.add(ip.version)
+    return addresses + [
+        loopback
+        for version, loopback in LOOPBACK_BIND_ADDRESSES
+        if version not in present
+    ]
+
+
+def _derived_bind_defaults(
+    maas_url: str, *, hardening_active: bool, family: Optional[int]
+) -> List[str]:
+    """The `maas_url`-derived default for an unset bind key.
+
+    Empty outside hardening: an unset bind key then means "all
+    interfaces", which callers render as their existing wildcard bind.
+    """
+    if not hardening_active:
+        return []
+    return [
+        resolve_bind_address(
+            "", maas_url, hardening_active=True, family=family
+        )
+    ]
+
+
 def resolve_bind_addresses(
     configured: Iterable[str],
     maas_url: str,
@@ -968,24 +1014,23 @@ def resolve_bind_addresses(
 
     For a service whose transport can bind more than one address at once
     (e.g. nginx's several ``listen`` directives): an explicit, non-empty
-    ``configured`` list always wins verbatim -- no address is added or
-    removed. Otherwise, under hardening, derive a single non-wildcard
-    default from ``maas_url`` (see `resolve_bind_address`) so the service
-    doesn't require per-host configuration purely to move off a wildcard
-    bind. Outside hardening, an empty ``configured`` list means "all
+    ``configured`` list is used as-is, otherwise a single non-wildcard
+    default is derived from ``maas_url`` (see `resolve_bind_address`) so
+    the service doesn't require per-host configuration purely to move
+    off a wildcard bind. Under hardening both loopback addresses are
+    added to the result either way (see `_with_loopback_addresses`).
+    Outside hardening, an empty ``configured`` list means "all
     interfaces": it is returned unchanged so callers keep their existing
     wildcard-bind behaviour.
     """
     addrs = [addr for addr in configured if addr]
-    if addrs:
-        return addrs
     if not hardening_active:
-        return []
-    return [
-        resolve_bind_address(
-            "", maas_url, hardening_active=True, family=family
+        return addrs
+    if not addrs:
+        addrs = _derived_bind_defaults(
+            maas_url, hardening_active=True, family=family
         )
-    ]
+    return _with_loopback_addresses(addrs)
 
 
 def _read_bind_config(
@@ -1082,6 +1127,28 @@ def partition_by_family(
     return v4, v6
 
 
+def drop_loopback_addresses(addresses: Iterable[str]) -> List[str]:
+    """Return `addresses` without any loopback entry, order preserved.
+
+    For consumers that advertise a bind list to *remote* peers: the
+    loopback addresses `resolve_bind_addresses` adds under hardening
+    only serve same-host clients, and advertising one would point a
+    remote peer at itself. Unlike `partition_by_family`, a malformed
+    entry is kept verbatim rather than dropped: an advertised list must
+    keep reflecting what the service was told to bind, and malformed
+    values are reported at validation time (see `check_bind_violations`).
+    """
+    kept: List[str] = []
+    for addr in addresses:
+        try:
+            if IPAddress(addr).is_loopback():
+                continue
+        except AddrFormatError:
+            pass
+        kept.append(addr)
+    return kept
+
+
 def resolve_dual_stack_bind_addresses(
     configured: Iterable[str],
     maas_url: str,
@@ -1094,21 +1161,24 @@ def resolve_dual_stack_bind_addresses(
     family explicitly still backfills the other family's
     ``maas_url``-derived default under hardening -- unlike a single
     ``resolve_bind_addresses(..., family=None)`` call, which would treat
-    any non-empty ``configured`` as "wins verbatim" and never backfill
-    the still-missing family.
+    any non-empty ``configured`` as fully specified and never backfill
+    the still-missing family. Both loopback addresses are appended once
+    under hardening, after both families are resolved.
     """
     addrs = [addr for addr in configured if addr]
     v4, v6 = partition_by_family(addrs)
     result = v4 + v6
     if not v4:
-        result += resolve_bind_addresses(
-            [], maas_url, hardening_active=hardening_active, family=AF_INET
+        result += _derived_bind_defaults(
+            maas_url, hardening_active=hardening_active, family=AF_INET
         )
     if not v6:
-        result += resolve_bind_addresses(
-            [], maas_url, hardening_active=hardening_active, family=AF_INET6
+        result += _derived_bind_defaults(
+            maas_url, hardening_active=hardening_active, family=AF_INET6
         )
-    return result
+    if not hardening_active:
+        return result
+    return _with_loopback_addresses(result)
 
 
 def resolve_dual_stack_service_bind(
