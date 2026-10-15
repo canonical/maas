@@ -2,6 +2,67 @@
 
 MAAS enforces strict access control and secure secret management to protect system integrity.
 
+## Security architecture
+
+A MAAS deployment is made of region controllers, rack controllers, a PostgreSQL database, and the machines that MAAS manages. Each of these components sits on one side of a trust boundary, and every boundary is protected by its own security controls.
+
+```{mermaid}
+flowchart LR
+    subgraph EXT["External"]
+        USERS["Administrators, users<br/>and API clients"]
+        IDP["Identity provider<br/>(OIDC)"]
+        IMG["Image and package<br/>repositories"]
+    end
+
+    subgraph CP["MAAS control plane"]
+        REGION["Region controller<br/>(web UI and API)"]
+        DB[("PostgreSQL")]
+        VAULT[("Vault<br/>(optional)")]
+        RACK["Rack controller"]
+    end
+
+    subgraph PN["Provisioning network"]
+        MACHINES["Machines"]
+        BMC["BMCs"]
+    end
+
+    USERS -->|"HTTP or HTTPS"| REGION
+    IDP -->|"Single sign-on"| REGION
+    IMG -->|"Signed images"| REGION
+    REGION --> DB
+    REGION --> VAULT
+    RACK <-->|"RPC with shared secret"| REGION
+    RACK -->|"DHCP, TFTP and HTTP"| MACHINES
+    RACK -->|"Power drivers"| BMC
+```
+
+### Components
+
+* **Region controller**: serves the web UI and the API, and orchestrates the rest of MAAS. See [Region controllers](/explanation/controllers.md#region-controllers).
+* **Rack controller**: provides DHCP, TFTP, HTTP boot, and power management to the machines on its fabrics. See [Rack controllers](/explanation/controllers.md#rack-controllers).
+* **PostgreSQL**: stores the state of MAAS, including credentials. See [PostgreSQL security](#postgresql-security).
+* **HashiCorp Vault**: optionally stores MAAS secrets outside the database. See [HashiCorp Vault](#hashicorp-vault).
+* **Temporal**: orchestrates MAAS workflows. The Temporal server runs on the region controller, and the MAAS Agent on each rack controller connects to it.
+* **Machines and BMCs**: the servers that MAAS commissions and deploys, and the baseboard management controllers that MAAS uses to power them on and off. See [The machine life cycle](/explanation/the-machine-life-cycle.md).
+
+### Access to the region controller
+
+Administrators, users, and API clients only interact with the region controller, through the web UI, the CLI, or the API. Users authenticate with a password, an API key, or [single sign-on](/how-to-guides/sso.md), and each request is authorized against the user's [entitlements](#fine-grained-authorization).
+
+By default, the web UI and the API use HTTP. To encrypt this traffic, [enable TLS](/how-to-guides/enhance-maas-security.md#use-tls-termination-maas-33).
+
+### External services
+
+The region controller downloads boot images from image repositories and verifies them with a GPG keyring. See [Configure boot sources](/how-to-guides/manage-images.md#configure-boot-sources). When single sign-on is configured, the region controller also trusts an external OIDC identity provider to authenticate users.
+
+### Communication between controllers
+
+Rack controllers have no direct access to the database. They communicate with the region controller over RPC, authenticated with the [shared secret](#shared-secrets). To limit which interfaces these services listen on, see [Harden a rack controller](/how-to-guides/harden-a-rack-controller.md).
+
+### Provisioning network
+
+Rack controllers boot machines over DHCP, TFTP, and HTTP, and control them through their BMCs with power drivers. Network boot protocols do not authenticate the machines, so keep the provisioning network isolated from untrusted networks. To restrict the ports that MAAS exposes, see [Manage network ports](/how-to-guides/enhance-maas-security.md#manage-network-ports).
+
 ## TLS termination
 
 SSL should be replaced with Transport Layer Security (TLS).  A TLS-terminated load balancer routes incoming Web UI and API requests across region controllers, reducing workload and latency.  Encryption and decryption occur at the edge of the network; in this case, right at the load balancer. TLS better ensures privacy and data integrity through symmetric cryptography and message authentication codes.
