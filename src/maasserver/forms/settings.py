@@ -337,6 +337,15 @@ def make_ipmi_k_g_field(*args, **kwargs):
     return field
 
 
+class IPMICipherSuiteIDField(forms.ChoiceField):
+    def validate(self, value):
+        super().validate(value)
+        try:
+            MAASAutoIPMICipherSuiteIDConfig.validate_value(value)
+        except ValueError as e:
+            raise ValidationError(str(e)) from e
+
+
 class RemoteSyslogField(forms.CharField):
     """
     A `CharField` that formats the input into the expected value for syslog.
@@ -860,7 +869,7 @@ CONFIG_ITEMS = {
     },
     MAASAutoIPMICipherSuiteIDConfig.name: {
         "default": MAASAutoIPMICipherSuiteIDConfig.default,
-        "form": forms.ChoiceField,
+        "form": IPMICipherSuiteIDField,
         "form_kwargs": {
             "label": MAASAutoIPMICipherSuiteIDConfig.description,
             "required": False,
