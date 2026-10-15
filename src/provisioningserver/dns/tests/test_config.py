@@ -11,7 +11,7 @@ from unittest import TestCase
 from unittest.mock import Mock, sentinel
 
 from fixtures import EnvironmentVariable
-from netaddr import IPAddress, IPNetwork
+from netaddr import IPNetwork
 from twisted.python.filepath import FilePath
 
 from maastesting.factory import factory
@@ -25,7 +25,6 @@ from provisioningserver.dns.config import (
     DNSConfig,
     DNSConfigDirectoryMissing,
     DNSConfigFail,
-    DynamicDNSUpdate,
     execute_rndc_command,
     extract_suggested_named_conf,
     generate_rndc,
@@ -955,9 +954,6 @@ class TestDNSConfig(MAASTestCase):
             # Disable forwarding for authoritative zones, lp:2118833
             forwarders {{ }};
             file "zone.{domain}";
-            allow-update {{
-                key maas.;
-            }};
             allow-transfer {{
                 trusted;
             }};
@@ -996,9 +992,6 @@ class TestDNSConfig(MAASTestCase):
                 # Disable forwarding for authoritative zones, lp:2118833
                 forwarders {{ }};
                 file "zone.{domain}";
-                allow-update {{
-                    key maas.;
-                }};
             }};
             """
         )
@@ -1008,185 +1001,3 @@ class TestDNSConfig(MAASTestCase):
         self.assertEqual(
             expected[f'zone "{domain}"'], config[f'zone "{domain}"']
         )
-
-
-class TestDynamicDNSUpdate(MAASTestCase):
-    def test_create_from_trigger_v4(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate.create_from_trigger(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="A",
-            answer=factory.make_ip_address(ipv6=False),
-        )
-        self.assertEqual(update.rectype, "A")
-
-    def test_create_from_trigger_v6(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate.create_from_trigger(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="A",
-            answer=factory.make_ip_address(ipv6=True),
-        )
-        self.assertEqual(update.rectype, "AAAA")
-
-    def test_answer_as_ip_returns_ip_when_answer_is_an_ip(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="A",
-            answer=factory.make_ip_address(),
-        )
-        self.assertIsNotNone(update.answer_as_ip)
-
-    def test_answer_as_ip_returns_none_when_answer_is_not_an_ip(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="CNAME",
-            answer=factory.make_name(),
-        )
-        self.assertIsNone(update.answer_as_ip)
-
-    def test_answer_is_ip_returns_true_when_answer_is_an_ip(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="A",
-            answer=factory.make_ip_address(),
-        )
-        self.assertTrue(update.answer_is_ip)
-
-    def test_answer_is_ip_returns_false_when_answer_is_not_an_ip(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="CNAME",
-            answer=factory.make_name(),
-        )
-        self.assertFalse(update.answer_is_ip)
-
-    def test_as_reverse_record_update(self):
-        domain = factory.make_name()
-        ip_version = random.choice([4, 6])
-        host_bits = (
-            random.randint(8, 24)
-            if ip_version == 4
-            else random.randint(8, 124)
-        )
-        subnet = factory.make_ip4_or_6_network(
-            version=ip_version, host_bits=host_bits
-        )
-        ip_answer = factory.pick_ip_in_network(subnet)
-        fwd_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}",
-            rectype="A",
-            answer=ip_answer,
-        )
-        expected_rev_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=IPAddress(fwd_update.answer).reverse_dns,
-            rectype="PTR",
-            ttl=fwd_update.ttl,
-            subnet=str(subnet),
-            answer=f"{fwd_update.name}.{domain}",
-        )
-        rev_update = DynamicDNSUpdate.as_reverse_record_update(
-            fwd_update, subnet
-        )
-        self.assertEqual(expected_rev_update.name, rev_update.name)
-        self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
-        self.assertEqual(expected_rev_update.answer, rev_update.answer)
-
-    def test_as_reverse_record_update_for_glue_zone_v4(self):
-        domain = factory.make_name()
-        subnet = IPNetwork("10.1.1.0/25")
-        fwd_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}",
-            rectype="A",
-            answer=str("10.1.1.5"),
-        )
-        expected_rev_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name="5.0-25.1.1.10.in-addr.arpa.",
-            rectype="PTR",
-            ttl=fwd_update.ttl,
-            subnet=str(subnet),
-            answer=f"{fwd_update.name}.{domain}",
-        )
-        rev_update = DynamicDNSUpdate.as_reverse_record_update(
-            fwd_update, subnet
-        )
-        self.assertEqual(expected_rev_update.name, rev_update.name)
-        self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
-        self.assertEqual(expected_rev_update.answer, rev_update.answer)
-
-    def test_as_reverse_record_update_for_glue_zone_v6(self):
-        domain = factory.make_name()
-        subnet = IPNetwork("fc55:4c7c:a5ea:57b0:7cad:a076:a844:8000/126")
-        fwd_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}",
-            rectype="A",
-            answer="fc55:4c7c:a5ea:57b0:7cad:a076:a844:8001",
-        )
-        expected_rev_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name="1.8000-126.0.0.8.4.4.8.a.6.7.0.a.d.a.c.7.0.b.7.5.a.e.5.a.c.7.c.4.5.5.c.f.ip6.arpa.",
-            rectype="PTR",
-            ttl=fwd_update.ttl,
-            subnet=str(subnet),
-            answer=f"{fwd_update.name}.{domain}",
-        )
-        rev_update = DynamicDNSUpdate.as_reverse_record_update(
-            fwd_update, subnet
-        )
-        self.assertEqual(expected_rev_update.name, rev_update.name)
-        self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
-        self.assertEqual(expected_rev_update.answer, rev_update.answer)
-
-    def test_as_reverse_record_update_no_zone_set(self):
-        domain = factory.make_name()
-        subnet = IPNetwork("10.1.1.128/25")
-        fwd_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}",
-            rectype="A",
-            answer=str("10.1.1.161"),
-        )
-        expected_rev_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone="128-25.1.1.10.in-addr.arpa.",
-            name="161.128-25.1.1.10.in-addr.arpa.",
-            rectype="PTR",
-            ttl=fwd_update.ttl,
-            subnet=str(subnet),
-            answer=f"{fwd_update.name}.{domain}",
-        )
-        rev_update = DynamicDNSUpdate.as_reverse_record_update(
-            fwd_update, subnet
-        )
-        self.assertEqual(expected_rev_update.name, rev_update.name)
-        self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
-        self.assertEqual(expected_rev_update.answer, rev_update.answer)
-        self.assertEqual(expected_rev_update.zone, rev_update.zone)

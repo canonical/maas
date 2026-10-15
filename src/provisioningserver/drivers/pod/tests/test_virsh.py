@@ -4,6 +4,7 @@
 from math import floor
 import os
 import random
+import re
 from textwrap import dedent
 from unittest.mock import ANY, call, MagicMock, sentinel
 from uuid import uuid4
@@ -13,6 +14,7 @@ import pexpect
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
+from maascommon.fips import FIPS_SSH_CONFIG
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -43,6 +45,7 @@ from provisioningserver.utils.arch import (
     kernel_to_debian_architecture,
     KERNEL_TO_DEBIAN_ARCHITECTURES,
 )
+from provisioningserver.utils.fs import get_library_script_path
 from provisioningserver.utils.shell import (
     get_env_with_locale,
     has_command_available,
@@ -506,6 +509,76 @@ def make_requested_machine():
     )
 
 
+class TestWriteKnownHosts(MAASTestCase):
+    """Tests for `_write_known_hosts`."""
+
+    def test_writes_one_line_per_trusted_key(self):
+        path = virsh._write_known_hosts(
+            "10.0.0.2",
+            [
+                {"key_type": "ecdsa-sha2-nistp256", "public_key": "AAAA"},
+                {"key_type": "rsa-sha2-256", "public_key": "BBBB"},
+            ],
+        )
+        self.addCleanup(os.unlink, path)
+
+        with open(path) as known_hosts_file:
+            content = known_hosts_file.read()
+        self.assertEqual(
+            content,
+            "10.0.0.2 ecdsa-sha2-nistp256 AAAA\n10.0.0.2 rsa-sha2-256 BBBB\n",
+        )
+
+
+class TestVerifiedSshWrapperAlgorithms(MAASTestCase):
+    """The `verified-ssh` wrapper's algorithm allow-lists must stay in
+    lockstep with `maascommon.fips.FIPS_SSH_CONFIG`; shell can't import
+    Python, so this is the drift guard."""
+
+    def _read_wrapper(self):
+        path = get_library_script_path("verified-ssh")
+        with open(path) as wrapper_file:
+            return wrapper_file.read()
+
+    def _option_values(self, script, option):
+        match = re.search(rf"-o {option}=(\S+?) \\", script)
+        self.assertIsNotNone(
+            match, f"{option} not found in verified-ssh wrapper"
+        )
+        return tuple(match.group(1).rstrip(",").split(","))
+
+    def test_ciphers_match_fips_ssh_config(self):
+        script = self._read_wrapper()
+        self.assertEqual(
+            self._option_values(script, "Ciphers"),
+            FIPS_SSH_CONFIG.ciphers,
+        )
+
+    def test_kex_algorithms_match_fips_ssh_config(self):
+        script = self._read_wrapper()
+        self.assertEqual(
+            self._option_values(script, "KexAlgorithms"),
+            FIPS_SSH_CONFIG.kex,
+        )
+
+    def test_macs_match_fips_ssh_config(self):
+        script = self._read_wrapper()
+        self.assertEqual(
+            self._option_values(script, "MACs"), FIPS_SSH_CONFIG.macs
+        )
+
+    def test_host_key_algorithms_match_fips_ssh_config(self):
+        script = self._read_wrapper()
+        self.assertEqual(
+            self._option_values(script, "HostKeyAlgorithms"),
+            FIPS_SSH_CONFIG.key_types,
+        )
+
+    def test_isolates_verification_from_global_known_hosts(self):
+        script = self._read_wrapper()
+        self.assertIn("-o GlobalKnownHostsFile=/dev/null \\", script)
+
+
 class TestVirshSSH(MAASTestCase):
     """Tests for `VirshSSH`."""
 
@@ -631,6 +704,126 @@ class TestVirshSSH(MAASTestCase):
             poweraddr + "?command=/usr/lib/maas/unverified-ssh"
         )
         mock_close.assert_called_once_with()
+
+    def test_login_fips_connects_via_verified_ssh_and_cleans_up(self):
+        self.patch(virsh, "is_fips_enabled").return_value = True
+        trusted_keys = [
+            {"key_type": "ecdsa-sha2-nistp256", "public_key": "AAAA"}
+        ]
+        self.patch(
+            virsh, "get_trusted_ssh_host_keys"
+        ).return_value = trusted_keys
+        known_hosts_file = self.make_file()
+        mock_write_known_hosts = self.patch(virsh, "_write_known_hosts")
+        mock_write_known_hosts.return_value = known_hosts_file
+        mock_log = self.patch(virsh, "_log_fips_virsh_ssh_event")
+        conn = self.configure_virshssh_pexpect(["virsh # "])
+        poweraddr = "qemu+ssh://ubuntu@10.0.0.2/system"
+
+        self.assertTrue(conn.login(poweraddr=poweraddr))
+
+        new_poweraddr = poweraddr + "?command=/usr/lib/maas/verified-ssh"
+        conn._execute.assert_called_once_with(new_poweraddr)
+        mock_write_known_hosts.assert_called_once_with(
+            "10.0.0.2", trusted_keys
+        )
+        self.assertEqual(conn.env["MAAS_KNOWN_HOSTS"], known_hosts_file)
+        self.assertFalse(os.path.exists(known_hosts_file))
+        mock_log.assert_called_once_with(
+            "10.0.0.2", "ecdsa-sha2-nistp256", "success"
+        )
+
+    def test_login_fips_uses_bracket_notation_for_custom_port(self):
+        self.patch(virsh, "is_fips_enabled").return_value = True
+        trusted_keys = [
+            {"key_type": "ecdsa-sha2-nistp256", "public_key": "AAAA"}
+        ]
+        self.patch(
+            virsh, "get_trusted_ssh_host_keys"
+        ).return_value = trusted_keys
+        known_hosts_file = self.make_file()
+        mock_write_known_hosts = self.patch(virsh, "_write_known_hosts")
+        mock_write_known_hosts.return_value = known_hosts_file
+        self.patch(virsh, "_log_fips_virsh_ssh_event")
+        conn = self.configure_virshssh_pexpect(["virsh # "])
+        poweraddr = "qemu+ssh://ubuntu@10.0.0.2:2222/system"
+
+        self.assertTrue(conn.login(poweraddr=poweraddr))
+
+        mock_write_known_hosts.assert_called_once_with(
+            "[10.0.0.2]:2222", trusted_keys
+        )
+
+    def test_login_fips_omits_bracket_notation_for_default_port(self):
+        self.patch(virsh, "is_fips_enabled").return_value = True
+        trusted_keys = [
+            {"key_type": "ecdsa-sha2-nistp256", "public_key": "AAAA"}
+        ]
+        self.patch(
+            virsh, "get_trusted_ssh_host_keys"
+        ).return_value = trusted_keys
+        known_hosts_file = self.make_file()
+        mock_write_known_hosts = self.patch(virsh, "_write_known_hosts")
+        mock_write_known_hosts.return_value = known_hosts_file
+        self.patch(virsh, "_log_fips_virsh_ssh_event")
+        conn = self.configure_virshssh_pexpect(["virsh # "])
+        poweraddr = "qemu+ssh://ubuntu@10.0.0.2:22/system"
+
+        self.assertTrue(conn.login(poweraddr=poweraddr))
+
+        mock_write_known_hosts.assert_called_once_with(
+            "10.0.0.2", trusted_keys
+        )
+
+    def test_login_fips_fails_closed_without_trusted_key(self):
+        self.patch(virsh, "is_fips_enabled").return_value = True
+        self.patch(virsh, "get_trusted_ssh_host_keys").return_value = []
+        conn = virsh.VirshSSH(timeout=0.1)
+        self.addCleanup(conn.close)
+        mock_execute = self.patch(conn, "_execute")
+        poweraddr = "qemu+ssh://ubuntu@10.0.0.2/system"
+        conn._spawn("cat")
+
+        self.assertRaises(virsh.VirshError, conn.login, poweraddr)
+        mock_execute.assert_not_called()
+
+    def test_login_fips_rejects_sshkey_prompt(self):
+        self.patch(virsh, "is_fips_enabled").return_value = True
+        trusted_keys = [
+            {"key_type": "ecdsa-sha2-nistp256", "public_key": "AAAA"}
+        ]
+        self.patch(
+            virsh, "get_trusted_ssh_host_keys"
+        ).return_value = trusted_keys
+        known_hosts_file = self.make_file()
+        self.patch(virsh, "_write_known_hosts").return_value = known_hosts_file
+        mock_log = self.patch(virsh, "_log_fips_virsh_ssh_event")
+        virsh_outputs = [
+            "The authenticity of host '10.0.0.2' can't be established."
+        ]
+        conn = self.configure_virshssh_pexpect(virsh_outputs)
+        poweraddr = "qemu+ssh://ubuntu@10.0.0.2/system"
+
+        self.assertFalse(conn.login(poweraddr=poweraddr))
+
+        self.assertFalse(os.path.exists(known_hosts_file))
+        mock_log.assert_called_once_with(
+            "10.0.0.2", "ecdsa-sha2-nistp256", "failed"
+        )
+
+    def test_login_non_fips_does_not_call_trusted_store(self):
+        self.patch(virsh, "is_fips_enabled").return_value = False
+        mock_get_keys = self.patch(virsh, "get_trusted_ssh_host_keys")
+        mock_log = self.patch(virsh, "_log_fips_virsh_ssh_event")
+        conn = self.configure_virshssh_pexpect(["virsh # "])
+        poweraddr = "qemu+ssh://ubuntu@10.0.0.2/system"
+
+        self.assertTrue(conn.login(poweraddr=poweraddr))
+
+        new_poweraddr = poweraddr + "?command=/usr/lib/maas/unverified-ssh"
+        conn._execute.assert_called_once_with(new_poweraddr)
+        mock_get_keys.assert_not_called()
+        mock_log.assert_not_called()
 
     def test_logout(self):
         conn = self.configure_virshssh_pexpect()

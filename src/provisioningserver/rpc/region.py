@@ -15,6 +15,7 @@ __all__ = [
     "GetDiscoveryState",
     "GetDNSConfiguration",
     "GetTimeConfiguration",
+    "GetTrustedSshHostKeys",
     "Identify",
     "ListNodePowerParameters",
     "MarkNodeFailed",
@@ -28,7 +29,6 @@ __all__ = [
     "SendEventMACAddress",
     "UpdateControllerState",
     "UpdateNodePowerState",
-    "VerifyTrustedSshHostKey",
 ]
 
 from twisted.protocols import amp
@@ -508,18 +508,29 @@ class UpdateControllerState(amp.Command):
     errors = {NoSuchNode: b"NoSuchNode", NoSuchScope: b"NoSuchScope"}
 
 
-class VerifyTrustedSshHostKey(amp.Command):
-    """Verify whether a given SSH host key is in the trusted key store.
+class GetTrustedSshHostKeys(amp.Command):
+    """Return every trusted SSH host key registered for a given host.
+
+    Used by paramiko's `TrustedHostKeyPolicy` (power drivers) to verify a
+    presented host key, and by the virsh pod driver under FIPS to
+    materialize a known_hosts file before connecting (the CLI `ssh` binary
+    verifies against a known_hosts file rather than a per-key callback).
 
     :since: 3.7
     """
 
     arguments = [
         (b"host", amp.Unicode()),
-        (b"key_type", amp.Unicode()),
-        (b"public_key", amp.Unicode()),
     ]
     response = [
-        (b"verified", amp.Boolean()),
+        (
+            b"keys",
+            AmpList(
+                [
+                    (b"key_type", amp.Unicode()),
+                    (b"public_key", amp.Unicode()),
+                ]
+            ),
+        )
     ]
     errors = []

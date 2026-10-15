@@ -5,18 +5,14 @@
 
 from collections import namedtuple
 from contextlib import contextmanager
-from dataclasses import dataclass
 from datetime import datetime
 import errno
-from functools import cached_property
 import grp
 import os
 import os.path
 from pathlib import Path
 import re
 import sys
-
-from netaddr import AddrFormatError, IPAddress
 
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import load_template, locate_config
@@ -32,89 +28,11 @@ MAAS_NAMED_CONF_NAME = "named.conf.maas"
 MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME = "named.conf.options.inside.maas"
 MAAS_NAMED_RNDC_CONF_NAME = "named.conf.rndc.maas"
 MAAS_RNDC_CONF_NAME = "rndc.conf.maas"
-MAAS_NSUPDATE_KEY_NAME = "keys.conf.maas"
 MAAS_ZONE_FILE_DIR = "/var/lib/bind/maas"
 MAAS_ZONE_FILE_GROUP = "bind"
 
 
-@dataclass
-class DynamicDNSUpdate:
-    operation: str
-    name: str
-    zone: str
-    rectype: str
-    rev_zone: str | None = None
-    ttl: int | None = None
-    subnet: str | None = None  # for reverse updates
-    answer: str | None = None
-    ip: str | None = None
-
-    @classmethod
-    def create_from_trigger(cls, **kwargs):
-        answer = kwargs.get("answer")
-        rectype = kwargs.pop("rectype")
-        if answer:
-            del kwargs["answer"]
-        # the DB trigger is unable to figure out if an IP is v6, so we do it here instead
-        try:
-            ip = IPAddress(answer)
-        except AddrFormatError:
-            pass
-        else:
-            if ip.version == 6:
-                rectype = "AAAA"
-        if kwargs.get("ttl") == 0:  # default ttl
-            kwargs["ttl"] = 30
-        return cls(answer=answer, rectype=rectype, **kwargs)
-
-    @classmethod
-    def as_reverse_record_update(cls, fwd_update, subnet):
-        if not fwd_update.answer_is_ip:
-            return None
-        ip = IPAddress(fwd_update.answer)
-        name = ip.reverse_dns
-        zone = fwd_update.rev_zone
-        if (ip.version == 4 and subnet.prefixlen > 24) or (
-            ip.version == 6 and subnet.prefixlen > 124
-        ):
-            name_split = ip.reverse_dns.split(".")
-            suffix = [zone]
-            if not zone:
-                if ip.version == 4:
-                    first_octet = str(subnet.network).split(".")[-1]
-                else:
-                    first_octet = str(subnet.network).split(":")[-1]
-
-                suffix = [f"{first_octet}-{subnet.prefixlen}"] + name_split[1:]
-                zone = ".".join(suffix)
-
-            name_split = name_split[:1] + suffix
-            name = ".".join(name_split)
-
-        return cls(
-            operation=fwd_update.operation,
-            name=name,
-            zone=zone or fwd_update.zone,
-            subnet=str(subnet.cidr),
-            ttl=fwd_update.ttl,
-            answer=f"{fwd_update.name}.{fwd_update.zone}",
-            rectype="PTR",
-            ip=fwd_update.answer,
-        )
-
-    @cached_property
-    def answer_as_ip(self):
-        try:
-            return IPAddress(self.answer)
-        except AddrFormatError:
-            return None
-
-    @cached_property
-    def answer_is_ip(self):
-        return self.answer_as_ip is not None
-
-
-def get_dns_config_dir():
+def get_dns_config_dir() -> str:
     """Location of MAAS' bind configuration files."""
     setting = os.getenv(
         "MAAS_DNS_CONFIG_DIR", locate_config(os.path.pardir, "bind", "maas")
@@ -253,15 +171,6 @@ def get_named_rndc_conf_path():
 
 def get_rndc_conf_path():
     return compose_config_path(MAAS_RNDC_CONF_NAME)
-
-
-def get_nsupdate_key_path():
-    return compose_config_path(MAAS_NSUPDATE_KEY_NAME)
-
-
-def set_up_nsupdate_key():
-    tsig = call_and_check(["tsig-keygen", "-a", "HMAC-SHA512", "maas."])
-    atomic_write(tsig, get_nsupdate_key_path(), overwrite=True, mode=0o644)
 
 
 def clean_old_zone_files():
@@ -500,7 +409,6 @@ class DNSConfig:
             "forwarded_zones": self.forwarded_zones,
             "DNS_CONFIG_DIR": get_dns_config_dir(),
             "named_rndc_conf_path": get_named_rndc_conf_path(),
-            "nsupdate_keys_conf_path": get_nsupdate_key_path(),
             "trusted_networks": trusted_networks,
             "modified": str(datetime.today()),
             "allow_only_trusted_transfers": allow_only_trusted_transfers,

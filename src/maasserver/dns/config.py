@@ -6,7 +6,7 @@
 from collections import defaultdict
 
 from django.conf import settings
-from netaddr import IPAddress, IPNetwork
+from netaddr import IPAddress
 
 from maascommon.hardening import is_hardening_enabled
 from maasserver.dns.zonegenerator import (
@@ -17,11 +17,8 @@ from maasserver.dns.zonegenerator import (
 )
 from maasserver.enum import IPADDRESS_TYPE, RDNS_MODE
 from maasserver.models.config import Config
-from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnspublication import DNSPublication
-from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
-from maasserver.models.interface import Interface
 from maasserver.models.node import RackController
 from maasserver.models.subnet import Subnet
 from provisioningserver.dns.actions import (
@@ -31,11 +28,8 @@ from provisioningserver.dns.actions import (
     bind_write_options,
     bind_write_zones,
 )
-from provisioningserver.dns.config import DynamicDNSUpdate
-from provisioningserver.dns.zoneconfig import DNSReverseZoneConfig
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
-from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.snap import running_in_snap
 
 maaslog = get_maas_logger("dns")
@@ -72,18 +66,14 @@ def forward_domains_to_forwarded_zones(forward_domains):
 
 @PROMETHEUS_METRICS.record_call_latency(
     "maas_dns_update_latency",
-    get_labels=lambda args, kwargs, retval: {
-        "update_type": "reload" if kwargs.get("requires_reload") else "dynamic"
-    },
+    get_labels=lambda args, kwargs, retval: {"update_type": "reload"},
 )
 def dns_update_all_zones(
     reload_retry=False,
     reload_timeout=2,
-    dynamic_updates=None,
-    requires_reload=False,
     serial=None,
 ):
-    """Update all zone files for all domains.
+    """Rewrite all zone files for all domains and reload BIND.
 
     Serving these zone files means updating BIND's configuration to include
     them, then asking it to load the new configuration.
@@ -95,21 +85,14 @@ def dns_update_all_zones(
     :param reload_timeout: How many seconds to wait for BIND's reload to succeed
     :type reload_timeout: int
 
-    :param dynamic_updates: A list of updates to send via nsupdate to BIND
-    :type dynamic_updates: list[DynamicDNSUpdate]
-
-    :param requires_reload: If true, dynamic updates are ignored and a full reload will occur
-    :type requires_reload: bool
+    :param serial: The serial to write in the zone files. Defaults to the
+        latest DNS publication serial.
     """
     if not is_dns_enabled():
         return
 
     log.info("Starting DNS update and reload...")
 
-    if not dynamic_updates:
-        dynamic_updates = []
-
-    reloaded = True
     domains = Domain.objects.filter(authoritative=True)
     forwarded_zones = forward_domains_to_forwarded_zones(
         Domain.objects.get_forward_domains()
@@ -127,13 +110,8 @@ def dns_update_all_zones(
         default_ttl,
         serial,
         internal_domains=[get_internal_domain()],
-        dynamic_updates=dynamic_updates,
-        force_config_write=requires_reload,
     ).as_list()
-    try:
-        bind_write_zones(zones)
-    except ExternalProcessError:  # dynamic update failed
-        reloaded = False
+    bind_write_zones(zones)
 
     # We should not be calling bind_write_options() here; call-sites should be
     # making a separate call. It's a historical legacy, where many sites now
@@ -182,21 +160,14 @@ def dns_update_all_zones(
         forwarded_zones=forwarded_zones,
     )
 
-    if not requires_reload:
-        for zone in zones:
-            if zone.requires_reload:
-                requires_reload = True
-                break
-
-    if requires_reload:
-        # Reloading with retries may be a legacy from Celery days, or it may be
-        # necessary to recover from races during start-up. We're not sure if it is
-        # actually needed but it seems safer to maintain this behaviour until we
-        # have a better understanding.
-        if reload_retry:
-            reloaded = bind_reload_with_retries(timeout=reload_timeout)
-        else:
-            reloaded = bind_reload(timeout=reload_timeout)
+    # Reloading with retries may be a legacy from Celery days, or it may be
+    # necessary to recover from races during start-up. We're not sure if it is
+    # actually needed but it seems safer to maintain this behaviour until we
+    # have a better understanding.
+    if reload_retry:
+        reloaded = bind_reload_with_retries(timeout=reload_timeout)
+    else:
+        reloaded = bind_reload(timeout=reload_timeout)
 
     log.info("DNS update and reload complete.")
     # Return the current serial and list of domain names.
@@ -331,162 +302,3 @@ def get_internal_domain():
         ttl=15,
         resources=resources,
     )
-
-
-def get_reverse_zone_for_answer(answer):
-    subnet = Subnet.objects.get_best_subnet_for_ip(answer)
-    if not subnet:
-        return None
-
-    network = IPNetwork(subnet.cidr)
-    zone_info = DNSReverseZoneConfig.compose_zone_info(network)
-    return zone_info[0].zone_name
-
-
-def process_dns_update_notify(message):
-    updates = []
-    update_list = message.split(" ")
-    op = update_list[0]
-    zone = None
-    name = None
-    rectype = None
-    ttl = None
-    answer = None
-    if op == "RELOAD":
-        return (updates, True)
-    elif op == "INSERT-DATA" or op == "UPDATE-DATA":
-        dns_data = DNSData.objects.get(id=int(update_list[1]))
-        zone = dns_data.dnsresource.domain.name
-        name = dns_data.dnsresource.name
-        ttl = dns_data.ttl
-        rectype = dns_data.rrtype
-        answer = dns_data.rrdata
-    else:
-        zone = update_list[1]
-        name = f"{update_list[2]}"
-        rectype = update_list[3]
-        if op == "INSERT" or op == "UPDATE":
-            ttl = int(update_list[-2]) if update_list[-2] else None
-            answer = update_list[-1]
-
-    rev_zone = None
-    if rectype in ("A", "AAAA") and answer is not None:
-        rev_zone = get_reverse_zone_for_answer(answer)
-
-    match op:
-        case "UPDATE":
-            updates.append(
-                DynamicDNSUpdate.create_from_trigger(
-                    operation="DELETE",
-                    zone=zone,
-                    rev_zone=rev_zone,
-                    name=name,
-                    rectype=rectype,
-                    answer=answer,
-                )
-            )
-            updates.append(
-                DynamicDNSUpdate.create_from_trigger(
-                    operation="INSERT",
-                    zone=zone,
-                    rev_zone=rev_zone,
-                    name=name,
-                    rectype=rectype,
-                    ttl=ttl,
-                    answer=answer,
-                )
-            )
-        case "INSERT":
-            updates.append(
-                DynamicDNSUpdate.create_from_trigger(
-                    operation=op,
-                    zone=zone,
-                    rev_zone=rev_zone,
-                    name=name,
-                    rectype=rectype,
-                    ttl=ttl,
-                    answer=answer,
-                )
-            )
-        case _:
-            # special case where we know an IP has been deleted but, we can't fetch the value
-            # and the rrecord may still have other answers
-            if op == "DELETE-IP" or op == "DELETE-IFACE-IP":
-                updates.append(
-                    DynamicDNSUpdate.create_from_trigger(
-                        operation="DELETE",
-                        zone=zone,
-                        rev_zone=rev_zone,
-                        name=name,
-                        rectype=rectype,
-                    )
-                )
-                if rectype == "A":
-                    updates.append(
-                        DynamicDNSUpdate.create_from_trigger(
-                            operation="DELETE",
-                            zone=zone,
-                            rev_zone=rev_zone,
-                            name=name,
-                            rectype="AAAA",
-                        )
-                    )
-
-                ttl = None
-                ip_addresses = []
-                if op == "DELETE-IP":
-                    resource = DNSResource.objects.get(
-                        name=update_list[2], domain__name=zone
-                    )
-                    ttl = (
-                        int(resource.address_ttl)
-                        if resource.address_ttl
-                        else None
-                    )
-                    ip_addresses = list(
-                        resource.ip_addresses.exclude(ip__isnull=True)
-                    )
-                else:
-                    iface_id = int(update_list[-1])
-                    iface = Interface.objects.get(id=iface_id)
-                    default_domain = Domain.objects.get_default_domain()
-                    ttl = (
-                        int(default_domain.ttl) if default_domain.ttl else None
-                    )
-                    ip_addresses = list(
-                        iface.ip_addresses.exclude(ip__isnull=True)
-                    )
-                updates += [
-                    DynamicDNSUpdate.create_from_trigger(
-                        operation="INSERT",
-                        zone=zone,
-                        rev_zone=get_reverse_zone_for_answer(ip.ip),
-                        name=name,
-                        rectype=rectype,
-                        ttl=ttl,
-                        answer=ip.ip,
-                    )
-                    for ip in ip_addresses
-                ]
-            elif len(update_list) > 4:  # has an answer
-                updates.append(
-                    DynamicDNSUpdate.create_from_trigger(
-                        operation=op,
-                        zone=zone,
-                        rev_zone=rev_zone,
-                        name=name,
-                        rectype=rectype,
-                        answer=update_list[-1],
-                    )
-                )
-            else:
-                updates.append(
-                    DynamicDNSUpdate.create_from_trigger(
-                        operation=op,
-                        zone=zone,
-                        rev_zone=rev_zone,
-                        name=name,
-                        rectype=rectype,
-                    )
-                )
-    return (updates, False)

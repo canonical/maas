@@ -1,5 +1,4 @@
 include "{{named_rndc_conf_path}}";
-include "{{nsupdate_keys_conf_path}}";
 
 # Authoritative Zone declarations.
 {{for zone in zones}}
@@ -8,9 +7,6 @@ zone "{{zone[0]}}" {
     # Disable forwarding for authoritive zones, lp:2118833
     forwarders { };
     file "{{zone[1]}}";
-    allow-update {
-        key maas.;
-    };
 };
 {{endfor}}
 
