@@ -427,20 +427,22 @@ class TestInnerStartUp(MAASServerTestCase):
             start_up.inner_start_up(master=False)
         self.assertIsNone(Config.objects.get_config("fips_enabled"))
 
-    def test_non_fips_ipmi_cipher_suite_reset_on_fips_host(self):
+    def _assert_ipmi_cipher_suite_reset_on_fips_host(self, value):
         self.patch(start_up, "is_fips_enabled").return_value = True
-        for value in ("3", ""):
-            with self.subTest(value=value):
-                Config.objects.set_config(
-                    MAASAutoIPMICipherSuiteIDConfig.name, value
-                )
-                with post_commit_hooks:
-                    start_up.inner_start_up(master=False)
-                self.assertFalse(
-                    Config.objects.filter(
-                        name=MAASAutoIPMICipherSuiteIDConfig.name
-                    ).exists()
-                )
+        Config.objects.set_config(MAASAutoIPMICipherSuiteIDConfig.name, value)
+        with post_commit_hooks:
+            start_up.inner_start_up(master=False)
+        self.assertFalse(
+            Config.objects.filter(
+                name=MAASAutoIPMICipherSuiteIDConfig.name
+            ).exists()
+        )
+
+    def test_non_fips_ipmi_cipher_suite_reset_on_fips_host(self):
+        self._assert_ipmi_cipher_suite_reset_on_fips_host("3")
+
+    def test_empty_ipmi_cipher_suite_reset_on_fips_host(self):
+        self._assert_ipmi_cipher_suite_reset_on_fips_host("")
 
     def test_fips_ipmi_cipher_suite_kept_on_fips_host(self):
         self.patch(start_up, "is_fips_enabled").return_value = True
