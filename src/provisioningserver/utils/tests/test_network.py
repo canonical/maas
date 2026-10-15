@@ -50,6 +50,7 @@ from provisioningserver.utils.network import (
     bytes_to_int,
     clean_up_netifaces_address,
     convert_host_to_uri_str,
+    drop_loopback_addresses,
     enumerate_assigned_ips,
     enumerate_ipv4_addresses,
     find_ip_via_arp,
@@ -2459,13 +2460,21 @@ class TestResolveBindAddress(MAASTestCase):
 
 
 class TestResolveBindAddresses(MAASTestCase):
-    def test_explicit_list_returned_unchanged(self):
+    def test_explicit_list_keeps_order_and_gains_loopbacks(self):
         result = resolve_bind_addresses(
             ["10.0.0.1", "10.0.0.2"],
             "http://10.0.0.1:5240/MAAS",
             hardening_active=True,
         )
-        self.assertEqual(["10.0.0.1", "10.0.0.2"], result)
+        self.assertEqual(["10.0.0.1", "10.0.0.2", "127.0.0.1", "::1"], result)
+
+    def test_explicit_list_unchanged_outside_hardening(self):
+        result = resolve_bind_addresses(
+            ["10.0.0.1"],
+            "http://10.0.0.1:5240/MAAS",
+            hardening_active=False,
+        )
+        self.assertEqual(["10.0.0.1"], result)
 
     def test_empty_hardening_inactive_stays_empty(self):
         result = resolve_bind_addresses(
@@ -2473,7 +2482,7 @@ class TestResolveBindAddresses(MAASTestCase):
         )
         self.assertEqual([], result)
 
-    def test_empty_hardening_active_derives_single_address(self):
+    def test_empty_hardening_active_derives_address_and_loopback(self):
         self.patch(
             network_module, "get_source_address_for_url"
         ).return_value = "10.0.0.5"
@@ -2481,7 +2490,20 @@ class TestResolveBindAddresses(MAASTestCase):
         result = resolve_bind_addresses(
             [], "http://10.0.0.5:5240/MAAS", hardening_active=True
         )
-        self.assertEqual(["10.0.0.5"], result)
+        self.assertEqual(["10.0.0.5", "127.0.0.1", "::1"], result)
+
+    def test_empty_hardening_active_ipv6_derives_address_and_loopback(self):
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = "fd00::5"
+
+        result = resolve_bind_addresses(
+            [],
+            "http://[fd00::5]:5240/MAAS",
+            hardening_active=True,
+            family=AF_INET6,
+        )
+        self.assertEqual(["fd00::5", "127.0.0.1", "::1"], result)
 
     def test_empty_hardening_active_unresolvable_falls_back_to_loopback(
         self,
@@ -2493,7 +2515,7 @@ class TestResolveBindAddresses(MAASTestCase):
         result = resolve_bind_addresses(
             [], "http://unreachable:5240/MAAS", hardening_active=True
         )
-        self.assertEqual(["127.0.0.1"], result)
+        self.assertEqual(["127.0.0.1", "::1"], result)
 
     def test_filters_out_blank_entries(self):
         result = resolve_bind_addresses(
@@ -2501,7 +2523,7 @@ class TestResolveBindAddresses(MAASTestCase):
             "http://10.0.0.1:5240/MAAS",
             hardening_active=True,
         )
-        self.assertEqual(["10.0.0.1"], result)
+        self.assertEqual(["10.0.0.1", "127.0.0.1", "::1"], result)
 
 
 class TestResolveServiceBind(MAASTestCase):
@@ -2518,7 +2540,7 @@ class TestResolveServiceBind(MAASTestCase):
         result = resolve_service_bind(
             open_config, "bind_key", hardening_active=True
         )
-        self.assertEqual(["10.0.0.1", "10.0.0.2"], result)
+        self.assertEqual(["10.0.0.1", "10.0.0.2", "127.0.0.1", "::1"], result)
 
     def test_list_valued_maas_url_uses_first_entry(self):
         config = Mock(bind_key=[], maas_url=["http://10.0.0.5:5240/MAAS"])
@@ -2534,7 +2556,7 @@ class TestResolveServiceBind(MAASTestCase):
         result = resolve_service_bind(
             open_config, "bind_key", hardening_active=True
         )
-        self.assertEqual(["10.0.0.5"], result)
+        self.assertEqual(["10.0.0.5", "127.0.0.1", "::1"], result)
 
     def test_open_config_error_is_logged_and_falls_back(self):
         def open_config():
@@ -2570,6 +2592,24 @@ class TestPartitionByFamily(MAASTestCase):
         warning.assert_called_once()
 
 
+class TestDropLoopbackAddresses(MAASTestCase):
+    def test_drops_v4_and_v6_loopback_preserving_order(self):
+        self.assertEqual(
+            ["10.0.0.1", "fd00::1"],
+            drop_loopback_addresses(
+                ["10.0.0.1", "127.0.0.1", "fd00::1", "::1"]
+            ),
+        )
+
+    def test_drops_whole_v4_loopback_network(self):
+        self.assertEqual([], drop_loopback_addresses(["127.254.100.99"]))
+
+    def test_malformed_address_is_kept(self):
+        self.assertEqual(
+            ["not-an-ip"], drop_loopback_addresses(["not-an-ip", "::1"])
+        )
+
+
 class TestResolveDualStackBindAddresses(MAASTestCase):
     def test_explicit_v4_only_still_backfills_v6_default(self):
         def fake_derive(maas_url, family=None):
@@ -2582,7 +2622,7 @@ class TestResolveDualStackBindAddresses(MAASTestCase):
         result = resolve_dual_stack_bind_addresses(
             ["10.0.0.9"], "http://10.0.0.5:5240/MAAS", hardening_active=True
         )
-        self.assertEqual(["10.0.0.9", "fd00::5"], result)
+        self.assertEqual(["10.0.0.9", "fd00::5", "127.0.0.1", "::1"], result)
 
     def test_explicit_v6_only_still_backfills_v4_default(self):
         def fake_derive(maas_url, family=None):
@@ -2595,9 +2635,9 @@ class TestResolveDualStackBindAddresses(MAASTestCase):
         result = resolve_dual_stack_bind_addresses(
             ["fd00::9"], "http://10.0.0.5:5240/MAAS", hardening_active=True
         )
-        self.assertEqual(["fd00::9", "10.0.0.5"], result)
+        self.assertEqual(["fd00::9", "10.0.0.5", "127.0.0.1", "::1"], result)
 
-    def test_explicit_both_families_returned_unchanged(self):
+    def test_explicit_both_families_gain_loopbacks_without_derivation(self):
         derive = self.patch(network_module, "get_source_address_for_url")
 
         result = resolve_dual_stack_bind_addresses(
@@ -2605,8 +2645,16 @@ class TestResolveDualStackBindAddresses(MAASTestCase):
             "http://10.0.0.5:5240/MAAS",
             hardening_active=True,
         )
-        self.assertEqual(["10.0.0.9", "fd00::9"], result)
+        self.assertEqual(["10.0.0.9", "fd00::9", "127.0.0.1", "::1"], result)
         derive.assert_not_called()
+
+    def test_explicit_loopback_is_not_duplicated(self):
+        result = resolve_dual_stack_bind_addresses(
+            ["127.0.0.1", "fd00::9"],
+            "http://10.0.0.5:5240/MAAS",
+            hardening_active=True,
+        )
+        self.assertEqual(["127.0.0.1", "fd00::9", "::1"], result)
 
     def test_empty_configured_derives_both_families(self):
         def fake_derive(maas_url, family=None):
@@ -2619,7 +2667,7 @@ class TestResolveDualStackBindAddresses(MAASTestCase):
         result = resolve_dual_stack_bind_addresses(
             [], "http://10.0.0.5:5240/MAAS", hardening_active=True
         )
-        self.assertEqual(["10.0.0.5", "fd00::5"], result)
+        self.assertEqual(["10.0.0.5", "fd00::5", "127.0.0.1", "::1"], result)
 
     def test_empty_configured_outside_hardening_stays_empty(self):
         result = resolve_dual_stack_bind_addresses(
@@ -2660,7 +2708,7 @@ class TestResolveDualStackServiceBind(MAASTestCase):
         result = resolve_dual_stack_service_bind(
             open_config, "bind_key", hardening_active=True
         )
-        self.assertEqual(["10.0.0.9", "fd00::5"], result)
+        self.assertEqual(["10.0.0.9", "fd00::5", "127.0.0.1", "::1"], result)
 
     def test_open_config_error_is_logged_and_falls_back(self):
         def open_config():
