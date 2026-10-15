@@ -468,8 +468,9 @@ class TestConfigHardeningListEffectiveBinds(_Base):
             side_effect=fake_source,
         ):
             output = self._run_list(self._mock_cfg(), hardening_active=True)
+        expected = ",".join(["10.0.0.9", "fd00::9", "127.0.0.1", "::1"])
         self.assertIn(
-            "(effective: 10.0.0.9,fd00::9)",
+            f"(effective: {expected})",
             self._line_for(output, "api_bind"),
         )
 
