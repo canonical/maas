@@ -57,13 +57,9 @@ IPMI cipher suite '3' is not FIPS-compliant. Allowed: 17.
    maas $PROFILE machine update $SYSTEM_ID power_parameters_cipher_suite_id=17
    ```
 
-3. Change the default that commissioning applies, so that a later commissioning run does not write `3` back:
+3. For a BMC whose firmware does not support suite 17, schedule a firmware update or hardware replacement. Suite 17 is the only approved option, so there is no configuration that makes such a BMC compliant.
 
-   ```bash
-   maas $PROFILE maas set-config name=maas_auto_ipmi_cipher_suite_id value=17
-   ```
-
-4. For a BMC whose firmware does not support suite 17, schedule a firmware update or hardware replacement. Suite 17 is the only approved option, so there is no configuration that makes such a BMC compliant.
+You do not need to change the default that commissioning applies, `maas_auto_ipmi_cipher_suite_id`. Once FIPS mode is enabled, MAAS resets a stored value other than `17` when the region controller starts, so a later commissioning run writes `17`.
 
 ::::{warning}
 Do this before the cutover. Recommissioning cannot repair a stale cipher suite afterwards: recommissioning needs a power cycle, the power cycle uses the stored cipher suite, and FIPS mode rejects it. The machine then has no in-product route back to a working configuration.

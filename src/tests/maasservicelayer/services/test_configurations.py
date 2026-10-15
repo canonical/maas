@@ -16,7 +16,9 @@ from maasservicelayer.db.repositories.database_configurations import (
     DatabaseConfigurationsClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.models import configurations
 from maasservicelayer.models.configurations import (
+    MAASAutoIPMICipherSuiteIDConfig,
     MAASNameConfig,
     MAASProxyPortConfig,
     RPCSharedSecretConfig,
@@ -275,8 +277,8 @@ class TestConfigurationsService:
             VCenterPasswordConfig.name: "mypassword",
             RPCSharedSecretConfig.name: "secret",
         }
-        service.secrets_service.get_simple_secret.side_effect = (
-            lambda key: "mypassword"
+        service.secrets_service.get_simple_secret.side_effect = lambda key: (
+            "mypassword"
             if isinstance(key, VCenterPasswordSecret)
             else "secret"
         )
@@ -425,6 +427,20 @@ class TestConfigurationsService:
         with pytest.raises(ValidationException):
             await service.clear_and_set_many(test_cfg)
 
+    async def test_clear_and_set_many_reports_validator_message(
+        self, monkeypatch
+    ):
+        monkeypatch.setattr(configurations, "is_fips_enabled", lambda: True)
+        service = make_configurations_service()
+        with pytest.raises(ValidationException) as exc_info:
+            await service.clear_and_set_many(
+                {"theme": "dark", MAASAutoIPMICipherSuiteIDConfig.name: "3"}
+            )
+        [detail] = exc_info.value.details
+        assert detail.field == MAASAutoIPMICipherSuiteIDConfig.name
+        assert "not FIPS-approved" in detail.message
+        service.database_configurations_service.clear_and_set_many.assert_not_called()
+
     async def test_get_msm_config(self):
         service = ConfigurationsService(
             context=Context(),
@@ -444,3 +460,12 @@ class TestConfigurationsService:
         )
         config = await service.get_msm_config()
         assert config == {"theme": "dark"}
+
+
+def make_configurations_service() -> ConfigurationsService:
+    return ConfigurationsService(
+        context=Context(),
+        database_configurations_service=Mock(DatabaseConfigurationsService),
+        secrets_service=Mock(SecretsService),
+        events_service=Mock(EventsService),
+    )

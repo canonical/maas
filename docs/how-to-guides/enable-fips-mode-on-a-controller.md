@@ -114,11 +114,8 @@ FIPS mode adds controls that may require further action:
 - Replace any public API TLS certificate that uses a weak key or signature. See [Replace a weak TLS certificate](/how-to-guides/resolve-hardening-violations.md#replace-a-weak-tls-certificate).
 - Add trusted host keys for machines that use SSH-based power drivers. See [Manage trusted SSH host keys](/how-to-guides/manage-trusted-ssh-host-keys.md).
 - Move machines off power drivers that are rejected in FIPS mode. See [Power drivers](/reference/configuration-guides/fips-mode.md#power-drivers).
-- Set the default IPMI cipher suite to `17` before you commission machines. Commissioning writes this setting into each machine's power configuration, and its default is `3`, which FIPS mode rejects:
 
-  ```bash
-  maas $PROFILE maas set-config name=maas_auto_ipmi_cipher_suite_id value=17
-  ```
+MAAS also sets the default IPMI cipher suite that commissioning writes into each machine to `17`. See [Driver settings](/reference/configuration-guides/fips-mode.md#driver-settings).
 
 If MAAS already manages machines, users, and keys, read [Adopt FIPS mode on an existing deployment](/how-to-guides/adopt-fips-on-an-existing-deployment.md) before you enable FIPS mode. MAAS does not validate material that is already stored.
 

@@ -743,6 +743,26 @@ class TestMSMActivities:
             await env.run(msm_act.set_global_config, param)
         assert err.value.non_retryable
 
+    async def test_set_global_config_err_includes_reason(
+        self, mocker, msm_act, services_mock
+    ):
+        services_mock.configurations = Mock(ConfigurationsService)
+        services_mock.configurations.clear_and_set_many.side_effect = (
+            ValidationException.build_for_field(
+                field="theme", message="Invalid value for 'theme'."
+            )
+        )
+        mocker.patch.object(
+            msm_act, "start_transaction"
+        ).return_value = AsyncContextManagerMock(services_mock)
+        env = ActivityEnvironment()
+        param = MSMSetGlobalConfigParam(configuration={"theme": 2})
+        with pytest.raises(ApplicationError) as err:
+            await env.run(msm_act.set_global_config, param)
+        assert err.value.message == (
+            "Failed to set global configuration: Invalid value for 'theme'."
+        )
+
     async def test_start_image_sync(self, mocker, msm_act, services_mock):
         services_mock.temporal = Mock(TemporalService)
         temporal_client = Mock(Client)
@@ -1672,9 +1692,7 @@ class TestConfigureProfileWorkflow:
                     selections_status=TaskStatus.FAILED
                     if failed_activity == "selections"
                     else TaskStatus.COMPLETE,
-                    errors=[
-                        "selections activity failed (Activity task failed)."
-                    ]
+                    errors=["selections activity failed (selections failed)."]
                     if failed_activity == "selections"
                     else None,
                 ),
@@ -1687,7 +1705,7 @@ class TestConfigureProfileWorkflow:
                     if failed_activity == "global_config"
                     else TaskStatus.COMPLETE,
                     errors=[
-                        "global_config activity failed (Activity task failed)."
+                        "global_config activity failed (global_config failed)."
                     ]
                     if failed_activity == "global_config"
                     else None,
@@ -1700,9 +1718,7 @@ class TestConfigureProfileWorkflow:
                     image_sync_status=TaskStatus.FAILED
                     if failed_activity == "image_sync"
                     else TaskStatus.COMPLETE,
-                    errors=[
-                        "image_sync activity failed (Activity task failed)."
-                    ]
+                    errors=["image_sync activity failed (image_sync failed)."]
                     if failed_activity == "image_sync"
                     else None,
                 ),

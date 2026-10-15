@@ -8,7 +8,7 @@ import logging
 from django.db.utils import DatabaseError
 from twisted.internet.defer import inlineCallbacks
 
-from maascommon.fips import is_fips_enabled
+from maascommon.fips import FIPS_ALLOWED_IPMI_CIPHERS, is_fips_enabled
 from maascommon.hardening import configure_hardening
 from maascommon.osystem.ubuntu import UbuntuOS
 from maasserver import locks, security
@@ -57,6 +57,9 @@ from maasserver.vault import (
     clear_vault_client_caches,
     get_region_vault_client,
     VaultClient,
+)
+from maasservicelayer.models.configurations import (
+    MAASAutoIPMICipherSuiteIDConfig,
 )
 from maasservicelayer.services.hardening import (
     configure_and_validate_hardening,
@@ -147,6 +150,21 @@ def _cleanup_expired_discovered_ip_addresses() -> None:
         ip_addresses__ip__isnull=True,
         ip_addresses__alloc_type=IPADDRESS_TYPE.DISCOVERED,
     ).delete()
+
+
+def _reset_non_fips_ipmi_cipher_suite() -> None:
+    name = MAASAutoIPMICipherSuiteIDConfig.name
+    cipher_suite_id = Config.objects.get_config(name)
+    if cipher_suite_id is None or cipher_suite_id in FIPS_ALLOWED_IPMI_CIPHERS:
+        return
+    maaslog.warning(
+        "IPMI cipher suite '%s' in '%s' is not FIPS-approved; resetting it "
+        "to the default (%s).",
+        cipher_suite_id,
+        name,
+        MAASAutoIPMICipherSuiteIDConfig.default,
+    )
+    Config.objects.filter(name=name).delete()
 
 
 def _get_certificate_from_database(
@@ -266,6 +284,7 @@ def inner_start_up(master=False):
     configure_hardening(read_hardening_enabled_from_db())
     if is_fips_enabled():
         Config.objects.set_config("fips_enabled", True)
+        _reset_non_fips_ipmi_cipher_suite()
 
     if master:
         # All commissioning and testing scripts are stored in the database. For

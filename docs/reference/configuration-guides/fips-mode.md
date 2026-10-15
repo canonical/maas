@@ -181,6 +181,12 @@ On a FIPS host, MAAS validates power configuration when you create or update a m
 | `ipmi` | `cipher_suite_id` | `17`. If unset, `17` is assumed. Cipher suite 17 uses HMAC-SHA256 and AES-CBC-128. |
 | `webhook`, `proxmox`, `hmcz` | `power_verify_ssl` | `y` |
 
+The `maas_auto_ipmi_cipher_suite_id` configuration, which commissioning writes into each IPMI machine's `cipher_suite_id`, defaults to `17` on a FIPS host and to `3` otherwise. On a FIPS host:
+
+- MAAS rejects any value other than `17`, including the empty freeipmi-tools default. If the value is `null`, commissioning uses `17`.
+- When a region controller starts, MAAS resets a stored value other than `17` to the default and logs a warning.
+- A MAAS Site Manager profile that sets another value is not applied. Site Manager reports the reason for the failure.
+
 The [password policy](/reference/configuration-guides/security-hardening.md#password-policy) also applies to `power_pass`, because hardening is always active on a FIPS host.
 
 ## Fleet drift

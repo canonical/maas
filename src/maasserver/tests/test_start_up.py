@@ -35,6 +35,9 @@ from maasserver.utils.certificates import (
 )
 from maasserver.utils.orm import post_commit_hooks
 from maasserver.vault import UnknownSecretPath, VaultError
+from maasservicelayer.models.configurations import (
+    MAASAutoIPMICipherSuiteIDConfig,
+)
 from maastesting import get_testing_timeout
 from provisioningserver.certificates import (
     Certificate,
@@ -423,6 +426,45 @@ class TestInnerStartUp(MAASServerTestCase):
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
         self.assertIsNone(Config.objects.get_config("fips_enabled"))
+
+    def test_non_fips_ipmi_cipher_suite_reset_on_fips_host(self):
+        self.patch(start_up, "is_fips_enabled").return_value = True
+        for value in ("3", ""):
+            with self.subTest(value=value):
+                Config.objects.set_config(
+                    MAASAutoIPMICipherSuiteIDConfig.name, value
+                )
+                with post_commit_hooks:
+                    start_up.inner_start_up(master=False)
+                self.assertFalse(
+                    Config.objects.filter(
+                        name=MAASAutoIPMICipherSuiteIDConfig.name
+                    ).exists()
+                )
+
+    def test_fips_ipmi_cipher_suite_kept_on_fips_host(self):
+        self.patch(start_up, "is_fips_enabled").return_value = True
+        Config.objects.set_config(MAASAutoIPMICipherSuiteIDConfig.name, "17")
+        with post_commit_hooks:
+            start_up.inner_start_up(master=False)
+        self.assertEqual(
+            "17",
+            Config.objects.get(
+                name=MAASAutoIPMICipherSuiteIDConfig.name
+            ).value,
+        )
+
+    def test_ipmi_cipher_suite_kept_on_non_fips_host(self):
+        self.patch(start_up, "is_fips_enabled").return_value = False
+        Config.objects.set_config(MAASAutoIPMICipherSuiteIDConfig.name, "3")
+        with post_commit_hooks:
+            start_up.inner_start_up(master=False)
+        self.assertEqual(
+            "3",
+            Config.objects.get(
+                name=MAASAutoIPMICipherSuiteIDConfig.name
+            ).value,
+        )
 
 
 class TestVaultMigrateDbCredentials(MAASServerTestCase):
