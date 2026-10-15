@@ -57,7 +57,10 @@ class BootResource(MaasTimestampedBaseModel):
             return True
         if "subarches" not in self.extra:
             return False
-        subarches = self.extra["subarches"].split(",")
+        subarches_str = self.extra["subarches"]
+        if subarches_str is None:
+            return False
+        subarches = subarches_str.split(",")
         return subarch in subarches
 
     def supports_platform(self, platform: str) -> bool:
@@ -68,5 +71,8 @@ class BootResource(MaasTimestampedBaseModel):
             return True
         if "supported_platforms" not in self.extra:
             return False
-        platforms = self.extra["supported_platforms"].split(",")
+        platforms_str = self.extra["supported_platforms"]
+        if platforms_str is None:
+            return False
+        platforms = platforms_str.split(",")
         return platform in platforms
