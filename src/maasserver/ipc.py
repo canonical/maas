@@ -42,6 +42,7 @@ from provisioningserver.logger import LegacyLogger
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.utils.network import (
+    drop_loopback_addresses,
     get_all_interface_addresses,
     get_all_interface_source_addresses,
 )
@@ -306,11 +307,19 @@ class IPCMasterService(service.Service):
         is listening on.
 
         Mirrors `eventloop.resolve_rpc_bind_addresses`, which is what
-        `RegionService` itself binds to: an explicit or maas_url-derived
-        address is advertised verbatim. Otherwise, fall back to
-        discovering this host's routable addresses, as before.
+        `RegionService` itself binds to. The loopback addresses that
+        resolution adds under hardening are dropped while a routable
+        address remains: they only serve same-host clients and would
+        point a remote rack controller at itself. A loopback-only bind
+        is advertised as-is, since that is the only address a co-located
+        rack can reach the region on. Only when nothing is bound at all
+        (an unset key outside hardening, i.e. a wildcard bind) does this
+        fall back to discovering the host's addresses, as before.
         """
         rpc_bind = eventloop.resolve_rpc_bind_addresses()
+        routable = drop_loopback_addresses(rpc_bind)
+        if routable:
+            return {(addr, port) for addr in routable}
         if rpc_bind:
             return {(addr, port) for addr in rpc_bind}
 
