@@ -557,7 +557,7 @@ class TestRackProxy(MAASTestCase):
         external.RackProxy()._configure(self._make_proxy_configuration())
 
         self.assertEqual(
-            ["10.0.0.9", "fd00::9"],
+            ["10.0.0.9", "fd00::9", "127.0.0.1", "::1"],
             write_config.call_args.kwargs["http_proxy_bind"],
         )
 
@@ -583,7 +583,7 @@ class TestRackProxy(MAASTestCase):
         external.RackProxy()._configure(self._make_proxy_configuration())
 
         self.assertEqual(
-            ["10.0.0.5", "fd00::9"],
+            ["10.0.0.5", "fd00::9", "127.0.0.1", "::1"],
             write_config.call_args.kwargs["http_proxy_bind"],
         )
 
@@ -768,9 +768,12 @@ class TestRackSyslog(MAASTestCase):
 
         external.RackSyslog()._configure(self._make_syslog_configuration())
 
-        self.assertEqual(["10.0.0.9"], write_config.call_args.kwargs["bind"])
+        self.assertEqual(
+            ["10.0.0.9", "127.0.0.1", "::1"],
+            write_config.call_args.kwargs["bind"],
+        )
 
-    def test_configure_explicit_bind_wins_over_derivation(self):
+    def test_configure_explicit_bind_keeps_configured_address(self):
         from provisioningserver.config import ClusterConfiguration
 
         self.patch(external, "is_hardening_enabled").return_value = True
@@ -785,7 +788,10 @@ class TestRackSyslog(MAASTestCase):
 
         external.RackSyslog()._configure(self._make_syslog_configuration())
 
-        self.assertEqual(["10.0.0.5"], write_config.call_args.kwargs["bind"])
+        self.assertEqual(
+            ["10.0.0.5", "127.0.0.1", "::1"],
+            write_config.call_args.kwargs["bind"],
+        )
 
     @inlineCallbacks
     def test_sets_syslog_rack_service_to_any_when_is_region(self):

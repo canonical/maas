@@ -147,8 +147,11 @@ Derivation rules:
 - "Per address family" means MAAS derives an IPv4 and an IPv6 address independently. If you set only one family explicitly, MAAS still derives the other.
 - An explicit value always takes precedence.
 - `api_int_bind` and `dns_bind` are never derived. DNS must serve every managed subnet, not only the interface that reaches `maas_url`.
+- While hardening is active, the keys resolved through `maas_url` derivation (`api_bind`, `agent_api_bind`, `syslog_bind`, `http_proxy_bind`, `rpc_bind`) also bind both loopback addresses (`127.0.0.1` and `::1`), whether their addresses were derived or set explicitly. A bound address covers only the interface it names, while same-host clients dial loopback. On hosts with IPv6 disabled at the OS level (common under STIG/CIS hardening), `::1` cannot be bound and is skipped. `api_int_bind` and `dns_bind` take no extra loopback address: both serve rack-facing traffic on exactly the configured addresses, never same-host clients. The scalar keys `temporal_bind` and `prometheus_bind` take no extra loopback address: Temporal's `bindOnIP` accepts exactly one address, and `prometheus_bind` already defaults to loopback.
 
-When `rpc_bind` is set, rack controllers connect to exactly those addresses.
+Rack controllers are told about the non-loopback RPC addresses only. If the region binds loopback alone, that address is advertised instead, so a co-located rack controller can still connect. When `rpc_bind` is set, rack controllers connect to exactly those addresses, loopback excluded on the same terms.
+
+When `maas_url` points at a floating virtual IP (for example one managed by Pacemaker) or at a load balancer, derivation follows runtime routing at service start: on the node currently holding the VIP the derived address is the VIP itself; on the standby nodes it is their own interface address. After a failover, services are not re-bound, so the newly active node does not listen on the VIP until its services restart. Similarly, if the path from a region controller to the load balancer uses a different interface than the path the load balancer (or rack controllers) use to reach the region controller, the derived address names the wrong interface. In these topologies, set the bind keys explicitly to the addresses clients actually dial, and restart the MAAS services on the standby node after a failover.
 
 ### DNS server options
 
@@ -180,7 +183,7 @@ Rack keys are stored in `/var/snap/maas/current/rackd.conf`.
 | `tftp_bind` | List | Violation |
 | `dns_bind` | List | Violation |
 
-When hardening is inactive, an unset rack bind key listens on all interfaces.
+When hardening is inactive, an unset rack bind key listens on all interfaces. While hardening is active, `api_bind`, `syslog_bind`, and `http_proxy_bind` also bind both loopback addresses, derived or explicitly configured, exactly as on the region.
 
 `temporal_server` in `rackd.conf` is not a hardening key, and `maas config-hardening` does not manage it. It sets the host name or IP address that MAAS Agent connects to for Temporal, on port 5271. When unset, MAAS Agent uses the host from the first `maas_url`. Set it when the region controllers bind Temporal to an address that differs from that host, for example after you pin `temporal_bind`.
 

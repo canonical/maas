@@ -283,7 +283,15 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options, clock=None)
         http_service = service.getServiceNamed("http_service")
-        self.assertIsInstance(http_service, StreamServerEndpointService)
+        self.assertIsInstance(http_service, MultiService)
+        # One endpoint service per bindable loopback family.
+        self.assertTrue(
+            all(
+                isinstance(child, StreamServerEndpointService)
+                for child in http_service
+            )
+        )
+        self.assertGreaterEqual(len(list(http_service)), 1)
 
     def test_tftp_service(self):
         """A TFTP service is configured and added to the top-level service."""
