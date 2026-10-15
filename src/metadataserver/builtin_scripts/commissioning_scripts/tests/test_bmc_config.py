@@ -301,11 +301,11 @@ EndSection
 
     def test_bmc_password_constraint_requires_old_password_difference(self):
         constraint = bmc_config._build_bmc_password_constraint(
-            old_password="Aa1!bbbbbbbbbb"
+            old_password="Aa1!bcdefghijk"
         )
-        self.assertFalse(constraint("Aa1!bbbbbbbbbb"))
-        self.assertFalse(constraint("Ab1!bbbbbbbbbb"))
-        self.assertTrue(constraint("Ab2!bbbbbbbbbb"))
+        self.assertFalse(constraint("Aa1!bcdefghijk"))
+        self.assertFalse(constraint("Ab1!bcdefghijk"))
+        self.assertTrue(constraint("Ab2!bcdefghijk"))
 
     def test_make_ipmi_user_settings(self):
         username = factory.make_name("username")
