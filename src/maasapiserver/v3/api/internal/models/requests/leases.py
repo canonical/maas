@@ -2,7 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 from enum import StrEnum
 
-from pydantic import BaseModel, IPvAnyAddress
+from pydantic import BaseModel, field_validator, IPvAnyAddress
 
 from maascommon.enums.ipaddress import LeaseAction
 from maasservicelayer.models.fields import MacAddress
@@ -17,7 +17,14 @@ class LeaseInfoRequest(BaseModel):
     action: LeaseAction
     ip_family: LeaseIPFamily
     hostname: str
-    mac: MacAddress
+    # The MAC address may be absent, e.g. when the DHCP server reports a
+    # DHCPDECLINE. We accept the request, and we let the service layer decide what to do.
+    mac: MacAddress | None = None
     ip: IPvAnyAddress
     timestamp: int
     lease_time: int  # seconds
+
+    @field_validator("mac", mode="before")
+    @classmethod
+    def empty_mac_to_none(cls, value: str | None) -> str | None:
+        return None if value == "" else value

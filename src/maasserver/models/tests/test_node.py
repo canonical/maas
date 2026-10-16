@@ -5836,6 +5836,21 @@ class TestNode(MAASServerTestCase):
         mock_node_power_cycle.assert_called_once_with()
         self.assertEqual(reload_object(node).status, NODE_STATUS.DEPLOYED)
 
+    def test_stop_rescue_mode_stops_node_from_failed_deployment(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.RESCUE_MODE,
+            previous_status=NODE_STATUS.FAILED_DEPLOYMENT,
+        )
+        admin = factory.make_admin()
+        mock_node_stop = self.patch(node, "_stop")
+        node.stop_rescue_mode(admin)
+
+        mock_node_stop.assert_called_once_with(admin)
+        self.assertEqual(
+            reload_object(node).status,
+            NODE_STATUS.EXITING_RESCUE_MODE,
+        )
+
     def test_stop_rescue_mode_logs_and_raises_errors(self):
         admin = factory.make_admin()
         node = factory.make_Node(
@@ -6556,13 +6571,37 @@ class TestNodePowerParameters(MAASServerTestCase):
         self.assertEqual(ip_address, node.bmc.ip_address.ip)
 
     def test_orphaned_bmcs_are_removed(self):
-        bmc = factory.make_BMC()
+        machine = factory.make_Node(bmc=factory.make_BMC())
+        machine_bmc = machine.bmc
+
+        with post_commit_hooks:
+            machine.bmc = None
+            machine.save()
+        self.assertIsNone(reload_object(machine_bmc))
+
+    def test_unrelated_orphaned_bmcs_are_not_removed(self):
+        unrelated_bmc = factory.make_BMC()
         machine = factory.make_Node(bmc=factory.make_BMC())
 
         with post_commit_hooks:
             machine.bmc = None
             machine.save()
-        self.assertIsNone(reload_object(bmc))
+        self.assertIsNotNone(reload_object(unrelated_bmc))
+
+    def test_orphaned_bmcs_are_removed_across_multiple_saves(self):
+        machine = factory.make_Node(bmc=factory.make_BMC())
+        first_bmc = machine.bmc
+        second_bmc = factory.make_BMC()
+
+        with post_commit_hooks:
+            machine.bmc = second_bmc
+            machine.save()
+        self.assertIsNone(reload_object(first_bmc))
+
+        with post_commit_hooks:
+            machine.bmc = None
+            machine.save()
+        self.assertIsNone(reload_object(second_bmc))
 
     def test_is_sync_healthy_returns_false_when_enable_hw_sync_is_false(self):
         node = factory.make_Node()

@@ -597,6 +597,17 @@ class TestRetryOnBusy(MAASTestCase):
             }
         )
 
+    def make_not_valid_state_error(self):
+        return HTTPError(
+            {
+                "http-status": 409,
+                "reason": 1,
+                "message": "partition is not in a valid state",
+                "request-method": "POST",
+                "request-uri": "/api/partitions/abc",
+            }
+        )
+
     def test_returns_result_without_retrying_on_success(self):
         mock_sleep = self.patch(hmcz_module.time, "sleep")
         func = Mock(return_value="ok")
@@ -628,6 +639,43 @@ class TestRetryOnBusy(MAASTestCase):
         self.assertEqual(mock_sleep.call_count, 2)
         mock_sleep.assert_called_with(5)
 
+    def test_retries_while_409_1_not_valid_state_then_succeeds(self):
+        mock_sleep = self.patch(hmcz_module.time, "sleep")
+        func = Mock(
+            side_effect=[
+                self.make_not_valid_state_error(),
+                self.make_not_valid_state_error(),
+                "ok",
+            ]
+        )
+
+        result = hmcz_module._retry_on_busy(
+            func, op_desc="op", system_id="sys", retry_delay=5
+        )
+
+        self.assertEqual(result, "ok")
+        self.assertEqual(func.call_count, 3)
+        self.assertEqual(mock_sleep.call_count, 2)
+        mock_sleep.assert_called_with(5)
+
+    def test_retries_across_mixed_409_1_and_409_2_then_succeeds(self):
+        mock_sleep = self.patch(hmcz_module.time, "sleep")
+        func = Mock(
+            side_effect=[
+                self.make_busy_error(),
+                self.make_not_valid_state_error(),
+                "ok",
+            ]
+        )
+
+        result = hmcz_module._retry_on_busy(
+            func, op_desc="op", system_id="sys"
+        )
+
+        self.assertEqual(result, "ok")
+        self.assertEqual(func.call_count, 3)
+        self.assertEqual(mock_sleep.call_count, 2)
+
     def test_reraises_other_http_errors_immediately(self):
         mock_sleep = self.patch(hmcz_module.time, "sleep")
         other = HTTPError({"http-status": 500, "reason": 1})
@@ -645,7 +693,7 @@ class TestRetryOnBusy(MAASTestCase):
 
     def test_reraises_409_with_other_reason_immediately(self):
         mock_sleep = self.patch(hmcz_module.time, "sleep")
-        other = HTTPError({"http-status": 409, "reason": 1})
+        other = HTTPError({"http-status": 409, "reason": 3})
         func = Mock(side_effect=other)
 
         self.assertRaises(
@@ -661,6 +709,22 @@ class TestRetryOnBusy(MAASTestCase):
     def test_gives_up_and_reraises_after_max_attempts(self):
         mock_sleep = self.patch(hmcz_module.time, "sleep")
         func = Mock(side_effect=self.make_busy_error())
+
+        self.assertRaises(
+            HTTPError,
+            hmcz_module._retry_on_busy,
+            func,
+            op_desc="op",
+            system_id="sys",
+            max_attempts=3,
+        )
+        self.assertEqual(func.call_count, 3)
+        # No sleep after the final (failing) attempt.
+        self.assertEqual(mock_sleep.call_count, 2)
+
+    def test_gives_up_and_reraises_after_max_attempts_409_1(self):
+        mock_sleep = self.patch(hmcz_module.time, "sleep")
+        func = Mock(side_effect=self.make_not_valid_state_error())
 
         self.assertRaises(
             HTTPError,

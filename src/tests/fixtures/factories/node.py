@@ -88,6 +88,8 @@ async def create_test_machine_entry(
     fixture: Fixture,
     **extra_details: Any,
 ) -> dict[str, Any]:
+    # Every machine has a pool, use the default pool.
+    extra_details.setdefault("pool_id", 0)
     return await _create_test_node_entry(
         fixture, NodeTypeEnum.MACHINE, **extra_details
     )

@@ -48,6 +48,7 @@ class MachineBuilder(ResourceBuilder):
     osystem: str | Unset = Field(default=UNSET)
     owner: str | None | Unset = Field(default=UNSET)
     owner_id: int | None | Unset = Field(default=UNSET)
+    pool_id: int | Unset = Field(default=UNSET)
     power_state: PowerState | Unset = Field(default=UNSET)
     power_state_updated: datetime | None | Unset = Field(default=UNSET)
     power_type: PowerTypeEnum | None | Unset = Field(default=UNSET)

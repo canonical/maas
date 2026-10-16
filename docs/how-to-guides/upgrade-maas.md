@@ -17,6 +17,7 @@ sudo snap refresh maas --channel=<version>/stable
 
 ## Version-specific notes
 
+- MAAS 3.7.4 and later: Controllers on different versions cannot communicate. Upgrade every region and rack controller in the same maintenance window. To put the upgraded deployment into FIPS mode afterwards, see [Adopt FIPS mode on an existing deployment](/how-to-guides/adopt-fips-on-an-existing-deployment.md).
 - MAAS 3.6: PostgreSQL 14+ supported; PostgreSQL 16 recommended.
 - MAAS 3.5: Requires PostgreSQL 14.
 - MAAS 3.3: PostgreSQL 12 deprecated. Upgrade to 14 before proceeding.

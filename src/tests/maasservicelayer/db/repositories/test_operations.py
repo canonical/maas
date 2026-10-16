@@ -96,6 +96,28 @@ class TestOperationsClauseFactory:
             == "maasserver_operation.is_bulk = true"
         )
 
+    def test_with_resource_type(self) -> None:
+        clause = OperationsClauseFactory.with_resource_type("machine")
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.resource_type = 'machine'"
+        )
+
+    def test_with_resource_id(self) -> None:
+        clause = OperationsClauseFactory.with_resource_id(42)
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.resource_id = 42"
+        )
+
     def test_with_user_id(self) -> None:
         clause = OperationsClauseFactory.with_user_id(1)
         assert (

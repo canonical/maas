@@ -21,6 +21,7 @@ __all__ = [
 ]
 
 from maascommon.enums.node import HardwareDeviceTypeEnum
+from maascommon.enums.script import ScriptParallel, ScriptType
 from maascommon.enums.scriptresult import ScriptStatus
 from provisioningserver.enum import enum_choices
 
@@ -42,11 +43,11 @@ SIGNAL_STATUS_CHOICES = enum_choices(SIGNAL_STATUS)
 
 
 class SCRIPT_TYPE:
-    COMMISSIONING = 0
+    COMMISSIONING = ScriptType.COMMISSIONING.value
     # 1 is skipped to keep numbering the same as RESULT_TYPE
-    TESTING = 2
-    RELEASE = 3
-    DEPLOYMENT = 4
+    TESTING = ScriptType.TESTING.value
+    RELEASE = ScriptType.RELEASE.value
+    DEPLOYMENT = ScriptType.DEPLOYMENT.value
 
 
 SCRIPT_TYPE_CHOICES = (
@@ -148,9 +149,9 @@ HARDWARE_TYPE_CHOICES = (
 
 
 class SCRIPT_PARALLEL:
-    DISABLED = 0
-    INSTANCE = 1
-    ANY = 2
+    DISABLED = ScriptParallel.DISABLED.value
+    INSTANCE = ScriptParallel.INSTANCE.value
+    ANY = ScriptParallel.ANY.value
 
 
 SCRIPT_PARALLEL_CHOICES = (

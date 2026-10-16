@@ -69,6 +69,9 @@ from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersRepository,
 )
 from maasservicelayer.db.repositories.nodes import NodesRepository
+from maasservicelayer.db.repositories.nodeuserdata import (
+    NodeUserDataRepository,
+)
 from maasservicelayer.db.repositories.notifications import (
     NotificationsRepository,
 )
@@ -92,6 +95,7 @@ from maasservicelayer.db.repositories.resource_pools import (
 from maasservicelayer.db.repositories.scriptresults import (
     ScriptResultsRepository,
 )
+from maasservicelayer.db.repositories.scripts import ScriptsRepository
 from maasservicelayer.db.repositories.service_status import (
     ServiceStatusRepository,
 )
@@ -183,6 +187,7 @@ from maasservicelayer.services.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersService,
 )
 from maasservicelayer.services.nodes import NodesService
+from maasservicelayer.services.nodeuserdata import NodeUserDataService
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 from maasservicelayer.services.operations import OperationsService
@@ -195,6 +200,7 @@ from maasservicelayer.services.rdns import RDNSService
 from maasservicelayer.services.reservedips import ReservedIPsService
 from maasservicelayer.services.resource_pools import ResourcePoolsService
 from maasservicelayer.services.scriptresult import ScriptResultsService
+from maasservicelayer.services.scripts import ScriptsService
 from maasservicelayer.services.secrets import (
     SecretsService,
     SecretsServiceFactory,
@@ -294,6 +300,7 @@ class ServiceCollectionV3:
     neighbours: NeighboursService
     nodegrouptorackcontrollers: NodeGroupToRackControllersService
     nodes: NodesService
+    nodeuserdata: NodeUserDataService
     notifications: NotificationsService
     oidc_revoked_tokens: OIDCRevokedTokenService
     openfga_tuples: OpenFGATupleService
@@ -306,6 +313,7 @@ class ServiceCollectionV3:
     reservedips: ReservedIPsService
     resource_pools: ResourcePoolsService
     scriptresults: ScriptResultsService
+    scripts: ScriptsService
     secrets: SecretsService
     service_status: ServiceStatusService
     spaces: SpacesService
@@ -405,6 +413,10 @@ class ServiceCollectionV3:
         services.scriptresults = ScriptResultsService(
             context=context,
             scriptresults_repository=ScriptResultsRepository(context),
+        )
+        services.scripts = ScriptsService(
+            context=context,
+            repository=ScriptsRepository(context),
         )
         services.dnspublications = DNSPublicationsService(
             context=context,
@@ -767,5 +779,9 @@ class ServiceCollectionV3:
         services.power_types = PowerTypesService(
             context=context,
             repository=PowerTypeRepository(),
+        )
+        services.nodeuserdata = NodeUserDataService(
+            context=context,
+            nodeuserdata_repository=NodeUserDataRepository(context),
         )
         return services

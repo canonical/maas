@@ -73,3 +73,10 @@ FIPS_VIOLATION_TYPE = "FipsViolation"
 
 # Service
 SERVICE_UNAVAILABLE_VIOLATION_TYPE = "ServiceUnavailableViolation"
+
+# Machines
+INVALID_MACHINE_STATUS_VIOLATION_TYPE = "InvalidMachineStatusViolation"
+MACHINE_LOCKED_VIOLATION_TYPE = "MachineLockedViolation"
+
+# Operations
+OPERATION_IN_PROGRESS_VIOLATION_TYPE = "OperationInProgressViolation"

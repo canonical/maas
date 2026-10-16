@@ -8,19 +8,13 @@ from itertools import chain
 import os.path
 import random
 from tempfile import mktemp
-from unittest.mock import call
 
 from netaddr import IPAddress, IPNetwork, IPRange
 from twisted.python.filepath import FilePath
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.dns import actions
-from provisioningserver.dns.config import (
-    DynamicDNSUpdate,
-    get_nsupdate_key_path,
-    get_zone_file_config_dir,
-)
+from provisioningserver.dns.config import get_zone_file_config_dir
 from provisioningserver.dns.testing import patch_zone_file_config_path
 import provisioningserver.dns.zoneconfig
 from provisioningserver.dns.zoneconfig import (
@@ -330,183 +324,15 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         filepath = FilePath(dns_zone_config.zone_info[0].target_path)
         self.assertTrue(filepath.getPermissions().other.read)
 
-    def test_zone_file_exists(self):
+    def test_write_config_rewrites_existing_zone_file(self):
         patch_zone_file_config_path(self)
         domain = factory.make_string()
-        network = factory.make_ipv4_network()
-        ipv4_hostname = factory.make_name("host")
-        ipv4_ip = factory.pick_ip_in_network(network)
-        ipv6_hostname = factory.make_name("host")
-        ipv6_ip = factory.make_ipv6_address()
-        ipv6_network = factory.make_ipv6_network()
-        dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
-        ttl = random.randint(10, 300)
-        mapping = {
-            ipv4_hostname: HostnameIPMapping(
-                None, ttl, {ipaddress.ip_address(ipv4_ip)}
-            ),
-            ipv6_hostname: HostnameIPMapping(
-                None, ttl, {ipaddress.ip_address(ipv6_ip)}
-            ),
-        }
-        dns_zone_config = DNSForwardZoneConfig(
-            domain,
-            serial=random.randint(1, 100),
-            mapping=mapping,
-            default_ttl=ttl,
-            dynamic_ranges=[dynamic_range],
-        )
-        self.patch(dns_zone_config, "get_GENERATE_directives")
-        self.assertFalse(
-            dns_zone_config.zone_file_exists(dns_zone_config.zone_info[0])
-        )
+        dns_zone_config = DNSForwardZoneConfig(domain, serial=1)
         dns_zone_config.write_config()
-        self.assertTrue(
-            dns_zone_config.zone_file_exists(dns_zone_config.zone_info[0])
-        )
-
-    def test_uses_dynamic_update_when_zone_has_been_configured_once(self):
-        patch_zone_file_config_path(self)
-        domain = factory.make_string()
-        network = factory.make_ipv4_network()
-        ipv4_hostname = factory.make_name("host")
-        ipv4_ip = ipaddress.ip_address(factory.pick_ip_in_network(network))
-        ipv6_hostname = factory.make_name("host")
-        ipv6_ip = ipaddress.ip_address(factory.make_ipv6_address())
-        ipv6_network = factory.make_ipv6_network()
-        dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
-        ttl = random.randint(10, 300)
-        mapping = {
-            ipv4_hostname: HostnameIPMapping(None, ttl, {ipv4_ip}),
-            ipv6_hostname: HostnameIPMapping(None, ttl, {ipv6_ip}),
-        }
-        dns_zone_config = DNSForwardZoneConfig(
-            domain,
-            serial=random.randint(1, 100),
-            mapping=mapping,
-            default_ttl=ttl,
-            dynamic_ranges=[dynamic_range],
-        )
-        self.patch(dns_zone_config, "get_GENERATE_directives")
-        run_command = self.patch(actions, "run_command")
+        dns_zone_config.serial = 2
         dns_zone_config.write_config()
-        update = DynamicDNSUpdate.create_from_trigger(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="A",
-            answer=factory.make_ip_address(),
-        )
-        new_dns_zone_config = DNSForwardZoneConfig(
-            domain,
-            serial=random.randint(1, 100),
-            mapping=mapping,
-            default_ttl=ttl,
-            dynamic_ranges=[dynamic_range],
-            dynamic_updates=[update],
-        )
-        new_dns_zone_config.write_config()
-        expected_stdin = "\n".join(
-            [
-                "server localhost",
-                f"zone {domain}",
-                f"update add {update.name} {ttl} {'A' if IPAddress(update.answer).version == 4 else 'AAAA'} {update.answer}",
-                f"update add {domain} {new_dns_zone_config.default_ttl} SOA {domain}. nobody.example.com. {new_dns_zone_config.serial} 600 1800 604800 {new_dns_zone_config.default_ttl}",
-                "send\n",
-            ]
-        )
-        run_command.assert_called_once_with(
-            "nsupdate",
-            "-k",
-            get_nsupdate_key_path(),
-            stdin=expected_stdin.encode("ascii"),
-        )
-
-    def test_dynamic_update_sets_serial_when_no_other_updates_are_present(
-        self,
-    ):
-        patch_zone_file_config_path(self)
-        domain = factory.make_string()
-        network = factory.make_ipv4_network()
-        ipv4_hostname = factory.make_name("host")
-        ipv4_ip = ipaddress.ip_address(factory.pick_ip_in_network(network))
-        ipv6_hostname = factory.make_name("host")
-        ipv6_ip = ipaddress.ip_address(factory.make_ipv6_address())
-        ipv6_network = factory.make_ipv6_network()
-        dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
-        ttl = random.randint(10, 300)
-        mapping = {
-            ipv4_hostname: HostnameIPMapping(None, ttl, {ipv4_ip}),
-            ipv6_hostname: HostnameIPMapping(None, ttl, {ipv6_ip}),
-        }
-        dns_zone_config = DNSForwardZoneConfig(
-            domain,
-            serial=random.randint(1, 100),
-            mapping=mapping,
-            default_ttl=ttl,
-            dynamic_ranges=[dynamic_range],
-        )
-        self.patch(dns_zone_config, "get_GENERATE_directives")
-        run_command = self.patch(actions, "run_command")
-        dns_zone_config.write_config()
-        new_dns_zone_config = DNSForwardZoneConfig(
-            domain,
-            serial=random.randint(1, 100),
-            mapping=mapping,
-            default_ttl=ttl,
-            dynamic_ranges=[dynamic_range],
-        )
-        new_dns_zone_config.write_config()
-        expected_stdin = "\n".join(
-            [
-                "server localhost",
-                f"zone {domain}",
-                f"update add {domain} {new_dns_zone_config.default_ttl} SOA {domain}. nobody.example.com. {new_dns_zone_config.serial} 600 1800 604800 {new_dns_zone_config.default_ttl}",
-                "send\n",
-            ]
-        )
-        run_command.assert_called_once_with(
-            "nsupdate",
-            "-k",
-            get_nsupdate_key_path(),
-            stdin=expected_stdin.encode("ascii"),
-        )
-
-    def test_full_reload_calls_freeze_thaw(self):
-        patch_zone_file_config_path(self)
-        execute_rndc_command = self.patch(actions, "execute_rndc_command")
-        domain = factory.make_string()
-        network = factory.make_ipv4_network()
-        ipv4_hostname = factory.make_name("host")
-        ipv4_ip = ipaddress.ip_address(factory.pick_ip_in_network(network))
-        ipv6_hostname = factory.make_name("host")
-        ipv6_ip = ipaddress.ip_address(factory.make_ipv6_address())
-        ipv6_network = factory.make_ipv6_network()
-        dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
-        ttl = random.randint(10, 300)
-        mapping = {
-            ipv4_hostname: HostnameIPMapping(None, ttl, {ipv4_ip}),
-            ipv6_hostname: HostnameIPMapping(None, ttl, {ipv6_ip}),
-        }
-        dns_zone_config = DNSForwardZoneConfig(
-            domain,
-            serial=random.randint(1, 100),
-            mapping=mapping,
-            default_ttl=ttl,
-            dynamic_ranges=[dynamic_range],
-        )
-        self.patch(dns_zone_config, "get_GENERATE_directives")
-        self.patch(actions, "run_command")
-        dns_zone_config.write_config()
-        dns_zone_config.force_config_write = True
-        dns_zone_config.write_config()
-        self.assertCountEqual(
-            execute_rndc_command.call_args_list,
-            [
-                call(("freeze", domain), timeout=2),
-                call(("thaw", domain), timeout=2),
-            ],
-        )
+        with open(dns_zone_config.zone_info[0].target_path) as zone_file:
+            self.assertRegex(zone_file.read(), r"\s2\s*;\s*serial")
 
 
 class TestDNSReverseZoneConfig(MAASTestCase):
@@ -882,198 +708,18 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         ]:
             self.assertTrue(filepath.getPermissions().other.read)
 
-    def test_dynamic_update_when_zone_file_exists(self):
+    def test_write_config_rewrites_existing_zone_file(self):
         patch_zone_file_config_path(self)
-        domain = factory.make_string()
-        network = IPNetwork("10.0.0.0/24")
-        ip1 = factory.pick_ip_in_network(network)
-        ip2 = factory.pick_ip_in_network(network)
-        hostname1 = f"{factory.make_string()}"
-        hostname2 = f"{factory.make_string()}"
-        fwd_updates = [
-            DynamicDNSUpdate(
-                operation="INSERT",
-                zone=domain,
-                name=hostname1,
-                rectype="A",
-                answer=ip1,
-            ),
-            DynamicDNSUpdate(
-                operation="INSERT",
-                zone=domain,
-                name=hostname2,
-                rectype="A",
-                answer=ip2,
-            ),
-        ]
-        rev_updates = [
-            DynamicDNSUpdate.as_reverse_record_update(update, network)
-            for update in fwd_updates
-        ]
         zone = DNSReverseZoneConfig(
-            domain,
-            serial=random.randint(1, 100),
-            network=network,
-            dynamic_updates=rev_updates,
-        )
-        run_command = self.patch(actions, "run_command")
-        zone.write_config()
-        zone.write_config()
-        expected_stdin = "\n".join(
-            [
-                "server localhost",
-                "zone 0.0.10.in-addr.arpa",
-                f"update add {IPAddress(ip1).reverse_dns} {zone.default_ttl} PTR {hostname1}.{domain}",
-                f"update add {IPAddress(ip2).reverse_dns} {zone.default_ttl} PTR {hostname2}.{domain}",
-                f"update add 0.0.10.in-addr.arpa {zone.default_ttl} SOA 0.0.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
-                "send\n",
-            ]
-        )
-        run_command.assert_called_once_with(
-            "nsupdate",
-            "-k",
-            get_nsupdate_key_path(),
-            "-v",
-            stdin=expected_stdin.encode("ascii"),
-        )
-
-    def test_dynamic_update_sets_serial_when_no_other_updates_are_present(
-        self,
-    ):
-        patch_zone_file_config_path(self)
-        domain = factory.make_string()
-        network = IPNetwork("10.0.0.0/24")
-        zone = DNSReverseZoneConfig(
-            domain,
-            serial=random.randint(1, 100),
-            network=network,
-        )
-        run_command = self.patch(actions, "run_command")
-        zone.write_config()
-        zone.write_config()
-        expected_stdin = "\n".join(
-            [
-                "server localhost",
-                "zone 0.0.10.in-addr.arpa",
-                f"update add 0.0.10.in-addr.arpa {zone.default_ttl} SOA 0.0.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
-                "send\n",
-            ]
-        )
-        run_command.assert_called_once_with(
-            "nsupdate",
-            "-k",
-            get_nsupdate_key_path(),
-            stdin=expected_stdin.encode("ascii"),
-        )
-
-    def test_glue_network_zone_contains_appropriate_dynamic_updates(self):
-        patch_zone_file_config_path(self)
-        domain = factory.make_string()
-        network = IPNetwork("10.0.0.0/26")
-        glue_network = IPNetwork("10.0.0.0/24")
-        ip1 = factory.pick_ip_in_network(network)
-        ip2 = factory.pick_ip_in_network(network)
-        hostname1 = factory.make_string()
-        hostname2 = factory.make_string()
-        fwd_updates = [
-            DynamicDNSUpdate(
-                operation="INSERT",
-                zone=domain,
-                name=hostname1,
-                rectype="A",
-                answer=ip1,
-            ),
-            DynamicDNSUpdate(
-                operation="INSERT",
-                zone=domain,
-                name=hostname2,
-                rectype="A",
-                answer=ip2,
-            ),
-        ]
-        rev_updates = [
-            DynamicDNSUpdate.as_reverse_record_update(update, network)
-            for update in fwd_updates
-        ]
-        zone = DNSReverseZoneConfig(
-            domain,
-            serial=random.randint(1, 100),
-            network=network,
-            dynamic_updates=rev_updates,
-        )
-        glue_rev_updates = [
-            DynamicDNSUpdate.as_reverse_record_update(update, glue_network)
-            for update in fwd_updates
-        ]
-        glue_zone = DNSReverseZoneConfig(
-            domain,
-            serial=random.randint(1, 100),
-            network=glue_network,
-            dynamic_updates=glue_rev_updates,
-        )
-        expected_stdin = "\n".join(
-            [
-                "server localhost",
-                "zone 0-26.0.0.10.in-addr.arpa",
-                f"update add {IPAddress(ip1).reverse_dns.replace('0.0.10', '0-26.0.0.10')} {zone.default_ttl} PTR {hostname1}.{domain}",
-                f"update add {IPAddress(ip2).reverse_dns.replace('0.0.10', '0-26.0.0.10')} {zone.default_ttl} PTR {hostname2}.{domain}",
-                f"update add 0-26.0.0.10.in-addr.arpa {zone.default_ttl} SOA 0-26.0.0.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
-                "send\n",
-            ]
-        )
-        glue_expected_stdin = "\n".join(
-            [
-                "server localhost",
-                "zone 0.0.10.in-addr.arpa",
-                f"update add {IPAddress(ip1).reverse_dns} {zone.default_ttl} PTR {hostname1}.{domain}",
-                f"update add {IPAddress(ip2).reverse_dns} {zone.default_ttl} PTR {hostname2}.{domain}",
-                f"update add 0.0.10.in-addr.arpa {glue_zone.default_ttl} SOA 0.0.10.in-addr.arpa. nobody.example.com. {glue_zone.serial} 600 1800 604800 {glue_zone.default_ttl}",
-                "send\n",
-            ]
-        )
-        run_command = self.patch(actions, "run_command")
-        glue_zone.write_config()
-        glue_zone.write_config()
-        run_command.assert_called_with(
-            "nsupdate",
-            "-k",
-            get_nsupdate_key_path(),
-            "-v",
-            stdin=glue_expected_stdin.encode("ascii"),
+            factory.make_string(),
+            serial=1,
+            network=IPNetwork("10.0.0.0/24"),
         )
         zone.write_config()
+        zone.serial = 2
         zone.write_config()
-        run_command.assert_called_with(
-            "nsupdate",
-            "-k",
-            get_nsupdate_key_path(),
-            "-v",
-            stdin=expected_stdin.encode("ascii"),
-        )
-
-    def test_full_reload_calls_freeze_thaw(self):
-        patch_zone_file_config_path(self)
-        execute_rndc_command = self.patch(
-            provisioningserver.dns.actions, "execute_rndc_command"
-        )
-        domain = factory.make_string()
-        network = IPNetwork("10.0.0.0/24")
-        zone = DNSReverseZoneConfig(
-            domain,
-            serial=random.randint(1, 100),
-            network=network,
-        )
-        self.patch(actions, "run_command")
-        zone.write_config()
-        zone.force_config_write = True
-        zone.write_config()
-        self.assertCountEqual(
-            execute_rndc_command.call_args_list,
-            [
-                call(("freeze", "0.0.10.in-addr.arpa"), timeout=2),
-                call(("thaw", "0.0.10.in-addr.arpa"), timeout=2),
-            ],
-        )
+        with open(zone.zone_info[0].target_path) as zone_file:
+            self.assertRegex(zone_file.read(), r"\s2\s*;\s*serial")
 
 
 class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):

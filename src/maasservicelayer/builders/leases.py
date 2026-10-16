@@ -20,5 +20,5 @@ class LeaseBuilder(ResourceBuilder):
     ip: IPvAnyAddress | Unset = Field(default=UNSET)
     ip_family: IpAddressFamily | Unset = Field(default=UNSET)
     lease_time_seconds: int | Unset = Field(default=UNSET)
-    mac: str | Unset = Field(default=UNSET)
+    mac: str | None | Unset = Field(default=UNSET)
     timestamp_epoch: int | Unset = Field(default=UNSET)

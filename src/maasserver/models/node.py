@@ -1307,6 +1307,7 @@ class Node(CleanSave, TimestampedModel):
         self._previous_hostname = None
         self._previous_boot_interface_id = None
         self._previous_domain_id = None
+        self._previous_bmc_id = None
         self._updated = False
 
     def __setattr__(self, name, value):
@@ -2118,10 +2119,22 @@ class Node(CleanSave, TimestampedModel):
                 task_queue="region",
             )
 
+        # Reset only the BMC change tracking so that orphan cleanup works
+        # correctly across multiple saves on the same instance. The DHCP workflow
+        # currently relies on their lifetime values, so the other fields are left as is.
+        self._previous_bmc_id = None
+
     def _remove_orphaned_bmcs(self):
         from maasserver.models.bmc import BMC
 
-        BMC.objects.filter(node__isnull=True).delete()
+        previous_bmc_id = self._previous_bmc_id
+        if previous_bmc_id is None or previous_bmc_id == self.bmc_id:
+            # The node's BMC did not change on this save, so there
+            # is nothing to do.
+            return
+        # Only the previously referenced BMC can have been orphaned by this
+        # save.
+        BMC.objects.filter(id=previous_bmc_id, node__isnull=True).delete()
 
     def display_status(self):
         """Return status text as displayed to the user."""
@@ -6513,11 +6526,11 @@ class Node(CleanSave, TimestampedModel):
         self.save()
 
         try:
-            if self.previous_status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
-                self._stop(user)
-            elif self.previous_status == NODE_STATUS.DEPLOYED:
+            if self.previous_status == NODE_STATUS.DEPLOYED:
                 # TODO: Power reset when DPU?
                 self._power_cycle()
+            else:
+                self._stop(user)
         except Exception as error:
             self.update_status(old_status)
             self.save()

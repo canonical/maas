@@ -784,6 +784,13 @@ class TestComposeConditionalBootloader(MAASTestCase):
                     f'option user-class = "{method.user_class}" or',
                     output,
                 )
+            elif method.user_class == "onie_dhcp_user_class":
+                self.assertIn(
+                    f'option user-class = "{method.user_class}" or '
+                    f"substring(option user-class, 1, "
+                    f'{len(method.user_class)}) = "{method.user_class}"',
+                    output,
+                )
             elif method.user_class is not None:
                 self.assertIn(
                     f'option user-class = "{method.user_class}" {{',
@@ -876,6 +883,12 @@ class TestComposeConditionalBootloader(MAASTestCase):
         output = config.compose_conditional_bootloader(False, ip)
 
         self.assertIn('option user-class = "onie_dhcp_user_class"', output)
+        # Also match the RFC 3004 length-prefixed form ONIE sends (the leading
+        # length byte makes a bare string compare fail), see LP#2169156.
+        self.assertIn(
+            'substring(option user-class, 1, 20) = "onie_dhcp_user_class"',
+            output,
+        )
 
         self.assertIn("option vivso.iana 01:01:01", output)
         self.assertIn("option onie.installer_url", output)

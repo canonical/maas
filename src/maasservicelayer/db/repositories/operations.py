@@ -40,6 +40,16 @@ class OperationsClauseFactory(ClauseFactory):
         return Clause(condition=eq(OperationTable.c.is_bulk, is_bulk))
 
     @classmethod
+    def with_resource_type(cls, resource_type: str) -> Clause:
+        return Clause(
+            condition=eq(OperationTable.c.resource_type, resource_type)
+        )
+
+    @classmethod
+    def with_resource_id(cls, resource_id: int) -> Clause:
+        return Clause(condition=eq(OperationTable.c.resource_id, resource_id))
+
+    @classmethod
     def with_user_id(cls, user_id: int) -> Clause:
         return Clause(condition=eq(OperationTable.c.user_id, user_id))
 

@@ -11,6 +11,7 @@ from temporalio.common import (
 )
 
 from maascommon.enums.operations import (
+    OperationResourceType,
     OperationStatus,
     OperationTaskStatus,
     OperationType,
@@ -135,6 +136,34 @@ class OperationsService(
                             OperationStatus.ACCEPTED
                         ),
                         OperationsClauseFactory.created_before(created_before),
+                    ]
+                )
+            )
+        )
+
+    async def has_active_operation_for_resource(
+        self, resource_type: OperationResourceType, resource_id: int
+    ) -> bool:
+        """Whether any operation on the resource is not yet finished.
+
+        'active' operations are defined as those with ACCEPTED, RUNNING, or CANCELLING
+        status.
+        """
+        return await self.exists(
+            query=QuerySpec(
+                where=OperationsClauseFactory.and_clauses(
+                    [
+                        OperationsClauseFactory.with_resource_type(
+                            resource_type
+                        ),
+                        OperationsClauseFactory.with_resource_id(resource_id),
+                        OperationsClauseFactory.with_statuses(
+                            [
+                                OperationStatus.ACCEPTED,
+                                OperationStatus.RUNNING,
+                                OperationStatus.CANCELLING,
+                            ]
+                        ),
                     ]
                 )
             )

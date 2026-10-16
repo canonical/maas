@@ -7,6 +7,7 @@
 installation-requirements
 cloud-init
 configuration-tables
+fips-mode
 hardware-test-scripts
 logging
 metrics

@@ -9173,7 +9173,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0040
+0042
 \.
 
 
@@ -14426,7 +14426,7 @@ CREATE INDEX maasserver_oidcrevokedtoken_user_email_5f4d1d18 ON public.maasserve
 -- Name: maasserver_operation_one_in_progress_per_resource_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX maasserver_operation_one_in_progress_per_resource_idx ON public.maasserver_operation USING btree (resource_type, resource_id) WHERE ((status)::text = ANY ((ARRAY['ACCEPTED'::character varying, 'RUNNING'::character varying, 'CANCELLING'::character varying])::text[]));
+CREATE UNIQUE INDEX maasserver_operation_one_in_progress_per_resource_idx ON public.maasserver_operation USING btree (resource_type, resource_id) WHERE ((status)::text = ANY (ARRAY[('ACCEPTED'::character varying)::text, ('RUNNING'::character varying)::text, ('CANCELLING'::character varying)::text]));
 
 
 --
@@ -16290,7 +16290,7 @@ ALTER TABLE ONLY public.maasserver_agent
 --
 
 ALTER TABLE ONLY public.maasserver_agent
-    ADD CONSTRAINT maasserver_agent_rackcontroller_id_fkey FOREIGN KEY (rackcontroller_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_agent_rackcontroller_id_fkey FOREIGN KEY (rackcontroller_id) REFERENCES public.maasserver_node(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 
 --

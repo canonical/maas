@@ -15,6 +15,9 @@ from maasserver.enum import NODE_STATUS
 from maasserver.models import Config
 from maasserver.utils.dns import validate_url
 from maasserver.utils.forms import set_form_error
+from maasservicelayer.models.configurations import (
+    MAASAutoIPMICipherSuiteIDConfig,
+)
 from provisioningserver.utils.network import is_mac
 
 # When a Script has a parameter with the same name as one of these
@@ -309,6 +312,14 @@ class ParametersForm(Form):
             if default_from_maas_config
             else {}
         )
+        cipher_suite_config = MAASAutoIPMICipherSuiteIDConfig.name
+        if (
+            cipher_suite_config in default_defaults
+            and default_defaults[cipher_suite_config] is None
+        ):
+            default_defaults[cipher_suite_config] = (
+                MAASAutoIPMICipherSuiteIDConfig.default
+            )
 
         # Split user input into params which need one ScriptResult per
         # param and one which may need multiple ScriptResults per param.

@@ -73,14 +73,12 @@ class DNSReloadService(TimerService):
 
         # If we fail to find the local serial, always reload.
         if local_serial is None:
-            return dns_update_all_zones(requires_reload=True)
+            return dns_update_all_zones()
         else:
             # If the local serial is behind the one in the db, reload.
             current_serial = current_zone_serial()
             if int(local_serial) < int(current_serial):
-                return dns_update_all_zones(
-                    requires_reload=True, serial=current_serial
-                )
+                return dns_update_all_zones(serial=current_serial)
             else:
                 log.info(
                     "BIND is already up to date. Skipping update and reload."
