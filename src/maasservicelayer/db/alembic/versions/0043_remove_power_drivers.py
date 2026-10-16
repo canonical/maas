@@ -3,8 +3,8 @@
 
 """Clear configurations for removed power drivers.
 
-Revision ID: 0041
-Revises: 0040
+Revision ID: 0043
+Revises: 0042
 """
 
 from typing import Sequence
@@ -13,8 +13,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 
-revision: str = "0041"
-down_revision: str | None = "0040"
+revision: str = "0043"
+down_revision: str | None = "0042"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

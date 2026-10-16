@@ -19,7 +19,7 @@ from maasserver.models import (
 from maasserver.sqlalchemy import get_sqlalchemy_django_connection
 
 migration = import_module(
-    "maasservicelayer.db.alembic.versions.0041_remove_power_drivers"
+    "maasservicelayer.db.alembic.versions.0043_remove_power_drivers"
 )
 
 
