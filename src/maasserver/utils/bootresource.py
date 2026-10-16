@@ -22,6 +22,7 @@ from provisioningserver.path import get_maas_data_path, get_maas_lock_path
 CHUNK_SIZE = 4 * (2**20)
 
 BOOTLOADERS_DIR = "bootloaders"
+CUSTOM_BOOTLOADERS_DIR = "custom-bootloaders"
 
 
 class LocalStoreWriteBeyondEOF(Exception):

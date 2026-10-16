@@ -81,6 +81,7 @@ from maasserver.release_notifications import ReleaseNotifications
 from maasserver.utils import get_maas_user_agent, synchronised
 from maasserver.utils.bootresource import (
     BOOTLOADERS_DIR,
+    CUSTOM_BOOTLOADERS_DIR,
     get_bootresource_store_path,
 )
 from maasserver.utils.converters import human_readable_bytes
@@ -1423,11 +1424,10 @@ def initialize_image_storage(region: RegionController):
         ).delete()
 
     # TODO: Modify this when we have a better way to handle custom bootloaders
-    # don't delete custom dir, contains custom bootloaders
     existing_files = {
         file
         for file in target_dir.iterdir()
-        if file.name not in ("custom", "lost+found")
+        if file.name not in (CUSTOM_BOOTLOADERS_DIR, "lost+found")
     }
 
     for file in existing_files - expected_files:
