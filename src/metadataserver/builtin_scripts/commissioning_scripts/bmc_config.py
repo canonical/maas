@@ -62,7 +62,6 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import argparse
 from base64 import b64encode
 from collections import OrderedDict
-from collections.abc import Callable
 from functools import lru_cache
 import glob
 import ipaddress
@@ -117,7 +116,7 @@ def exit_skipped():
 # `maascommon.utils.password` (and the complexity policy it depends on,
 # `maascommon.password_policy.validate_password_complexity`). Keep both
 # copies in sync if either changes.
-def _validate_password_complexity(password: str) -> bool:
+def _validate_password_complexity(password):
     """Check password complexity requirements for hardening mode.
 
     Enforces: min 14 chars, uppercase, digit, special char.
@@ -130,7 +129,7 @@ def _validate_password_complexity(password: str) -> bool:
     )
 
 
-def _generate_password_by_rule(length: int) -> str:
+def _generate_password_by_rule(length):
     """Generate a password guaranteed to satisfy the complexity policy.
 
     Unlike random sampling, this forces one uppercase letter, one digit, and
@@ -163,7 +162,7 @@ def _generate_password_by_rule(length: int) -> str:
     return "".join(password_chars)
 
 
-def _generate_base64_password(length: int) -> str:
+def _generate_base64_password(length):
     """Generate a candidate password by base64-encoding random bytes.
 
     Uses `.` and `!` in place of the standard `+`/`/` altchars, so the
@@ -180,11 +179,11 @@ def _generate_base64_password(length: int) -> str:
 
 
 def generate_password(
-    min_length: int = 14,
-    max_length: int = 14,
-    max_attempts: int = 1000,
-    extra_constraint: Callable[[str], bool] | None = None,
-) -> str:
+    min_length,
+    max_length,
+    max_attempts=1000,
+    extra_constraint=None,
+):
     """Generate a FIPS-compliant password.
 
     Generates a password meeting FIPS 140-2/140-3 and STIG/CIS hardening
@@ -266,10 +265,7 @@ _BMC_PASSWORD_ALLOWED_CHARS = re.compile(
 )
 
 
-def _build_bmc_password_constraint(
-    username: str | None = None,
-    old_password: str | None = None,
-) -> Callable[[str], bool]:
+def _build_bmc_password_constraint(username=None, old_password=None):
     """Build an `extra_constraint` combining common BMC vendor password
     policies, for use with `generate_password`.
 
@@ -297,7 +293,7 @@ def _build_bmc_password_constraint(
     here.
     """
 
-    def constraint(password: str) -> bool:
+    def constraint(password):
         # LP:2081842 - only accept characters known to be safe across
         # observed vendor BMC password policies.
         if not _BMC_PASSWORD_ALLOWED_CHARS.match(password):
