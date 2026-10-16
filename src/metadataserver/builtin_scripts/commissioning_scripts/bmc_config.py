@@ -179,8 +179,8 @@ def _generate_base64_password(length):
 
 
 def generate_password(
-    min_length,
-    max_length,
+    min_length=14,
+    max_length=14,
     max_attempts=1000,
     extra_constraint=None,
 ):
