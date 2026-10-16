@@ -58,6 +58,12 @@
 # timeout: 00:05:00
 # --- End MAAS 1.0 script metadata ---
 
+# This script is distributed to and run standalone on the machine being
+# commissioned, whose Python version is not guaranteed to match the one used
+# to develop/test MAAS. Do not add type annotations anywhere in this file:
+# newer annotation syntax may not be supported by the commissioned machine's
+# interpreter, which would break this script at runtime.
+
 from abc import ABCMeta, abstractmethod, abstractproperty
 import argparse
 from base64 import b64encode
