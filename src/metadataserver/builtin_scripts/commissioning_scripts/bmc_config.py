@@ -232,7 +232,7 @@ def generate_password(
 
     length = min_length + secrets.randbelow(max_length - min_length + 1)
 
-    def satisfies_constraints(password: str) -> bool:
+    def satisfies_constraints(password):
         return _validate_password_complexity(password) and (
             extra_constraint is None or extra_constraint(password)
         )
