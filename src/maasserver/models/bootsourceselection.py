@@ -10,6 +10,7 @@ from django.db.models import CASCADE, CharField, ForeignKey, Manager, TextField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.workflow import stop_workflow
 
 
 class BootSourceSelectionManager(Manager):
@@ -74,4 +75,5 @@ class BootSourceSelection(CleanSave, TimestampedModel):
                 "It is the operating system used for commissioning."
             )
         else:
+            stop_workflow(f"sync-selection:{self.id}")
             return super().delete(*args, **kwargs)
