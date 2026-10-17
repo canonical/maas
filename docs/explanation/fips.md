@@ -90,6 +90,18 @@ On a FIPS host, the API enforces FIPS compliance on power driver configuration:
 Attempting to configure a non-compliant setting returns HTTP 422 with a
 structured error identifying the violation.
 
+The `maas_auto_ipmi_cipher_suite_id` configuration, which commissioning
+writes into each IPMI machine's `cipher_suite_id`, defaults to `17` on a FIPS
+host and to `3` otherwise. You do not need to change it before commissioning
+machines on a FIPS host. On a FIPS host:
+
+- MAAS rejects any value other than `17`, including the empty freeipmi-tools
+  default. If the value is `null`, commissioning uses `17`.
+- When a region controller starts, MAAS resets a stored value other than `17`
+  to the default and logs a warning, so a later commissioning run writes `17`.
+- A MAAS Site Manager profile that sets another value is not applied. Site
+  Manager reports the reason for the failure.
+
 ## Mixed deployments
 
 All controllers in a MAAS deployment must be in the same FIPS state. A
