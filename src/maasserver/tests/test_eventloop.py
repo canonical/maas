@@ -447,7 +447,10 @@ class TestFactories(MAASServerTestCase):
 
         service = eventloop.make_RegionService(sentinel.ipcWorker)
 
-        self.assertEqual(service.endpoints[0][0]._interface, "10.0.0.9")
+        self.assertEqual(
+            ["10.0.0.9", "127.0.0.1", "::1"],
+            [endpoint._interface for endpoint in service.endpoints[0]],
+        )
 
     def test_make_RegionService_unresolvable_under_hardening_binds_loopback(
         self,
@@ -472,7 +475,10 @@ class TestFactories(MAASServerTestCase):
 
         service = eventloop.make_RegionService(sentinel.ipcWorker)
 
-        self.assertEqual(service.endpoints[0][0]._interface, "127.0.0.1")
+        self.assertEqual(
+            ["127.0.0.1", "::1"],
+            [endpoint._interface for endpoint in service.endpoints[0]],
+        )
 
     def test_make_RegionService_explicit_bind(self):
         from maasserver.config import RegionConfiguration
