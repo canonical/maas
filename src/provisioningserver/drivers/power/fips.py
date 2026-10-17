@@ -15,21 +15,13 @@ DRIVER_FIPS_REGISTRY = {
     "hmcz": (DriverFIPSStatus.COMPLIANT, None),
     "ipmi": (DriverFIPSStatus.COMPLIANT, None),
     "manual": (DriverFIPSStatus.COMPLIANT, None),
-    "mscm": (DriverFIPSStatus.COMPLIANT, None),
-    "openbmc": (DriverFIPSStatus.COMPLIANT, None),
     "proxmox": (DriverFIPSStatus.COMPLIANT, None),
     "redfish": (DriverFIPSStatus.COMPLIANT, None),
     "lxd": (DriverFIPSStatus.COMPLIANT, None),
     "virsh": (DriverFIPSStatus.COMPLIANT, None),
     "vmware": (DriverFIPSStatus.COMPLIANT, None),
     "webhook": (DriverFIPSStatus.COMPLIANT, None),
-    "wedge": (DriverFIPSStatus.COMPLIANT, None),
     "apc": (
-        DriverFIPSStatus.UNSUPPORTED,
-        "SNMPv1 — no FIPS-approved authentication",
-    ),
-    "dli": (DriverFIPSStatus.UNSUPPORTED, "Plain HTTP basic auth"),
-    "eaton": (
         DriverFIPSStatus.UNSUPPORTED,
         "SNMPv1 — no FIPS-approved authentication",
     ),
@@ -40,14 +32,12 @@ DRIVER_FIPS_REGISTRY = {
         DriverFIPSStatus.UNSUPPORTED,
         "IPMI without Cipher Suite 17 support",
     ),
-    "msftocs": (DriverFIPSStatus.UNSUPPORTED, "Plain HTTP basic auth"),
     "raritan": (
         DriverFIPSStatus.UNSUPPORTED,
         "SNMPv2c — community string only",
     ),
     "recs_box": (DriverFIPSStatus.UNSUPPORTED, "Plain HTTP — no TLS"),
     "sm15k": (DriverFIPSStatus.UNSUPPORTED, "Plain HTTP — no TLS"),
-    "ucsm": (DriverFIPSStatus.UNSUPPORTED, "HTTP XML API — no TLS"),
 }
 
 
