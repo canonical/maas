@@ -253,15 +253,15 @@ The region and rack controllers each run an NGINX reverse proxy.
 
 ### Rate and connection limits
 
-These limits apply whether or not hardening is active.
+Rate and connection limiting is off by default when hardening is not active. When hardening is active, MAAS applies the defaults below.
 
-| Key | Default | Description |
+| Key | Hardening default | Description |
 |---|---|---|
 | `api_rate_limit_rate` | `20r/s` | Requests per second allowed for each client IP address. |
 | `api_rate_limit_burst` | `60` | Requests a client can make above the rate before MAAS rejects them. |
 | `api_conn_limit` | `100` | Concurrent connections allowed for each client IP address. |
 
-Set these keys in `regiond.conf` or `rackd.conf`, then restart MAAS. An empty `api_rate_limit_rate` turns off both rate and connection limiting.
+Set these keys in `regiond.conf` or `rackd.conf`, then restart MAAS. Setting `api_rate_limit_rate` enables limiting even when hardening is not active; leaving it empty turns off both rate and connection limiting. `api_rate_limit_burst` and `api_conn_limit` fall back to `60` and `100` whenever limiting is active.
 
 ### Hardening response headers
 

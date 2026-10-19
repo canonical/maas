@@ -43,9 +43,9 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
             m.api_bind = api_bind or []
             m.maas_url = [maas_url] if maas_url else []
             m.api_upstream_port = extra.get("api_upstream_port", 5240)
-            m.api_rate_limit_rate = extra.get("api_rate_limit_rate", "10r/s")
-            m.api_rate_limit_burst = extra.get("api_rate_limit_burst", 20)
-            m.api_conn_limit = extra.get("api_conn_limit", 100)
+            m.api_rate_limit_rate = extra.get("api_rate_limit_rate", "")
+            m.api_rate_limit_burst = extra.get("api_rate_limit_burst", 0)
+            m.api_conn_limit = extra.get("api_conn_limit", 0)
             yield m
 
         self.patch(http_module, "load_template", lambda *_: mock_template)
@@ -127,3 +127,21 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
         assert captured.get("api_rate_limit_rate") == "5r/s"
         assert captured.get("api_rate_limit_burst") == 10
         assert captured.get("api_conn_limit") == 50
+
+    def test_no_rate_limiting_when_hardening_off_and_unset(self):
+        captured = self._run_configure(hardening_active=False)
+        assert captured.get("api_rate_limit_rate") == ""
+
+    def test_rate_limit_defaults_applied_when_hardening_on(self):
+        captured = self._run_configure(hardening_active=True)
+        assert captured.get("api_rate_limit_rate") == "20r/s"
+        assert captured.get("api_rate_limit_burst") == 60
+        assert captured.get("api_conn_limit") == 100
+
+    def test_explicit_rate_limit_applied_without_hardening(self):
+        captured = self._run_configure(
+            hardening_active=False, api_rate_limit_rate="5r/s"
+        )
+        assert captured.get("api_rate_limit_rate") == "5r/s"
+        assert captured.get("api_rate_limit_burst") == 60
+        assert captured.get("api_conn_limit") == 100

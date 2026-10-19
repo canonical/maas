@@ -197,6 +197,31 @@ class TestRegionHTTPService(
             nginx_config,
         )
 
+    def test_no_rate_limiting_when_hardening_off_and_unset(self):
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=None, port=None)
+        )
+        self.assertNotIn("limit_req_zone", nginx_config)
+        self.assertNotIn("limit_conn_zone", nginx_config)
+
+    def test_rate_limit_defaults_applied_when_hardening_on(self):
+        nginx_config = self._configure_to_file(
+            http._Configuration(cert=None, port=None, hardening_active=True)
+        )
+        self.assertIn("rate=20r/s", nginx_config)
+        self.assertIn("burst=60", nginx_config)
+        self.assertIn("limit_conn regiond_conn 100;", nginx_config)
+
+    def test_explicit_rate_limit_applied_without_hardening(self):
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=None, port=None, api_rate_limit_rate="5r/s"
+            )
+        )
+        self.assertIn("rate=5r/s", nginx_config)
+        self.assertIn("burst=60", nginx_config)
+        self.assertIn("limit_conn regiond_conn 100;", nginx_config)
+
     def _configure_to_file(self, configuration):
         tempdir = self.make_dir()
         nginx_conf = Path(tempdir) / "regiond.nginx.conf"
