@@ -64,6 +64,7 @@ CANNOT_DELETE_DEFAULT_PACKAGE_REPO_VIOLATION_TYPE = (
 
 # Boot resources
 MISSING_FILE_CONTENT_VIOLATION_TYPE = "MissingFileContentViolationType"
+BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE = "BootResourceUnavailableViolation"
 
 # User groups
 USER_ALREADY_IN_GROUP = "UserAlreadyInGroup"
@@ -77,6 +78,8 @@ SERVICE_UNAVAILABLE_VIOLATION_TYPE = "ServiceUnavailableViolation"
 # Machines
 INVALID_MACHINE_STATUS_VIOLATION_TYPE = "InvalidMachineStatusViolation"
 MACHINE_LOCKED_VIOLATION_TYPE = "MachineLockedViolation"
+MISSING_ARCHITECTURE_VIOLATION_TYPE = "MissingArchitectureViolation"
+UNKNOWN_POWER_TYPE_VIOLATION_TYPE = "UnknownPowerTypeViolation"
 
 # Operations
 OPERATION_IN_PROGRESS_VIOLATION_TYPE = "OperationInProgressViolation"
