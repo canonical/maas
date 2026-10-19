@@ -153,7 +153,5 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
         assert captured.get("api_rate_limit_burst") == 0
 
     def test_zero_conn_limit_falls_back_to_default(self):
-        captured = self._run_configure(
-            hardening_active=True, api_conn_limit=0
-        )
+        captured = self._run_configure(hardening_active=True, api_conn_limit=0)
         assert captured.get("api_conn_limit") == 100
