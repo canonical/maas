@@ -337,8 +337,8 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     api_conn_limit = ConfigurationOption(
         "api_conn_limit",
         "NGINX concurrent connection limit per client IP.  "
-        "Unset means: use the default (100) when rate limiting is active.",
-        Int(if_missing=None, accept_python=False, min=1),
+        "0 means: use the default (100) when rate limiting is active.",
+        Int(if_missing=0, accept_python=False, min=0),
     )
 
 

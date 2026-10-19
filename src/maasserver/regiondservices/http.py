@@ -140,7 +140,7 @@ class RegionHTTPService(Service):
             "fips_enabled": is_fips_enabled(),
             "api_rate_limit_rate": rate_limit_rate,
             "api_rate_limit_burst": 60 if burst is None else burst,
-            "api_conn_limit": 100 if conn_limit is None else conn_limit,
+            "api_conn_limit": conn_limit or 100,
             "main_listen": main_listen,
             "internal_listen": internal_listen,
             "tls_dhparam": configuration.api_tls_dhparam,
@@ -216,7 +216,7 @@ class _Configuration:
     hardening_active: bool = False
     api_rate_limit_rate: str = ""
     api_rate_limit_burst: Optional[int] = None
-    api_conn_limit: Optional[int] = None
+    api_conn_limit: int = 0
     api_bind: list = field(default_factory=list)
     api_int_bind: list = field(default_factory=list)
     agent_api_bind: list = field(default_factory=list)

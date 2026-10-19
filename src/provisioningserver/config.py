@@ -904,8 +904,8 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     api_conn_limit = ConfigurationOption(
         "api_conn_limit",
         "NGINX concurrent connection limit per client IP.  "
-        "Unset means: use the default (100) when rate limiting is active.",
-        Int(min=1, if_missing=None),
+        "0 means: use the default (100) when rate limiting is active.",
+        Int(min=0, if_missing=0),
     )
 
 

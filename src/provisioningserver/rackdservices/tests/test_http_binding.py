@@ -45,7 +45,7 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
             m.api_upstream_port = extra.get("api_upstream_port", 5240)
             m.api_rate_limit_rate = extra.get("api_rate_limit_rate", "")
             m.api_rate_limit_burst = extra.get("api_rate_limit_burst")
-            m.api_conn_limit = extra.get("api_conn_limit")
+            m.api_conn_limit = extra.get("api_conn_limit", 0)
             yield m
 
         self.patch(http_module, "load_template", lambda *_: mock_template)
@@ -151,3 +151,9 @@ class TestNginxHardeningVarsPassthrough(MAASTestCase):
             hardening_active=True, api_rate_limit_burst=0
         )
         assert captured.get("api_rate_limit_burst") == 0
+
+    def test_zero_conn_limit_falls_back_to_default(self):
+        captured = self._run_configure(
+            hardening_active=True, api_conn_limit=0
+        )
+        assert captured.get("api_conn_limit") == 100

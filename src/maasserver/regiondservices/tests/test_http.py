@@ -233,6 +233,17 @@ class TestRegionHTTPService(
         )
         self.assertIn("burst=0", nginx_config)
 
+    def test_zero_conn_limit_falls_back_to_default(self):
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=None,
+                port=None,
+                hardening_active=True,
+                api_conn_limit=0,
+            )
+        )
+        self.assertIn("limit_conn regiond_conn 100;", nginx_config)
+
     def _configure_to_file(self, configuration):
         tempdir = self.make_dir()
         nginx_conf = Path(tempdir) / "regiond.nginx.conf"
