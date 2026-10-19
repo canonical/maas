@@ -20,7 +20,7 @@ from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
-from maascommon.constants import BOOTLOADERS_DIR
+from maascommon.constants import BOOTLOADERS_DIR, CUSTOM_BOOTLOADERS_DIR
 from maascommon.workflows.bootresource import (
     FETCH_MANIFEST_AND_UPDATE_CACHE_WORKFLOW_NAME,
     MASTER_IMAGE_SYNC_WORKFLOW_NAME,
@@ -185,11 +185,10 @@ def initialize_image_storage(region: RegionController):
         ).delete()
 
     # TODO: Modify this when we have a better way to handle custom bootloaders
-    # don't delete custom dir, contains custom bootloaders
     existing_files = {
         file
         for file in target_dir.iterdir()
-        if file.name not in ("custom", "lost+found")
+        if file.name not in (CUSTOM_BOOTLOADERS_DIR, "lost+found")
     }
 
     for file in existing_files - expected_files:
