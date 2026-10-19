@@ -222,6 +222,17 @@ class TestRegionHTTPService(
         self.assertIn("burst=60", nginx_config)
         self.assertIn("limit_conn regiond_conn 100;", nginx_config)
 
+    def test_explicit_zero_burst_is_not_overridden_by_default(self):
+        nginx_config = self._configure_to_file(
+            http._Configuration(
+                cert=None,
+                port=None,
+                hardening_active=True,
+                api_rate_limit_burst=0,
+            )
+        )
+        self.assertIn("burst=0", nginx_config)
+
     def _configure_to_file(self, configuration):
         tempdir = self.make_dir()
         nginx_conf = Path(tempdir) / "regiond.nginx.conf"

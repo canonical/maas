@@ -208,8 +208,8 @@ class RackHTTPService(TimerService):
         maas_url = ""
         api_upstream_port = 5240
         api_rate_limit_rate = ""
-        api_rate_limit_burst = 0
-        api_conn_limit = 0
+        api_rate_limit_burst = None
+        api_conn_limit = None
         try:
             with ClusterConfiguration.open() as cluster_config:
                 api_bind = list(cluster_config.api_bind)
@@ -233,12 +233,16 @@ class RackHTTPService(TimerService):
             maas_url,
             hardening_active=hardening_active,
         )
-        # Falsy values are the documented "unconfigured" sentinel (see
+        # Unset values are the documented sentinel (see
         # ClusterConfiguration.api_rate_limit_rate): limits are only applied
         # by default when hardening is active.
         api_rate_limit_rate = api_rate_limit_rate or (
             "20r/s" if hardening_active else ""
         )
+        if api_rate_limit_burst is None:
+            api_rate_limit_burst = 60
+        if api_conn_limit is None:
+            api_conn_limit = 100
 
         try:
             rendered = template.substitute(
@@ -252,8 +256,8 @@ class RackHTTPService(TimerService):
                     "api_listen": compose_listen_addresses(5248, api_bind),
                     "api_upstream_port": api_upstream_port,
                     "api_rate_limit_rate": api_rate_limit_rate,
-                    "api_rate_limit_burst": api_rate_limit_burst or 60,
-                    "api_conn_limit": api_conn_limit or 100,
+                    "api_rate_limit_burst": api_rate_limit_burst,
+                    "api_conn_limit": api_conn_limit,
                 }
             )
         except NameError as error:

@@ -119,12 +119,14 @@ class RegionHTTPService(Service):
         internal_listen = compose_listen_addresses(
             5240, list(configuration.api_int_bind)
         )
-        # Falsy values are the documented "unconfigured" sentinel (see
+        # Unset values are the documented sentinel (see
         # RegionConfiguration.api_rate_limit_rate): limits are only applied
         # by default when hardening is active.
         rate_limit_rate = configuration.api_rate_limit_rate or (
             "20r/s" if configuration.hardening_active else ""
         )
+        burst = configuration.api_rate_limit_burst
+        conn_limit = configuration.api_conn_limit
         environ = {
             "tls_enabled": configuration.tls_enabled,
             "tls_port": configuration.port,
@@ -137,8 +139,8 @@ class RegionHTTPService(Service):
             "hardening": configuration.hardening_active,
             "fips_enabled": is_fips_enabled(),
             "api_rate_limit_rate": rate_limit_rate,
-            "api_rate_limit_burst": (configuration.api_rate_limit_burst or 60),
-            "api_conn_limit": configuration.api_conn_limit or 100,
+            "api_rate_limit_burst": 60 if burst is None else burst,
+            "api_conn_limit": 100 if conn_limit is None else conn_limit,
             "main_listen": main_listen,
             "internal_listen": internal_listen,
             "tls_dhparam": configuration.api_tls_dhparam,
@@ -213,8 +215,8 @@ class _Configuration:
     port: Optional[int] = None
     hardening_active: bool = False
     api_rate_limit_rate: str = ""
-    api_rate_limit_burst: int = 0
-    api_conn_limit: int = 0
+    api_rate_limit_burst: Optional[int] = None
+    api_conn_limit: Optional[int] = None
     api_bind: list = field(default_factory=list)
     api_int_bind: list = field(default_factory=list)
     agent_api_bind: list = field(default_factory=list)

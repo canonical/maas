@@ -331,14 +331,14 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     api_rate_limit_burst = ConfigurationOption(
         "api_rate_limit_burst",
         "NGINX rate limit burst size.  "
-        "0 means: use the default (60) when rate limiting is active.",
-        Int(if_missing=0, accept_python=False, min=0),
+        "Unset means: use the default (60) when rate limiting is active.",
+        Int(if_missing=None, accept_python=False, min=0),
     )
     api_conn_limit = ConfigurationOption(
         "api_conn_limit",
         "NGINX concurrent connection limit per client IP.  "
-        "0 means: use the default (100) when rate limiting is active.",
-        Int(if_missing=0, accept_python=False, min=0),
+        "Unset means: use the default (100) when rate limiting is active.",
+        Int(if_missing=None, accept_python=False, min=1),
     )
 
 

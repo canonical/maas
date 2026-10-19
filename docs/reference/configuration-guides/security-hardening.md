@@ -261,7 +261,7 @@ Rate and connection limiting is off by default when hardening is not active. Whe
 | `api_rate_limit_burst` | `60` | Requests a client can make above the rate before MAAS rejects them. |
 | `api_conn_limit` | `100` | Concurrent connections allowed for each client IP address. |
 
-Set these keys in `regiond.conf` or `rackd.conf`, then restart MAAS. Setting `api_rate_limit_rate` enables limiting even when hardening is not active; leaving it empty turns off both rate and connection limiting. `api_rate_limit_burst` and `api_conn_limit` fall back to `60` and `100` whenever limiting is active.
+Set these keys in `regiond.conf` or `rackd.conf`, then restart MAAS. Setting `api_rate_limit_rate` enables limiting even when hardening is not active; leaving it empty applies the defaults above when hardening is active, and turns off both rate and connection limiting otherwise. When limiting is active, `api_rate_limit_burst` and `api_conn_limit` fall back to `60` and `100` unless set explicitly.
 
 ### Hardening response headers
 

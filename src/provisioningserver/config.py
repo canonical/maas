@@ -120,7 +120,7 @@ import traceback
 from formencode import ForEach
 from formencode.api import is_validator, NoDefault
 from formencode.declarative import DeclarativeMeta
-from formencode.validators import Number
+from formencode.validators import Int, Number
 import yaml
 
 from provisioningserver.path import get_maas_data_path, get_tentative_data_path
@@ -898,14 +898,14 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     api_rate_limit_burst = ConfigurationOption(
         "api_rate_limit_burst",
         "NGINX rate limit burst size.  "
-        "0 means: use the default (60) when rate limiting is active.",
-        Number(min=0, if_missing=0),
+        "Unset means: use the default (60) when rate limiting is active.",
+        Int(min=0, if_missing=None),
     )
     api_conn_limit = ConfigurationOption(
         "api_conn_limit",
         "NGINX concurrent connection limit per client IP.  "
-        "0 means: use the default (100) when rate limiting is active.",
-        Number(min=0, if_missing=0),
+        "Unset means: use the default (100) when rate limiting is active.",
+        Int(min=1, if_missing=None),
     )
 
 
