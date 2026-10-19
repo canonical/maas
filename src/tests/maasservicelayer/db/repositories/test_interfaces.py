@@ -11,9 +11,11 @@ from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
+from maasservicelayer.db.tables import InterfaceRelationshipTable
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
+from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.interface import (
     create_test_interface,
@@ -59,6 +61,29 @@ def _assert_interface_in_list(
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestInterfaceRepository:
+    async def test_get_parents(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        child = await create_test_interface_entry(
+            fixture, type=InterfaceType.BOND
+        )
+        parent = await create_test_interface_entry(fixture)
+        unrelated = await create_test_interface_entry(fixture)
+        await fixture.create(
+            InterfaceRelationshipTable.name,
+            [
+                {
+                    "child_id": child.id,
+                    "parent_id": parent.id,
+                    "created": utcnow(),
+                    "updated": utcnow(),
+                }
+            ],
+        )
+        repository = InterfaceRepository(Context(connection=db_connection))
+        assert await repository.get_parents(child.id) == [parent]
+        assert await repository.get_parents(unrelated.id) == []
+
     @pytest.mark.parametrize("page_size", range(1, 4))
     @pytest.mark.parametrize(
         "alloc_type",
@@ -250,8 +275,9 @@ class TestInterfaceRepository:
         ) -> None:
             interface_response = next(
                 filter(
-                    lambda interface_response: interface.id
-                    == interface_response.id,
+                    lambda interface_response: (
+                        interface.id == interface_response.id
+                    ),
                     interfaces_response.items,
                 )
             )

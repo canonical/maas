@@ -16,6 +16,7 @@ from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
+    InterfaceRelationshipTable,
     InterfaceTable,
     NodeConfigTable,
     NodeTable,
@@ -130,6 +131,19 @@ class InterfaceRepository(BaseRepository):
             for data in [
                 build_interface_links(row._asdict()) for row in result
             ]
+        ]
+
+    async def get_parents(self, interface_id: int) -> list[Interface]:
+        parent_ids = select(InterfaceRelationshipTable.c.parent_id).where(
+            InterfaceRelationshipTable.c.child_id == interface_id
+        )
+        stmt = self._select_all_statement().where(
+            InterfaceTable.c.id.in_(parent_ids)
+        )
+        rows = (await self.execute_stmt(stmt)).all()
+        return [
+            Interface(**build_interface_links(row._asdict()))  # pyright: ignore [reportArgumentType]
+            for row in rows
         ]
 
     async def get_interfaces_in_fabric(

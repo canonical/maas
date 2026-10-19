@@ -47,6 +47,15 @@ class VlansClauseFactory(ClauseFactory):
         return Clause(condition=eq(VlanTable.c.dhcp_on, on))
 
     @classmethod
+    def with_primary_or_secondary_rack_id(cls, rack_id: int) -> Clause:
+        return Clause(
+            condition=or_(
+                VlanTable.c.primary_rack_id == rack_id,
+                VlanTable.c.secondary_rack_id == rack_id,
+            )
+        )
+
+    @classmethod
     def with_relay_vlan_id(cls, relay_vlan_id: int) -> Clause:
         return Clause(condition=eq(VlanTable.c.relay_vlan_id, relay_vlan_id))
 
