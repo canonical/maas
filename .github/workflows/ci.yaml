@@ -73,6 +73,87 @@ jobs:
         run: |
           su ubuntu -c "make lint"
 
+  validate-conventional-commit:
+    if: ${{ github.event_name == 'pull_request' }}
+    name: Validate Conventional Commit standard
+    runs-on: ubuntu-slim
+    steps:
+      - name: Check PR title for Conventional Commits format
+        uses: amannn/action-semantic-pull-request@v5
+        with:
+          types: |
+            feat
+            fix
+            refactor
+            perf
+            test
+            chore
+            docs
+          scopes: |
+            bootresources
+            dhcp
+            dns
+            network
+            power
+            proxy
+            security
+            storage
+            tftp
+            deps
+            ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify BREAKING CHANGE in description
+        run: |
+          PR_TITLE="$PR_TITLE_ENV"
+
+          # Safely read the multiline PR body from the environment variable
+          PR_BODY="$PR_BODY_ENV"
+
+          # Extract everything before the first colon in the title
+          # e.g., "feat(ui)!: rewrite" becomes "feat(ui)!"
+          PREFIX="${PR_TITLE%%:*}"
+
+          # If the prefix contains an exclamation mark, it's a breaking change
+          if [[ "$PREFIX" == *"!"* ]]; then
+            echo "⚠️ Breaking change indicator ('!') detected in PR title."
+
+            # Check if the body contains the required text
+            if [[ "$PR_BODY" != *"BREAKING CHANGE:"* ]]; then
+              echo "❌ Error: PR title indicates a breaking change, but 'BREAKING CHANGE:' is missing from the PR description."
+              exit 1
+            fi
+
+            echo "✅ 'BREAKING CHANGE:' found in the description."
+          else
+            echo "ℹ️ No breaking change indicator in title. Skipping description check."
+          fi
+        env:
+          # We pass the body as an env var to prevent bash syntax errors
+          # that occur when injecting multiline strings directly via ${{ }}
+          PR_BODY_ENV: ${{ github.event.pull_request.body }}
+          PR_TITLE_ENV: ${{ github.event.pull_request.title }}
+
+      - name: Verify Launchpad bug reference in description
+        run: |
+          PR_BODY="$PR_BODY_ENV"
+
+          # Same keywords as the lp-bug-update workflow.
+          CLOSING_KEYWORDS='close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved'
+          if grep -qiP "\b(?:$CLOSING_KEYWORDS)\b.*lp:" <<< "$PR_BODY"; then
+            if ! grep -qiP "\b(?:$CLOSING_KEYWORDS)\b.*lp:\s*#[0-9]+" <<< "$PR_BODY"; then
+              echo "Error: PR description contains a closing keyword but no valid Launchpad bug reference."
+              echo "Expected syntax for Launchpad bug reference is LP: #<number>."
+              exit 1
+            fi
+
+            echo "Launchpad bug reference found in the description."
+          else
+            echo "No closing keyword found. Skipping Launchpad bug reference check."
+          fi
+        env:
+          PR_BODY_ENV: ${{ github.event.pull_request.body }}
+
   test-python:
     needs: changes
     runs-on: ubuntu-24.04
