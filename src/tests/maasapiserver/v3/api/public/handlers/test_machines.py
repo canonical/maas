@@ -34,6 +34,7 @@ from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachineClauseFactory
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
+from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.exceptions.constants import (
     BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE,
     INVALID_MACHINE_STATUS_VIOLATION_TYPE,
@@ -52,6 +53,7 @@ from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
 from maasservicelayer.services.bootresources import BootResourceService
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.operations import OperationsService
+from maasservicelayer.services.script_parameters import ScriptParametersService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -385,6 +387,7 @@ class TestMachinesApi(ApiCommonTests):
         services_mock.operations.create_accepted_operation.return_value = (
             TEST_COMMISSION_OPERATION
         )
+        services_mock.script_parameters = Mock(ScriptParametersService)
         return openfga_client_mock
 
     async def test_commission_machine_without_body_uses_defaults(
@@ -536,6 +539,7 @@ class TestMachinesApi(ApiCommonTests):
             resource_type=OperationResourceType.MACHINE,
             resource_id=TEST_MACHINE.id,
         )
+        services_mock.script_parameters.validate_commissioning_input.assert_not_awaited()
         services_mock.operations.create_accepted_operation.assert_not_awaited()
 
     async def test_commission_machine_409_no_power_type(
@@ -599,6 +603,52 @@ class TestMachinesApi(ApiCommonTests):
             == MISSING_ARCHITECTURE_VIOLATION_TYPE
         )
         services_mock.boot_resources.has_commissioning_resource.assert_not_awaited()
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
+
+    async def test_commission_machine_validates_script_input(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        self._mock_commission_services(services_mock, TEST_MACHINE)
+        script_input = {"smartctl": {"storage": "sda"}}
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{TEST_MACHINE.system_id}:commission",
+            json={
+                "commissioning_scripts": ["bmc-config"],
+                "testing_scripts": ["smartctl"],
+                "script_input": script_input,
+            },
+        )
+
+        assert response.status_code == 202
+        services_mock.script_parameters.validate_commissioning_input.assert_awaited_once_with(
+            commissioning_scripts=["bmc-config"],
+            testing_scripts=["smartctl"],
+            script_input=script_input,
+        )
+
+    async def test_commission_machine_422_invalid_script_input(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        self._mock_commission_services(services_mock, TEST_MACHINE)
+        services_mock.script_parameters.validate_commissioning_input.side_effect = ValidationException.build_for_field(
+            "script_input.smartctl.runtime", "Must be an int"
+        )
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{TEST_MACHINE.system_id}:commission",
+            json={"script_input": {"smartctl": {"runtime": "soon"}}},
+        )
+
+        assert response.status_code == 422
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.details[0].field == (
+            "script_input.smartctl.runtime"
+        )
         services_mock.operations.create_accepted_operation.assert_not_awaited()
 
 
