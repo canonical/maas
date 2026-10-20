@@ -44,18 +44,18 @@ flowchart LR
 
 ### Components
 
-* **Region controller**: serves the web UI and the API, and orchestrates the rest of MAAS. See [Region controllers](/explanation/controllers.md#region-controllers).
-* **Rack controller**: provides DHCP, TFTP, HTTP boot, and power management to the machines on its fabrics. See [Rack controllers](/explanation/controllers.md#rack-controllers).
+* **Region controller**: serves the web UI and the API, and orchestrates the rest of MAAS. It also runs the Temporal server, which orchestrates MAAS workflows. See [Region controllers](/explanation/controllers.md#region-controllers).
+* **Rack controller**: provides DHCP, TFTP, HTTP boot, and power management to the machines on its fabrics. It also runs the MAAS Agent, which connects to the region controller. See [Rack controllers](/explanation/controllers.md#rack-controllers).
 * **PostgreSQL**: stores the state of MAAS, including credentials. See [PostgreSQL security](#postgresql-security).
 * **HashiCorp Vault**: optionally stores MAAS secrets outside the database. See [HashiCorp Vault](#hashicorp-vault).
-* **Temporal**: orchestrates MAAS workflows. The Temporal server runs on the region controller, and the MAAS Agent on each rack controller connects to it.
+* **Load balancer**: optionally distributes web UI and API requests across region controllers, and can terminate TLS. See [Highly available API with HAProxy](/how-to-guides/manage-high-availability.md#highly-available-api-with-haproxy).
 * **Machines and BMCs**: the servers that MAAS commissions and deploys, and the baseboard management controllers that MAAS uses to power them on and off. See [The machine life cycle](/explanation/the-machine-life-cycle.md).
 
 ### Access to the region controller
 
 Administrators, users, and API clients only interact with the region controller, through the web UI, the CLI, or the API. Users authenticate with a password, an API key, or [single sign-on](/how-to-guides/sso.md), and each request is authorized against the user's [entitlements](#fine-grained-authorization).
 
-By default, the web UI and the API use HTTP. To encrypt this traffic, [enable TLS](/how-to-guides/enhance-maas-security.md#use-tls-termination-maas-33).
+By default, the web UI and the API use HTTP. To encrypt this traffic, [enable TLS](/how-to-guides/enhance-maas-security.md#use-tls-termination-maas-33). When TLS is enabled, the region controller still serves an internal HTTP endpoint for the rack controllers.
 
 ### External services
 
@@ -63,7 +63,7 @@ The region controller downloads boot images from image repositories and verifies
 
 ### Communication between controllers
 
-Rack controllers have no direct access to the database. They communicate with the region controller over RPC, authenticated with the [shared secret](#shared-secrets). To limit which interfaces these services listen on, see [Harden a rack controller](/how-to-guides/harden-a-rack-controller.md).
+Rack controllers have no direct access to the database. They communicate with the region controller over RPC, authenticated with the [shared secret](#shared-secrets), and the MAAS Agent connects to the internal API of the region controller on port 5242.
 
 ### Provisioning network
 

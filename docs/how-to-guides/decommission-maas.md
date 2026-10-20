@@ -2,9 +2,11 @@
 
 This guide shows you how to remove MAAS from your environment without leaving data, credentials, or references behind.
 
-```{important}
+If your controllers run in virtual machines, you can delete the virtual machines instead of removing the snap and sanitizing their disks. The other steps still apply.
+
+:::{warning}
 This process erases all MAAS data. Back up any data that you need to keep before you start.
-```
+:::
 
 ## Before you begin
 
@@ -24,15 +26,9 @@ Back up the MAAS database and configuration before you remove anything. Backups 
 
 Release every machine that MAAS manages, and erase its disks so that the next user cannot read the previous data. See [Release or remove machines](/how-to-guides/manage-machines.md#release-or-remove-machines).
 
+:::{warning}
 Releasing a machine only erases its disks when you select an erase option. MAAS does not delete any other data automatically.
-
-## Revoke access
-
-Revoke the credentials that give access to MAAS:
-
-- Delete the API keys of every user. See [Manage API keys](/how-to-guides/enhance-maas-security.md#manage-api-keys).
-- If you use [single sign-on](/how-to-guides/sso.md), remove the MAAS client from your identity provider.
-- Revoke the TLS certificate of MAAS with your certificate authority.
+:::
 
 ## Remove the controllers
 
@@ -62,10 +58,13 @@ Revoke the credentials that give access to MAAS:
 
 MAAS stores data in other services. Delete it from each one:
 
-- **PostgreSQL**: drop the MAAS database and the MAAS database user.
-- **Vault**: delete the secrets that MAAS stored, and the AppRole that MAAS used. See [config-vault](/reference/cli-reference/config-vault.md).
-- **Logging and monitoring**: delete the MAAS logs and metrics from your remote syslog server, Loki, and Prometheus.
+- **PostgreSQL**: drop the MAAS database and the MAAS database user. This also deletes the API keys of all users.
+- **MAAS CLI**: on every computer where you used the MAAS CLI, remove the stored API key with `maas logout $PROFILE`.
+- **Vault**: see the [HashiCorp Vault documentation](https://developer.hashicorp.com/vault/docs/secrets/kv) for how to delete secrets permanently.
+- **Logging and monitoring**: delete the MAAS logs and metrics from your logging and monitoring systems.
 - **DNS**: remove any delegation to the MAAS DNS servers.
+- **Identity provider**: if you use [single sign-on](/how-to-guides/sso.md), remove the MAAS client.
+- **Certificate authority**: revoke the TLS certificate of MAAS.
 
 ## Destroy and sanitize the data
 
