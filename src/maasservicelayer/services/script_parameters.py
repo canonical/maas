@@ -34,6 +34,7 @@ from maasservicelayer.services.base import Service
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.scripts import (
     get_unmatched_selection,
+    NO_USER_SCRIPTS,
     ScriptsService,
 )
 
@@ -430,6 +431,29 @@ def clean_parameters_input(
     return cleaned
 
 
+def _selection_errors(
+    field_name: str, selection: list[str] | None, selected: list[Script]
+) -> list[BaseExceptionDetail]:
+    if not selection:
+        return []
+    if NO_USER_SCRIPTS in selection:
+        # The other entries are not looked up when `none` is selected, so
+        # reporting them as unmatched would be misleading.
+        if len(set(selection)) > 1:
+            return [
+                _error(
+                    field_name,
+                    f"'{NO_USER_SCRIPTS}' cannot be combined with other "
+                    "scripts",
+                )
+            ]
+        return []
+    return [
+        _error(field_name, f"No script with the name, tag or id '{item}'")
+        for item in get_unmatched_selection(selection, selected)
+    ]
+
+
 class ScriptParametersService(Service):
     def __init__(
         self,
@@ -460,9 +484,9 @@ class ScriptParametersService(Service):
         :param testing_scripts: Names, tags or ids of the testing scripts to
             run. See `ScriptsService.get_testing_scripts`.
         :param script_input: Input for each script, keyed by script name.
-        :raise ValidationException: If a selection matches no script, input
-            is given for a script that is not selected, or the input is not
-            valid.
+        :raise ValidationException: If `none` is combined with other entries
+            in a selection, a selection matches no script, input is given for
+            a script that is not selected, or the input is not valid.
         """
         script_input = script_input or {}
         commissioning = await self.scripts_service.get_commissioning_scripts(
@@ -473,16 +497,10 @@ class ScriptParametersService(Service):
         )
         scripts = [*commissioning, *testing]
         details = [
-            _error(field_name, f"No script with the name, tag or id '{item}'")
-            for field_name, selection, selected in (
-                (
-                    "commissioning_scripts",
-                    commissioning_scripts,
-                    commissioning,
-                ),
-                ("testing_scripts", testing_scripts, testing),
-            )
-            for item in get_unmatched_selection(selection, selected)
+            *_selection_errors(
+                "commissioning_scripts", commissioning_scripts, commissioning
+            ),
+            *_selection_errors("testing_scripts", testing_scripts, testing),
         ]
         selected_names = {script.name for script in scripts}
         details.extend(

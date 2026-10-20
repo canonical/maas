@@ -670,7 +670,7 @@ class TestScriptParametersService:
 
         await service.validate_commissioning_input(
             commissioning_scripts=["1"],
-            testing_scripts=["storage", "none"],
+            testing_scripts=["storage"],
             script_input={"commissioning": {"url": "maas"}},
         )
 
@@ -678,8 +678,31 @@ class TestScriptParametersService:
             ["1"]
         )
         scripts_service.get_testing_scripts.assert_awaited_once_with(
-            ["storage", "none"]
+            ["storage"]
         )
+
+    @pytest.mark.parametrize(
+        "field_name", ["commissioning_scripts", "testing_scripts"]
+    )
+    async def test_validate_commissioning_input_accepts_none_alone(
+        self, service: ScriptParametersService, field_name: str
+    ) -> None:
+        await service.validate_commissioning_input(**{field_name: ["none"]})
+
+    @pytest.mark.parametrize(
+        "field_name", ["commissioning_scripts", "testing_scripts"]
+    )
+    async def test_validate_commissioning_input_rejects_none_with_others(
+        self, service: ScriptParametersService, field_name: str
+    ) -> None:
+        with pytest.raises(ValidationException) as exc_info:
+            await service.validate_commissioning_input(
+                **{field_name: ["none", "smartctl"]}
+            )
+
+        assert errors_of(exc_info) == {
+            (field_name, "'none' cannot be combined with other scripts")
+        }
 
     async def test_validate_commissioning_input_reports_all_errors(
         self, service: ScriptParametersService, scripts_service: Mock

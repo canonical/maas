@@ -70,7 +70,8 @@ class ScriptsService(BaseService[Script, ScriptsRepository, ScriptBuilder]):
 
         Built-in scripts are always included. Without a selection, all
         scripts not tagged `noauto` and not restricted to specific hardware
-        are included. Selecting `none` includes only the built-in scripts.
+        are included. Selecting `none` includes only the built-in scripts,
+        regardless of the other entries.
         As in the legacy ScriptSet, the names of all built-in scripts are
         added to the selection, so scripts tagged with them are included
         too.
@@ -103,13 +104,16 @@ class ScriptsService(BaseService[Script, ScriptsRepository, ScriptBuilder]):
         """Return the testing scripts to run on a machine.
 
         Without a selection, the scripts tagged `commissioning` are included.
-        Selecting `none` includes no scripts.
+        Selecting `none` includes no scripts, regardless of the other
+        entries.
 
         Scripts restricted to specific hardware are returned as selected;
         whether they run depends on the machine's hardware.
 
         :param selection: Names, tags or ids of scripts to run.
         """
+        if selection and NO_USER_SCRIPTS in selection:
+            return []
         return await self._get_scripts(
             ScriptType.TESTING,
             _selected_by(selection or [DEFAULT_TESTING_TAG]),

@@ -35,16 +35,16 @@ class MachineCommissionRequest(BaseModel):
         description="List of names, tags or IDs of commissioning scripts to "
         "run. By default all commissioning scripts are run, except those "
         "tagged 'noauto' or restricted to specific hardware. Built-in "
-        "commissioning scripts always run. Use 'none' to run only the "
-        "built-in scripts. Scripts restricted to specific hardware, such as "
-        "those tagged 'update_firmware' or 'configure_hba', only run on "
+        "commissioning scripts always run. Use 'none' on its own to run only "
+        "the built-in scripts. Scripts restricted to specific hardware, such "
+        "as those tagged 'update_firmware' or 'configure_hba', only run on "
         "matching machines.",
     )
     testing_scripts: list[str] | None = Field(
         default=None,
         description="List of names, tags or IDs of testing scripts to run after "
         "commissioning. By default all tests tagged 'commissioning' are run. "
-        "Use 'none' to disable running tests.",
+        "Use 'none' on its own to disable running tests.",
     )
     script_input: dict[str, dict[str, Any]] | None = Field(
         default=None,
