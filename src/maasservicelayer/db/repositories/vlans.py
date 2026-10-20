@@ -60,6 +60,10 @@ class VlansClauseFactory(ClauseFactory):
         return Clause(condition=eq(VlanTable.c.relay_vlan_id, relay_vlan_id))
 
     @classmethod
+    def with_relay_vlan_id_in(cls, relay_vlan_ids: list[int]) -> Clause:
+        return Clause(condition=VlanTable.c.relay_vlan_id.in_(relay_vlan_ids))
+
+    @classmethod
     def with_relay_vlan_exists(cls, exists: bool) -> Clause:
         return Clause(
             condition=VlanTable.c.relay_vlan_id.is_not(None)

@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
+from dataclasses import dataclass, field
 from ipaddress import ip_address, IPv4Address, IPv6Address
 from urllib.parse import urlparse
 
@@ -71,6 +72,22 @@ from provisioningserver.utils.text import split_string_list
 logger = structlog.get_logger()
 
 
+@dataclass
+class _DHCPQueryCache:
+    """Per-request caches that memoize lookups to avoid N+1 queries."""
+
+    ips_by_interface: dict[int, list[StaticIPAddress]] = field(
+        default_factory=dict
+    )
+    subnet_by_id: dict[int, Subnet | None] = field(default_factory=dict)
+    vlan_by_id: dict[int, Vlan | None] = field(default_factory=dict)
+    node_by_id: dict[int, Node | None] = field(default_factory=dict)
+    interfaces_by_config: dict[int, list[Interface]] = field(
+        default_factory=dict
+    )
+    dynamic_count_by_subnet: dict[int, int] = field(default_factory=dict)
+
+
 class DHCPService(Service):
     """Collect network data needed to configure DHCP on a rack controller."""
 
@@ -102,8 +119,6 @@ class DHCPService(Service):
         self, system_id: str
     ) -> DHCPDataForAgent:
         """Retrieve Kea configuration inputs for a rack controller system ID.
-
-        This does not render or apply a Kea configuration.
         """
         rack = await self.nodes_service.get_one(
             query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id))
@@ -123,6 +138,10 @@ class DHCPService(Service):
                 "The rack controller has no current configuration.",
             )
 
+        cache = _DHCPQueryCache()
+        cache.node_by_id[rack.id] = rack
+
+        # Retrieve relevant VLANs for this rack
         active_vlans = await self.vlans_service.get_many(
             QuerySpec(
                 where=VlansClauseFactory.and_clauses(
@@ -136,7 +155,7 @@ class DHCPService(Service):
                 order_by=[OrderByClause(VlanTable.c.id)],
             )
         )
-        interfaces = await self._get_rack_interfaces(rack)
+        interfaces = await self._get_rack_interfaces(rack, cache)
         interface_vlan_ids = {
             interface.vlan_id
             for interface in interfaces
@@ -146,13 +165,17 @@ class DHCPService(Service):
             vlan for vlan in active_vlans if vlan.id in interface_vlan_ids
         ]
         vlans = {vlan.id: vlan for vlan in active_vlans}
-        for vlan in list(vlans.values()):
-            for relay in await self.vlans_service.get_many(
+        if vlans:
+            relay_vlans = await self.vlans_service.get_many(
                 query=QuerySpec(
-                    where=VlansClauseFactory.with_relay_vlan_id(vlan.id)
+                    where=VlansClauseFactory.with_relay_vlan_id_in(list(vlans))
                 )
-            ):
+            )
+            for relay in relay_vlans:
                 vlans[relay.id] = relay
+        cache.vlan_by_id.update(vlans)
+
+        # Retrieve relevant subnets for this rack
         subnets = await self.subnets_service.get_many(
             query=QuerySpec(
                 where=SubnetClauseFactory.and_clauses(
@@ -170,6 +193,9 @@ class DHCPService(Service):
                 str(subnet.cidr.network_address),
             )
         )
+        cache.subnet_by_id.update({subnet.id: subnet for subnet in subnets})
+
+        # Retrieve relevant IP ranges for this rack
         ipranges = await self.ipranges_service.get_many(
             query=QuerySpec(
                 where=IPRangeClauseFactory.with_subnet_ids(
@@ -179,6 +205,11 @@ class DHCPService(Service):
             )
         )
         ipranges.sort(key=lambda iprange: iprange.id)
+        dynamic_counts = {subnet.id: 0 for subnet in subnets}
+        for iprange in ipranges:
+            if iprange.type == IPRangeType.DYNAMIC:
+                dynamic_counts[iprange.subnet_id] += 1
+        cache.dynamic_count_by_subnet.update(dynamic_counts)
         ranges = [
             IPRangeData(
                 id=iprange.id,
@@ -189,6 +220,8 @@ class DHCPService(Service):
             )
             for iprange in ipranges
         ]
+
+        # Retrieve dns & ntp addresses, domains
         rack_url = await self.nodes_service.get_url(system_id)
         default_domain = await self.domains_service.get_default_domain()
         search_domains = await self.domains_service.get_many(
@@ -217,7 +250,9 @@ class DHCPService(Service):
             else []
         )
         ntp_by_space = (
-            {} if external_only else await self._get_ntp_servers_for_rack(rack)
+            {}
+            if external_only
+            else await self._get_ntp_servers_for_rack(rack, cache)
         )
         rack_ips = await self.staticipaddress_service.get_for_nodes(
             query=QuerySpec(
@@ -245,6 +280,8 @@ class DHCPService(Service):
         dhcp_interfaces: dict[int, InterfaceData] = {}
         configured_ip_versions: set[int] = set()
         subnet_data = []
+        # Dict used as an insertion-ordered set to dedupe HA configs shared by
+        # multiple subnets on the same VLAN.
         ha_data: dict[KeaHAConfig, None] = {}
         host_reservations: dict[int, list[HostReservationData]] = {}
         for grouped_subnets in self._group_subnets(subnets).values():
@@ -256,8 +293,13 @@ class DHCPService(Service):
         peer_ntp_by_rack: dict[int, dict[tuple[int | None, int], str]] = {}
         for subnet in subnets:
             vlan = vlans[subnet.vlan_id]
+            # A subnet on a relay VLAN is served by the HA pair of the target
+            # VLAN; relay VLANs don't hold the rack controller identifiers.
+            dhcp_vlan = vlan
+            if vlan.relay_vlan_id is not None:
+                dhcp_vlan = vlans.get(vlan.relay_vlan_id, vlan)
             iface, ips = await self._get_best_interface_with_ip_on_vlan(
-                subnet, vlan, interfaces
+                subnet, vlan, interfaces, cache
             )
             if iface is not None and iface.vlan_id is not None:
                 configured_ip_versions.add(subnet.cidr.version)
@@ -267,32 +309,31 @@ class DHCPService(Service):
             next_server = self._get_next_server(subnet, ips)
             secondary_system_id = None
             peer_rack_id = None
-            if vlan.secondary_rack_id is not None:
-                ha = await self._get_ha_config(subnet, vlan)
+            if dhcp_vlan.secondary_rack_id is not None:
+                ha = await self._get_ha_config(subnet, dhcp_vlan, cache)
                 secondary_system_id = ha.secondary_rack_system_id
                 ha_data[ha] = None
                 peer_rack_id = (
-                    vlan.secondary_rack_id
-                    if vlan.primary_rack_id == rack.id
-                    else vlan.primary_rack_id
+                    dhcp_vlan.secondary_rack_id
+                    if dhcp_vlan.primary_rack_id == rack.id
+                    else dhcp_vlan.primary_rack_id
                 )
                 if peer_rack_id is None:
                     raise ValidationException.build_for_field(
                         "system_id",
-                        f"VLAN {vlan.id} has incomplete HA rack configuration.",
+                        f"VLAN {dhcp_vlan.id} has incomplete HA rack "
+                        "configuration.",
                     )
                 if peer_rack_id not in peer_ntp_by_rack:
-                    peer_rack = await self.nodes_service.get_by_id(
-                        peer_rack_id
-                    )
+                    peer_rack = await self._cached_node(cache, peer_rack_id)
                     if peer_rack is None:
                         raise ValidationException.build_for_field(
                             "system_id",
-                            f"VLAN {vlan.id} has a missing HA peer rack.",
+                            f"VLAN {dhcp_vlan.id} has a missing HA peer rack.",
                         )
                     peer_ntp_by_rack[
                         peer_rack_id
-                    ] = await self._get_ntp_servers_for_rack(peer_rack)
+                    ] = await self._get_ntp_servers_for_rack(peer_rack, cache)
             ntp_server = ntp_by_space.get((vlan.space_id, subnet.cidr.version))
             peer_ntp_server = (
                 peer_ntp_by_rack.get(peer_rack_id, {}).get(
@@ -321,7 +362,7 @@ class DHCPService(Service):
                     if subnet.gateway_ip is not None
                     else "",
                     dns_servers=await self._get_default_dns_servers_for_subnet(
-                        subnet, rack_url
+                        subnet, rack_url, cache
                     ),
                     allow_dns=subnet.allow_dns,
                     vlan_id=subnet.vlan_id,
@@ -379,12 +420,16 @@ class DHCPService(Service):
             ha_data=list(ha_data),
         )
 
-    async def _get_rack_interfaces(self, rack: Node) -> list[Interface]:
+    async def _get_rack_interfaces(
+        self, rack: Node, cache: _DHCPQueryCache
+    ) -> list[Interface]:
         if rack.current_config_id is None:
             raise ValidationException.build_for_field(
                 "system_id",
                 f"Rack controller {rack.system_id} has no current configuration.",
             )
+        if rack.current_config_id in cache.interfaces_by_config:
+            return cache.interfaces_by_config[rack.current_config_id]
         interfaces = await self.interfaces_service.get_many(
             query=QuerySpec(
                 where=InterfaceClauseFactory.with_node_config_id(
@@ -392,7 +437,69 @@ class DHCPService(Service):
                 )
             )
         )
-        return sorted(interfaces, key=lambda interface: interface.created)
+        sorted_interfaces = sorted(
+            interfaces, key=lambda interface: interface.created
+        )
+        cache.interfaces_by_config[rack.current_config_id] = sorted_interfaces
+        return sorted_interfaces
+
+    async def _cached_node(
+        self, cache: _DHCPQueryCache, node_id: int
+    ) -> Node | None:
+        if node_id not in cache.node_by_id:
+            cache.node_by_id[node_id] = await self.nodes_service.get_by_id(
+                node_id
+            )
+        return cache.node_by_id[node_id]
+
+    async def _cached_subnet(
+        self, cache: _DHCPQueryCache, subnet_id: int
+    ) -> Subnet | None:
+        if subnet_id not in cache.subnet_by_id:
+            cache.subnet_by_id[
+                subnet_id
+            ] = await self.subnets_service.get_by_id(subnet_id)
+        return cache.subnet_by_id[subnet_id]
+
+    async def _cached_vlan(
+        self, cache: _DHCPQueryCache, vlan_id: int
+    ) -> Vlan | None:
+        if vlan_id not in cache.vlan_by_id:
+            cache.vlan_by_id[vlan_id] = await self.vlans_service.get_by_id(
+                vlan_id
+            )
+        return cache.vlan_by_id[vlan_id]
+
+    async def _cached_ips_for_interface(
+        self, cache: _DHCPQueryCache, interface_id: int
+    ) -> list[StaticIPAddress]:
+        if interface_id not in cache.ips_by_interface:
+            cache.ips_by_interface[
+                interface_id
+            ] = await self.staticipaddress_service.get_for_interfaces(
+                [interface_id]
+            )
+        return cache.ips_by_interface[interface_id]
+
+    async def _cached_dynamic_range_count(
+        self, cache: _DHCPQueryCache, subnet_id: int
+    ) -> int:
+        if subnet_id not in cache.dynamic_count_by_subnet:
+            ranges = await self.ipranges_service.get_many(
+                query=QuerySpec(
+                    where=IPRangeClauseFactory.and_clauses(
+                        [
+                            IPRangeClauseFactory.with_subnet_id(subnet_id),
+                            IPRangeClauseFactory.with_type(
+                                IPRangeType.DYNAMIC
+                            ),
+                        ]
+                    ),
+                    order_by=[OrderByClause(IPRangeTable.c.id)],
+                )
+            )
+            cache.dynamic_count_by_subnet[subnet_id] = len(ranges)
+        return cache.dynamic_count_by_subnet[subnet_id]
 
     @staticmethod
     def _group_subnets(
@@ -406,7 +513,11 @@ class DHCPService(Service):
         return groups
 
     async def _get_best_interface_with_ip_on_vlan(
-        self, subnet: Subnet, vlan: Vlan, interfaces: list[Interface]
+        self,
+        subnet: Subnet,
+        vlan: Vlan,
+        interfaces: list[Interface],
+        cache: _DHCPQueryCache,
     ) -> tuple[Interface | None, list[StaticIPAddress]]:
         """Choose the legacy preferred interface and its addresses by family."""
         eligible_vlans = {vlan.id}
@@ -419,33 +530,17 @@ class DHCPService(Service):
             tuple[Interface, list[StaticIPAddress], int]
         ] = []
         for interface in sorted(interfaces, key=lambda item: item.created):
-            ips = await self.staticipaddress_service.get_for_interfaces(
-                [interface.id]
-            )
+            ips = await self._cached_ips_for_interface(cache, interface.id)
             static_match = False
             discovered_match = False
             dynamic_count = 0
             for ip in ips:
                 if ip.subnet_id is None:
                     continue
-                ip_subnet = await self.subnets_service.get_by_id(ip.subnet_id)
+                ip_subnet = await self._cached_subnet(cache, ip.subnet_id)
                 assert ip_subnet is not None
-                dynamic_count += len(
-                    await self.ipranges_service.get_many(
-                        query=QuerySpec(
-                            where=IPRangeClauseFactory.and_clauses(
-                                [
-                                    IPRangeClauseFactory.with_subnet_id(
-                                        ip_subnet.id
-                                    ),
-                                    IPRangeClauseFactory.with_type(
-                                        IPRangeType.DYNAMIC
-                                    ),
-                                ]
-                            ),
-                            order_by=[OrderByClause(IPRangeTable.c.id)],
-                        )
-                    )
+                dynamic_count += await self._cached_dynamic_range_count(
+                    cache, ip_subnet.id
                 )
                 if (
                     ip.ip is None
@@ -480,8 +575,8 @@ class DHCPService(Service):
                 best_interface = interface
         if best_interface is None:
             return None, []
-        best_ips = await self.staticipaddress_service.get_for_interfaces(
-            [best_interface.id]
+        best_ips = await self._cached_ips_for_interface(
+            cache, best_interface.id
         )
         return best_interface, sorted(
             [
@@ -505,12 +600,17 @@ class DHCPService(Service):
         )
         return str(address) if address is not None else ""
 
-    async def _get_ha_config(self, subnet: Subnet, vlan: Vlan) -> KeaHAConfig:
+    async def _get_ha_config(
+        self,
+        subnet: Subnet,
+        vlan: Vlan,
+        cache: _DHCPQueryCache,
+    ) -> KeaHAConfig:
         addresses = []
         racks = []
         for rack_id in (vlan.primary_rack_id, vlan.secondary_rack_id):
             rack = (
-                await self.nodes_service.get_by_id(rack_id)
+                await self._cached_node(cache, rack_id)
                 if rack_id is not None
                 else None
             )
@@ -519,7 +619,7 @@ class DHCPService(Service):
                     "system_id", f"VLAN {vlan.id} has a missing HA rack."
                 )
             address = await self._get_ip_address_for_rack_controller(
-                rack, subnet, vlan
+                rack, subnet, vlan, cache
             )
             if not address:
                 raise ValidationException.build_for_field(
@@ -537,10 +637,14 @@ class DHCPService(Service):
         )
 
     async def _get_ip_address_for_rack_controller(
-        self, rack: Node, subnet: Subnet, vlan: Vlan
+        self,
+        rack: Node,
+        subnet: Subnet,
+        vlan: Vlan,
+        cache: _DHCPQueryCache,
     ) -> str | None:
         interface, ips = await self._get_best_interface_with_ip_on_vlan(
-            subnet, vlan, await self._get_rack_interfaces(rack)
+            subnet, vlan, await self._get_rack_interfaces(rack, cache), cache
         )
         if interface is None:
             return None
@@ -553,7 +657,7 @@ class DHCPService(Service):
                 or ip.subnet_id is None
             ):
                 continue
-            ip_subnet = await self.subnets_service.get_by_id(ip.subnet_id)
+            ip_subnet = await self._cached_subnet(cache, ip.subnet_id)
             if ip_subnet is not None and ip_subnet.vlan_id == vlan.id:
                 return str(ip.ip)
         return None
@@ -586,21 +690,26 @@ class DHCPService(Service):
             )
         )
         seen_interfaces: set[int] = set()
+        interfaces_by_ip = await self.interfaces_service.get_for_ips(ips)
+        parents_cache: dict[int, list[Interface]] = {}
+        hostname_cache: dict[int, str] = {}
         for ip in ips:
             if ip.ip is None or ip.subnet_id is None:
                 continue
-            interfaces = await self.interfaces_service.get_for_ip(ip)
+            interfaces = interfaces_by_ip.get(ip.id)
             for interface in sorted(
                 interfaces or [], key=lambda item: item.created
             ):
                 parents = []
                 if interface.type == InterfaceType.BOND:
-                    parents = sorted(
-                        await self.interfaces_service.get_parents(
-                            interface.id
-                        ),
-                        key=lambda item: item.created,
-                    )
+                    if interface.id not in parents_cache:
+                        parents_cache[interface.id] = sorted(
+                            await self.interfaces_service.get_parents(
+                                interface.id
+                            ),
+                            key=lambda item: item.created,
+                        )
+                    parents = parents_cache[interface.id]
                 for parent in parents:
                     if parent.id in seen_interfaces:
                         continue
@@ -613,7 +722,7 @@ class DHCPService(Service):
                                 ip=str(ip.ip),
                                 mac_address=parent.mac_address,
                                 hostname=await self._make_interface_hostname(
-                                    parent
+                                    parent, hostname_cache
                                 ),
                             ),
                         )
@@ -626,7 +735,7 @@ class DHCPService(Service):
                             ip=str(ip.ip),
                             mac_address=interface.mac_address,
                             hostname=await self._make_interface_hostname(
-                                interface
+                                interface, hostname_cache
                             ),
                         )
                     )
@@ -652,22 +761,32 @@ class DHCPService(Service):
                 )
         return hosts_by_subnet
 
-    async def _make_interface_hostname(self, interface: Interface) -> str:
+    async def _make_interface_hostname(
+        self,
+        interface: Interface,
+        hostname_cache: dict[int, str] | None = None,
+    ) -> str:
+        if hostname_cache is not None and interface.id in hostname_cache:
+            return hostname_cache[interface.id]
         name = interface.name.replace(".", "-")
         if interface.node_config_id is None:
-            return f"unknown-{interface.id}-{name}"
-        node = await self.nodes_service.get_one(
-            query=QuerySpec(
-                where=NodeClauseFactory.with_node_config_id(
-                    interface.node_config_id
+            hostname = f"unknown-{interface.id}-{name}"
+        else:
+            node = await self.nodes_service.get_one(
+                query=QuerySpec(
+                    where=NodeClauseFactory.with_node_config_id(
+                        interface.node_config_id
+                    )
                 )
             )
-        )
-        assert node is not None
-        return f"{node.hostname}-{name}"
+            assert node is not None
+            hostname = f"{node.hostname}-{name}"
+        if hostname_cache is not None:
+            hostname_cache[interface.id] = hostname
+        return hostname
 
     async def _get_ntp_servers_for_rack(
-        self, rack: Node
+        self, rack: Node, cache: _DHCPQueryCache
     ) -> dict[tuple[int | None, int], str]:
         addresses = await self.staticipaddress_service.get_for_nodes(
             query=QuerySpec(
@@ -691,9 +810,9 @@ class DHCPService(Service):
         for address in addresses:
             if address.ip is None or address.subnet_id is None:
                 continue
-            subnet = await self.subnets_service.get_by_id(address.subnet_id)
+            subnet = await self._cached_subnet(cache, address.subnet_id)
             assert subnet is not None
-            vlan = await self.vlans_service.get_by_id(subnet.vlan_id)
+            vlan = await self._cached_vlan(cache, subnet.vlan_id)
             assert vlan is not None
             key = (vlan.space_id, address.ip.version)
             rank = (
@@ -706,12 +825,12 @@ class DHCPService(Service):
         return {key: rank[2] for key, rank in best.items()}
 
     async def _get_boot_rack_controller_ips(
-        self, subnet: Subnet
+        self, subnet: Subnet, cache: _DHCPQueryCache
     ) -> list[IPv4Address | IPv6Address]:
-        vlan = await self.vlans_service.get_by_id(subnet.vlan_id)
+        vlan = await self._cached_vlan(cache, subnet.vlan_id)
         assert vlan is not None
         if vlan.relay_vlan_id is not None:
-            vlan = await self.vlans_service.get_by_id(vlan.relay_vlan_id)
+            vlan = await self._cached_vlan(cache, vlan.relay_vlan_id)
             assert vlan is not None
         if not vlan.dhcp_on or vlan.primary_rack_id is None:
             return []
@@ -719,10 +838,13 @@ class DHCPService(Service):
         vlan_subnets = await self.subnets_service.get_many(
             query=QuerySpec(where=SubnetClauseFactory.with_vlan_id(vlan.id))
         )
-        for rack_id in (vlan.primary_rack_id, vlan.secondary_rack_id):
-            if rack_id is None:
-                continue
-            rack = await self.nodes_service.get_by_id(rack_id)
+        rack_ids = [
+            rack_id
+            for rack_id in (vlan.primary_rack_id, vlan.secondary_rack_id)
+            if rack_id is not None
+        ]
+        for rack_id in rack_ids:
+            rack = await self._cached_node(cache, rack_id)
             assert rack is not None
             ips = await self.staticipaddress_service.get_for_nodes(
                 query=QuerySpec(
@@ -771,14 +893,25 @@ class DHCPService(Service):
         )
         regions_by_id = {region.id: region for region in regions}
         seen_regions: set[tuple[int, int]] = set()
-        for server in dns_servers:
-            subnet = await self.subnets_service.find_best_subnet_for_ip(server)
-            if subnet is None:
-                continue
-            for region in regions_by_id.values():
-                if region.current_config_id is None:
-                    continue
-                ips = await self.staticipaddress_service.get_for_nodes(
+        best_subnet_cache: dict[str, Subnet | None] = {}
+        region_ips_cache: dict[tuple[int, int], list[StaticIPAddress]] = {}
+
+        async def _best_subnet(ip: IPv4Address | IPv6Address) -> Subnet | None:
+            key = str(ip)
+            if key not in best_subnet_cache:
+                best_subnet_cache[
+                    key
+                ] = await self.subnets_service.find_best_subnet_for_ip(ip)
+            return best_subnet_cache[key]
+
+        async def _region_ips(
+            region: Node, subnet: Subnet
+        ) -> list[StaticIPAddress]:
+            key = (region.id, subnet.id)
+            if key not in region_ips_cache:
+                region_ips_cache[
+                    key
+                ] = await self.staticipaddress_service.get_for_nodes(
                     query=QuerySpec(
                         where=StaticIPAddressClauseFactory.and_clauses(
                             [
@@ -794,6 +927,16 @@ class DHCPService(Service):
                         order_by=[OrderByClause(StaticIPAddressTable.c.ip)],
                     )
                 )
+            return region_ips_cache[key]
+
+        for server in dns_servers:
+            subnet = await _best_subnet(server)
+            if subnet is None:
+                continue
+            for region in regions_by_id.values():
+                if region.current_config_id is None:
+                    continue
+                ips = await _region_ips(region, subnet)
                 if (region.id, server.version) in seen_regions:
                     continue
                 for ip in ips:
@@ -803,10 +946,8 @@ class DHCPService(Service):
                         or ip.ip in dns_servers
                     ):
                         continue
-                    alternate_subnet = (
-                        await self.subnets_service.find_best_subnet_for_ip(
-                            ip_address(str(ip.ip))
-                        )
+                    alternate_subnet = await _best_subnet(
+                        ip_address(str(ip.ip))
                     )
                     if (
                         alternate_subnet is not None
@@ -820,7 +961,10 @@ class DHCPService(Service):
         return addresses
 
     async def _get_default_dns_servers_for_subnet(
-        self, subnet: Subnet, rack_url: str | None
+        self,
+        subnet: Subnet,
+        rack_url: str | None,
+        cache: _DHCPQueryCache,
     ) -> list[str]:
         explicit_servers = subnet.dns_servers or []
         if not subnet.allow_dns:
@@ -879,7 +1023,7 @@ class DHCPService(Service):
         if MAAS_ID.get():
             servers.extend(await self._get_alt_region_ips_for_dns(servers))
         if await self.configurations_service.get("use_rack_proxy"):
-            rack_ips = await self._get_boot_rack_controller_ips(subnet)
+            rack_ips = await self._get_boot_rack_controller_ips(subnet, cache)
             servers = rack_ips + [
                 ip
                 for ip in servers

@@ -260,6 +260,13 @@ class InterfacesService(
     async def get_for_ip(self, sip: StaticIPAddress) -> list[Interface] | None:
         return await self.repository.get_for_ip(ip_id=sip.id)
 
+    async def get_for_ips(
+        self, sips: list[StaticIPAddress]
+    ) -> dict[int, list[Interface]]:
+        return await self.repository.get_for_ips(
+            ip_ids=[sip.id for sip in sips]
+        )
+
     async def create_switch_interface(
         self, switch_id: int, mac: str, name: str = "mgmt0"
     ) -> int:

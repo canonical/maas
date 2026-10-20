@@ -440,6 +440,41 @@ class InterfaceRepository(BaseRepository):
 
         return [Interface(**r._asdict()) for r in result]
 
+    async def get_for_ips(
+        self, ip_ids: list[int]
+    ) -> dict[int, list[Interface]]:
+        """Return interfaces linked to each of the given static IP ids."""
+        interfaces_by_ip: dict[int, list[Interface]] = {}
+        if not ip_ids:
+            return interfaces_by_ip
+        stmt = (
+            select(
+                InterfaceIPAddressTable.c.staticipaddress_id,
+                InterfaceTable,
+            )
+            .select_from(StaticIPAddressTable)
+            .join(
+                InterfaceIPAddressTable,
+                eq(
+                    StaticIPAddressTable.c.id,
+                    InterfaceIPAddressTable.c.staticipaddress_id,
+                ),
+            )
+            .join(
+                InterfaceTable,
+                eq(
+                    InterfaceIPAddressTable.c.interface_id, InterfaceTable.c.id
+                ),
+            )
+            .filter(StaticIPAddressTable.c.id.in_(ip_ids))
+        )
+        result = (await self.execute_stmt(stmt)).all()
+        for row in result:
+            data = row._asdict()
+            ip_id = data.pop("staticipaddress_id")
+            interfaces_by_ip.setdefault(ip_id, []).append(Interface(**data))
+        return interfaces_by_ip
+
     async def unlink_interfaces_from_ips(
         self, interface_ids: list[int]
     ) -> None:

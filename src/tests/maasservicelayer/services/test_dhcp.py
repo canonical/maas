@@ -42,7 +42,7 @@ from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services.configurations import ConfigurationsService
-from maasservicelayer.services.dhcp import DHCPService
+from maasservicelayer.services.dhcp import _DHCPQueryCache, DHCPService
 from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.ipranges import IPRangesService
@@ -154,6 +154,7 @@ def dhcp(rack, vlan, subnet, interface, monkeypatch):
     service.subnets_service.get_by_id.return_value = subnet
     service.interfaces_service.get_many.return_value = [interface]
     service.interfaces_service.get_for_ip.return_value = []
+    service.interfaces_service.get_for_ips.return_value = {}
     service.staticipaddress_service.get_for_interfaces.return_value = [
         make_ip()
     ]
@@ -450,6 +451,35 @@ class TestDHCPService:
         assert result.subnets[0].next_server == "10.0.0.1"
         assert result.interfaces == [InterfaceData(1, 1, "eth0")]
 
+    async def test_relay_subnet_uses_serving_vlan_ha_pair(
+        self, dhcp, subnet, vlan
+    ):
+        serving = vlan.model_copy(update={"secondary_rack_id": 2})
+        relay = vlan.model_copy(
+            update={
+                "id": 2,
+                "vid": 20,
+                "relay_vlan_id": 1,
+                "dhcp_on": False,
+                "primary_rack_id": None,
+                "secondary_rack_id": None,
+            }
+        )
+        relay_subnet = subnet.model_copy(update={"id": 2, "vlan_id": 2})
+        dhcp.vlans_service.get_many.side_effect = [[serving], [relay]]
+        dhcp.subnets_service.get_many.return_value = [relay_subnet]
+        ha = KeaHAConfig("rack-1", "rack-2", "10.0.0.1", "10.0.0.2")
+        dhcp._get_ha_config = AsyncMock(return_value=ha)
+        dhcp._get_ntp_servers_for_rack = AsyncMock(return_value={})
+        dhcp._get_default_dns_servers_for_subnet = AsyncMock(return_value=[])
+
+        result = await dhcp.get_kea_dhcp_data_for_agent("rack-1")
+
+        assert result.ha_data == [ha]
+        assert result.subnets[0].secondary_rack_system_id == "rack-2"
+        ha_vlan = dhcp._get_ha_config.call_args.args[1]
+        assert ha_vlan.id == 1
+
     async def test_base_vlan_does_not_select_interface_from_relay_vlan(
         self, dhcp, subnet, vlan, interface
     ):
@@ -460,7 +490,7 @@ class TestDHCPService:
         dhcp.subnets_service.get_by_id.return_value = relay_subnet
 
         selected, addresses = await dhcp._get_best_interface_with_ip_on_vlan(
-            subnet, vlan, [interface]
+            subnet, vlan, [interface], _DHCPQueryCache()
         )
 
         assert selected is None
@@ -521,7 +551,7 @@ class TestDHCPService:
         vlan.secondary_rack_id = 2
         dhcp.staticipaddress_service.get_for_interfaces.return_value = []
         with pytest.raises(ValidationException):
-            await dhcp._get_ha_config(subnet, vlan)
+            await dhcp._get_ha_config(subnet, vlan, _DHCPQueryCache())
 
     @pytest.mark.parametrize(
         "first_type,first_alloc,second_type,second_alloc,expected",
@@ -569,7 +599,7 @@ class TestDHCPService:
             ]
         )
         best, _ = await dhcp._get_best_interface_with_ip_on_vlan(
-            subnet, vlan, [first, second]
+            subnet, vlan, [first, second], _DHCPQueryCache()
         )
         assert best.id == expected
 
@@ -583,7 +613,10 @@ class TestDHCPService:
             ]
         )
         selected, addresses = await dhcp._get_best_interface_with_ip_on_vlan(
-            subnet, vlan, [disabled, interface.model_copy(update={"id": 2})]
+            subnet,
+            vlan,
+            [disabled, interface.model_copy(update={"id": 2})],
+            _DHCPQueryCache(),
         )
         assert selected.id == 1
         assert [address.ip for address in addresses] == [
@@ -607,7 +640,7 @@ class TestDHCPService:
             make_ip()
         ]
         selected, _ = await dhcp._get_best_interface_with_ip_on_vlan(
-            subnet, vlan, [later, earlier]
+            subnet, vlan, [later, earlier], _DHCPQueryCache()
         )
         assert selected.id == 1
 
@@ -626,7 +659,7 @@ class TestDHCPService:
         dhcp.ipranges_service.get_many.side_effect = [[], [Mock(IPRange)]]
 
         best, _ = await dhcp._get_best_interface_with_ip_on_vlan(
-            subnet, vlan, [interface, second]
+            subnet, vlan, [interface, second], _DHCPQueryCache()
         )
 
         assert best.id == 2
@@ -644,7 +677,7 @@ class TestDHCPService:
         )
         same_mac_parent = interface.model_copy(update={"id": 3})
         dhcp.staticipaddress_service.get_many.return_value = [make_ip()]
-        dhcp.interfaces_service.get_for_ip.return_value = [bond, parent]
+        dhcp.interfaces_service.get_for_ips.return_value = {1: [bond, parent]}
         dhcp.interfaces_service.get_parents.return_value = [
             same_mac_parent,
             parent,
@@ -697,7 +730,10 @@ class TestDHCPService:
             make_ip(id=1, subnet_id=1),
             make_ip(id=2, ip="10.0.1.1", subnet_id=2),
         ]
-        dhcp.interfaces_service.get_for_ip.return_value = [interface]
+        dhcp.interfaces_service.get_for_ips.return_value = {
+            1: [interface],
+            2: [interface],
+        }
 
         hosts = await dhcp._get_dhcp_host_reservations([1, 2])
 
@@ -725,7 +761,9 @@ class TestDHCPService:
             1: vlan,
             2: other_vlan,
         }[id]
-        assert await dhcp._get_ntp_servers_for_rack(rack) == {
+        assert await dhcp._get_ntp_servers_for_rack(
+            rack, _DHCPQueryCache()
+        ) == {
             (1, 4): "10.0.0.10",
             (1, 6): "2001:db8::1",
         }
@@ -736,7 +774,7 @@ class TestDHCPService:
         subnet.allow_dns = False
         subnet.dns_servers = ["9.9.9.9"]
         assert await dhcp._get_default_dns_servers_for_subnet(
-            subnet, "region"
+            subnet, "region", _DHCPQueryCache()
         ) == ["9.9.9.9"]
 
     async def test_dns_resolution_failure_still_uses_rack(
@@ -747,7 +785,7 @@ class TestDHCPService:
             Mock(side_effect=OSError("unresolvable")),
         )
         assert await dhcp._get_default_dns_servers_for_subnet(
-            subnet, "region"
+            subnet, "region", _DHCPQueryCache()
         ) == ["10.0.0.1"]
 
     async def test_dns_servers_are_sorted_and_filtered_by_allow_dns(
@@ -766,7 +804,7 @@ class TestDHCPService:
         )
 
         servers = await dhcp._get_default_dns_servers_for_subnet(
-            subnet, "http://region:5240/MAAS"
+            subnet, "http://region:5240/MAAS", _DHCPQueryCache()
         )
 
         assert servers == ["10.0.0.1", "10.0.0.10"]
@@ -783,7 +821,7 @@ class TestDHCPService:
         )
 
         servers = await dhcp._get_default_dns_servers_for_subnet(
-            subnet, "region"
+            subnet, "region", _DHCPQueryCache()
         )
 
         assert "127.0.0.1" not in servers
@@ -818,7 +856,7 @@ class TestDHCPService:
     ):
         subnet.dns_servers = ["10.0.0.10", "9.9.9.9"]
         assert await dhcp._get_default_dns_servers_for_subnet(
-            subnet, "region"
+            subnet, "region", _DHCPQueryCache()
         ) == ["10.0.0.1", "10.0.0.10", "9.9.9.9"]
 
     async def test_dns_falls_back_to_region_when_hostname_is_unresolvable(
@@ -835,7 +873,7 @@ class TestDHCPService:
         dhcp._get_boot_rack_controller_ips = AsyncMock(return_value=[])
 
         assert await dhcp._get_default_dns_servers_for_subnet(
-            subnet, "region"
+            subnet, "region", _DHCPQueryCache()
         ) == ["10.0.0.10"]
 
     async def test_dns_without_gateway_filters_automatic_servers(
@@ -848,7 +886,7 @@ class TestDHCPService:
             lambda hostname, version: {IPAddress("192.0.2.1")},
         )
         assert await dhcp._get_default_dns_servers_for_subnet(
-            subnet, "region"
+            subnet, "region", _DHCPQueryCache()
         ) == ["10.0.0.1", "9.9.9.9"]
 
     async def test_alternate_region_dns_requires_a_resolved_server(self, dhcp):
