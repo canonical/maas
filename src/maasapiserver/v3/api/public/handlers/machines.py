@@ -11,6 +11,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ForbiddenBodyResponse,
     NotFoundBodyResponse,
     UnauthorizedBodyResponse,
+    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.machines import (
@@ -307,6 +308,7 @@ class MachinesHandler(Handler):
             403: {"model": ForbiddenBodyResponse},
             404: {"model": NotFoundBodyResponse},
             409: {"model": ConflictBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=202,
@@ -416,6 +418,12 @@ class MachinesHandler(Handler):
                     )
                 ]
             )
+
+        await services.script_parameters.validate_commissioning_input(
+            commissioning_scripts=commission_request.commissioning_scripts,
+            testing_scripts=commission_request.testing_scripts,
+            script_input=commission_request.script_input,
+        )
 
         operation = await services.operations.create_accepted_operation(
             op_type=OperationType.MACHINE_COMMISSION,

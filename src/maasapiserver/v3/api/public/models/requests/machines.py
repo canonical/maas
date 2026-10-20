@@ -32,23 +32,25 @@ class MachineCommissionRequest(BaseModel):
     )
     commissioning_scripts: list[str] | None = Field(
         default=None,
-        description="List of commissioning script names and tags to be run. By "
-        "default all custom commissioning scripts are run. Built-in "
-        "commissioning scripts always run. Selecting 'update_firmware' or "
-        "'configure_hba' will run firmware updates or configure HBA's on "
-        "matching machines.",  # TODO: copied from v2, double check this after script behaviour is confirmed.
+        description="List of names, tags or IDs of commissioning scripts to "
+        "run. By default all commissioning scripts are run, except those "
+        "tagged 'noauto' or restricted to specific hardware. Built-in "
+        "commissioning scripts always run. Use 'none' to run only the "
+        "built-in scripts. Scripts restricted to specific hardware, such as "
+        "those tagged 'update_firmware' or 'configure_hba', only run on "
+        "matching machines.",
     )
     testing_scripts: list[str] | None = Field(
         default=None,
         description="List of names, tags or IDs of testing scripts to run after "
         "commissioning. By default all tests tagged 'commissioning' are run. "
-        "Use 'none' to disable running tests.",  # TODO: mostly copied from v2, double check this after script behaviour is confirmed.
+        "Use 'none' to disable running tests.",
     )
     script_input: dict[str, dict[str, Any]] | None = Field(
         default=None,
         description="Parameter values for the selected commissioning and "
         "testing scripts, keyed by script name and then by parameter name. "
-        "Input for scripts that are not selected is ignored. For example: "
+        "Input for scripts that are not selected is rejected. For example: "
         '{"smartctl-validate": {"storage": "sda,sdb"}, '
         '"internet-connectivity": {"url": "https://archive.ubuntu.com"}}',
     )
