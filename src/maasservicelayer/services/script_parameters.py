@@ -1,16 +1,6 @@
 #  Copyright 2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Validation of script parameter schemas and of the input given to them.
-
-Service layer port of `maasserver.forms.parameters.ParametersForm`.
-
-Schemas are validated like the legacy form, since the stored scripts were
-accepted by it. Input values are checked against the JSON type of their
-parameter, which the legacy API did through `ScriptForm` fields before
-`ParametersForm` ran.
-"""
-
 from collections.abc import Mapping, Sequence
 import copy
 from dataclasses import dataclass, field
@@ -107,12 +97,6 @@ type _InputError = tuple[str | None, str]
 
 @dataclass
 class ScriptParametersInput:
-    """Validated parameter values for a script, each under a `value` key.
-
-    `multi_result_params` holds storage and interface parameters, whose values
-    still have to be resolved to the node's devices.
-    """
-
     result_params: dict[str, dict[str, Any]] = field(default_factory=dict)
     multi_result_params: dict[str, dict[str, Any]] = field(
         default_factory=dict
@@ -132,7 +116,6 @@ def _is_int(value: Any) -> bool:
 
 
 def _is_valid_choice(choice: Any) -> bool:
-    # Only list entries are checked; others are accepted as they are.
     if not isinstance(choice, list):
         return True
     return len(choice) == 2 and all(isinstance(item, str) for item in choice)
@@ -217,10 +200,6 @@ def _parameter_schema_errors(name: Any, fields: Any) -> list[str]:
 
 
 def validate_parameters_schema(parameters: Any) -> dict[str, dict[str, Any]]:
-    """Validate the parameters declared in a script's embedded metadata.
-
-    :raise ValidationException: If the schema is not valid.
-    """
     if not isinstance(parameters, dict):
         raise ValidationException(
             details=[_error("parameters", "Must be a dictionary")]
@@ -247,7 +226,6 @@ def _set_up_input(
     script_input: dict[str, Any],
     config_defaults: Mapping[str, Any],
 ) -> tuple[ScriptParametersInput, list[_InputError]]:
-    """Assign input values to parameters, falling back to their defaults."""
     cleaned = ScriptParametersInput()
     errors: list[_InputError] = []
     for name, value in script_input.items():
@@ -410,18 +388,6 @@ def clean_parameters_input(
     script_input: Any,
     config_defaults: Mapping[str, Any] | None = None,
 ) -> ScriptParametersInput:
-    """Validate the input given to a script against its parameters.
-
-    Parameters without input get their default value, if any. Values of
-    storage and interface parameters are not resolved to devices.
-
-    :param script_input: Values keyed by parameter name.
-    :param config_defaults: MAAS configuration values used as defaults for
-        parameters named in `DEFAULTS_FROM_MAAS_CONFIG`.
-    :raise ValidationException: If the schema or the input is not valid.
-        Errors about the input as a whole are under the `input` field, the
-        others under the name of their parameter.
-    """
     parameters = validate_parameters_schema(script.parameters)
     cleaned, errors = _clean_input(
         script, parameters, script_input, config_defaults or {}
@@ -475,23 +441,6 @@ class ScriptParametersService(Service):
         testing_scripts: list[str] | None = None,
         script_input: Mapping[str, Any] | None = None,
     ) -> None:
-        """Resolve the scripts selected for commissioning and validate their
-        input.
-
-        This lets a commissioning request be rejected before it is accepted.
-        The cleaned input is not returned: scripts, configuration and the
-        machine's hardware may change before the ScriptResults are created,
-        so the input has to be cleaned again with `clean_scripts_input` then.
-
-        :param commissioning_scripts: Names, tags or ids of the commissioning
-            scripts to run. See `ScriptsService.get_commissioning_scripts`.
-        :param testing_scripts: Names, tags or ids of the testing scripts to
-            run. See `ScriptsService.get_testing_scripts`.
-        :param script_input: Input for each script, keyed by script name.
-        :raise ValidationException: If `none` is combined with other entries
-            in a selection, a selection matches no script, input is given for
-            a script that is not selected, or the input is not valid.
-        """
         script_input = script_input or {}
         commissioning = await self.scripts_service.get_commissioning_scripts(
             commissioning_scripts
@@ -524,19 +473,6 @@ class ScriptParametersService(Service):
         scripts: Sequence[Script],
         script_input: Mapping[str, Any] | None = None,
     ) -> dict[str, ScriptParametersInput]:
-        """Validate `script_input` for `scripts` and fill in defaults.
-
-        Input for scripts that are not in `scripts` is ignored. Scripts
-        restricted to specific hardware are only validated if they are given
-        input, since whether they run depends on the machine's hardware.
-
-        :param script_input: Input for each script, keyed by script name.
-        :return: The cleaned input, keyed by script name.
-        :raise ValidationException: With the errors of all the scripts. Errors
-            about a script's schema or input as a whole are under a
-            `script_input.<script>` field, the others under
-            `script_input.<script>.<parameter>`.
-        """
         script_input = script_input or {}
         cleaned = {}
         details: list[BaseExceptionDetail] = []

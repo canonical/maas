@@ -31,8 +31,8 @@ _URL_RE = re.compile(
     r"^[a-z0-9.+-]*://"  # The scheme is checked separately.
     r"(?:[^\s:@/]+(?::[^\s:@/]*)?@)?"  # user:password
     rf"(?:{_IPV4}|{_IPV6}|{_HOST})"
-    r"(?::[0-9]{1,5})?"  # port
-    r"(?:[/?#]\S*)?"  # path, query and fragment
+    r"(?::[0-9]{1,5})?"
+    r"(?:[/?#]\S*)?"
     r"\Z",
     re.IGNORECASE,
 )
@@ -62,10 +62,6 @@ def splithost(host: str) -> tuple[str | None, int | None]:
 def validate_url(
     url: str, schemes: Collection[str] = ("http", "https")
 ) -> None:
-    """Validate that `url` is a URL using one of the given `schemes`.
-
-    :raise ValueError: If the URL is not valid.
-    """
     if (
         not isinstance(url, str)
         or len(url) > _MAX_URL_LENGTH
