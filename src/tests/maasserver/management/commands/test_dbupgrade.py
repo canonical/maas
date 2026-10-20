@@ -256,15 +256,14 @@ def test_build_alembic_postgres_dsn_no_certs_no_cert_params():
     assert "sslrootcert=" not in dsn
 
 
-@pytest.mark.parametrize("driver", ("postgres", "postgresql+asyncpg"))
-def test_build_postgres_dsn_escapes_credentials(driver):
+def test_build_postgres_dsn_escapes_credentials():
     params = {
         "host": "localhost",
         "dbname": "maasdb",
         "user": "ma@s",
         "password": "p@s%s#/?:",
     }
-    url = make_url(Command._build_postgres_dsn(params, driver))
+    url = make_url(Command._build_alembic_postgres_dsn(params))
     assert url.username == "ma@s"
     assert url.password == "p@s%s#/?:"
     assert url.host == "localhost"
