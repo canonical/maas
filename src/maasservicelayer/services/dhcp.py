@@ -118,8 +118,7 @@ class DHCPService(Service):
     async def get_kea_dhcp_data_for_agent(
         self, system_id: str
     ) -> DHCPDataForAgent:
-        """Retrieve Kea configuration inputs for a rack controller system ID.
-        """
+        """Retrieve Kea configuration inputs for a rack controller system ID."""
         rack = await self.nodes_service.get_one(
             query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id))
         )
