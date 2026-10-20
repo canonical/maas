@@ -330,6 +330,43 @@ class TestCleanParametersInput:
         script = script_with({"url": {"type": "url"}})
         assert clean_parameters_input(script, {}).result_params == {}
 
+    def test_file_url_requires_host(self) -> None:
+        script = script_with({"url": {"type": "url"}})
+        clean_parameters_input(script, {"url": "file://localhost/etc/hosts"})
+        with pytest.raises(ValidationException) as exc_info:
+            clean_parameters_input(script, {"url": "file:///etc/hosts"})
+        assert errors_of(exc_info) == {("url", "Invalid URL")}
+
+    @pytest.mark.parametrize(
+        "param_type", ["string", "url", "storage", "interface"]
+    )
+    def test_empty_default_is_omitted(self, param_type: str) -> None:
+        script = script_with(
+            {
+                param_type: {
+                    "type": param_type,
+                    "default": "",
+                    "required": False,
+                }
+            }
+        )
+        cleaned = clean_parameters_input(script, {})
+        assert cleaned.result_params == {}
+        assert cleaned.multi_result_params == {}
+
+    @pytest.mark.parametrize(
+        "param_type", ["string", "url", "storage", "interface"]
+    )
+    def test_empty_default_does_not_satisfy_required(
+        self, param_type: str
+    ) -> None:
+        script = script_with(
+            {param_type: {"type": param_type, "default": "", "required": True}}
+        )
+        with pytest.raises(ValidationException) as exc_info:
+            clean_parameters_input(script, {})
+        assert errors_of(exc_info) == {(param_type, "Field is required")}
+
     @pytest.mark.parametrize("param_type", ["string", "password"])
     def test_string(self, param_type: str) -> None:
         script = script_with({param_type: {"type": param_type}})
