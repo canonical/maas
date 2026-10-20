@@ -9172,7 +9172,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0043
+0044
 \.
 
 
