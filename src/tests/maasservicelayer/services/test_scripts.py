@@ -182,17 +182,19 @@ class TestIntegrationScriptsService:
         scripts = await service.get_testing_scripts(["memtester"])
         assert [script.name for script in scripts] == ["memtester"]
 
+    @pytest.mark.parametrize("selection", [["none"], ["smartctl", "none"]])
     async def test_testing_scripts_none_selects_nothing(
-        self, service: ScriptsService, fixture: Fixture
+        self, service: ScriptsService, fixture: Fixture, selection: list[str]
     ) -> None:
-        await create_test_script_entry(
-            fixture,
-            name="smartctl",
-            tags=["commissioning"],
-            script_type=ScriptType.TESTING,
-        )
+        for name, tags in {
+            "smartctl": ["commissioning"],
+            "none": ["none"],
+        }.items():
+            await create_test_script_entry(
+                fixture, name=name, tags=tags, script_type=ScriptType.TESTING
+            )
 
-        assert await service.get_testing_scripts(["none"]) == []
+        assert await service.get_testing_scripts(selection) == []
 
 
 class TestGetUnmatchedSelection:
