@@ -35,17 +35,21 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachineClauseFactory
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.exceptions.constants import (
+    BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE,
     INVALID_MACHINE_STATUS_VIOLATION_TYPE,
     MACHINE_LOCKED_VIOLATION_TYPE,
+    MISSING_ARCHITECTURE_VIOLATION_TYPE,
     MISSING_PERMISSIONS_VIOLATION_TYPE,
     OPERATION_IN_PROGRESS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
+    UNKNOWN_POWER_TYPE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.models.operations import Operation
 from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
+from maasservicelayer.services.bootresources import BootResourceService
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.utils.date import utcnow
@@ -71,7 +75,7 @@ TEST_MACHINE = Machine(
     cpu_count=8,
     status=NodeStatus.NEW,
     node_type=NodeTypeEnum.MACHINE,
-    power_type=None,
+    power_type=PowerTypeEnum.LXD,
     fqdn="maas.local",
     hostname="hostname",
     power_state=PowerState.ON,
@@ -374,6 +378,8 @@ class TestMachinesApi(ApiCommonTests):
         )
         services_mock.machines = Mock(MachinesService)
         services_mock.machines.get_one.return_value = machine
+        services_mock.boot_resources = Mock(BootResourceService)
+        services_mock.boot_resources.has_commissioning_resource.return_value = True
         services_mock.operations = Mock(OperationsService)
         services_mock.operations.has_active_operation_for_resource.return_value = False
         services_mock.operations.create_accepted_operation.return_value = (
@@ -530,6 +536,69 @@ class TestMachinesApi(ApiCommonTests):
             resource_type=OperationResourceType.MACHINE,
             resource_id=TEST_MACHINE.id,
         )
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
+
+    async def test_commission_machine_409_no_power_type(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        machine = TEST_MACHINE.model_copy(update={"power_type": None})
+        self._mock_commission_services(services_mock, machine)
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{machine.system_id}:commission"
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert (
+            error_response.details[0].type == UNKNOWN_POWER_TYPE_VIOLATION_TYPE
+        )
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
+
+    async def test_commission_machine_409_boot_resource_unavailable(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        self._mock_commission_services(services_mock, TEST_MACHINE)
+        services_mock.boot_resources.has_commissioning_resource.return_value = False
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{TEST_MACHINE.system_id}:commission"
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert (
+            error_response.details[0].type
+            == BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE
+        )
+        services_mock.boot_resources.has_commissioning_resource.assert_awaited_once_with(
+            TEST_MACHINE.architecture
+        )
+        services_mock.operations.create_accepted_operation.assert_not_awaited()
+
+    async def test_commission_machine_409_no_architecture(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        machine = TEST_MACHINE.model_copy(update={"architecture": None})
+        self._mock_commission_services(services_mock, machine)
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{machine.system_id}:commission"
+        )
+
+        assert response.status_code == 409
+        error_response = ErrorBodyResponse(**response.json())
+        assert (
+            error_response.details[0].type
+            == MISSING_ARCHITECTURE_VIOLATION_TYPE
+        )
+        services_mock.boot_resources.has_commissioning_resource.assert_not_awaited()
         services_mock.operations.create_accepted_operation.assert_not_awaited()
 
 
