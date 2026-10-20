@@ -2,6 +2,12 @@
 
 MAAS enforces strict access control and secure secret management to protect system integrity.
 
+## Reporting vulnerabilities
+
+MAAS follows the [Ubuntu disclosure policy](https://ubuntu.com/security/disclosure-policy). If you discover a security issue, see the [MAAS security policy](https://github.com/canonical/maas/blob/master/SECURITY.md) for how to report it.
+
+Because security fixes are included in regular MAAS releases, keeping your system up to date is the best way to stay protected. Check out [Supported MAAS versions](https://canonical.com/maas/docs/release-information/supported-maas-versions/) to see if your current version is still receiving updates.
+
 ## Security architecture
 
 A MAAS deployment is made of region controllers, rack controllers, a PostgreSQL database, and the machines that MAAS manages. Each of these components sits on one side of a trust boundary, and every boundary is protected by its own security controls.
@@ -129,6 +135,26 @@ Entitlements are scoped either globally (the `maas` resource) or per resource po
 MAAS enforces these entitlements on every request, so users cannot access machines they are not entitled to, even if they know the system ID. Hiding machines is not security—proper authorization is required.
 
 For the full permission model, the list of available entitlements, and CLI examples, see [User groups and entitlements](/how-to-guides/user-groups-and-entitlements.md).
+
+## Risks and recommended controls
+
+Some risks come from the way MAAS works, and MAAS cannot remove them on its own. You are responsible for the controls that reduce them.
+
+### Inherent risks
+
+* **Network boot is not authenticated.** DHCP, TFTP, and HTTP boot do not authenticate machines or controllers. Any device on the provisioning network can answer boot requests or impersonate a machine.
+* **Administrators have full control.** An administrator can manage every machine, user, and setting in MAAS, including the credentials that MAAS uses to power machines on and off.
+* **MAAS stores credentials.** The database, Vault, and the backups contain BMC credentials, API keys, and other secrets. Anyone who can read them can control your machines.
+
+### Recommended controls
+
+* **Keep MAAS and its hosts up to date.** Use a [supported MAAS version](https://canonical.com/maas/docs/release-information/supported-maas-versions/). The MAAS snap is refreshed automatically. Delaying updates might leave vulnerabilities unpatched. See [Upgrade MAAS](/how-to-guides/upgrade-maas.md).
+* **Use strong authentication.** Use [strong passwords](#strong-passwords). If you use [single sign-on](/how-to-guides/sso.md), enable multi-factor authentication in your identity provider.
+* **Limit privileges.** Keep the number of administrators small, and grant other users only the [entitlements](#fine-grained-authorization) they need.
+* **Enable TLS with a trusted certificate.** See [Enhance MAAS security](/how-to-guides/enhance-maas-security.md#use-tls-termination-maas-33).
+* **Back up MAAS and encrypt the backups.** Store them in a location with restricted access. See [Back up MAAS](/how-to-guides/back-up-maas.md).
+* **Isolate the provisioning network.** Restrict the ports that MAAS exposes with a [firewall](/how-to-guides/enhance-maas-security.md#manage-network-ports), and configure your switches to prevent DHCP and ARP spoofing.
+* **Restrict physical access** to the controllers and the machines that MAAS manages.
 
 ## Security consulting
 
