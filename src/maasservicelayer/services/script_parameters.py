@@ -15,7 +15,7 @@ from collections.abc import Mapping, Sequence
 import copy
 from dataclasses import dataclass, field
 from ipaddress import ip_address
-from typing import Any, TypeIs
+from typing import Any
 
 from maascommon.utils.url import validate_url
 from maasservicelayer.context import Context
@@ -126,7 +126,7 @@ def _error(field_name: str, message: str) -> BaseExceptionDetail:
     )
 
 
-def _is_int(value: Any) -> TypeIs[int]:
+def _is_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
@@ -288,9 +288,11 @@ def _set_up_input(
 
 def _runtime_errors(param: dict[str, Any]) -> list[str]:
     value = param["value"]
-    if isinstance(value, str) and value.isdecimal():
+    if isinstance(value, str):
+        if not value.isdecimal():
+            return ["Must be an int"]
         value = int(value)
-    if not _is_int(value):
+    elif not _is_int(value):
         return ["Must be an int"]
     min_value = param.get("min")
     if min_value is None:
