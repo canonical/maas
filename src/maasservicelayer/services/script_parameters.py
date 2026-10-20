@@ -262,6 +262,10 @@ def _set_up_input(
         else:
             cleaned.result_params[name] = _with_value(param, value)
 
+    # As in the legacy ParametersForm, an empty default counts as no default.
+    # Schema defaults must be strings, so this only affects "". Passing it on
+    # would add an empty argument to the script's command line, and the
+    # script runner expects storage and interface values to be devices.
     for name, param in parameters.items():
         if name in script_input:
             continue
