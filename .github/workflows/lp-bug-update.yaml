@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   update-launchpad-bug:
@@ -19,10 +20,13 @@ jobs:
         env:
           GITHUB_EVENT_JSON: ${{ toJson(github.event) }}
         run: |
-          MESSAGES=$(jq -r '.commits[].message' <<< "$GITHUB_EVENT_JSON")
-          BUG_ID=$(echo "$MESSAGES" \
-            | grep -oiP '\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\b.*lp:\s*#\K[0-9]+' \
-            | head -1 || true)
+          while IFS=$'\t' read -r commit_sha commit_message; do
+            BUG_ID=$(grep -oiP '\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\b.*lp:\s*#\K[0-9]+' \
+              <<< "$commit_message" | head -1 || true)
+            if [ -n "$BUG_ID" ]; then
+              break
+            fi
+          done < <(jq -r '.commits[] | [.id, .message] | @tsv' <<< "$GITHUB_EVENT_JSON")
 
           if [ -z "$BUG_ID" ]; then
             echo "No Launchpad bug ID found."
@@ -31,6 +35,26 @@ jobs:
 
           echo "Launchpad bug ID found: $BUG_ID"
           echo "bug_id=$BUG_ID" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=$commit_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Find pull request or commit link
+        id: fix-link
+        if: steps.extract-bug.outputs.bug_id != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ steps.extract-bug.outputs.commit_sha }}
+        run: |
+          PR_URL=$(curl --silent --show-error --fail \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$COMMIT_SHA/pulls" \
+            | jq -r '[.[] | select(.merged_at != null)][0].html_url // empty' \
+            || true)
+
+          FIX_URL="${PR_URL:-$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$COMMIT_SHA}"
+          echo "fix_url=$FIX_URL" >> "$GITHUB_OUTPUT"
+          echo "Fix link: $FIX_URL"
 
       - name: Checkout code
         if: steps.extract-bug.outputs.bug_id != ''
@@ -54,4 +78,5 @@ jobs:
           LANDER_LP_ACCESS_TOKEN_SECRET: ${{ secrets.LANDER_LP_ACCESS_TOKEN_SECRET }}
           BUG_ID: ${{ steps.extract-bug.outputs.bug_id }}
           BRANCH: ${{ github.ref_name }}
+          FIX_URL: ${{ steps.fix-link.outputs.fix_url }}
         run: python3 utilities/mark_lp_bug_fix_committed.py
