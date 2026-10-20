@@ -12,7 +12,6 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 
 def make_script(name: str = "test-script", **extra_details: Any) -> Script:
-    """Build a Script model without storing it in the database."""
     script = {
         "id": 1,
         "name": name,
