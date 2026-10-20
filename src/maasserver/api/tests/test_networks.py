@@ -88,7 +88,7 @@ class TestNetworksAPI(APITestCase.ForUser):
         )
         self.assertEqual([], json_load_bytes(response.content))
 
-    def test_GET_sorts_by_name(self):
+    def test_GET_sorts_by_id(self):
         subnets = [
             factory.make_Subnet(name=factory.make_name("subnet").lower())
             for _ in range(3)
