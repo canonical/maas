@@ -4913,14 +4913,14 @@ CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
         CASE
             WHEN (count(selection_resources.resource_id) = 0) THEN 'Waiting for download'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Downloading'::text)) > 0) THEN 'Downloading'::text
-            WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Waiting for download'::text)) = count(*)) THEN 'Waiting for download'::text
+            WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Waiting for download'::text)) > 0) THEN 'Waiting for download'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Ready'::text)) = count(*)) THEN 'Ready'::text
             ELSE 'Waiting for download'::text
         END AS status,
         CASE
             WHEN (count(selection_resources.resource_id) = 0) THEN 'No updates available'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'Downloading'::text)) > 0) THEN 'Downloading'::text
-            WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'Waiting for download'::text)) = count(*)) THEN 'Waiting for download'::text
+            WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'Waiting for download'::text)) > 0) THEN 'Waiting for download'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'Update available'::text)) > 0) THEN 'Update available'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'No updates available'::text)) = count(*)) THEN 'No updates available'::text
             ELSE 'No updates available'::text

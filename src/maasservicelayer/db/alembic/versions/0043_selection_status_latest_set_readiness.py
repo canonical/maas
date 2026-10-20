@@ -128,14 +128,14 @@ def upgrade() -> None:
           CASE
             WHEN count(resource_id) = 0 THEN 'Waiting for download'
             WHEN count(*) FILTER (WHERE status = 'Downloading') > 0 THEN 'Downloading'
-            WHEN count(*) FILTER (WHERE status = 'Waiting for download') = count(*) THEN 'Waiting for download'
+            WHEN count(*) FILTER (WHERE status = 'Waiting for download') > 0 THEN 'Waiting for download'
             WHEN count(*) FILTER (WHERE status = 'Ready') = count(*) THEN 'Ready'
             ELSE 'Waiting for download'
           END AS status,
           CASE
             WHEN count(resource_id) = 0 THEN 'No updates available'
             WHEN count(*) FILTER (WHERE update_status = 'Downloading') > 0 THEN 'Downloading'
-            WHEN count(*) FILTER (WHERE update_status = 'Waiting for download') = count(*) THEN 'Waiting for download'
+            WHEN count(*) FILTER (WHERE update_status = 'Waiting for download') > 0 THEN 'Waiting for download'
             WHEN count(*) FILTER (WHERE update_status = 'Update available') > 0 THEN 'Update available'
             WHEN count(*) FILTER (WHERE update_status = 'No updates available') = count(*) THEN 'No updates available'
             ELSE 'No updates available'
