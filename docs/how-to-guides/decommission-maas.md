@@ -48,7 +48,14 @@ Revoke the credentials that give access to MAAS:
 
    ```bash
    snap list maas
+   # expected output when the removal is complete
+   error: no matching snaps installed
+   ```
+
+   ```bash
    ls /var/snap/maas/
+   # expected output when the removal is complete:
+   ls: cannot access '/var/snap/maas/': No such file or directory
    ```
 
 ## Delete data stored outside the controllers
