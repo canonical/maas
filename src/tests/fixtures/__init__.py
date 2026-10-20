@@ -63,9 +63,19 @@ class AsyncIteratorMock:
             raise StopAsyncIteration
 
 
+def create_services_mock() -> Mock:
+    services_mock = Mock(ServiceCollectionV3)
+    for (
+        service_name,
+        service_class,
+    ) in ServiceCollectionV3.__annotations__.items():
+        setattr(services_mock, service_name, Mock(service_class))
+    return services_mock
+
+
 @pytest.fixture
 def services_mock():
-    yield Mock(ServiceCollectionV3)
+    yield create_services_mock()
 
 
 @pytest.fixture

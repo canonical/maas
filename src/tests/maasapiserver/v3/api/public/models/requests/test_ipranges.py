@@ -23,12 +23,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.services import (
-    OpenFGATupleService,
-    ReservedIPsService,
-    ServiceCollectionV3,
-    V3SubnetUtilizationService,
-)
+from tests.fixtures import create_services_mock
 from tests.maasapiserver.fixtures.app import AsyncOpenFGAClientMock
 
 
@@ -163,15 +158,10 @@ class TestIPRangeCreateRequest:
                 iprange = IPRangeCreateRequest(
                     type=IPRangeType.RESERVED, start_ip=start_ip, end_ip=end_ip
                 )
-                await iprange.to_builder(
-                    subnet, user, Mock(ServiceCollectionV3)
-                )
+                await iprange.to_builder(subnet, user, create_services_mock())
             assert e.value.details[0].message == message
         else:
-            services_mock = Mock(ServiceCollectionV3)
-            services_mock.v3subnet_utilization = Mock(
-                V3SubnetUtilizationService
-            )
+            services_mock = create_services_mock()
             # Mock that the range being created is unused.
             services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.return_value = MAASIPSet(
                 ranges=[MAASIPRange(start=str(start_ip), end=str(end_ip))]
@@ -181,8 +171,7 @@ class TestIPRangeCreateRequest:
             ).to_builder(subnet, user, services_mock)
 
     async def test_reserved_range_user_with_owner(self):
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
+        services_mock = create_services_mock()
         services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.return_value = MAASIPSet(
             ranges=[MAASIPRange(start="10.0.0.1", end="10.0.0.2")]
         )
@@ -241,8 +230,7 @@ class TestIPRangeCreateRequest:
         should_raise: bool,
     ):
         user = AuthenticatedUser(id=0, username="test")
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
+        services_mock = create_services_mock()
         services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.return_value = MAASIPSet(
             ranges=[MAASIPRange(start="10.0.0.100", end="10.0.0.111")]
         )
@@ -267,8 +255,7 @@ class TestIPRangeCreateRequest:
 
     async def test_with_existing_iprange(self):
         user = AuthenticatedUser(id=0, username="test")
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
+        services_mock = create_services_mock()
         services_mock.v3subnet_utilization.get_ipranges_available_for_reserved_range.return_value = MAASIPSet(
             ranges=[MAASIPRange(start="10.0.0.100", end="10.0.0.111")]
         )
@@ -286,8 +273,7 @@ class TestIPRangeCreateRequest:
 
     async def test_dynamic_range_user_forbidden(self):
         user = AuthenticatedUser(id=0, username="test")
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock = create_services_mock()
         services_mock.openfga_tuples.get_client.return_value = (
             AsyncOpenFGAClientMock(None)
         )
@@ -302,12 +288,10 @@ class TestIPRangeCreateRequest:
             )
 
     async def test_dynamic_range_overlapping_reserved_ips(self):
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.reservedips = Mock(ReservedIPsService)
+        services_mock = create_services_mock()
         services_mock.reservedips.exists_within_subnet_iprange.return_value = (
             True
         )
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             AsyncOpenFGAClientMock(
                 MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
@@ -338,7 +322,7 @@ class TestIPRangeCreateRequest:
                 end_ip=IPv6Address("0:0:0:0:0:0:0:2"),
             )
             await iprange.to_builder(
-                self.TEST_IPV6_SUBNET, user, Mock(ServiceCollectionV3)
+                self.TEST_IPV6_SUBNET, user, create_services_mock()
             )
         assert (
             e.value.details[0].message
@@ -363,16 +347,13 @@ def _make_admin_services_mock(
     is_dynamic: bool = True,
 ) -> Mock:
     """Return a ServiceCollectionV3 mock where the caller is an admin."""
-    services_mock = Mock(ServiceCollectionV3)
-    services_mock.openfga_tuples = Mock(OpenFGATupleService)
+    services_mock = create_services_mock()
     services_mock.openfga_tuples.get_client.return_value = (
         AsyncOpenFGAClientMock(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
         )
     )
-    services_mock.reservedips = Mock(ReservedIPsService)
     services_mock.reservedips.exists_within_subnet_iprange.return_value = False
-    services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
     if is_dynamic:
         services_mock.v3subnet_utilization.get_ipranges_available_for_dynamic_range.return_value = unused
     else:
@@ -606,18 +587,15 @@ class TestIPRangeDynamicRangeCreateConflict:
                 MAASIPRange(start="10.0.0.31", end="10.0.0.254"),
             ]
         )
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
+        services_mock = create_services_mock()
         services_mock.openfga_tuples.get_client.return_value = (
             AsyncOpenFGAClientMock(
                 MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
             )
         )
-        services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.exists_within_subnet_iprange.return_value = (
             False
         )
-        services_mock.v3subnet_utilization = Mock(V3SubnetUtilizationService)
         services_mock.v3subnet_utilization.get_ipranges_available_for_dynamic_range.return_value = unused_split
 
         req = IPRangeCreateRequest(

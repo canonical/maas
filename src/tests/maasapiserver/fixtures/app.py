@@ -30,7 +30,7 @@ from maasapiserver.v3.middlewares.client_certificate import (
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db import Database
 from maasservicelayer.models.users import User
-from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
+from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.session_hash import get_session_auth_hash
 from tests.fixtures.factories.user import create_test_user
@@ -105,17 +105,17 @@ def create_internal_app_with_mocks(
 
 
 @pytest.fixture
-def app_with_mocked_services(services_mock: ServiceCollectionV3):
+def app_with_mocked_services(services_mock: Mock):
     yield create_app_with_mocks(services_mock)
 
 
 @pytest.fixture
-def app_with_mocked_services_user(services_mock: ServiceCollectionV3):
+def app_with_mocked_services_user(services_mock: Mock):
     yield create_app_with_mocks(services_mock, with_user=True)
 
 
 @pytest.fixture
-def internal_app_with_mocked_services(services_mock: ServiceCollectionV3):
+def internal_app_with_mocked_services(services_mock: Mock):
     yield create_internal_app_with_mocks(services_mock)
 
 
@@ -178,7 +178,7 @@ class AsyncOpenFGAClientMock:
 @pytest.fixture
 def mocked_api_client_user_with_permissions(
     mocked_api_client_user: AsyncClient,
-    services_mock: ServiceCollectionV3,
+    services_mock: Mock,
 ) -> Callable[..., AsyncClient]:
     """
     Returns a factory that grants the given OpenFGA permissions to the
@@ -196,7 +196,6 @@ def mocked_api_client_user_with_permissions(
     def _with_permissions(
         *permissions: MAASResourceEntitlement,
     ) -> AsyncClient:
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             AsyncOpenFGAClientMock(set(permissions))
         )

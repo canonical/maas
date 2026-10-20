@@ -35,10 +35,6 @@ from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.models.ui_subnets import UISubnet, UISubnetStatistics
 from maasservicelayer.models.vlans import Vlan
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.subnets import SubnetsService
-from maasservicelayer.services.ui_subnets import UISubnetsService
-from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -158,17 +154,15 @@ class TestSubnetApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.list.return_value = ListResult[Subnet](
             items=[TEST_SUBNET], total=1
         )
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.get_one.return_value = Mock(Vlan)
         response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -179,17 +173,15 @@ class TestSubnetApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.list.return_value = ListResult[Subnet](
             items=[TEST_SUBNET_2], total=2
         )
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.get_one.return_value = Mock(Vlan)
         response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
@@ -200,13 +192,12 @@ class TestSubnetApi(ApiCommonTests):
 
     async def test_list_vlan_not_in_fabric(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.exists.return_value = False
         response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 404
@@ -214,13 +205,12 @@ class TestSubnetApi(ApiCommonTests):
     # GET /subnets/{subnet_id}
     async def test_get_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = TEST_SUBNET
         response = await client.get(f"{self.BASE_PATH}/{TEST_SUBNET.id}")
         assert response.status_code == 200
@@ -244,13 +234,12 @@ class TestSubnetApi(ApiCommonTests):
 
     async def test_get_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = None
         response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
@@ -262,13 +251,12 @@ class TestSubnetApi(ApiCommonTests):
 
     async def test_get_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_by_id.side_effect = RequestValidationError(
             errors=[]
         )
@@ -282,15 +270,13 @@ class TestSubnetApi(ApiCommonTests):
 
     async def test_post_201(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.create.return_value = TEST_SUBNET_2
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.get_one.return_value = Vlan(
             id=1,
             vid=1,
@@ -314,14 +300,12 @@ class TestSubnetApi(ApiCommonTests):
 
     async def test_post_404_vlan_not_in_fabric(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.subnets = Mock(SubnetsService)
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.exists.return_value = False
         request = SubnetRequest(cidr=TEST_SUBNET_2.cidr)
         response = await client.post(
@@ -331,7 +315,7 @@ class TestSubnetApi(ApiCommonTests):
 
     async def test_put_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -339,9 +323,7 @@ class TestSubnetApi(ApiCommonTests):
         )
         modified_subnet = TEST_SUBNET_2
         modified_subnet.name = "modified"
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.update_one.return_value = modified_subnet
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.get_by_id.return_value = Vlan(
             id=1,
             vid=1,
@@ -364,7 +346,7 @@ class TestSubnetApi(ApiCommonTests):
 
     async def test_put_404_vlan_not_in_fabric(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -372,7 +354,6 @@ class TestSubnetApi(ApiCommonTests):
         )
         modified_subnet = TEST_SUBNET_2
         modified_subnet.name = "modified"
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.update_one.side_effect = NotFoundException()
         request = SubnetRequest(cidr=TEST_SUBNET_2.cidr, name="modified")
         response = await client.put(
@@ -382,26 +363,24 @@ class TestSubnetApi(ApiCommonTests):
 
     async def test_delete(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.delete_one.return_value = None
         response = await client.delete(f"{self.BASE_PATH}/1")
         assert response.status_code == 204
 
     async def test_delete_with_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.delete_one.side_effect = PreconditionFailedException(
             details=[
                 BaseExceptionDetail(
@@ -450,13 +429,12 @@ class TestUISubnetApi(ApiCommonTests):
 
     async def test_list_ui_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.ui_subnets = Mock(UISubnetsService)
         services_mock.ui_subnets.calculate_statistics_for_subnets.return_value = [
             TEST_UI_SUBNET
         ]
@@ -472,13 +450,12 @@ class TestUISubnetApi(ApiCommonTests):
 
     async def test_list_ui_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.ui_subnets = Mock(UISubnetsService)
         services_mock.ui_subnets.calculate_statistics_for_subnets.return_value = [
             TEST_UI_SUBNET
         ]
@@ -494,13 +471,12 @@ class TestUISubnetApi(ApiCommonTests):
 
     async def test_list_ui_with_filters(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.ui_subnets = Mock(UISubnetsService)
         services_mock.ui_subnets.calculate_statistics_for_subnets.return_value = [
             TEST_UI_SUBNET
         ]
@@ -528,26 +504,24 @@ class TestUISubnetApi(ApiCommonTests):
     )
     async def test_list_ui_with_filters_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         wrong_filter: str,
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.ui_subnets = Mock(UISubnetsService)
         response = await client.get(f"{self.BASE_PATH}?size=1&{wrong_filter}")
         assert response.status_code == 422
 
     async def test_ui_get(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.ui_subnets = Mock(UISubnetsService)
         services_mock.ui_subnets.calculate_statistics_for_subnet.return_value = TEST_UI_SUBNET
         services_mock.ui_subnets.get_by_id.return_value = TEST_UI_SUBNET
         response = await client.get(f"{self.BASE_PATH}/{TEST_UI_SUBNET.id}")
@@ -556,13 +530,12 @@ class TestUISubnetApi(ApiCommonTests):
 
     async def test_ui_get_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.ui_subnets = Mock(UISubnetsService)
         services_mock.ui_subnets.calculate_statistics_for_subnet.return_value = TEST_UI_SUBNET
         services_mock.ui_subnets.get_by_id.return_value = None
         response = await client.get(f"{self.BASE_PATH}/100")

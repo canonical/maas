@@ -48,10 +48,6 @@ from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.models.operations import Operation
-from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
-from maasservicelayer.services.bootresources import BootResourceService
-from maasservicelayer.services.machines import MachinesService
-from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -211,7 +207,13 @@ class TestMachinesApi(ApiCommonTests):
         ]
 
     @pytest.fixture
-    def endpoints_with_authentication_only(self) -> list[Endpoint]:
+    def endpoints_with_authentication_only(
+        self, services_mock: Mock
+    ) -> list[Endpoint]:
+        fga_client = services_mock.openfga_tuples.get_client.return_value
+        fga_client.list_pools_with_view_machines_access.return_value = []
+        fga_client.list_pools_with_view_available_machines_access.return_value = []
+        services_mock.machines.get_one.return_value = None
         return [
             Endpoint(
                 method="GET",
@@ -224,7 +226,7 @@ class TestMachinesApi(ApiCommonTests):
         ]
 
     async def test_list_other_page(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+        self, services_mock: Mock, mocked_api_client_user
     ) -> None:
         openfga_client_mock = AsyncMock(OpenFGAClient)
         openfga_client_mock.list_pools_with_view_machines_access.return_value = []
@@ -232,12 +234,10 @@ class TestMachinesApi(ApiCommonTests):
             TEST_MACHINE_2.id,
         ]
 
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             openfga_client_mock
         )
 
-        services_mock.machines = Mock(MachinesService)
         services_mock.machines.list.return_value = ListResult[Machine](
             items=[TEST_MACHINE_2], total=2
         )
@@ -249,7 +249,7 @@ class TestMachinesApi(ApiCommonTests):
         assert machines_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_no_other_page(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+        self, services_mock: Mock, mocked_api_client_user
     ) -> None:
         openfga_client_mock = AsyncMock(OpenFGAClient)
         openfga_client_mock.list_pools_with_view_machines_access.return_value = []
@@ -258,12 +258,10 @@ class TestMachinesApi(ApiCommonTests):
             TEST_MACHINE.id,
         ]
 
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             openfga_client_mock
         )
 
-        services_mock.machines = Mock(MachinesService)
         services_mock.machines.list.return_value = ListResult[Machine](
             items=[TEST_MACHINE_2, TEST_MACHINE], total=2
         )
@@ -275,7 +273,7 @@ class TestMachinesApi(ApiCommonTests):
         assert machines_response.next is None
 
     async def test_list_user_perms(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+        self, services_mock: Mock, mocked_api_client_user
     ) -> None:
         openfga_client_mock = AsyncMock(OpenFGAClient)
         openfga_client_mock.list_pools_with_view_machines_access.return_value = [
@@ -285,12 +283,10 @@ class TestMachinesApi(ApiCommonTests):
             TEST_MACHINE.id
         ]
 
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             openfga_client_mock
         )
 
-        services_mock.machines = Mock(MachinesService)
         services_mock.machines.list.return_value = ListResult[Machine](
             items=[TEST_MACHINE], total=1
         )
@@ -329,13 +325,12 @@ class TestMachinesApi(ApiCommonTests):
 
     async def test_get_machine_power_parameters(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_MACHINES,
         )
-        services_mock.machines = Mock(MachinesService)
         services_mock.machines.get_bmc.return_value = TEST_BMC
         response = await client.get(f"{self.BASE_PATH}/1/power_parameters")
         assert response.status_code == 200
@@ -347,13 +342,12 @@ class TestMachinesApi(ApiCommonTests):
 
     async def test_get_machine_power_parameters_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_MACHINES,
         )
-        services_mock.machines = Mock(MachinesService)
         services_mock.machines.get_bmc.return_value = None
         response = await client.get(f"{self.BASE_PATH}/1/power_parameters")
         assert response.status_code == 404
@@ -363,7 +357,7 @@ class TestMachinesApi(ApiCommonTests):
 
     def _mock_commission_services(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         machine: Machine,
         can_edit: bool = True,
     ) -> AsyncMock:
@@ -372,15 +366,11 @@ class TestMachinesApi(ApiCommonTests):
         # OpenFGA itself deals with determining if a user has global or pool-specific permissions.
         # Here we just mock the response.
         openfga_client_mock.can_edit_machines_in_pool.return_value = can_edit
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             openfga_client_mock
         )
-        services_mock.machines = Mock(MachinesService)
         services_mock.machines.get_one.return_value = machine
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.has_commissioning_resource.return_value = True
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.has_active_operation_for_resource.return_value = False
         services_mock.operations.create_accepted_operation.return_value = (
             TEST_COMMISSION_OPERATION
@@ -389,7 +379,7 @@ class TestMachinesApi(ApiCommonTests):
 
     async def test_commission_machine_without_body_uses_defaults(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         self._mock_commission_services(services_mock, TEST_MACHINE)
@@ -409,7 +399,7 @@ class TestMachinesApi(ApiCommonTests):
 
     async def test_commission_machine_in_pool(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         machine = TEST_MACHINE.model_copy(update={"pool_id": 5})
@@ -430,7 +420,7 @@ class TestMachinesApi(ApiCommonTests):
 
     async def test_commission_machine_403_without_edit_permission(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         machine = TEST_MACHINE.model_copy(update={"pool_id": 5})
@@ -450,7 +440,7 @@ class TestMachinesApi(ApiCommonTests):
 
     async def test_commission_machine_409_locked(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         machine = TEST_MACHINE.model_copy(update={"locked": True})
@@ -467,7 +457,7 @@ class TestMachinesApi(ApiCommonTests):
 
     async def test_commission_machine_404_unknown_machine(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         self._mock_commission_services(services_mock, TEST_MACHINE)
@@ -495,7 +485,7 @@ class TestMachinesApi(ApiCommonTests):
     )
     async def test_commission_machine_409_status_not_commissionable(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
         status: NodeStatus,
     ) -> None:
@@ -516,7 +506,7 @@ class TestMachinesApi(ApiCommonTests):
 
     async def test_commission_machine_409_active_operation(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         self._mock_commission_services(services_mock, TEST_MACHINE)
@@ -540,7 +530,7 @@ class TestMachinesApi(ApiCommonTests):
 
     async def test_commission_machine_409_no_power_type(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         machine = TEST_MACHINE.model_copy(update={"power_type": None})
@@ -559,7 +549,7 @@ class TestMachinesApi(ApiCommonTests):
 
     async def test_commission_machine_409_boot_resource_unavailable(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         self._mock_commission_services(services_mock, TEST_MACHINE)
@@ -582,7 +572,7 @@ class TestMachinesApi(ApiCommonTests):
 
     async def test_commission_machine_409_no_architecture(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         machine = TEST_MACHINE.model_copy(update={"architecture": None})
@@ -617,13 +607,12 @@ class TestUsbDevicesApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_MACHINES,
         )
-        services_mock.machines = Mock(MachinesService)
         services_mock.machines.list_machine_usb_devices.return_value = (
             ListResult[UsbDevice](
                 items=[TEST_USB_DEVICE_2],
@@ -639,13 +628,12 @@ class TestUsbDevicesApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_MACHINES,
         )
-        services_mock.machines = Mock(MachinesService)
         services_mock.machines.list_machine_usb_devices.return_value = (
             ListResult[UsbDevice](
                 items=[TEST_USB_DEVICE_2, TEST_USB_DEVICE], total=2
@@ -674,13 +662,12 @@ class TestPciDevicesApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_MACHINES,
         )
-        services_mock.machines = Mock(MachinesService)
         services_mock.machines.list_machine_pci_devices.return_value = (
             ListResult[PciDevice](items=[TEST_PCI_DEVICE_2], total=2)
         )
@@ -693,13 +680,12 @@ class TestPciDevicesApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_MACHINES,
         )
-        services_mock.machines = Mock(MachinesService)
         services_mock.machines.list_machine_pci_devices.return_value = (
             ListResult[PciDevice](
                 items=[TEST_PCI_DEVICE_2, TEST_PCI_DEVICE], total=2

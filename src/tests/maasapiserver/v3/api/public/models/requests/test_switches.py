@@ -1,6 +1,7 @@
 #  Copyright 2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+
 from unittest.mock import Mock
 
 import pytest
@@ -13,8 +14,6 @@ from maasapiserver.v3.api.public.models.requests.switches import (
 from maascommon.enums.boot_resources import BootResourceType
 from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.bootresources import BootResource
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.bootresources import BootResourceService
 
 
 def _boot_resource(id: int, name: str) -> BootResource:
@@ -32,19 +31,16 @@ def _boot_resource(id: int, name: str) -> BootResource:
 @pytest.mark.asyncio
 class TestResolveImageId:
     async def test_returns_none_when_image_is_none(
-        self, services_mock: ServiceCollectionV3
+        self, services_mock: Mock
     ) -> None:
-        services_mock.boot_resources = Mock(BootResourceService)
-
         image_id = await resolve_image_id(None, services_mock)
 
         assert image_id is None
         services_mock.boot_resources.get_one.assert_not_called()
 
     async def test_returns_boot_resource_id_for_full_onie_name(
-        self, services_mock: ServiceCollectionV3
+        self, services_mock: Mock
     ) -> None:
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = _boot_resource(
             10, "onie/mellanox-3.8.0"
         )
@@ -55,9 +51,8 @@ class TestResolveImageId:
         services_mock.boot_resources.get_one.assert_called_once()
 
     async def test_raises_when_full_name_resolves_to_non_onie_image(
-        self, services_mock: ServiceCollectionV3
+        self, services_mock: Mock
     ) -> None:
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = _boot_resource(
             11, "ubuntu/noble"
         )
@@ -72,9 +67,8 @@ class TestResolveImageId:
         services_mock.boot_resources.get_one.assert_called_once()
 
     async def test_resolves_short_name_with_onie_prefix_fallback(
-        self, services_mock: ServiceCollectionV3
+        self, services_mock: Mock
     ) -> None:
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.side_effect = [
             None,
             _boot_resource(12, "onie/dellos10"),
@@ -86,9 +80,8 @@ class TestResolveImageId:
         assert services_mock.boot_resources.get_one.call_count == 2
 
     async def test_raises_when_short_name_not_found(
-        self, services_mock: ServiceCollectionV3
+        self, services_mock: Mock
     ) -> None:
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.side_effect = [None, None]
 
         with pytest.raises(ValidationException) as exc:
@@ -104,9 +97,8 @@ class TestResolveImageId:
         assert services_mock.boot_resources.get_one.call_count == 2
 
     async def test_raises_when_full_name_not_found(
-        self, services_mock: ServiceCollectionV3
+        self, services_mock: Mock
     ) -> None:
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = None
 
         with pytest.raises(ValidationException) as exc:
@@ -125,9 +117,8 @@ class TestResolveImageId:
 @pytest.mark.asyncio
 class TestSwitchRequestBuilders:
     async def test_switch_request_to_builder_includes_name(
-        self, services_mock: ServiceCollectionV3
+        self, services_mock: Mock
     ) -> None:
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = None
 
         request = SwitchRequest(
@@ -142,9 +133,8 @@ class TestSwitchRequestBuilders:
         assert builder.target_image_id is None
 
     async def test_switch_update_request_to_builder_includes_name(
-        self, services_mock: ServiceCollectionV3
+        self, services_mock: Mock
     ) -> None:
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = None
 
         request = SwitchUpdateRequest(name="leaf-02", image=None)
