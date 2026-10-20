@@ -99,7 +99,10 @@ class TestNetworksAPI(APITestCase.ForUser):
         )
 
         self.assertEqual(
-            sorted(convert_to_network_name(subnet) for subnet in subnets),
+            [
+                convert_to_network_name(subnet)
+                for subnet in sorted(subnets, key=lambda subnet: subnet.id)
+            ],
             [network["name"] for network in json_load_bytes(response.content)],
         )
 
