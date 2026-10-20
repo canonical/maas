@@ -20,9 +20,9 @@ jobs:
         env:
           GITHUB_EVENT_JSON: ${{ toJson(github.event) }}
         run: |
+          CLOSING_KEYWORDS='close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved'
           while IFS=$'\t' read -r commit_sha commit_message; do
-            BUG_ID=$(grep -oiP '\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\b.*lp:\s*#\K[0-9]+' \
-              <<< "$commit_message" | head -1 || true)
+            BUG_ID=$(grep -oiP "\b(?:$CLOSING_KEYWORDS)\b.*lp:\s*#\K[0-9]+" <<< "$commit_message" | head -1 || true)
             if [ -n "$BUG_ID" ]; then
               break
             fi
