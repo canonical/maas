@@ -11,6 +11,33 @@ from maasservicelayer.models.script import Script
 from tests.maasapiserver.fixtures.db import Fixture
 
 
+def make_script(name: str = "test-script", **extra_details: Any) -> Script:
+    """Build a Script model without storing it in the database."""
+    script = {
+        "id": 1,
+        "name": name,
+        "title": name,
+        "description": "",
+        "tags": [],
+        "script_type": ScriptType.COMMISSIONING,
+        "timeout": timedelta(),
+        "destructive": False,
+        "default": False,
+        "script_id": 1,
+        "hardware_type": HardwareDeviceTypeEnum.NODE,
+        "packages": {},
+        "parallel": ScriptParallel.DISABLED,
+        "parameters": {},
+        "results": {},
+        "for_hardware": [],
+        "may_reboot": False,
+        "recommission": False,
+        "apply_configured_networking": False,
+    }
+    script.update(extra_details)
+    return Script(**script)
+
+
 async def create_test_versionedtextfile_entry(
     fixture: Fixture,
     **extra_details: Any,
