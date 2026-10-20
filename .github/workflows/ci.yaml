@@ -168,10 +168,11 @@ jobs:
           PR_BODY="$PR_BODY_ENV"
 
           # Same keywords as the lp-bug-update workflow.
-          if grep -qiP '\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\b.*LP:\s*' <<< "$PR_BODY"; then
-            if ! grep -qiP '\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\b.*LP:\s*\K[0-9]+' <<< "$PR_BODY"; then
+          CLOSING_KEYWORDS='close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved'
+          if grep -qiP "\b(?:$CLOSING_KEYWORDS)\b.*lp:" <<< "$PR_BODY"; then
+            if ! grep -qiP "\b(?:$CLOSING_KEYWORDS)\b.*lp:\s*#[0-9]+" <<< "$PR_BODY"; then
               echo "Error: PR description contains a closing keyword but no valid Launchpad bug reference."
-              echo "Expected syntax for Launchpad bug reference is LP:<number>."
+              echo "Expected syntax for Launchpad bug reference is LP: #<number>."
               exit 1
             fi
 
