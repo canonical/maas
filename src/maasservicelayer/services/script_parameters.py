@@ -291,6 +291,9 @@ def _default_for(
         # A placeholder until commissioning discovers the devices.
         default = param.get("default", "all")
     elif param_type == "runtime":
+        # The legacy ParametersForm used `timeout.seconds`, which drops whole
+        # days, so a timeout of a day or more gave a shorter runtime. The
+        # full timeout is used instead.
         default = param.get("default", int(script.timeout.total_seconds()))
         # Schema defaults are strings, so only the timeout is a valid one.
         return default if _is_int(default) else _NOT_GIVEN
