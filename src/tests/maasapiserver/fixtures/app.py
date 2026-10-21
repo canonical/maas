@@ -167,11 +167,6 @@ class AsyncOpenFGAClientMock(OpenFGAClient):
         self._permissions = permissions or set()
         self._permissions_on_pools = permissions_on_pools or {}
 
-    async def has_permission_on_maas(
-        self, permission: MAASResourceEntitlement, user_id: int
-    ) -> bool:
-        return permission in self._permissions
-
     def _unformat_pool(self, obj: str) -> int:
         return int(obj.removeprefix(f"{OpenFGAEntitlementResourceType.POOL}:"))
 
