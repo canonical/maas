@@ -106,6 +106,7 @@ Protect your MAAS controllers and the machines they manage. Learn how to configu
 * [Adopt FIPS mode on an existing deployment](/how-to-guides/adopt-fips-on-an-existing-deployment.md)
 * [Manage trusted SSH host keys](/how-to-guides/manage-trusted-ssh-host-keys.md)
 * [Deploy a FIPS kernel](/how-to-guides/deploy-a-fips-kernel.md)
+* [Decommission MAAS](/how-to-guides/decommission-maas.md)
 
 ## Scale and optimize
 
@@ -157,6 +158,7 @@ adopt-fips-on-an-existing-deployment
 manage-trusted-ssh-host-keys
 deploy-a-real-time-kernel
 deploy-a-fips-kernel
+decommission-maas
 deploy-dgx-machines
 set-up-air-gapped-maas
 script-maas-with-python
