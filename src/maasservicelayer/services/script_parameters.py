@@ -252,8 +252,6 @@ def _given_value(param_type: str, value: Any) -> tuple[Any, str | None]:
             # The legacy API dropped a runtime of 0, so the default applies.
             if _is_int(value) and value == 0:
                 return _NOT_GIVEN, None
-            if isinstance(value, str) and value.isdecimal() and not int(value):
-                return _NOT_GIVEN, None
     return value, None
 
 
@@ -324,11 +322,7 @@ def _set_up_input(
 
 def _runtime_errors(param: dict[str, Any]) -> list[str]:
     value = param["value"]
-    if isinstance(value, str):
-        if not value.isdecimal():
-            return ["Must be an int"]
-        value = int(value)
-    elif not _is_int(value):
+    if not _is_int(value):
         return ["Must be an int"]
     min_value = param.get("min")
     if min_value is None:
