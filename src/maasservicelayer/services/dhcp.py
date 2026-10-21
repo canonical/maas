@@ -203,7 +203,6 @@ class DHCPService(Service):
                 order_by=[OrderByClause(IPRangeTable.c.id)],
             )
         )
-        ipranges.sort(key=lambda iprange: iprange.id)
         dynamic_counts = {subnet.id: 0 for subnet in subnets}
         for iprange in ipranges:
             if iprange.type == IPRangeType.DYNAMIC:
@@ -269,7 +268,7 @@ class DHCPService(Service):
             )
         )
         subnet_ids = {subnet.id for subnet in subnets}
-        default_dns_servers = list(
+        default_dns_ntp_servers = list(
             dict.fromkeys(
                 str(ip.ip)
                 for ip in rack_ips
@@ -306,10 +305,12 @@ class DHCPService(Service):
                     id=iface.id, vlan_id=iface.vlan_id, name=iface.name
                 )
             next_server = self._get_next_server(subnet, ips)
+            primary_system_id = system_id
             secondary_system_id = None
             peer_rack_id = None
             if dhcp_vlan.secondary_rack_id is not None:
                 ha = await self._get_ha_config(subnet, dhcp_vlan, cache)
+                primary_system_id = ha.primary_rack_system_id
                 secondary_system_id = ha.secondary_rack_system_id
                 ha_data[ha] = None
                 peer_rack_id = (
@@ -317,19 +318,11 @@ class DHCPService(Service):
                     if dhcp_vlan.primary_rack_id == rack.id
                     else dhcp_vlan.primary_rack_id
                 )
-                if peer_rack_id is None:
-                    raise ValidationException.build_for_field(
-                        "system_id",
-                        f"VLAN {dhcp_vlan.id} has incomplete HA rack "
-                        "configuration.",
-                    )
+                # guaranteed to not be None by _get_ha_config above
+                assert peer_rack_id is not None
                 if peer_rack_id not in peer_ntp_by_rack:
                     peer_rack = await self._cached_node(cache, peer_rack_id)
-                    if peer_rack is None:
-                        raise ValidationException.build_for_field(
-                            "system_id",
-                            f"VLAN {dhcp_vlan.id} has a missing HA peer rack.",
-                        )
+                    assert peer_rack is not None
                     peer_ntp_by_rack[
                         peer_rack_id
                     ] = await self._get_ntp_servers_for_rack(peer_rack, cache)
@@ -353,7 +346,7 @@ class DHCPService(Service):
             subnet_data.append(
                 SubnetData(
                     id=subnet.id,
-                    rack_system_id=system_id,
+                    rack_system_id=primary_system_id,
                     secondary_rack_system_id=secondary_system_id,
                     ip_version=subnet.cidr.version,
                     cidr=str(subnet.cidr),
@@ -406,16 +399,10 @@ class DHCPService(Service):
             interfaces=sorted(
                 dhcp_interfaces.values(), key=lambda iface: iface.name
             ),
-            default_dns_servers=default_dns_servers,
+            default_dns_servers=default_dns_ntp_servers,
             ntp_servers=external_ntp
             if external_only
-            else list(
-                dict.fromkeys(
-                    str(ip.ip)
-                    for ip in rack_ips
-                    if ip.ip is not None and ip.subnet_id in subnet_ids
-                )
-            ),
+            else default_dns_ntp_servers,
             ha_data=list(ha_data),
         )
 
@@ -469,16 +456,18 @@ class DHCPService(Service):
             )
         return cache.vlan_by_id[vlan_id]
 
-    async def _cached_ips_for_interface(
-        self, cache: _DHCPQueryCache, interface_id: int
-    ) -> list[StaticIPAddress]:
-        if interface_id not in cache.ips_by_interface:
+    async def _cache_ips_for_interfaces(
+        self, cache: _DHCPQueryCache, interface_ids: list[int]
+    ) -> None:
+        missing = set(interface_ids) - set(cache.ips_by_interface.keys())
+        # unfortunately we can't bulk query since the returned StaticIPAddress
+        # objects have no interface_id field
+        for interface_id in missing:
             cache.ips_by_interface[
                 interface_id
             ] = await self.staticipaddress_service.get_for_interfaces(
                 [interface_id]
             )
-        return cache.ips_by_interface[interface_id]
 
     async def _cached_dynamic_range_count(
         self, cache: _DHCPQueryCache, subnet_id: int
@@ -528,8 +517,10 @@ class DHCPService(Service):
         discovered_interfaces: list[
             tuple[Interface, list[StaticIPAddress], int]
         ] = []
-        for interface in sorted(interfaces, key=lambda item: item.created):
-            ips = await self._cached_ips_for_interface(cache, interface.id)
+        interfaces = sorted(interfaces, key=lambda item: item.created)
+        await self._cache_ips_for_interfaces(cache, [i.id for i in interfaces])
+        for interface in interfaces:
+            ips = cache.ips_by_interface.get(interface.id, [])
             static_match = False
             discovered_match = False
             dynamic_count = 0
@@ -574,9 +565,7 @@ class DHCPService(Service):
                 best_interface = interface
         if best_interface is None:
             return None, []
-        best_ips = await self._cached_ips_for_interface(
-            cache, best_interface.id
-        )
+        best_ips = cache.ips_by_interface[best_interface.id]
         return best_interface, sorted(
             [
                 ip
