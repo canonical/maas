@@ -332,8 +332,8 @@ class TestDHCPService:
             subnet_id=1,
         )
         dhcp.ipranges_service.get_many.return_value = [
-            dynamic_range,
             reserved_range,
+            dynamic_range,
         ]
 
         result = await dhcp.get_kea_dhcp_data_for_agent("rack-1")
