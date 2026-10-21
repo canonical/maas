@@ -18,15 +18,14 @@ DEFAULT_TESTING_TAG = "commissioning"
 NOAUTO_TAG = "noauto"
 
 
-def _selected_by(names_tags_or_ids: list[str]) -> Clause:
-    ids = [int(item) for item in names_tags_or_ids if item.isdecimal()]
-    clauses = [
-        ScriptsClauseFactory.with_names(names_tags_or_ids),
-        ScriptsClauseFactory.with_tags_overlap(names_tags_or_ids),
-    ]
-    if ids:
-        clauses.append(ScriptsClauseFactory.with_ids(ids))
-    return ScriptsClauseFactory.or_clauses(clauses)
+def _selected_by(names_or_tags: list[str]) -> Clause:
+    # Like the v2 API, scripts are selected by name or tag, not by id.
+    return ScriptsClauseFactory.or_clauses(
+        [
+            ScriptsClauseFactory.with_names(names_or_tags),
+            ScriptsClauseFactory.with_tags_overlap(names_or_tags),
+        ]
+    )
 
 
 def get_unmatched_selection(
@@ -35,17 +34,13 @@ def get_unmatched_selection(
     if not selection:
         return []
     names_and_tags = set()
-    ids = set()
     for script in scripts:
         names_and_tags.add(script.name)
         names_and_tags.update(script.tags or [])
-        ids.add(script.id)
     return [
         item
         for item in selection
-        if item != NO_USER_SCRIPTS
-        and item not in names_and_tags
-        and not (item.isdecimal() and int(item) in ids)
+        if item != NO_USER_SCRIPTS and item not in names_and_tags
     ]
 
 

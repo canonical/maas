@@ -32,7 +32,7 @@ class MachineCommissionRequest(BaseModel):
     )
     commissioning_scripts: list[str] | None = Field(
         default=None,
-        description="List of names, tags or IDs of commissioning scripts to "
+        description="List of names or tags of commissioning scripts to "
         "run. By default all commissioning scripts are run, except those "
         "tagged 'noauto' or restricted to specific hardware. Built-in "
         "commissioning scripts always run. Scripts restricted to specific "
@@ -41,7 +41,7 @@ class MachineCommissionRequest(BaseModel):
     )
     testing_scripts: list[str] | None = Field(
         default=None,
-        description="List of names, tags or IDs of testing scripts to run after "
+        description="List of names or tags of testing scripts to run after "
         "commissioning. By default all tests tagged 'commissioning' are run. "
         "Use 'none' on its own to disable running tests.",
     )
