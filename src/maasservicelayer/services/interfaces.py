@@ -79,6 +79,9 @@ class InterfacesService(
     async def get_interfaces_for_mac(self, mac: str) -> List[Interface]:
         return await self.interface_repository.get_interfaces_for_mac(mac)
 
+    async def get_parents(self, interface_id: int) -> list[Interface]:
+        return await self.repository.get_parents(interface_id)
+
     async def get_interfaces_in_fabric(
         self, fabric_id: int
     ) -> List[Interface]:
@@ -256,6 +259,13 @@ class InterfacesService(
 
     async def get_for_ip(self, sip: StaticIPAddress) -> list[Interface] | None:
         return await self.repository.get_for_ip(ip_id=sip.id)
+
+    async def get_for_ips(
+        self, sips: list[StaticIPAddress]
+    ) -> dict[int, list[Interface]]:
+        return await self.repository.get_for_ips(
+            ip_ids=[sip.id for sip in sips]
+        )
 
     async def create_switch_interface(
         self, switch_id: int, mac: str, name: str = "mgmt0"
