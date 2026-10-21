@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
+from typing import Annotated
 
 from fastapi import Depends, Response
 from OpenSSL import crypto
@@ -195,7 +196,7 @@ class AgentHandler(Handler):
         )
 
     @handler(
-        path="/agents/{system_id}/dhcp-data",
+        path="/agents/{system_id}/dhcp_data",
         methods=["GET"],
         responses={
             200: {"model": AgentDHCPDataResponse},
@@ -207,7 +208,7 @@ class AgentHandler(Handler):
     async def get_agent_dhcp_data(
         self,
         system_id: str,
-        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+        services: Annotated[ServiceCollectionV3, Depends(services)],
     ) -> AgentDHCPDataResponse:
         dhcp_data = await services.dhcp.get_kea_dhcp_data_for_agent(system_id)
         return AgentDHCPDataResponse.from_model(
