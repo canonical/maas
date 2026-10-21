@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import AsyncIterator, Awaitable, Callable, Iterator
+from typing import AsyncIterator, Awaitable, Callable, Iterator, override
 from unittest.mock import Mock
 
 from aioresponses import aioresponses
@@ -27,7 +27,12 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.client_certificate import (
     RequireClientCertMiddleware,
 )
-from maascommon.openfga.base import MAASResourceEntitlement
+from maascommon.openfga.async_client import OpenFGAClient
+from maascommon.openfga.base import (
+    MAASResourceEntitlement,
+    OpenFGAEntitlementResourceType,
+    PoolResourceEntitlements,
+)
 from maasservicelayer.db import Database
 from maasservicelayer.models.users import User
 from maasservicelayer.services import ServiceCollectionV3
@@ -152,27 +157,40 @@ async def mocked_api_client_user(
         yield client
 
 
-class AsyncOpenFGAClientMock:
+class AsyncOpenFGAClientMock(OpenFGAClient):
     def __init__(
         self,
         permissions: set[MAASResourceEntitlement] | None = None,
+        permissions_on_pools: dict[PoolResourceEntitlements, list[int]]
+        | None = None,
     ):
         self._permissions = permissions or set()
+        self._permissions_on_pools = permissions_on_pools or {}
 
     async def has_permission_on_maas(
         self, permission: MAASResourceEntitlement, user_id: int
     ) -> bool:
         return permission in self._permissions
 
-    def __getattr__(self, item):
-        """Mock the OpenFGA client methods for checking permissions."""
-        if item == "has_permission_on_maas":
-            return self.has_permission_on_maas
+    def _unformat_pool(self, obj: str) -> int:
+        return int(obj.removeprefix(f"{OpenFGAEntitlementResourceType.POOL}:"))
 
-        async def _has_permission(*args, **kwargs) -> bool:
-            return item in self._permissions
+    @override
+    async def _check(self, user_id: int, relation: str, obj: str) -> bool:
+        if obj.startswith(OpenFGAEntitlementResourceType.POOL):
+            pool_id = self._unformat_pool(obj)
+            return pool_id in self._permissions_on_pools.get(
+                PoolResourceEntitlements(relation), []
+            )
+        return relation in self._permissions
 
-        return _has_permission
+    @override
+    async def _list_objects(
+        self, user_id: int, relation: str, obj_type: str
+    ) -> list[int]:
+        return self._permissions_on_pools.get(
+            PoolResourceEntitlements(relation), []
+        )
 
 
 @pytest.fixture
@@ -195,9 +213,11 @@ def mocked_api_client_user_with_permissions(
 
     def _with_permissions(
         *permissions: MAASResourceEntitlement,
+        permissions_on_pools: dict[PoolResourceEntitlements, list[int]]
+        | None = None,
     ) -> AsyncClient:
         services_mock.openfga_tuples.get_client.return_value = (
-            AsyncOpenFGAClientMock(set(permissions))
+            AsyncOpenFGAClientMock(set(permissions), permissions_on_pools)
         )
         return mocked_api_client_user
 

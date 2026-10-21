@@ -104,6 +104,8 @@ class MachinesHandler(Handler):
     ) -> MachinesListResponse:
         # The user can view all the machines in the visible pools and all the machines owned by them or unassigned in the view_available pools. For the way the OpenFGA model is designed, list_pools_with_view_available_machines_access will return all the pools with edit/deploy/view-all/view access.
         fga_client = services.openfga_tuples.get_client()
+        print(services.openfga_tuples.get_client)
+        print(fga_client, type(fga_client))
         view_access_pools = (
             await fga_client.list_pools_with_view_machines_access(
                 authenticated_user.id
@@ -114,6 +116,7 @@ class MachinesHandler(Handler):
                 authenticated_user.id
             )
         )
+        print(type(view_access_pools), type(available_access_pools))
         where_clause = MachineClauseFactory.or_clauses(
             [
                 MachineClauseFactory.with_resource_pool_ids(

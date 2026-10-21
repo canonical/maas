@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Callable
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -20,8 +20,10 @@ from maasapiserver.v3.api.public.models.responses.resource_pools import (
     ResourcePoolStatisticsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maascommon.openfga.async_client import OpenFGAClient
-from maascommon.openfga.base import MAASResourceEntitlement
+from maascommon.openfga.base import (
+    MAASResourceEntitlement,
+    PoolResourceEntitlements,
+)
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolClauseFactory,
@@ -86,18 +88,11 @@ class TestResourcePoolApi(ApiCommonTests):
         ]
 
     @pytest.fixture
-    def endpoints_with_authentication_only(
-        self, services_mock: Mock
-    ) -> list[Endpoint]:
-        services_mock.resource_pools.get_by_id.return_value = None
+    def endpoints_with_authentication_only(self) -> list[Endpoint]:
         return [
             Endpoint(
                 method="GET",
                 path=self.BASE_PATH,
-            ),
-            Endpoint(
-                method="GET",
-                path=f"{self.BASE_PATH}/1",
             ),
             Endpoint(
                 method="GET",
@@ -106,19 +101,21 @@ class TestResourcePoolApi(ApiCommonTests):
         ]
 
     async def test_list_no_other_page(
-        self, services_mock: Mock, mocked_api_client_user
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
-        openfga_client_mock = AsyncMock(OpenFGAClient)
-        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
-            TEST_RESOURCE_POOL.id
-        ]
-        services_mock.openfga_tuples.get_client.return_value = (
-            openfga_client_mock
+        client = mocked_api_client_user_with_permissions(
+            permissions_on_pools={
+                PoolResourceEntitlements.CAN_VIEW_AVAILABLE_MACHINES: [
+                    TEST_RESOURCE_POOL.id
+                ],
+            }
         )
         services_mock.resource_pools.list.return_value = ListResult[
             ResourcePool
         ](items=[TEST_RESOURCE_POOL], total=1)
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         resource_pools_response = ResourcePoolsListResponse(**response.json())
         assert len(resource_pools_response.items) == 1
@@ -126,14 +123,16 @@ class TestResourcePoolApi(ApiCommonTests):
         assert resource_pools_response.next is None
 
     async def test_list_other_page(
-        self, services_mock: Mock, mocked_api_client_user
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
-        openfga_client_mock = AsyncMock(OpenFGAClient)
-        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
-            TEST_RESOURCE_POOL_2.id
-        ]
-        services_mock.openfga_tuples.get_client.return_value = (
-            openfga_client_mock
+        client = mocked_api_client_user_with_permissions(
+            permissions_on_pools={
+                PoolResourceEntitlements.CAN_VIEW_AVAILABLE_MACHINES: [
+                    TEST_RESOURCE_POOL_2.id
+                ],
+            }
         )
         services_mock.resource_pools.list.return_value = ListResult[
             ResourcePool
@@ -141,7 +140,7 @@ class TestResourcePoolApi(ApiCommonTests):
             items=[TEST_RESOURCE_POOL_2],
             total=2,
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         resource_pools_response = ResourcePoolsListResponse(**response.json())
         assert len(resource_pools_response.items) == 1
@@ -151,17 +150,21 @@ class TestResourcePoolApi(ApiCommonTests):
         )
 
     async def test_get_200(
-        self, services_mock: Mock, mocked_api_client_user
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
-        openfga_client_mock = AsyncMock(OpenFGAClient)
-        openfga_client_mock.can_view_available_machines_in_pool.return_value = True
-        services_mock.openfga_tuples.get_client.return_value = (
-            openfga_client_mock
+        client = mocked_api_client_user_with_permissions(
+            permissions_on_pools={
+                PoolResourceEntitlements.CAN_VIEW_AVAILABLE_MACHINES: [
+                    TEST_RESOURCE_POOL.id
+                ],
+            }
         )
         services_mock.resource_pools.get_by_id.return_value = (
             TEST_RESOURCE_POOL
         )
-        response = await mocked_api_client_user.get(
+        response = await client.get(
             f"{self.BASE_PATH}/{TEST_RESOURCE_POOL.id}"
         )
         assert response.status_code == 200
@@ -175,15 +178,15 @@ class TestResourcePoolApi(ApiCommonTests):
                 "self": {"href": f"{self.BASE_PATH}/{TEST_RESOURCE_POOL.id}"}
             },
         }
-        openfga_client_mock.can_view_available_machines_in_pool.assert_called_once_with(
-            0, TEST_RESOURCE_POOL.id
-        )
 
     async def test_get_404(
-        self, services_mock: Mock, mocked_api_client_user
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
+        client = mocked_api_client_user_with_permissions()
         services_mock.resource_pools.get_by_id.return_value = None
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
+        response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -196,7 +199,7 @@ class TestResourcePoolApi(ApiCommonTests):
         services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
-        client = mocked_api_client_user_with_permissions(None)
+        client = mocked_api_client_user_with_permissions()
         services_mock.resource_pools.get_by_id.side_effect = (
             RequestValidationError(errors=[])
         )
@@ -434,24 +437,23 @@ class TestResourcePoolsWithSummary:
     )
 
     async def test_list_with_statistics_no_other_page(
-        self, services_mock: Mock, mocked_api_client_user
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
-        openfga_client_mock = AsyncMock(OpenFGAClient)
-        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
-            self.RESOURCE_POOL_WITH_STATISTICS_0.id
-        ]
-        openfga_client_mock.can_edit_machines.return_value = False
-        services_mock.openfga_tuples.get_client.return_value = (
-            openfga_client_mock
+        client = mocked_api_client_user_with_permissions(
+            permissions_on_pools={
+                PoolResourceEntitlements.CAN_VIEW_AVAILABLE_MACHINES: [
+                    self.RESOURCE_POOL_WITH_STATISTICS_0.id
+                ],
+            }
         )
         services_mock.resource_pools.list_with_statistics.return_value = (
             ListResult[ResourcePoolStatistics](
                 items=[self.RESOURCE_POOL_WITH_STATISTICS_0], total=1
             )
         )
-        response = await mocked_api_client_user.get(
-            f"{self.SUMMARY_ENDPOINT}?size=1"
-        )
+        response = await client.get(f"{self.SUMMARY_ENDPOINT}?size=1")
         assert response.status_code == 200
         resource_pools_with_statistics_response = (
             ResourcePoolStatisticsListResponse(**response.json())
@@ -495,23 +497,23 @@ class TestResourcePoolsWithSummary:
         )
 
     async def test_list_with_statistics_other_page(
-        self, services_mock: Mock, mocked_api_client_user
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
-        openfga_client_mock = AsyncMock(OpenFGAClient)
-        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
-            self.RESOURCE_POOL_WITH_STATISTICS_0.id
-        ]
-        services_mock.openfga_tuples.get_client.return_value = (
-            openfga_client_mock
+        client = mocked_api_client_user_with_permissions(
+            permissions_on_pools={
+                PoolResourceEntitlements.CAN_VIEW_AVAILABLE_MACHINES: [
+                    self.RESOURCE_POOL_WITH_STATISTICS_0.id
+                ],
+            }
         )
         services_mock.resource_pools.list_with_statistics.return_value = (
             ListResult[ResourcePoolStatistics](
                 items=[self.RESOURCE_POOL_WITH_STATISTICS_0], total=2
             )
         )
-        response = await mocked_api_client_user.get(
-            f"{self.SUMMARY_ENDPOINT}?size=1"
-        )
+        response = await client.get(f"{self.SUMMARY_ENDPOINT}?size=1")
         assert response.status_code == 200
         resource_pools_with_statistics_response = (
             ResourcePoolStatisticsListResponse(**response.json())
@@ -524,24 +526,24 @@ class TestResourcePoolsWithSummary:
         )
 
     async def test_list_with_statistics_admin_can_edit_and_delete(
-        self, services_mock: Mock, mocked_api_client_user
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
-        openfga_client_mock = AsyncMock(OpenFGAClient)
-        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
-            self.RESOURCE_POOL_WITH_STATISTICS_0.id
-        ]
-        openfga_client_mock.can_edit_machines.return_value = True
-        services_mock.openfga_tuples.get_client.return_value = (
-            openfga_client_mock
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_MACHINES,
+            permissions_on_pools={
+                PoolResourceEntitlements.CAN_VIEW_AVAILABLE_MACHINES: [
+                    self.RESOURCE_POOL_WITH_STATISTICS_0.id
+                ],
+            },
         )
         services_mock.resource_pools.list_with_statistics.return_value = (
             ListResult[ResourcePoolStatistics](
                 items=[self.RESOURCE_POOL_WITH_STATISTICS_0], total=1
             )
         )
-        response = await mocked_api_client_user.get(
-            f"{self.SUMMARY_ENDPOINT}?size=1"
-        )
+        response = await client.get(f"{self.SUMMARY_ENDPOINT}?size=1")
         assert response.status_code == 200
         resource_pools_with_statistics_response = (
             ResourcePoolStatisticsListResponse(**response.json())

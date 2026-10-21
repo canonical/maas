@@ -30,7 +30,10 @@ from maascommon.enums.operations import (
 )
 from maascommon.enums.power import PowerState
 from maascommon.openfga.async_client import OpenFGAClient
-from maascommon.openfga.base import MAASResourceEntitlement
+from maascommon.openfga.base import (
+    MAASResourceEntitlement,
+    PoolResourceEntitlements,
+)
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachineClauseFactory
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
@@ -207,41 +210,37 @@ class TestMachinesApi(ApiCommonTests):
         ]
 
     @pytest.fixture
-    def endpoints_with_authentication_only(
-        self, services_mock: Mock
-    ) -> list[Endpoint]:
-        fga_client = services_mock.openfga_tuples.get_client.return_value
-        fga_client.list_pools_with_view_machines_access.return_value = []
-        fga_client.list_pools_with_view_available_machines_access.return_value = []
-        services_mock.machines.get_one.return_value = None
+    def endpoints_with_authentication_only(self) -> list[Endpoint]:
         return [
             Endpoint(
                 method="GET",
                 path=self.BASE_PATH,
             ),
-            Endpoint(
-                method="POST",
-                path=f"{self.BASE_PATH}/abcdef:commission",
-            ),
         ]
+
+    async def test_list_requires_authentication(
+        self, mocked_api_client: AsyncClient
+    ) -> None:
+        response = await mocked_api_client.get(self.BASE_PATH)
+
+        assert response.status_code == 401
 
     async def test_list_other_page(
-        self, services_mock: Mock, mocked_api_client_user
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
-        openfga_client_mock = AsyncMock(OpenFGAClient)
-        openfga_client_mock.list_pools_with_view_machines_access.return_value = []
-        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
-            TEST_MACHINE_2.id,
-        ]
-
-        services_mock.openfga_tuples.get_client.return_value = (
-            openfga_client_mock
+        client = mocked_api_client_user_with_permissions(
+            permissions_on_pools={
+                PoolResourceEntitlements.CAN_VIEW_AVAILABLE_MACHINES: [
+                    TEST_MACHINE_2.pool_id
+                ],
+            }
         )
-
         services_mock.machines.list.return_value = ListResult[Machine](
             items=[TEST_MACHINE_2], total=2
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await client.get(f"{self.BASE_PATH}?size=1")
         assert response.status_code == 200
         machines_response = MachinesListResponse(**response.json())
         assert len(machines_response.items) == 1
@@ -249,23 +248,22 @@ class TestMachinesApi(ApiCommonTests):
         assert machines_response.next == f"{self.BASE_PATH}?page=2&size=1"
 
     async def test_list_no_other_page(
-        self, services_mock: Mock, mocked_api_client_user
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
-        openfga_client_mock = AsyncMock(OpenFGAClient)
-        openfga_client_mock.list_pools_with_view_machines_access.return_value = []
-        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
-            TEST_MACHINE_2.id,
-            TEST_MACHINE.id,
-        ]
-
-        services_mock.openfga_tuples.get_client.return_value = (
-            openfga_client_mock
+        client = mocked_api_client_user_with_permissions(
+            permissions_on_pools={
+                PoolResourceEntitlements.CAN_VIEW_AVAILABLE_MACHINES: [
+                    TEST_MACHINE_2.pool_id,
+                    TEST_MACHINE.pool_id,
+                ],
+            }
         )
-
         services_mock.machines.list.return_value = ListResult[Machine](
             items=[TEST_MACHINE_2, TEST_MACHINE], total=2
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
+        response = await client.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         machines_response = MachinesListResponse(**response.json())
         assert len(machines_response.items) == 2
@@ -273,24 +271,22 @@ class TestMachinesApi(ApiCommonTests):
         assert machines_response.next is None
 
     async def test_list_user_perms(
-        self, services_mock: Mock, mocked_api_client_user
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
-        openfga_client_mock = AsyncMock(OpenFGAClient)
-        openfga_client_mock.list_pools_with_view_machines_access.return_value = [
-            100
-        ]
-        openfga_client_mock.list_pools_with_view_available_machines_access.return_value = [
-            TEST_MACHINE.id
-        ]
-
-        services_mock.openfga_tuples.get_client.return_value = (
-            openfga_client_mock
+        client = mocked_api_client_user_with_permissions(
+            permissions_on_pools={
+                PoolResourceEntitlements.CAN_VIEW_MACHINES: [100],
+                PoolResourceEntitlements.CAN_VIEW_AVAILABLE_MACHINES: [
+                    TEST_MACHINE.pool_id
+                ],
+            }
         )
-
         services_mock.machines.list.return_value = ListResult[Machine](
             items=[TEST_MACHINE], total=1
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
+        response = await client.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         machines_response = MachinesListResponse(**response.json())
         assert len(machines_response.items) == 1
@@ -314,7 +310,7 @@ class TestMachinesApi(ApiCommonTests):
                                     ]
                                 ),
                                 MachineClauseFactory.with_resource_pool_ids(
-                                    {TEST_MACHINE.id}
+                                    {TEST_MACHINE.pool_id}
                                 ),
                             ]
                         ),
