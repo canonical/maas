@@ -574,7 +574,7 @@ def _selection_errors(
             ]
         return []
     return [
-        _error(field_name, f"No script with the name, tag or id '{item}'")
+        _error(field_name, f"No script with the name or tag '{item}'")
         for item in get_unmatched_selection(selection, selected)
     ]
 

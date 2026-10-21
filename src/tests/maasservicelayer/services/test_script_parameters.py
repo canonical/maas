@@ -881,13 +881,13 @@ class TestScriptParametersService:
         scripts_service.get_testing_scripts.return_value = [testing]
 
         await service.validate_commissioning_input(
-            commissioning_scripts=["1"],
+            commissioning_scripts=["commissioning"],
             testing_scripts=["storage"],
             script_input={"commissioning": {"url": "maas"}},
         )
 
         scripts_service.get_commissioning_scripts.assert_awaited_once_with(
-            ["1"]
+            ["commissioning"]
         )
         scripts_service.get_testing_scripts.assert_awaited_once_with(
             ["storage"]
@@ -962,11 +962,11 @@ class TestScriptParametersService:
         assert errors_of(exc_info) == {
             (
                 "commissioning_scripts",
-                "No script with the name, tag or id 'typo'",
+                "No script with the name or tag 'typo'",
             ),
             (
                 "testing_scripts",
-                "No script with the name, tag or id 'missing'",
+                "No script with the name or tag 'missing'",
             ),
             ("script_input.unselected", "Script 'unselected' is not selected"),
             ("script_input.commissioning.url", "Invalid URL"),

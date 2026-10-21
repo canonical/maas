@@ -150,17 +150,30 @@ class TestIntegrationScriptsService:
             "for-hardware",
         }
 
-    async def test_commissioning_scripts_selected_by_tag_or_id(
+    async def test_commissioning_scripts_selected_by_name_or_tag(
         self, service: ScriptsService, fixture: Fixture
     ) -> None:
         await create_test_script_entry(fixture, name="by-tag", tags=["fw"])
-        by_id = await create_test_script_entry(fixture, name="by-id")
+        await create_test_script_entry(fixture, name="by-name")
         await create_test_script_entry(fixture, name="unselected")
 
-        scripts = await service.get_commissioning_scripts(
-            ["fw", str(by_id.id)]
+        scripts = await service.get_commissioning_scripts(["fw", "by-name"])
+        assert {script.name for script in scripts} == {"by-tag", "by-name"}
+
+    @pytest.mark.parametrize("script_type", list(ScriptType))
+    async def test_scripts_not_selected_by_id(
+        self,
+        service: ScriptsService,
+        fixture: Fixture,
+        script_type: ScriptType,
+    ) -> None:
+        script = await create_test_script_entry(
+            fixture, name="user", script_type=script_type
         )
-        assert {script.name for script in scripts} == {"by-tag", "by-id"}
+
+        selection = [str(script.id)]
+        assert await service.get_commissioning_scripts(selection) == []
+        assert await service.get_testing_scripts(selection) == []
 
     async def test_testing_scripts_default_to_commissioning_tag(
         self, service: ScriptsService, fixture: Fixture
@@ -219,21 +232,21 @@ class TestGetUnmatchedSelection:
     def test_without_selection(self, selection: list[str] | None) -> None:
         assert get_unmatched_selection(selection, []) == []
 
-    def test_matches_names_tags_and_ids(self) -> None:
+    def test_matches_names_and_tags(self) -> None:
         scripts = [
-            make_script("smartctl", id=5, tags=["storage"]),
-            make_script("memtester", id=7, tags=None),
+            make_script("smartctl", tags=["storage"]),
+            make_script("memtester", tags=None),
         ]
         assert (
             get_unmatched_selection(
-                ["smartctl", "storage", "7", "05", "none"], scripts
+                ["smartctl", "storage", "memtester", "none"], scripts
             )
             == []
         )
 
     def test_returns_unmatched_entries(self) -> None:
         scripts = [make_script("smartctl", id=5)]
-        assert get_unmatched_selection(["smartctl", "typo", "6"], scripts) == [
+        assert get_unmatched_selection(["smartctl", "typo", "5"], scripts) == [
             "typo",
-            "6",
+            "5",
         ]
