@@ -13,7 +13,7 @@ You can also account for user activities with audit logs.
 
 ## Firewall logs
 
-Ubuntu's UncomplicatedFirewall ([UFW](https://wiki.ubuntu.com/UncomplicatedFirewall)) serves as a front-end for [iptables](https://help.ubuntu.com/community/IptablesHowTo). To secure your MAAS setup, regularly review logs located in `/var/log/ufw*`.
+Ubuntu's UncomplicatedFirewall ([UFW](https://wiki.ubuntu.com/UncomplicatedFirewall)) serves as a front-end for [iptables](https://wiki.ubuntu.com/IptablesHowTo). To secure your MAAS setup, regularly review logs located in `/var/log/ufw*`.
 
 Find red flags in UFW and iptables logs by looking for key patterns:
 

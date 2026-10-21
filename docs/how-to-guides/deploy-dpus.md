@@ -422,7 +422,7 @@ curl -k -u $BMC_USER:$BMC_PASS https://$BMC_IP/redfish/v1/Systems/Bluefield
 
 ## Additional Resources
 
-- [MAAS Documentation \- How to Manage Machines](https://maas.io/docs/how-to-manage-machines)  
+- [MAAS Documentation \- How to Manage Machines](/how-to-guides/manage-machines.md)
 - [NVIDIA BlueField Documentation](https://docs.nvidia.com/networking/category/bluefieldsw)  
 - [BlueField BSP Documentation](https://docs.nvidia.com/networking/display/bluefieldbsp491)  
 - [Building Custom Images with packer-maas](https://github.com/canonical/packer-maas/tree/main/ubuntu)
