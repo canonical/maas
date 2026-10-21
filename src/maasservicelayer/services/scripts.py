@@ -68,13 +68,13 @@ class ScriptsService(BaseService[Script, ScriptsRepository, ScriptBuilder]):
                 ]
             )
         else:
-            builtin_scripts = await self.get_many(
-                QuerySpec(where=ScriptsClauseFactory.with_default(True))
-            )
-            names = [script.name for script in builtin_scripts]
+            clauses = [
+                ScriptsClauseFactory.with_default(True),
+                ScriptsClauseFactory.with_tags_overlap_builtin_names(),
+            ]
             if NO_USER_SCRIPTS not in selection:
-                names += selection
-            selected = _selected_by(names)
+                clauses.append(_selected_by(selection))
+            selected = ScriptsClauseFactory.or_clauses(clauses)
         return await self._get_scripts(ScriptType.COMMISSIONING, selected)
 
     async def get_testing_scripts(
