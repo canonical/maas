@@ -168,7 +168,7 @@ def _parameter_schema_errors(name: Any, fields: Any) -> list[str]:
         if not isinstance(choices, list):
             errors.append("choices must be a list")
         elif not all(_is_valid_choice(choice) for choice in choices):
-            errors.append("choice must be a Django choice or string")
+            errors.append("choice must be a string or a [value, label] pair")
         if param_type != "choice":
             errors.append("choices only supported with the choice type.")
     if param_type == "choice" and not choices:
