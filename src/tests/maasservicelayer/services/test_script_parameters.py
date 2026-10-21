@@ -113,11 +113,11 @@ class TestValidateParametersSchema:
             ),
             (
                 {"type": "choice", "choices": [["a", "b", "c"]]},
-                "choice must be a Django choice or string",
+                "choice must be a string or a [value, label] pair",
             ),
             (
                 {"type": "choice", "choices": [["a", 1]]},
-                "choice must be a Django choice or string",
+                "choice must be a string or a [value, label] pair",
             ),
             (
                 {"type": "string", "choices": ["a"]},
