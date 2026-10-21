@@ -525,7 +525,6 @@ class TestValidateScriptsInput:
         scripts = [
             script_with({"runtime": {"type": "runtime"}}, name="runtime"),
             script_with({"url": {"type": "url"}}, name="url"),
-            script_with({"choice": {"type": "choice"}}, name="bad-schema"),
             script_with({}, name="not-a-dict"),
         ]
 
@@ -542,12 +541,13 @@ class TestValidateScriptsInput:
         assert errors_of(exc_info) == {
             ("script_input.runtime.runtime", "Must be an int"),
             ("script_input.url", "Unknown parameter 'unknown' for url"),
-            (
-                "script_input.bad-schema",
-                'choices must be given with a "choice" parameter type!',
-            ),
             ("script_input.not-a-dict", "Input must be a dictionary"),
         }
+
+    def test_skips_script_with_invalid_schema(self) -> None:
+        script = script_with({"choice": {"type": "choice"}})
+
+        validate_scripts_input([script], {script.name: {"unknown": "value"}})
 
     @pytest.mark.parametrize("parameter_name", ["input", "parameters"])
     def test_scopes_errors_to_parameter(self, parameter_name: str) -> None:
@@ -739,6 +739,21 @@ class TestScriptParametersService:
 
         assert errors_of(exc_info) == {
             ("script_input.script.choice", 'Invalid choice "b"')
+        }
+
+    async def test_clean_scripts_input_validates_schema(
+        self, service: ScriptParametersService
+    ) -> None:
+        script = script_with({"choice": {"type": "choice"}}, name="script")
+
+        with pytest.raises(ValidationException) as exc_info:
+            await service.clean_scripts_input([script])
+
+        assert errors_of(exc_info) == {
+            (
+                "script_input.script",
+                'choices must be given with a "choice" parameter type!',
+            )
         }
 
     async def test_validate_commissioning_input_does_not_check_defaults(
