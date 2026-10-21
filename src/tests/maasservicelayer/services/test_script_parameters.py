@@ -687,6 +687,49 @@ class TestValidateScriptsInput:
         validate_scripts_input([script])
 
     @pytest.mark.parametrize(
+        "name, parameter",
+        [
+            ("param", {"type": "string", "required": True}),
+            ("param", {"type": "string", "required": True, "default": "a"}),
+            ("param", {"type": "string", "required": True, "default": ""}),
+            ("param", {"type": "runtime"}),
+            ("param", {"type": "runtime", "default": None}),
+            ("param", {"type": "storage"}),
+            ("param", {"type": "storage", "default": ""}),
+            ("param", {"type": "interface", "default": "eth0"}),
+            ("maas_auto_ipmi_user", {"type": "string", "required": True}),
+            (
+                "maas_auto_ipmi_user",
+                {"type": "string", "required": True, "default": ""},
+            ),
+        ],
+    )
+    def test_required_check_agrees_with_cleaning(
+        self, name: str, parameter: dict
+    ) -> None:
+        script = script_with({name: parameter})
+        missing = (f"script_input.{script.name}.{name}", "Field is required")
+
+        try:
+            validate_scripts_input([script])
+        except ValidationException as e:
+            reported = missing in {(d.field, d.message) for d in e.details}
+        else:
+            reported = False
+        try:
+            clean_parameters_input(
+                script, {}, config_defaults={"maas_auto_ipmi_user": "maas"}
+            )
+        except ValidationException as e:
+            required_when_cleaning = (name, "Field is required") in {
+                (d.field, d.message) for d in e.details
+            }
+        else:
+            required_when_cleaning = False
+
+        assert reported == required_when_cleaning
+
+    @pytest.mark.parametrize(
         "parameter",
         [
             {"type": "string", "required": True},
