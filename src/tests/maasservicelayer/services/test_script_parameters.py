@@ -718,28 +718,54 @@ class TestScriptParametersService:
             ["storage"]
         )
 
-    @pytest.mark.parametrize(
-        "field_name", ["commissioning_scripts", "testing_scripts"]
-    )
-    async def test_validate_commissioning_input_accepts_none_alone(
-        self, service: ScriptParametersService, field_name: str
+    async def test_validate_commissioning_input_accepts_none_for_testing(
+        self, service: ScriptParametersService, scripts_service: Mock
     ) -> None:
-        await service.validate_commissioning_input(**{field_name: ["none"]})
+        await service.validate_commissioning_input(testing_scripts=["none"])
 
-    @pytest.mark.parametrize(
-        "field_name", ["commissioning_scripts", "testing_scripts"]
-    )
-    async def test_validate_commissioning_input_rejects_none_with_others(
-        self, service: ScriptParametersService, field_name: str
+        scripts_service.get_testing_scripts.assert_awaited_once_with(["none"])
+
+    async def test_validate_commissioning_input_rejects_none_with_other_tests(
+        self, service: ScriptParametersService
     ) -> None:
         with pytest.raises(ValidationException) as exc_info:
             await service.validate_commissioning_input(
-                **{field_name: ["none", "smartctl"]}
+                testing_scripts=["none", "smartctl"]
             )
 
         assert errors_of(exc_info) == {
-            (field_name, "'none' cannot be combined with other scripts")
+            ("testing_scripts", "'none' cannot be combined with other scripts")
         }
+
+    @pytest.mark.parametrize(
+        "selection, resolved",
+        [(["none"], []), (["none", "user"], ["user"])],
+    )
+    async def test_validate_commissioning_input_rejects_none_for_commissioning(
+        self,
+        service: ScriptParametersService,
+        scripts_service: Mock,
+        selection: list[str],
+        resolved: list[str],
+    ) -> None:
+        scripts_service.get_commissioning_scripts.return_value = [
+            script_with({}, name="user")
+        ]
+
+        with pytest.raises(ValidationException) as exc_info:
+            await service.validate_commissioning_input(
+                commissioning_scripts=selection
+            )
+
+        assert errors_of(exc_info) == {
+            (
+                "commissioning_scripts",
+                "'none' is not a valid choice for commissioning scripts",
+            )
+        }
+        scripts_service.get_commissioning_scripts.assert_awaited_once_with(
+            resolved
+        )
 
     async def test_validate_commissioning_input_reports_all_errors(
         self, service: ScriptParametersService, scripts_service: Mock

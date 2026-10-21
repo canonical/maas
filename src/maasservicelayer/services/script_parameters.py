@@ -442,6 +442,23 @@ class ScriptParametersService(Service):
         script_input: Mapping[str, Any] | None = None,
     ) -> None:
         script_input = script_input or {}
+        details: list[BaseExceptionDetail] = []
+        # Like the legacy API, 'none' is only accepted for testing scripts.
+        # ScriptsService still supports it for commissioning, for internal
+        # use.
+        if commissioning_scripts and NO_USER_SCRIPTS in commissioning_scripts:
+            details.append(
+                _error(
+                    "commissioning_scripts",
+                    f"'{NO_USER_SCRIPTS}' is not a valid choice for "
+                    "commissioning scripts",
+                )
+            )
+            commissioning_scripts = [
+                item
+                for item in commissioning_scripts
+                if item != NO_USER_SCRIPTS
+            ]
         commissioning = await self.scripts_service.get_commissioning_scripts(
             commissioning_scripts
         )
@@ -449,12 +466,14 @@ class ScriptParametersService(Service):
             testing_scripts
         )
         scripts = [*commissioning, *testing]
-        details = [
-            *_selection_errors(
+        details.extend(
+            _selection_errors(
                 "commissioning_scripts", commissioning_scripts, commissioning
-            ),
-            *_selection_errors("testing_scripts", testing_scripts, testing),
-        ]
+            )
+        )
+        details.extend(
+            _selection_errors("testing_scripts", testing_scripts, testing)
+        )
         selected_names = {script.name for script in scripts}
         details.extend(
             _error(f"script_input.{name}", f"Script '{name}' is not selected")
