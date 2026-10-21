@@ -232,12 +232,11 @@ class TestCleanParametersInput:
             ("required", "Field is required"),
         }
 
-    @pytest.mark.parametrize("value", [30, "30"])
-    def test_runtime(self, value: int | str) -> None:
+    def test_runtime(self) -> None:
         script = script_with({"runtime": {"type": "runtime"}})
-        cleaned = clean_parameters_input(script, {"runtime": value})
+        cleaned = clean_parameters_input(script, {"runtime": 30})
         assert cleaned.result_params == {
-            "runtime": {"type": "runtime", "value": value}
+            "runtime": {"type": "runtime", "value": 30}
         }
 
     def test_runtime_defaults_to_script_timeout(self) -> None:
@@ -260,9 +259,10 @@ class TestCleanParametersInput:
         "parameter, value, message",
         [
             ({}, "soon", "Must be an int"),
+            ({}, "30", "Must be an int"),
+            ({}, "0", "Must be an int"),
             ({}, 1.5, "Must be an int"),
             ({}, True, "Must be an int"),
-            ({}, "²", "Must be an int"),
             ({}, -1, "Must be greater than 0"),
             ({"min": 10}, 9, "Must be greater than 10"),
             ({"max": 10}, 11, "Must be less than 10"),
@@ -394,7 +394,6 @@ class TestCleanParametersInput:
             ({"type": "storage"}, "", "all"),
             ({"type": "interface"}, "", "all"),
             ({"type": "runtime"}, 0, 300),
-            ({"type": "runtime"}, "0", 300),
         ],
     )
     def test_empty_value_counts_as_not_given(
