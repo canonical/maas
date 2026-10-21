@@ -317,18 +317,22 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     )
     api_rate_limit_rate = ConfigurationOption(
         "api_rate_limit_rate",
-        "NGINX rate limit (e.g. '20r/s') applied per client IP.",
-        UnicodeString(if_missing="20r/s"),
+        "NGINX rate limit (e.g. '20r/s') applied per client IP.  "
+        "Empty string means: use the hardening default ('20r/s') when "
+        "hardening is active, otherwise no rate or connection limiting.",
+        UnicodeString(if_missing=""),
     )
     api_rate_limit_burst = ConfigurationOption(
         "api_rate_limit_burst",
-        "NGINX rate limit burst size.",
-        Int(if_missing=60, accept_python=False, min=1),
+        "NGINX rate limit burst size.  "
+        "Unset means: use the default (60) when rate limiting is active.",
+        Int(if_missing=None, accept_python=False, min=0),
     )
     api_conn_limit = ConfigurationOption(
         "api_conn_limit",
-        "NGINX concurrent connection limit per client IP.",
-        Int(if_missing=100, accept_python=False, min=1),
+        "NGINX concurrent connection limit per client IP.  "
+        "0 means: use the default (100) when rate limiting is active.",
+        Int(if_missing=0, accept_python=False, min=0),
     )
 
 
