@@ -20,6 +20,10 @@ from maascommon.logging.security import (
     hash_token_for_logging,
     SECURITY,
 )
+from maasservicelayer.exceptions.catalog import (
+    NotFoundException,
+    ValidationException,
+)
 from maasservicelayer.exceptions.constants import (
     INVALID_TOKEN_VIOLATION_TYPE,
     PRECONDITION_FAILED,
@@ -27,8 +31,19 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.agents import Agent
 from maasservicelayer.models.bootstraptokens import BootstrapToken
+from maasservicelayer.models.dhcp import (
+    DHCPDataForAgent,
+    HostReservationData,
+    InterfaceData,
+    IPRangeData,
+    KeaHAConfig,
+    SubnetData,
+    VlanData,
+)
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.racks import Rack
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.dhcp import DHCPService
 from maasservicelayer.utils.date import utcnow
 from provisioningserver.certificates import Certificate
 
@@ -64,6 +79,66 @@ CSR = "\n".join(
 )
 UUID = "01f09d32-f508-6064-bd1c-c025a58dd068"
 
+DHCP_DATA = DHCPDataForAgent(
+    vlans=[VlanData(id=1, vid=0, relayed_vlan_id=None, mtu=1500)],
+    subnets=[
+        SubnetData(
+            id=1,
+            rack_system_id="rack-1",
+            secondary_rack_system_id="rack-2",
+            ip_version=4,
+            cidr="10.0.0.0/24",
+            gateway_ip="10.0.0.1",
+            dns_servers=["10.0.0.2"],
+            allow_dns=True,
+            vlan_id=1,
+            vlan_mtu=1500,
+            mask="255.255.255.0",
+            broadcast_ip="10.0.0.255",
+            domain_name="maas",
+            search_list=["maas"],
+            ntp_servers=["10.0.0.3"],
+            next_server="10.0.0.2",
+            pools=[
+                IPRangeData(
+                    id=1,
+                    subnet_id=1,
+                    dynamic=True,
+                    start_ip="10.0.0.100",
+                    end_ip="10.0.0.200",
+                )
+            ],
+            host_reservations=[
+                HostReservationData(
+                    ip="10.0.0.10",
+                    mac_address="00:11:22:33:44:55",
+                    hostname="machine-1",
+                )
+            ],
+        )
+    ],
+    ipranges=[
+        IPRangeData(
+            id=1,
+            subnet_id=1,
+            dynamic=True,
+            start_ip="10.0.0.100",
+            end_ip="10.0.0.200",
+        )
+    ],
+    interfaces=[InterfaceData(id=1, vlan_id=1, name="eth0")],
+    default_dns_servers=["10.0.0.2"],
+    ntp_servers=["10.0.0.3"],
+    ha_data=[
+        KeaHAConfig(
+            primary_rack_system_id="rack-1",
+            secondary_rack_system_id="rack-2",
+            primary_rack_ip="10.0.0.2",
+            secondary_rack_ip="10.0.0.4",
+        )
+    ],
+)
+
 
 class InjectFakeTLSCN(BaseHTTPMiddleware):
     async def dispatch(
@@ -75,6 +150,17 @@ class InjectFakeTLSCN(BaseHTTPMiddleware):
         request.scope["extensions"]["tls"] = {
             "client_cn": "01f09d32-f508-6064-bd1c-c025a58dd068"
         }
+        return await call_next(request)
+
+
+class InjectTLSWithoutClientCert(BaseHTTPMiddleware):
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        request.scope.setdefault("extensions", {})
+        request.scope["extensions"]["tls"] = {}
         return await call_next(request)
 
 
@@ -221,6 +307,107 @@ class TestAgentsApi:
             response_json["details"][0]["message"]
             == "RPC secret is not configured. Please ensure MAAS is properly initialized."
         )
+
+    async def test_agent_dhcp_data_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_app_with_mocked_services: FastAPI,
+    ) -> None:
+        internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
+        services_mock.dhcp = Mock(DHCPService)
+        services_mock.dhcp.get_kea_dhcp_data_for_agent.return_value = DHCP_DATA
+
+        response = await mocked_internal_api_client.get(
+            f"{self.BASE_PATH}/rack-1/dhcp-data"
+        )
+
+        assert response.status_code == 200
+        response_json = response.json()
+        assert response_json["kind"] == "AgentDHCPData"
+        assert response_json["vlans"] == [
+            {"id": 1, "vid": 0, "relayed_vlan_id": None, "mtu": 1500}
+        ]
+        assert response_json["subnets"][0]["cidr"] == "10.0.0.0/24"
+        assert response_json["subnets"][0]["pools"][0]["start_ip"] == (
+            "10.0.0.100"
+        )
+        assert response_json["subnets"][0]["host_reservations"] == [
+            {
+                "ip": "10.0.0.10",
+                "mac_address": "00:11:22:33:44:55",
+                "hostname": "machine-1",
+            }
+        ]
+        assert response_json["interfaces"] == [
+            {"id": 1, "vlan_id": 1, "name": "eth0"}
+        ]
+        assert response_json["default_dns_servers"] == ["10.0.0.2"]
+        assert response_json["ntp_servers"] == ["10.0.0.3"]
+        assert response_json["ha_data"][0]["secondary_rack_ip"] == "10.0.0.4"
+        assert response_json["_links"]["self"]["href"] == (
+            f"{self.BASE_PATH}/rack-1/dhcp-data"
+        )
+        services_mock.dhcp.get_kea_dhcp_data_for_agent.assert_called_once_with(
+            "rack-1"
+        )
+
+    async def test_agent_dhcp_data_requires_client_certificate(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_app_with_mocked_services: FastAPI,
+    ) -> None:
+        internal_app_with_mocked_services.add_middleware(
+            InjectTLSWithoutClientCert
+        )
+        services_mock.dhcp = Mock(DHCPService)
+
+        response = await mocked_internal_api_client.get(
+            f"{self.BASE_PATH}/rack-1/dhcp-data"
+        )
+
+        assert response.status_code == 403
+        services_mock.dhcp.get_kea_dhcp_data_for_agent.assert_not_called()
+
+    async def test_agent_dhcp_data_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_app_with_mocked_services: FastAPI,
+    ) -> None:
+        internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
+        services_mock.dhcp = Mock(DHCPService)
+        services_mock.dhcp.get_kea_dhcp_data_for_agent.side_effect = (
+            NotFoundException()
+        )
+
+        response = await mocked_internal_api_client.get(
+            f"{self.BASE_PATH}/missing/dhcp-data"
+        )
+
+        assert response.status_code == 404
+
+    async def test_agent_dhcp_data_422_when_rack_not_configured(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_app_with_mocked_services: FastAPI,
+    ) -> None:
+        internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
+        services_mock.dhcp = Mock(DHCPService)
+        services_mock.dhcp.get_kea_dhcp_data_for_agent.side_effect = (
+            ValidationException.build_for_field(
+                "system_id",
+                "The rack controller has no current configuration.",
+            )
+        )
+
+        response = await mocked_internal_api_client.get(
+            f"{self.BASE_PATH}/rack-1/dhcp-data"
+        )
+
+        assert response.status_code == 422
 
     @patch(
         "maasapiserver.v3.api.internal.handlers.agent.sign_certificate_request"
