@@ -57,6 +57,10 @@ DEFAULTS_FROM_MAAS_CONFIG = frozenset(
     }
 )
 
+# Stands in for the MAAS configuration values when checking the given input,
+# as they are only looked up, and checked, when the input is cleaned.
+_ASSUMED_CONFIG_DEFAULTS = dict.fromkeys(DEFAULTS_FROM_MAAS_CONFIG, "assumed")
+
 # The schemes supported by curl, used by the network validation test, and
 # icmp.
 URL_SCHEMES = (
@@ -275,6 +279,30 @@ def _given_values(
     return given, errors
 
 
+def _default_for(
+    script: Script,
+    name: str,
+    param: dict[str, Any],
+    config_defaults: Mapping[str, Any],
+) -> Any:
+    """Return the default value of a parameter, or `_NOT_GIVEN`."""
+    param_type = param["type"]
+    if param_type in MULTI_RESULT_PARAMETER_TYPES:
+        # A placeholder until commissioning discovers the devices.
+        default = param.get("default", "all")
+    elif param_type == "runtime":
+        default = param.get("default", int(script.timeout.total_seconds()))
+        # Schema defaults are strings, so only the timeout is a valid one.
+        return default if _is_int(default) else _NOT_GIVEN
+    else:
+        default = param.get("default", config_defaults.get(name, ""))
+    # As in the legacy ParametersForm, an empty default counts as no default.
+    # Schema defaults must be strings, so this only affects "". Passing it on
+    # would add an empty argument to the script's command line, and the
+    # script runner expects storage and interface values to be devices.
+    return default if default else _NOT_GIVEN
+
+
 def _set_up_input(
     script: Script,
     parameters: dict[str, dict[str, Any]],
@@ -290,33 +318,18 @@ def _set_up_input(
         else:
             cleaned.result_params[name] = _with_value(param, value)
 
-    # As in the legacy ParametersForm, an empty default counts as no default.
-    # Schema defaults must be strings, so this only affects "". Passing it on
-    # would add an empty argument to the script's command line, and the
-    # script runner expects storage and interface values to be devices.
     invalid = {name for name, _ in errors}
     for name, param in parameters.items():
         if name in given or name in invalid:
             continue
-        param_type = param["type"]
-        if param_type in MULTI_RESULT_PARAMETER_TYPES:
-            default = param.get("default", "all")
-            if default:
-                cleaned.multi_result_params[name] = _with_value(param, default)
-            elif _is_required(param):
+        default = _default_for(script, name, param, config_defaults)
+        if default is _NOT_GIVEN:
+            if _is_required(param):
                 errors.append((name, "Field is required"))
-        elif param_type == "runtime":
-            default = param.get("default", int(script.timeout.total_seconds()))
-            if _is_int(default):
-                cleaned.result_params[name] = _with_value(param, default)
-            elif _is_required(param):
-                errors.append((name, "Field is required"))
+        elif param["type"] in MULTI_RESULT_PARAMETER_TYPES:
+            cleaned.multi_result_params[name] = _with_value(param, default)
         else:
-            default = param.get("default", config_defaults.get(name, ""))
-            if default:
-                cleaned.result_params[name] = _with_value(param, default)
-            elif _is_required(param):
-                errors.append((name, "Field is required"))
+            cleaned.result_params[name] = _with_value(param, default)
     return cleaned, errors
 
 
@@ -458,19 +471,6 @@ def _is_required(param: dict[str, Any]) -> bool:
     return param.get("required", required_by_default)
 
 
-def _has_default(script: Script, name: str, param: dict[str, Any]) -> bool:
-    # Mirrors the defaults `_set_up_input` assigns. Parameters named like a
-    # MAAS configuration count as having one; its value is only known when
-    # the input is cleaned.
-    if param["type"] in MULTI_RESULT_PARAMETER_TYPES:
-        return bool(param.get("default", "all"))
-    if param["type"] == "runtime":
-        return _is_int(
-            param.get("default", int(script.timeout.total_seconds()))
-        )
-    return bool(param.get("default")) or name in DEFAULTS_FROM_MAAS_CONFIG
-
-
 def _given_input_errors(
     script: Script, parameters: dict[str, dict[str, Any]], script_input: Any
 ) -> list[_InputError]:
@@ -491,7 +491,8 @@ def _given_input_errors(
         if name not in given
         and name not in invalid
         and _is_required(param)
-        and not _has_default(script, name, param)
+        and _default_for(script, name, param, _ASSUMED_CONFIG_DEFAULTS)
+        is _NOT_GIVEN
     )
     return errors
 
