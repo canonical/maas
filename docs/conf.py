@@ -351,6 +351,7 @@ extensions += [
     "sphinx_ubuntu_images",
     "sphinx_youtube_links",
     "sphinxcontrib.cairosvgconverter",
+    "sphinxcontrib.mermaid",
     "sphinx.ext.intersphinx",
     "sphinx_sitemap",
 ]
