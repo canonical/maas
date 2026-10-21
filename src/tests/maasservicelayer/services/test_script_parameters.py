@@ -460,15 +460,30 @@ class TestCleanParametersInput:
         cleaned = clean_parameters_input(script, {"choice": 1})
         assert cleaned.result_params["choice"]["value"] == 1
 
-    @pytest.mark.parametrize("value", [True, False, "true", "FALSE"])
-    def test_boolean(self, value: bool | str) -> None:
+    def test_boolean(self) -> None:
         script = script_with({"flag": {"type": "boolean"}})
-        cleaned = clean_parameters_input(script, {"flag": value})
+        cleaned = clean_parameters_input(script, {"flag": True})
         assert cleaned.result_params == {
-            "flag": {"type": "boolean", "value": value}
+            "flag": {"type": "boolean", "value": True}
         }
 
-    @pytest.mark.parametrize("value", ["yes", "1", 1, 0, None, ["true"]])
+    def test_boolean_false_counts_as_not_given(self) -> None:
+        script = script_with(
+            {
+                "flag": {"type": "boolean"},
+                "default": {"type": "boolean", "default": "true"},
+            }
+        )
+        cleaned = clean_parameters_input(
+            script, {"flag": False, "default": False}
+        )
+        assert cleaned.result_params == {
+            "default": {"type": "boolean", "default": "true", "value": "true"}
+        }
+
+    @pytest.mark.parametrize(
+        "value", ["true", "false", "yes", "1", 1, 0, None, ["true"]]
+    )
     def test_boolean_rejects_invalid_value(self, value: Any) -> None:
         script = script_with({"flag": {"type": "boolean"}})
         with pytest.raises(ValidationException) as exc_info:
@@ -581,6 +596,26 @@ class TestValidateScriptsInput:
                 "script_input.update-firmware",
                 "Unknown parameter 'unknown' for update-firmware",
             ),
+        }
+
+    def test_type_error_is_not_reported_as_missing_value(self) -> None:
+        script = script_with({"flag": {"type": "boolean", "required": True}})
+
+        with pytest.raises(ValidationException) as exc_info:
+            validate_scripts_input([script], {script.name: {"flag": "true"}})
+
+        assert errors_of(exc_info) == {
+            ("script_input.test-script.flag", "Must be a boolean")
+        }
+
+    def test_false_does_not_satisfy_required_boolean(self) -> None:
+        script = script_with({"flag": {"type": "boolean", "required": True}})
+
+        with pytest.raises(ValidationException) as exc_info:
+            validate_scripts_input([script], {script.name: {"flag": False}})
+
+        assert errors_of(exc_info) == {
+            ("script_input.test-script.flag", "Field is required")
         }
 
     @pytest.mark.parametrize(
