@@ -252,19 +252,19 @@ def _set_up_input(
             default = param.get("default", "all")
             if default:
                 cleaned.multi_result_params[name] = _with_value(param, default)
-            elif param.get("required", True):
+            elif _is_required(param):
                 errors.append((name, "Field is required"))
         elif param_type == "runtime":
             default = param.get("default", int(script.timeout.total_seconds()))
             if _is_int(default):
                 cleaned.result_params[name] = _with_value(param, default)
-            elif param.get("required", True):
+            elif _is_required(param):
                 errors.append((name, "Field is required"))
         else:
             default = param.get("default", config_defaults.get(name, ""))
             if default:
                 cleaned.result_params[name] = _with_value(param, default)
-            elif param.get("required", False):
+            elif _is_required(param):
                 errors.append((name, "Field is required"))
     return cleaned, errors
 
@@ -401,6 +401,112 @@ def clean_parameters_input(
     return cleaned
 
 
+def _is_required(param: dict[str, Any]) -> bool:
+    required_by_default = (
+        param["type"] in MULTI_RESULT_PARAMETER_TYPES
+        or param["type"] == "runtime"
+    )
+    return param.get("required", required_by_default)
+
+
+def _has_default(script: Script, name: str, param: dict[str, Any]) -> bool:
+    # Mirrors the defaults `_set_up_input` assigns. Parameters named like a
+    # MAAS configuration count as having one; its value is only known when
+    # the input is cleaned.
+    if param["type"] in MULTI_RESULT_PARAMETER_TYPES:
+        return bool(param.get("default", "all"))
+    if param["type"] == "runtime":
+        return _is_int(
+            param.get("default", int(script.timeout.total_seconds()))
+        )
+    return bool(param.get("default")) or name in DEFAULTS_FROM_MAAS_CONFIG
+
+
+def _given_input_errors(
+    script: Script, parameters: dict[str, dict[str, Any]], script_input: Any
+) -> list[_InputError]:
+    if script_input is None:
+        script_input = {}
+    if not isinstance(script_input, dict):
+        return [(None, "Input must be a dictionary")]
+    errors: list[_InputError] = []
+    for name, value in script_input.items():
+        if name not in parameters:
+            errors.append(
+                (None, f"Unknown parameter '{name}' for {script.name}")
+            )
+            continue
+        errors.extend(
+            (name, message)
+            for message in _value_errors(_with_value(parameters[name], value))
+        )
+    errors.extend(
+        (name, "Field is required")
+        for name, param in parameters.items()
+        if name not in script_input
+        and _is_required(param)
+        and not _has_default(script, name, param)
+    )
+    return errors
+
+
+def _scripts_with_input_to_check(
+    scripts: Sequence[Script], script_input: Mapping[str, Any]
+) -> list[Script]:
+    # TODO: like the legacy ScriptSet, check for_hardware scripts if and
+    # only if they match the machine's known hardware, and resolve storage
+    # and interface parameters to its devices.
+    return [
+        script
+        for script in scripts
+        if not script.for_hardware or script.name in script_input
+    ]
+
+
+def _scoped_to_script(
+    script: Script, errors: list[_InputError]
+) -> list[BaseExceptionDetail]:
+    script_field = f"script_input.{script.name}"
+    return [
+        _error(f"{script_field}.{name}" if name else script_field, message)
+        for name, message in errors
+    ]
+
+
+def validate_scripts_input(
+    scripts: Sequence[Script], script_input: Mapping[str, Any] | None = None
+) -> None:
+    """Check the input given to `scripts`, keyed by script name.
+
+    Only the given values are checked. Defaults are assigned, and checked,
+    when the input is cleaned, so that problems with a script's defaults or
+    with the MAAS configuration are not reported as invalid input.
+    """
+    script_input = script_input or {}
+    details: list[BaseExceptionDetail] = []
+    for script in _scripts_with_input_to_check(scripts, script_input):
+        try:
+            parameters = validate_parameters_schema(script.parameters)
+        except ValidationException as e:
+            details.extend(
+                detail.model_copy(
+                    update={"field": f"script_input.{script.name}"}
+                )
+                for detail in e.details or []
+            )
+            continue
+        details.extend(
+            _scoped_to_script(
+                script,
+                _given_input_errors(
+                    script, parameters, script_input.get(script.name)
+                ),
+            )
+        )
+    if details:
+        raise ValidationException(details=details)
+
+
 def _selection_errors(
     field_name: str, selection: list[str] | None, selected: list[Script]
 ) -> list[BaseExceptionDetail]:
@@ -481,7 +587,7 @@ class ScriptParametersService(Service):
             if name not in selected_names
         )
         try:
-            await self.clean_scripts_input(scripts, script_input)
+            validate_scripts_input(scripts, script_input)
         except ValidationException as e:
             details.extend(e.details or [])
         if details:
@@ -492,21 +598,19 @@ class ScriptParametersService(Service):
         scripts: Sequence[Script],
         script_input: Mapping[str, Any] | None = None,
     ) -> dict[str, ScriptParametersInput]:
+        """Validate `script_input` and assign defaults, including those from
+        the MAAS configuration, for preparing the scripts to run."""
         script_input = script_input or {}
         cleaned = {}
         details: list[BaseExceptionDetail] = []
-        for script in scripts:
-            # TODO: like the legacy ScriptSet, validate for_hardware scripts
-            # if and only if they match the machine's known hardware, and
-            # resolve storage and interface parameters to its devices.
-            if script.for_hardware and script.name not in script_input:
-                continue
-            script_field = f"script_input.{script.name}"
+        for script in _scripts_with_input_to_check(scripts, script_input):
             try:
                 parameters = validate_parameters_schema(script.parameters)
             except ValidationException as e:
                 details.extend(
-                    detail.model_copy(update={"field": script_field})
+                    detail.model_copy(
+                        update={"field": f"script_input.{script.name}"}
+                    )
                     for detail in e.details or []
                 )
                 continue
@@ -516,12 +620,7 @@ class ScriptParametersService(Service):
                 script_input.get(script.name),
                 await self._get_config_defaults(parameters),
             )
-            details.extend(
-                _error(
-                    f"{script_field}.{name}" if name else script_field, message
-                )
-                for name, message in errors
-            )
+            details.extend(_scoped_to_script(script, errors))
         if details:
             raise ValidationException(details=details)
         return cleaned

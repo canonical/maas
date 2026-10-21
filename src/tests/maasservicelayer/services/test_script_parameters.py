@@ -20,6 +20,7 @@ from maasservicelayer.services.script_parameters import (
     PARAMETER_TYPES,
     ScriptParametersService,
     validate_parameters_schema,
+    validate_scripts_input,
 )
 from maasservicelayer.services.scripts import ScriptsService
 from tests.fixtures.factories.script import make_script
@@ -519,6 +520,111 @@ class TestCleanParametersInput:
         assert errors_of(exc_info) == {(param_type, "Field is required")}
 
 
+class TestValidateScriptsInput:
+    def test_reports_errors_of_all_scripts(self) -> None:
+        scripts = [
+            script_with({"runtime": {"type": "runtime"}}, name="runtime"),
+            script_with({"url": {"type": "url"}}, name="url"),
+            script_with({"choice": {"type": "choice"}}, name="bad-schema"),
+            script_with({}, name="not-a-dict"),
+        ]
+
+        with pytest.raises(ValidationException) as exc_info:
+            validate_scripts_input(
+                scripts,
+                {
+                    "runtime": {"runtime": "soon"},
+                    "url": {"unknown": "value"},
+                    "not-a-dict": ["value"],
+                },
+            )
+
+        assert errors_of(exc_info) == {
+            ("script_input.runtime.runtime", "Must be an int"),
+            ("script_input.url", "Unknown parameter 'unknown' for url"),
+            (
+                "script_input.bad-schema",
+                'choices must be given with a "choice" parameter type!',
+            ),
+            ("script_input.not-a-dict", "Input must be a dictionary"),
+        }
+
+    @pytest.mark.parametrize("parameter_name", ["input", "parameters"])
+    def test_scopes_errors_to_parameter(self, parameter_name: str) -> None:
+        script = script_with({parameter_name: {"type": "runtime"}})
+
+        with pytest.raises(ValidationException) as exc_info:
+            validate_scripts_input(
+                [script], {script.name: {parameter_name: "soon"}}
+            )
+
+        assert errors_of(exc_info) == {
+            (f"script_input.{script.name}.{parameter_name}", "Must be an int")
+        }
+
+    def test_skips_for_hardware_without_input(self) -> None:
+        script = script_with(
+            {"version": {"type": "string", "required": True}},
+            name="update-firmware",
+            for_hardware=["pci:8086:1918"],
+        )
+
+        validate_scripts_input([script], {})
+
+        with pytest.raises(ValidationException) as exc_info:
+            validate_scripts_input(
+                [script], {"update-firmware": {"unknown": "value"}}
+            )
+        assert errors_of(exc_info) == {
+            ("script_input.update-firmware.version", "Field is required"),
+            (
+                "script_input.update-firmware",
+                "Unknown parameter 'unknown' for update-firmware",
+            ),
+        }
+
+    @pytest.mark.parametrize(
+        "parameter",
+        [
+            {"type": "choice", "choices": ["a"], "default": "b"},
+            {"type": "string", "default": "too long", "max": 2},
+            {"type": "runtime", "max": 1},
+            {"type": "string", "required": True, "default": "default"},
+        ],
+    )
+    def test_does_not_check_defaults(self, parameter: dict) -> None:
+        validate_scripts_input([script_with({"param": parameter})])
+
+    @pytest.mark.parametrize(
+        "parameter_name",
+        ["maas_auto_ipmi_user", MAASAutoIPMICipherSuiteIDConfig.name],
+    )
+    def test_maas_config_counts_as_default(self, parameter_name: str) -> None:
+        script = script_with(
+            {parameter_name: {"type": "string", "required": True}}
+        )
+
+        validate_scripts_input([script])
+
+    @pytest.mark.parametrize(
+        "parameter",
+        [
+            {"type": "string", "required": True},
+            {"type": "string", "required": True, "default": ""},
+            {"type": "runtime", "default": None},
+            {"type": "storage", "default": ""},
+            {"type": "interface", "default": None},
+        ],
+    )
+    def test_required_without_default(self, parameter: dict) -> None:
+        with pytest.raises(ValidationException) as exc_info:
+            validate_scripts_input([script_with({"param": parameter})])
+
+        assert errors_of(exc_info) == {
+            ("script_input.test-script.param", "Field is required")
+        }
+
+
 @pytest.mark.asyncio
 class TestScriptParametersService:
     @pytest.fixture
@@ -620,73 +726,47 @@ class TestScriptParametersService:
             "url": {"type": "url", "value": "maas"}
         }
 
-    async def test_clean_scripts_input_reports_errors_of_all_scripts(
-        self, service: ScriptParametersService
-    ) -> None:
-        scripts = [
-            script_with({"runtime": {"type": "runtime"}}, name="runtime"),
-            script_with({"url": {"type": "url"}}, name="url"),
-            script_with({"choice": {"type": "choice"}}, name="bad-schema"),
-            script_with({}, name="not-a-dict"),
-        ]
-
-        with pytest.raises(ValidationException) as exc_info:
-            await service.clean_scripts_input(
-                scripts,
-                {
-                    "runtime": {"runtime": "soon"},
-                    "url": {"unknown": "value"},
-                    "not-a-dict": ["value"],
-                },
-            )
-
-        assert errors_of(exc_info) == {
-            ("script_input.runtime.runtime", "Must be an int"),
-            ("script_input.url", "Unknown parameter 'unknown' for url"),
-            (
-                "script_input.bad-schema",
-                'choices must be given with a "choice" parameter type!',
-            ),
-            ("script_input.not-a-dict", "Input must be a dictionary"),
-        }
-
-    @pytest.mark.parametrize("parameter_name", ["input", "parameters"])
-    async def test_clean_scripts_input_scopes_errors_to_parameter(
-        self, service: ScriptParametersService, parameter_name: str
-    ) -> None:
-        script = script_with({parameter_name: {"type": "runtime"}})
-
-        with pytest.raises(ValidationException) as exc_info:
-            await service.clean_scripts_input(
-                [script], {script.name: {parameter_name: "soon"}}
-            )
-
-        assert errors_of(exc_info) == {
-            (f"script_input.{script.name}.{parameter_name}", "Must be an int")
-        }
-
-    async def test_clean_scripts_input_skips_for_hardware_without_input(
+    async def test_clean_scripts_input_validates_defaults(
         self, service: ScriptParametersService
     ) -> None:
         script = script_with(
-            {"version": {"type": "string", "required": True}},
-            name="update-firmware",
-            for_hardware=["pci:8086:1918"],
+            {"choice": {"type": "choice", "choices": ["a"], "default": "b"}},
+            name="script",
         )
 
-        assert await service.clean_scripts_input([script], {}) == {}
-
         with pytest.raises(ValidationException) as exc_info:
-            await service.clean_scripts_input(
-                [script], {"update-firmware": {"unknown": "value"}}
-            )
+            await service.clean_scripts_input([script])
+
         assert errors_of(exc_info) == {
-            ("script_input.update-firmware.version", "Field is required"),
-            (
-                "script_input.update-firmware",
-                "Unknown parameter 'unknown' for update-firmware",
-            ),
+            ("script_input.script.choice", 'Invalid choice "b"')
         }
+
+    async def test_validate_commissioning_input_does_not_check_defaults(
+        self,
+        service: ScriptParametersService,
+        scripts_service: Mock,
+        configurations_service: Mock,
+    ) -> None:
+        scripts_service.get_commissioning_scripts.return_value = [
+            script_with(
+                {
+                    "choice": {
+                        "type": "choice",
+                        "choices": ["a"],
+                        "default": "b",
+                    },
+                    "maas_auto_ipmi_user": {
+                        "type": "string",
+                        "max": 2,
+                        "required": True,
+                    },
+                }
+            )
+        ]
+
+        await service.validate_commissioning_input()
+
+        configurations_service.get_many.assert_not_called()
 
     async def test_validate_commissioning_input(
         self, service: ScriptParametersService, scripts_service: Mock
