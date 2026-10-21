@@ -59,6 +59,23 @@ class TestCommonScriptsService(ServiceCommonTests):
 
 
 @pytest.mark.asyncio
+class TestScriptsService:
+    @pytest.mark.parametrize(
+        "selection", [None, ["none"], ["user"], ["user", "none"]]
+    )
+    async def test_commissioning_scripts_use_one_query(
+        self, selection: list[str] | None
+    ) -> None:
+        repository = Mock(ScriptsRepository)
+        repository.get_many.return_value = []
+        service = ScriptsService(context=Context(), repository=repository)
+
+        await service.get_commissioning_scripts(selection)
+
+        repository.get_many.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 class TestIntegrationScriptsService:
     @pytest.fixture
     def service(self, db_connection: AsyncConnection) -> ScriptsService:
