@@ -4,6 +4,10 @@ Bugs are inevitable in complex systems. A well-written bug report makes it faste
 
 This page shows you how to prepare bug information, gather logs, and submit a Launchpad report that others can review and act on.
 
+```{important}
+Do not report security vulnerabilities in Launchpad. See [Reporting vulnerabilities](/explanation/security.md#reporting-vulnerabilities).
+```
+
 ## Step 1 – Prepare your information
 
 Before you open Launchpad, collect the essentials:
