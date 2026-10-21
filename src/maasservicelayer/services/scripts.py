@@ -37,11 +37,7 @@ def get_unmatched_selection(
     for script in scripts:
         names_and_tags.add(script.name)
         names_and_tags.update(script.tags or [])
-    return [
-        item
-        for item in selection
-        if item != NO_USER_SCRIPTS and item not in names_and_tags
-    ]
+    return [item for item in selection if item not in names_and_tags]
 
 
 class ScriptsService(BaseService[Script, ScriptsRepository, ScriptBuilder]):
