@@ -91,8 +91,11 @@ _ARGUMENT_FORMAT_PLACEHOLDERS = {
 }
 
 # Schema defaults must be strings, so boolean parameters with a default
-# carry "true" or "false" rather than a bool.
+# carry "true" or "false" rather than a bool. Input must be a bool.
 _BOOLEAN_STRINGS = frozenset({"true", "false"})
+
+# Input values that count as not given, so that defaults apply.
+_NOT_GIVEN = object()
 
 # An error about a parameter, or about the script's input as a whole if the
 # parameter is None.
@@ -224,13 +227,26 @@ def _with_value(param: dict[str, Any], value: Any) -> dict[str, Any]:
     return param
 
 
-def _set_up_input(
-    script: Script,
-    parameters: dict[str, dict[str, Any]],
-    script_input: dict[str, Any],
-    config_defaults: Mapping[str, Any],
-) -> tuple[ScriptParametersInput, list[_InputError]]:
-    cleaned = ScriptParametersInput()
+def _given_value(param_type: str, value: Any) -> tuple[Any, str | None]:
+    """Return the value given for a parameter of `param_type`, or
+    `_NOT_GIVEN` if it counts as not given, and an error if its type is
+    wrong."""
+    match param_type:
+        case "boolean":
+            if not isinstance(value, bool):
+                return _NOT_GIVEN, "Must be a boolean"
+            # Boolean parameters are usually flags, passed to the script
+            # whenever they have a value, so false must leave them unset. The
+            # legacy API dropped false values for the same reason.
+            return (value if value else _NOT_GIVEN), None
+    return value, None
+
+
+def _given_values(
+    script: Script, parameters: dict[str, dict[str, Any]], script_input: dict
+) -> tuple[dict[str, Any], list[_InputError]]:
+    """Return the values of `script_input` that count as given."""
+    given = {}
     errors: list[_InputError] = []
     for name, value in script_input.items():
         if name not in parameters:
@@ -238,6 +254,23 @@ def _set_up_input(
                 (None, f"Unknown parameter '{name}' for {script.name}")
             )
             continue
+        value, error = _given_value(parameters[name]["type"], value)
+        if error is not None:
+            errors.append((name, error))
+        elif value is not _NOT_GIVEN:
+            given[name] = value
+    return given, errors
+
+
+def _set_up_input(
+    script: Script,
+    parameters: dict[str, dict[str, Any]],
+    script_input: dict[str, Any],
+    config_defaults: Mapping[str, Any],
+) -> tuple[ScriptParametersInput, list[_InputError]]:
+    cleaned = ScriptParametersInput()
+    given, errors = _given_values(script, parameters, script_input)
+    for name, value in given.items():
         param = parameters[name]
         if param["type"] in MULTI_RESULT_PARAMETER_TYPES:
             cleaned.multi_result_params[name] = _with_value(param, value)
@@ -248,8 +281,9 @@ def _set_up_input(
     # Schema defaults must be strings, so this only affects "". Passing it on
     # would add an empty argument to the script's command line, and the
     # script runner expects storage and interface values to be devices.
+    invalid = {name for name, _ in errors}
     for name, param in parameters.items():
-        if name in script_input:
+        if name in given or name in invalid:
             continue
         param_type = param["type"]
         if param_type in MULTI_RESULT_PARAMETER_TYPES:
@@ -433,21 +467,18 @@ def _given_input_errors(
         script_input = {}
     if not isinstance(script_input, dict):
         return [(None, "Input must be a dictionary")]
-    errors: list[_InputError] = []
-    for name, value in script_input.items():
-        if name not in parameters:
-            errors.append(
-                (None, f"Unknown parameter '{name}' for {script.name}")
-            )
-            continue
+    given, errors = _given_values(script, parameters, script_input)
+    for name, value in given.items():
         errors.extend(
             (name, message)
             for message in _value_errors(_with_value(parameters[name], value))
         )
+    invalid = {name for name, _ in errors}
     errors.extend(
         (name, "Field is required")
         for name, param in parameters.items()
-        if name not in script_input
+        if name not in given
+        and name not in invalid
         and _is_required(param)
         and not _has_default(script, name, param)
     )
