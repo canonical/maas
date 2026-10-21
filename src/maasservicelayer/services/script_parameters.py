@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from ipaddress import ip_address
 from typing import Any
 
+import structlog
+
 from maascommon.utils.url import validate_url
 from maasservicelayer.context import Context
 from maasservicelayer.exceptions.catalog import (
@@ -27,6 +29,8 @@ from maasservicelayer.services.scripts import (
     NO_USER_SCRIPTS,
     ScriptsService,
 )
+
+logger = structlog.getLogger(__name__)
 
 PARAMETER_TYPES = (
     "boolean",
@@ -479,8 +483,9 @@ def validate_scripts_input(
     """Check the input given to `scripts`, keyed by script name.
 
     Only the given values are checked. Defaults are assigned, and checked,
-    when the input is cleaned, so that problems with a script's defaults or
-    with the MAAS configuration are not reported as invalid input.
+    when the input is cleaned, so that problems with a script's defaults,
+    its parameters schema or the MAAS configuration are not reported as
+    invalid input.
     """
     script_input = script_input or {}
     details: list[BaseExceptionDetail] = []
@@ -488,11 +493,13 @@ def validate_scripts_input(
         try:
             parameters = validate_parameters_schema(script.parameters)
         except ValidationException as e:
-            details.extend(
-                detail.model_copy(
-                    update={"field": f"script_input.{script.name}"}
-                )
-                for detail in e.details or []
+            # Schemas are checked when scripts are uploaded, so this is not a
+            # problem with the request. It is reported when the input is
+            # cleaned, failing the operation.
+            logger.warning(
+                "Not checking the input of a script with invalid parameters",
+                script=script.name,
+                errors=[detail.message for detail in e.details or []],
             )
             continue
         details.extend(
