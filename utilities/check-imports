@@ -512,6 +512,7 @@ ServiceLayerRule = Rule(
     Allow("provisioningserver.utils.arch.**"),
     Allow("provisioningserver.utils.env.**"),
     Allow("provisioningserver.utils.network.**"),
+    Allow("provisioningserver.utils.text.**"),
     Allow("provisioningserver.utils.version.**"),
     Allow("cryptography.hazmat.primitives.**"),
     Allow("cryptography.x509|cryptography.x509.**"),

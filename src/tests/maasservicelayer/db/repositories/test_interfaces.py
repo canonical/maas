@@ -11,9 +11,11 @@ from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
+from maasservicelayer.db.tables import InterfaceRelationshipTable
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
+from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.interface import (
     create_test_interface,
@@ -59,6 +61,29 @@ def _assert_interface_in_list(
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestInterfaceRepository:
+    async def test_get_parents(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        child = await create_test_interface_entry(
+            fixture, type=InterfaceType.BOND
+        )
+        parent = await create_test_interface_entry(fixture)
+        unrelated = await create_test_interface_entry(fixture)
+        await fixture.create(
+            InterfaceRelationshipTable.name,
+            [
+                {
+                    "child_id": child.id,
+                    "parent_id": parent.id,
+                    "created": utcnow(),
+                    "updated": utcnow(),
+                }
+            ],
+        )
+        repository = InterfaceRepository(Context(connection=db_connection))
+        assert await repository.get_parents(child.id) == [parent]
+        assert await repository.get_parents(unrelated.id) == []
+
     @pytest.mark.parametrize("page_size", range(1, 4))
     @pytest.mark.parametrize(
         "alloc_type",
@@ -250,8 +275,9 @@ class TestInterfaceRepository:
         ) -> None:
             interface_response = next(
                 filter(
-                    lambda interface_response: interface.id
-                    == interface_response.id,
+                    lambda interface_response: (
+                        interface.id == interface_response.id
+                    ),
                     interfaces_response.items,
                 )
             )
@@ -558,6 +584,66 @@ class TestInterfaceRepository:
             and iface[0].mac_address == interface.mac_address
             and iface[0].name == interface.name
         )
+
+    async def test_get_for_ips(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        vlan = await create_test_vlan_entry(
+            fixture=fixture,
+            fabric_id=0,
+        )
+        subnet = await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
+
+        first_ip = StaticIPAddress(
+            **(
+                await create_test_staticipaddress_entry(
+                    fixture=fixture,
+                    subnet=subnet,
+                    alloc_type=IpAddressType.DHCP,
+                )
+            )[0]
+        )
+        second_ip = StaticIPAddress(
+            **(
+                await create_test_staticipaddress_entry(
+                    fixture=fixture,
+                    subnet=subnet,
+                    alloc_type=IpAddressType.DHCP,
+                )
+            )[0]
+        )
+        first_interface = await create_test_interface_entry(
+            fixture=fixture,
+            vlan=vlan,
+            name="test_interface",
+        )
+        second_interface = await create_test_interface_entry(
+            fixture=fixture,
+            vlan=vlan,
+            name="test_interface_2",
+        )
+
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+        await interfaces_repository.add_ip(first_interface, first_ip.id)
+        await interfaces_repository.add_ip(second_interface, second_ip.id)
+
+        result = await interfaces_repository.get_for_ips(
+            [first_ip.id, second_ip.id]
+        )
+
+        assert set(result) == {first_ip.id, second_ip.id}
+        assert result[first_ip.id][0].id == first_interface.id
+        assert result[second_ip.id][0].id == second_interface.id
+
+    async def test_get_for_ips_empty(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        interfaces_repository = InterfaceRepository(
+            context=Context(connection=db_connection)
+        )
+        assert await interfaces_repository.get_for_ips([]) == {}
 
     async def test_create_switch_interface(
         self, db_connection: AsyncConnection, fixture: Fixture
