@@ -613,11 +613,13 @@ class ScriptParametersService(Service):
                     "commissioning scripts",
                 )
             )
+            # Check script_input against the scripts the request asked for:
+            # the other entries, or else only the built-in scripts.
             commissioning_scripts = [
                 item
                 for item in commissioning_scripts
                 if item != NO_USER_SCRIPTS
-            ]
+            ] or [NO_USER_SCRIPTS]
         commissioning = await self.scripts_service.get_commissioning_scripts(
             commissioning_scripts
         )

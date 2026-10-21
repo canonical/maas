@@ -957,7 +957,7 @@ class TestScriptParametersService:
 
     @pytest.mark.parametrize(
         "selection, resolved",
-        [(["none"], []), (["none", "user"], ["user"])],
+        [(["none"], ["none"]), (["none", "user"], ["user"])],
     )
     async def test_validate_commissioning_input_rejects_none_for_commissioning(
         self,
