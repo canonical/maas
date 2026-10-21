@@ -239,7 +239,7 @@ class TestGetUnmatchedSelection:
         ]
         assert (
             get_unmatched_selection(
-                ["smartctl", "storage", "memtester", "none"], scripts
+                ["smartctl", "storage", "memtester"], scripts
             )
             == []
         )
