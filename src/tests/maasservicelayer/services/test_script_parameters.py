@@ -485,10 +485,14 @@ class TestCleanParametersInput:
             clean_parameters_input(script, {"choice": "Bee"})
         assert errors_of(exc_info) == {("choice", 'Invalid choice "Bee"')}
 
-    def test_choice_not_given_as_string_or_list(self) -> None:
-        script = script_with({"choice": {"type": "choice", "choices": [1]}})
-        cleaned = clean_parameters_input(script, {"choice": 1})
-        assert cleaned.result_params["choice"]["value"] == 1
+    @pytest.mark.parametrize("value", [1, None, ["1"]])
+    def test_choice_must_be_string(self, value: Any) -> None:
+        script = script_with(
+            {"choice": {"type": "choice", "choices": ["1", 1]}}
+        )
+        with pytest.raises(ValidationException) as exc_info:
+            clean_parameters_input(script, {"choice": value})
+        assert errors_of(exc_info) == {("choice", "Must be a string")}
 
     def test_boolean(self) -> None:
         script = script_with({"flag": {"type": "boolean"}})

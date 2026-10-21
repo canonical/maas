@@ -379,6 +379,8 @@ def _string_errors(param: dict[str, Any]) -> list[str]:
 
 def _choice_errors(param: dict[str, Any]) -> list[str]:
     value = param["value"]
+    if not isinstance(value, str):
+        return ["Must be a string"]
     choices = [
         choice[0] if isinstance(choice, (list, tuple)) else choice
         for choice in param["choices"]
