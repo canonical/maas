@@ -239,6 +239,21 @@ def _given_value(param_type: str, value: Any) -> tuple[Any, str | None]:
             # whenever they have a value, so false must leave them unset. The
             # legacy API dropped false values for the same reason.
             return (value if value else _NOT_GIVEN), None
+        case "string" | "password" | "url":
+            # Like the legacy API's form fields, surrounding whitespace is
+            # dropped, and empty values count as not given rather than adding
+            # an empty argument.
+            if isinstance(value, str):
+                value = value.strip()
+            return (_NOT_GIVEN if value == "" else value), None
+        case "choice" | "storage" | "interface":
+            return (_NOT_GIVEN if value == "" else value), None
+        case "runtime":
+            # The legacy API dropped a runtime of 0, so the default applies.
+            if _is_int(value) and value == 0:
+                return _NOT_GIVEN, None
+            if isinstance(value, str) and value.isdecimal() and not int(value):
+                return _NOT_GIVEN, None
     return value, None
 
 

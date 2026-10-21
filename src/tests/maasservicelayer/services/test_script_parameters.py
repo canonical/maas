@@ -374,6 +374,37 @@ class TestCleanParametersInput:
         cleaned = clean_parameters_input(script, {param_type: "secret"})
         assert cleaned.result_params[param_type]["value"] == "secret"
 
+    @pytest.mark.parametrize("param_type", ["string", "password", "url"])
+    def test_strips_whitespace(self, param_type: str) -> None:
+        script = script_with({param_type: {"type": param_type}})
+        cleaned = clean_parameters_input(script, {param_type: "  maas \n"})
+        assert cleaned.result_params[param_type]["value"] == "maas"
+
+    @pytest.mark.parametrize(
+        "parameter, value, default",
+        [
+            ({"type": "string", "default": "default"}, "", "default"),
+            ({"type": "password", "default": "default"}, "  ", "default"),
+            ({"type": "url", "default": "maas"}, " ", "maas"),
+            (
+                {"type": "choice", "choices": ["a", "b"], "default": "b"},
+                "",
+                "b",
+            ),
+            ({"type": "storage"}, "", "all"),
+            ({"type": "interface"}, "", "all"),
+            ({"type": "runtime"}, 0, 300),
+            ({"type": "runtime"}, "0", 300),
+        ],
+    )
+    def test_empty_value_counts_as_not_given(
+        self, parameter: dict, value: Any, default: Any
+    ) -> None:
+        script = script_with({"param": parameter})
+        cleaned = clean_parameters_input(script, {"param": value})
+        params = {**cleaned.result_params, **cleaned.multi_result_params}
+        assert params["param"]["value"] == default
+
     @pytest.mark.parametrize("param_type", ["string", "password"])
     def test_string_default(self, param_type: str) -> None:
         script = script_with(
@@ -606,6 +637,17 @@ class TestValidateScriptsInput:
 
         assert errors_of(exc_info) == {
             ("script_input.test-script.flag", "Must be a boolean")
+        }
+
+    @pytest.mark.parametrize("value", ["", "   "])
+    def test_empty_string_does_not_satisfy_required(self, value: str) -> None:
+        script = script_with({"name": {"type": "string", "required": True}})
+
+        with pytest.raises(ValidationException) as exc_info:
+            validate_scripts_input([script], {script.name: {"name": value}})
+
+        assert errors_of(exc_info) == {
+            ("script_input.test-script.name", "Field is required")
         }
 
     def test_false_does_not_satisfy_required_boolean(self) -> None:
