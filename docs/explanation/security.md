@@ -144,11 +144,11 @@ Some risks come from the way MAAS works, and MAAS cannot remove them on its own.
 
 * **Network boot is not authenticated.** DHCP, TFTP, and HTTP boot do not authenticate machines or controllers. Any device on the provisioning network can answer boot requests or impersonate a machine.
 * **Administrators have full control.** An administrator can manage every machine, user, and setting in MAAS, including the credentials that MAAS uses to power machines on and off.
-* **MAAS stores credentials.** The database, Vault, and the backups contain BMC credentials, API keys, and other secrets. Anyone who can read them can control your machines.
+* **MAAS stores credentials.** The database, Vault, and the backups contain BMC credentials, API keys, and other secrets. Anyone who can read them and reach the MAAS API or the management network can control your machines.
 
 ### Recommended controls
 
-* **Keep MAAS and its hosts up to date.** Use a [supported MAAS version](https://canonical.com/maas/docs/release-information/supported-maas-versions/). The MAAS snap is refreshed automatically. Delaying updates might leave vulnerabilities unpatched. See [Upgrade MAAS](/how-to-guides/upgrade-maas.md).
+* **Keep MAAS and its hosts up to date.** Use a [supported MAAS version](https://canonical.com/maas/docs/release-information/supported-maas-versions/). The MAAS snap is refreshed automatically to new point releases of its track (for example, from x.y.1 to x.y.2). Upgrading to a new version (for example, from x.6 to x.7) is manual, including when your version reaches the end of its support. Delaying updates might leave vulnerabilities unpatched. See [Upgrade MAAS](/how-to-guides/upgrade-maas.md).
 * **Use strong authentication.** Use [strong passwords](#strong-passwords). If you use [single sign-on](/how-to-guides/sso.md), enable multi-factor authentication in your identity provider.
 * **Limit privileges.** Keep the number of administrators small, and grant other users only the [entitlements](#fine-grained-authorization) they need.
 * **Enable TLS with a trusted certificate.** See [Enhance MAAS security](/how-to-guides/enhance-maas-security.md#use-tls-termination-maas-33).

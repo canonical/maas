@@ -26,6 +26,8 @@ Back up the MAAS database and configuration before you remove anything. Backups 
 
 Release every machine that MAAS manages, and erase its disks so that the next user cannot read the previous data. See [Release or remove machines](/how-to-guides/manage-machines.md#release-or-remove-machines).
 
+Releasing a DPU does not erase its disks. To bring a DPU to a clean state, redeploy it before you release it. See [Releasing a DPU](/how-to-guides/deploy-dpus.md#releasing-a-dpu).
+
 :::{warning}
 Releasing a machine only erases its disks when you select an erase option. MAAS does not delete any other data automatically.
 :::
