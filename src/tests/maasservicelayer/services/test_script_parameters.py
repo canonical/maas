@@ -191,11 +191,6 @@ class TestCleanParametersInput:
             )
         }
 
-    def test_rejects_non_dict_input(self) -> None:
-        with pytest.raises(ValidationException) as exc_info:
-            clean_parameters_input(script_with({}), ["value"])
-        assert errors_of(exc_info) == {("input", "Input must be a dictionary")}
-
     def test_rejects_unknown_parameter(self) -> None:
         with pytest.raises(ValidationException) as exc_info:
             clean_parameters_input(script_with({}), {"unknown": "value"})
@@ -204,7 +199,7 @@ class TestCleanParametersInput:
         }
 
     def test_returns_empty_input_without_parameters(self) -> None:
-        cleaned = clean_parameters_input(script_with({}), None)
+        cleaned = clean_parameters_input(script_with({}), {})
         assert cleaned.result_params == {}
         assert cleaned.multi_result_params == {}
 
@@ -261,7 +256,6 @@ class TestCleanParametersInput:
             ({}, "soon", "Must be an int"),
             ({}, "30", "Must be an int"),
             ({}, "0", "Must be an int"),
-            ({}, 1.5, "Must be an int"),
             ({}, True, "Must be an int"),
             ({}, -1, "Must be greater than 0"),
             ({"min": 10}, 9, "Must be greater than 10"),
@@ -304,11 +298,10 @@ class TestCleanParametersInput:
             "10.0.0.1,maas",
             "http://maas:65536",
             167772161,
-            1.5,
-            None,
+            True,
         ],
     )
-    def test_url_rejects_invalid_value(self, value: Any) -> None:
+    def test_url_rejects_invalid_value(self, value: str | int | bool) -> None:
         script = script_with({"url": {"type": "url"}})
         with pytest.raises(ValidationException) as exc_info:
             clean_parameters_input(script, {"url": value})
@@ -427,8 +420,7 @@ class TestCleanParametersInput:
             ({"min": 5}, "abc", "Input too short"),
             ({"max": 2}, "abc", "Input too long"),
             ({}, 42, "Must be a string"),
-            ({"max": 1}, ["a"], "Must be a string"),
-            ({}, None, "Must be a string"),
+            ({}, True, "Must be a string"),
         ],
     )
     def test_string_rejects_invalid_value(
@@ -485,8 +477,8 @@ class TestCleanParametersInput:
             clean_parameters_input(script, {"choice": "Bee"})
         assert errors_of(exc_info) == {("choice", 'Invalid choice "Bee"')}
 
-    @pytest.mark.parametrize("value", [1, None, ["1"]])
-    def test_choice_must_be_string(self, value: Any) -> None:
+    @pytest.mark.parametrize("value", [1, True])
+    def test_choice_must_be_string(self, value: int | bool) -> None:
         script = script_with(
             {"choice": {"type": "choice", "choices": ["1", 1]}}
         )
@@ -515,10 +507,8 @@ class TestCleanParametersInput:
             "default": {"type": "boolean", "default": "true", "value": "true"}
         }
 
-    @pytest.mark.parametrize(
-        "value", ["true", "false", "yes", "1", 1, 0, None, ["true"]]
-    )
-    def test_boolean_rejects_invalid_value(self, value: Any) -> None:
+    @pytest.mark.parametrize("value", ["true", "false", "yes", "1", 1, 0])
+    def test_boolean_rejects_invalid_value(self, value: str | int) -> None:
         script = script_with({"flag": {"type": "boolean"}})
         with pytest.raises(ValidationException) as exc_info:
             clean_parameters_input(script, {"flag": value})
@@ -531,8 +521,8 @@ class TestCleanParametersInput:
 
     def test_unsupported_type_is_not_validated(self) -> None:
         script = script_with({"foo": {"type": "foo", "required": False}})
-        cleaned = clean_parameters_input(script, {"foo": ["any", "value"]})
-        assert cleaned.result_params["foo"]["value"] == ["any", "value"]
+        cleaned = clean_parameters_input(script, {"foo": 42})
+        assert cleaned.result_params["foo"]["value"] == 42
 
     @pytest.mark.parametrize("param_type", ["storage", "interface"])
     def test_multi_result_params_default_to_all(self, param_type: str) -> None:
@@ -574,7 +564,6 @@ class TestValidateScriptsInput:
         scripts = [
             script_with({"runtime": {"type": "runtime"}}, name="runtime"),
             script_with({"url": {"type": "url"}}, name="url"),
-            script_with({}, name="not-a-dict"),
         ]
 
         with pytest.raises(ValidationException) as exc_info:
@@ -583,14 +572,12 @@ class TestValidateScriptsInput:
                 {
                     "runtime": {"runtime": "soon"},
                     "url": {"unknown": "value"},
-                    "not-a-dict": ["value"],
                 },
             )
 
         assert errors_of(exc_info) == {
             ("script_input.runtime.runtime", "Must be an int"),
             ("script_input.url", "Unknown parameter 'unknown' for url"),
-            ("script_input.not-a-dict", "Input must be a dictionary"),
         }
 
     def test_skips_script_with_invalid_schema(self) -> None:

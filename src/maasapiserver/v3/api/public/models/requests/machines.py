@@ -1,8 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any
-
 from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
@@ -45,7 +43,7 @@ class MachineCommissionRequest(BaseModel):
         "commissioning. By default all tests tagged 'commissioning' are run. "
         "Use 'none' on its own to disable running tests.",
     )
-    script_input: dict[str, dict[str, Any]] | None = Field(
+    script_input: dict[str, dict[str, str | int | bool]] | None = Field(
         default=None,
         description="Parameter values for the selected commissioning and "
         "testing scripts, keyed by script name and then by parameter name. "
