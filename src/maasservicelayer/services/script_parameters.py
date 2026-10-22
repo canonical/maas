@@ -211,6 +211,11 @@ def _parameter_schema_errors(name: Any, fields: Any) -> list[str]:
 
 
 def validate_parameters_schema(parameters: Any) -> dict[str, dict[str, Any]]:
+    """Check a script's parameters schema.
+
+    Raises:
+        ValidationException: With every error under `parameters`.
+    """
     if not isinstance(parameters, dict):
         raise ValidationException(
             details=[_error("parameters", "Must be a dictionary")]
@@ -453,6 +458,12 @@ def clean_parameters_input(
     script_input: Any,
     config_defaults: Mapping[str, Any] | None = None,
 ) -> ScriptParametersInput:
+    """Check the input given to a script and assign defaults.
+
+    Raises:
+        ValidationException: With schema errors under `parameters`, unknown
+            parameters under `input`, and the others under their parameter.
+    """
     parameters = validate_parameters_schema(script.parameters)
     cleaned, errors = _clean_input(
         script, parameters, script_input, config_defaults or {}
@@ -526,12 +537,15 @@ def _scoped_to_script(
 def validate_scripts_input(
     scripts: Sequence[Script], script_input: Mapping[str, Any] | None = None
 ) -> None:
-    """Check the input given to `scripts`, keyed by script name.
+    """Check the given input of `scripts`, without assigning defaults.
 
-    Only the given values are checked. Defaults are assigned, and checked,
-    when the input is cleaned, so that problems with a script's defaults,
-    its parameters schema or the MAAS configuration are not reported as
-    invalid input.
+    Defaults and schemas are only checked when the input is cleaned, so that
+    problems with them are not reported as invalid input.
+
+    Raises:
+        ValidationException: With unknown parameters under
+            `script_input.<script>`, the others under
+            `script_input.<script>.<parameter>`.
     """
     script_input = script_input or {}
     details: list[BaseExceptionDetail] = []
@@ -600,6 +614,16 @@ class ScriptParametersService(Service):
         testing_scripts: list[str] | None = None,
         script_input: Mapping[str, Any] | None = None,
     ) -> None:
+        """Check the script selections and input of a commission request.
+
+        Nothing is returned; the request is valid if this does not raise.
+
+        Raises:
+            ValidationException: With all of the request's errors. Selection
+                errors are under `commissioning_scripts` or
+                `testing_scripts`, input errors as in
+                `validate_scripts_input`.
+        """
         script_input = script_input or {}
         details: list[BaseExceptionDetail] = []
         # Like the legacy API, 'none' is only accepted for testing scripts.
@@ -653,8 +677,14 @@ class ScriptParametersService(Service):
         scripts: Sequence[Script],
         script_input: Mapping[str, Any] | None = None,
     ) -> dict[str, ScriptParametersInput]:
-        """Validate `script_input` and assign defaults, including those from
-        the MAAS configuration, for preparing the scripts to run."""
+        """Check the input given to `scripts` and assign defaults, including
+        those from the MAAS configuration, for preparing the scripts to run.
+
+        Raises:
+            ValidationException: Like `validate_scripts_input`, but also for
+                invalid defaults, and with schema errors under
+                `script_input.<script>`.
+        """
         script_input = script_input or {}
         cleaned = {}
         details: list[BaseExceptionDetail] = []
