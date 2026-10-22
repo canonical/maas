@@ -20,6 +20,10 @@ from maascommon.logging.security import (
     hash_token_for_logging,
     SECURITY,
 )
+from maasservicelayer.exceptions.catalog import (
+    NotFoundException,
+    ValidationException,
+)
 from maasservicelayer.exceptions.constants import (
     INVALID_TOKEN_VIOLATION_TYPE,
     PRECONDITION_FAILED,
@@ -27,14 +31,19 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.agents import Agent
 from maasservicelayer.models.bootstraptokens import BootstrapToken
+from maasservicelayer.models.dhcp import (
+    DHCPDataForAgent,
+    HostReservationData,
+    InterfaceData,
+    IPRangeData,
+    KeaHAConfig,
+    SubnetData,
+    VlanData,
+)
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.racks import Rack
 from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.agents import AgentsService
-from maasservicelayer.services.bootstraptoken import BootstrapTokensService
-from maasservicelayer.services.nodes import NodesService
-from maasservicelayer.services.racks import RacksService
-from maasservicelayer.services.secrets import SecretsService
+from maasservicelayer.services.dhcp import DHCPService
 from maasservicelayer.utils.date import utcnow
 from provisioningserver.certificates import Certificate
 
@@ -70,6 +79,66 @@ CSR = "\n".join(
 )
 UUID = "01f09d32-f508-6064-bd1c-c025a58dd068"
 
+DHCP_DATA = DHCPDataForAgent(
+    vlans=[VlanData(id=1, vid=0, relayed_vlan_id=None, mtu=1500)],
+    subnets=[
+        SubnetData(
+            id=1,
+            rack_system_id="rack-1",
+            secondary_rack_system_id="rack-2",
+            ip_version=4,
+            cidr="10.0.0.0/24",
+            gateway_ip="10.0.0.1",
+            dns_servers=["10.0.0.2"],
+            allow_dns=True,
+            vlan_id=1,
+            vlan_mtu=1500,
+            mask="255.255.255.0",
+            broadcast_ip="10.0.0.255",
+            domain_name="maas",
+            search_list=["maas"],
+            ntp_servers=["10.0.0.3"],
+            next_server="10.0.0.2",
+            pools=[
+                IPRangeData(
+                    id=1,
+                    subnet_id=1,
+                    dynamic=True,
+                    start_ip="10.0.0.100",
+                    end_ip="10.0.0.200",
+                )
+            ],
+            host_reservations=[
+                HostReservationData(
+                    ip="10.0.0.10",
+                    mac_address="00:11:22:33:44:55",
+                    hostname="machine-1",
+                )
+            ],
+        )
+    ],
+    ipranges=[
+        IPRangeData(
+            id=1,
+            subnet_id=1,
+            dynamic=True,
+            start_ip="10.0.0.100",
+            end_ip="10.0.0.200",
+        )
+    ],
+    interfaces=[InterfaceData(id=1, vlan_id=1, name="eth0")],
+    default_dns_servers=["10.0.0.2"],
+    ntp_servers=["10.0.0.3"],
+    ha_data=[
+        KeaHAConfig(
+            primary_rack_system_id="rack-1",
+            secondary_rack_system_id="rack-2",
+            primary_rack_ip="10.0.0.2",
+            secondary_rack_ip="10.0.0.4",
+        )
+    ],
+)
+
 
 class InjectFakeTLSCN(BaseHTTPMiddleware):
     async def dispatch(
@@ -81,6 +150,17 @@ class InjectFakeTLSCN(BaseHTTPMiddleware):
         request.scope["extensions"]["tls"] = {
             "client_cn": "01f09d32-f508-6064-bd1c-c025a58dd068"
         }
+        return await call_next(request)
+
+
+class InjectTLSWithoutClientCert(BaseHTTPMiddleware):
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        request.scope.setdefault("extensions", {})
+        request.scope["extensions"]["tls"] = {}
         return await call_next(request)
 
 
@@ -97,7 +177,7 @@ class TestAgentsApi:
     async def test_agent_config_200_without_system_id(
         self,
         mock_cluster_config,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_app_with_mocked_services: FastAPI,
         internal_api_headers: dict,
@@ -105,9 +185,7 @@ class TestAgentsApi:
         internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
         mock_cluster_config.open.return_value.__enter__.return_value.temporal_server = "temporal.example:7233"
         mock_agent = Agent(id=1, uuid=UUID, rack_id=1)
-        services_mock.agents = Mock(AgentsService)
         services_mock.agents.get_one.return_value = mock_agent
-        services_mock.secrets = Mock(SecretsService)
         services_mock.secrets.get_composite_secret.return_value = {
             "secret": "rpc-secret"
         }
@@ -135,7 +213,7 @@ class TestAgentsApi:
     async def test_agent_config_200_with_system_id(
         self,
         mock_cluster_config,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_app_with_mocked_services: FastAPI,
         internal_api_headers: dict,
@@ -143,13 +221,10 @@ class TestAgentsApi:
         internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
         mock_cluster_config.open.return_value.__enter__.return_value.temporal_server = "temporal.example:7233"
         mock_agent = Agent(id=1, uuid=UUID, rack_id=1, rackcontroller_id=42)
-        services_mock.agents = Mock(AgentsService)
         services_mock.agents.get_one.return_value = mock_agent
         mock_node = Mock(Node)
         mock_node.system_id = "system-id"
-        services_mock.nodes = Mock(NodesService)
         services_mock.nodes.get_one.return_value = mock_node
-        services_mock.secrets = Mock(SecretsService)
         services_mock.secrets.get_composite_secret.return_value = {
             "secret": "rpc-secret"
         }
@@ -176,13 +251,12 @@ class TestAgentsApi:
 
     async def test_agent_config_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_app_with_mocked_services: FastAPI,
         internal_api_headers: dict,
     ) -> None:
         internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
-        services_mock.agents = Mock(AgentsService)
         services_mock.agents.get_one.return_value = None
 
         nonexistent_uuid = "no-uuid"
@@ -205,7 +279,7 @@ class TestAgentsApi:
 
     async def test_agent_config_503(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_app_with_mocked_services: FastAPI,
         internal_api_headers: dict,
@@ -213,13 +287,11 @@ class TestAgentsApi:
         internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
 
         mock_agent = Agent(id=1, uuid=UUID, rack_id=1)
-        services_mock.agents = Mock(AgentsService)
         services_mock.agents.get_one.return_value = mock_agent
         services_mock.configurations = AsyncMock()
         services_mock.configurations.get.return_value = (
             "http://maas.example:5240/MAAS"
         )
-        services_mock.secrets = Mock(SecretsService)
         services_mock.secrets.get_composite_secret.return_value = None
 
         response = await mocked_internal_api_client.get(
@@ -236,6 +308,107 @@ class TestAgentsApi:
             == "RPC secret is not configured. Please ensure MAAS is properly initialized."
         )
 
+    async def test_agent_dhcp_data_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_app_with_mocked_services: FastAPI,
+    ) -> None:
+        internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
+        services_mock.dhcp = Mock(DHCPService)
+        services_mock.dhcp.get_kea_dhcp_data_for_agent.return_value = DHCP_DATA
+
+        response = await mocked_internal_api_client.get(
+            f"{self.BASE_PATH}/rack-1/dhcp_data"
+        )
+
+        assert response.status_code == 200
+        response_json = response.json()
+        assert response_json["kind"] == "AgentDHCPData"
+        assert response_json["vlans"] == [
+            {"id": 1, "vid": 0, "relayed_vlan_id": None, "mtu": 1500}
+        ]
+        assert response_json["subnets"][0]["cidr"] == "10.0.0.0/24"
+        assert response_json["subnets"][0]["pools"][0]["start_ip"] == (
+            "10.0.0.100"
+        )
+        assert response_json["subnets"][0]["host_reservations"] == [
+            {
+                "ip": "10.0.0.10",
+                "mac_address": "00:11:22:33:44:55",
+                "hostname": "machine-1",
+            }
+        ]
+        assert response_json["interfaces"] == [
+            {"id": 1, "vlan_id": 1, "name": "eth0"}
+        ]
+        assert response_json["default_dns_servers"] == ["10.0.0.2"]
+        assert response_json["ntp_servers"] == ["10.0.0.3"]
+        assert response_json["ha_data"][0]["secondary_rack_ip"] == "10.0.0.4"
+        assert response_json["_links"]["self"]["href"] == (
+            f"{self.BASE_PATH}/rack-1/dhcp_data"
+        )
+        services_mock.dhcp.get_kea_dhcp_data_for_agent.assert_called_once_with(
+            "rack-1"
+        )
+
+    async def test_agent_dhcp_data_requires_client_certificate(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_app_with_mocked_services: FastAPI,
+    ) -> None:
+        internal_app_with_mocked_services.add_middleware(
+            InjectTLSWithoutClientCert
+        )
+        services_mock.dhcp = Mock(DHCPService)
+
+        response = await mocked_internal_api_client.get(
+            f"{self.BASE_PATH}/rack-1/dhcp_data"
+        )
+
+        assert response.status_code == 403
+        services_mock.dhcp.get_kea_dhcp_data_for_agent.assert_not_called()
+
+    async def test_agent_dhcp_data_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_app_with_mocked_services: FastAPI,
+    ) -> None:
+        internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
+        services_mock.dhcp = Mock(DHCPService)
+        services_mock.dhcp.get_kea_dhcp_data_for_agent.side_effect = (
+            NotFoundException()
+        )
+
+        response = await mocked_internal_api_client.get(
+            f"{self.BASE_PATH}/missing/dhcp_data"
+        )
+
+        assert response.status_code == 404
+
+    async def test_agent_dhcp_data_422_when_rack_not_configured(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_internal_api_client: AsyncClient,
+        internal_app_with_mocked_services: FastAPI,
+    ) -> None:
+        internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
+        services_mock.dhcp = Mock(DHCPService)
+        services_mock.dhcp.get_kea_dhcp_data_for_agent.side_effect = (
+            ValidationException.build_for_field(
+                "system_id",
+                "The rack controller has no current configuration.",
+            )
+        )
+
+        response = await mocked_internal_api_client.get(
+            f"{self.BASE_PATH}/rack-1/dhcp_data"
+        )
+
+        assert response.status_code == 422
+
     @patch(
         "maasapiserver.v3.api.internal.handlers.agent.sign_certificate_request"
     )
@@ -251,7 +424,7 @@ class TestAgentsApi:
         mock_dump_certificate,
         mock_fetch_maas_ca_cert,
         mock_sign_certificate_request,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_api_headers: dict,
     ) -> None:
@@ -272,7 +445,6 @@ class TestAgentsApi:
         mock_ca_certificate.cert = Mock(crypto.X509)
         mock_fetch_maas_ca_cert.return_value = mock_ca_certificate
 
-        services_mock.bootstraptokens = Mock(BootstrapTokensService)
         mock_token = BootstrapToken(
             id=1,
             secret="test-secret",
@@ -280,10 +452,8 @@ class TestAgentsApi:
             expires_at=utcnow() + timedelta(minutes=5),
         )
         services_mock.bootstraptokens.get_one.return_value = mock_token
-        services_mock.racks = Mock(RacksService)
         mock_rack = Rack(id=1, name="test-rack")
         services_mock.racks.get_one.return_value = mock_rack
-        services_mock.secrets = Mock(SecretsService)
         mock_ca_secret = {
             "key": "mock-key",
             "cert": "mock-cert",
@@ -292,7 +462,6 @@ class TestAgentsApi:
         services_mock.secrets.get_composite_secret.return_value = (
             mock_ca_secret
         )
-        services_mock.agents = Mock(AgentsService)
         mock_agent = Agent(id=1, uuid=UUID, rack_id=1)
         services_mock.agents.create.return_value = mock_agent
 
@@ -315,11 +484,10 @@ class TestAgentsApi:
 
     async def test_agent_enrollment_failed_with_not_found_secret(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_api_headers: dict,
     ) -> None:
-        services_mock.bootstraptokens = Mock(BootstrapTokensService)
         services_mock.bootstraptokens.get_one.return_value = None
 
         request_data = {"secret": "invalid-secret", "csr": CSR}
@@ -341,11 +509,10 @@ class TestAgentsApi:
 
     async def test_agent_enrollment_with_expired_secret(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_api_headers: dict,
     ) -> None:
-        services_mock.bootstraptokens = Mock(BootstrapTokensService)
         mock_token = BootstrapToken(
             id=1,
             secret="test-secret",
@@ -376,12 +543,11 @@ class TestAgentsApi:
     async def test_agent_enrollment_token_reuse_logging(
         self,
         mock_logger,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_api_headers: dict,
     ) -> None:
         """Test that bootstrap token reuse is logged when token is expired."""
-        services_mock.bootstraptokens = Mock(BootstrapTokensService)
         mock_token = BootstrapToken(
             id=1,
             secret="test-secret",

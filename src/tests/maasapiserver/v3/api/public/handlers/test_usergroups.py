@@ -52,13 +52,9 @@ from maasservicelayer.models.openfga_tuple import (
 from maasservicelayer.models.usergroup_members import UserGroupMember
 from maasservicelayer.models.usergroups import UserGroup, UserGroupStatistics
 from maasservicelayer.models.users import User
-from maasservicelayer.services import ServiceCollectionV3, UsersService
-from maasservicelayer.services.openfga_tuples import OpenFGATupleService
-from maasservicelayer.services.resource_pools import ResourcePoolsService
 from maasservicelayer.services.usergroups import (
     UserAlreadyInGroup,
     UserGroupNotFound,
-    UserGroupsService,
 )
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.app import AsyncOpenFGAClientMock
@@ -173,13 +169,12 @@ class TestUserGroupsApi(ApiCommonTests):
     # GET /groups
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.list.return_value = ListResult[UserGroup](
             items=[TEST_GROUP],
             total=2,
@@ -193,13 +188,12 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.list.return_value = ListResult[UserGroup](
             items=[TEST_GROUP],
             total=1,
@@ -214,13 +208,12 @@ class TestUserGroupsApi(ApiCommonTests):
     # GET /groups/statistics
     async def test_list_statistics_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.list_groups_statistics.return_value = (
             ListResult[UserGroupStatistics](
                 items=[
@@ -247,13 +240,12 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_list_statistics_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.list_groups_statistics.return_value = (
             ListResult[UserGroupStatistics](
                 items=[
@@ -278,13 +270,12 @@ class TestUserGroupsApi(ApiCommonTests):
     # GET /groups/{group_id}
     async def test_get(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
         response = await client.get(f"{self.BASE_PATH}/{TEST_GROUP.id}")
         assert response.status_code == 200
@@ -295,13 +286,12 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_get_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = None
         response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
@@ -312,7 +302,7 @@ class TestUserGroupsApi(ApiCommonTests):
     # POST /groups
     async def test_post_201(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -321,7 +311,6 @@ class TestUserGroupsApi(ApiCommonTests):
         group_request = UserGroupRequest(
             name=TEST_GROUP.name, description=TEST_GROUP.description
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.create.return_value = TEST_GROUP
         response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(group_request)
@@ -338,14 +327,13 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_post_409(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
         group_request = UserGroupRequest(name="duplicate_group")
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.create.side_effect = AlreadyExistsException(
             details=[
                 BaseExceptionDetail(
@@ -365,7 +353,7 @@ class TestUserGroupsApi(ApiCommonTests):
     # PUT /groups/{group_id}
     async def test_put(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -381,7 +369,6 @@ class TestUserGroupsApi(ApiCommonTests):
         update_request = UserGroupRequest(
             name="new_name", description="new_description"
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.update_by_id.return_value = updated_group
 
         response = await client.put(
@@ -396,13 +383,12 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_put_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.update_by_id.return_value = None
         update_request = UserGroupRequest(name="new_name")
         response = await client.put(
@@ -414,26 +400,24 @@ class TestUserGroupsApi(ApiCommonTests):
     # DELETE /groups/{group_id}
     async def test_delete(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.delete_by_id.side_effect = None
         response = await client.delete(f"{self.BASE_PATH}/1")
         assert response.status_code == 204
 
     async def test_delete_with_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.delete_by_id.side_effect = [
             PreconditionFailedException(
                 details=[
@@ -461,13 +445,12 @@ class TestUserGroupsApi(ApiCommonTests):
     # GET /groups/{group_id}/members
     async def test_list_members_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
         services_mock.usergroups.list_usergroup_members_page = AsyncMock(
             return_value=ListResult[UserGroupMember](
@@ -498,13 +481,12 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_list_members_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
         services_mock.usergroups.list_usergroup_members_page = AsyncMock(
             return_value=ListResult[UserGroupMember](
@@ -539,13 +521,12 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_list_members_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = None
 
         response = await client.get(f"{self.BASE_PATH}/999/members")
@@ -554,16 +535,14 @@ class TestUserGroupsApi(ApiCommonTests):
     # POST /groups/{group_id}/members
     async def test_add_member(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
         member_request = UserGroupMemberRequest(user_id=10)
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = TEST_USER
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.add_user_to_group_by_id.return_value = None
 
         response = await client.post(
@@ -574,16 +553,14 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_add_member_group_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
         member_request = UserGroupMemberRequest(user_id=10)
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = TEST_USER
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.add_user_to_group_by_id.side_effect = (
             UserGroupNotFound()
         )
@@ -596,16 +573,14 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_add_member_already_in_group(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
         member_request = UserGroupMemberRequest(user_id=10)
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = TEST_USER
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.add_user_to_group_by_id.side_effect = (
             UserAlreadyInGroup()
         )
@@ -619,13 +594,12 @@ class TestUserGroupsApi(ApiCommonTests):
     # DELETE /groups/{group_id}/members/{user_id}
     async def test_remove_member(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
         services_mock.usergroups.remove_user_from_group.return_value = None
 
@@ -636,13 +610,12 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_remove_member_group_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = None
 
         response = await client.delete(f"{self.BASE_PATH}/999/members/10")
@@ -651,12 +624,10 @@ class TestUserGroupsApi(ApiCommonTests):
     # GET /groups/{group_id}/entitlements
     async def test_list_entitlements_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             AsyncOpenFGAClientMock(
                 {MAASResourceEntitlement.CAN_VIEW_IDENTITIES}
@@ -693,12 +664,10 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_list_entitlements_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             AsyncOpenFGAClientMock(
                 {MAASResourceEntitlement.CAN_VIEW_IDENTITIES}
@@ -742,13 +711,12 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_list_entitlements_group_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = None
 
         response = await client.get(f"{self.BASE_PATH}/999/entitlements")
@@ -757,7 +725,7 @@ class TestUserGroupsApi(ApiCommonTests):
     # POST /groups/{group_id}/entitlements
     async def test_add_entitlement_maas(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         entitlement_request = EntitlementRequest(
@@ -765,9 +733,7 @@ class TestUserGroupsApi(ApiCommonTests):
             resource_id=0,
             entitlement="can_edit_machines",
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             AsyncOpenFGAClientMock(
                 {MAASResourceEntitlement.CAN_EDIT_IDENTITIES}
@@ -795,7 +761,7 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_add_entitlement_pool(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         entitlement_request = EntitlementRequest(
@@ -803,11 +769,8 @@ class TestUserGroupsApi(ApiCommonTests):
             resource_id=5,
             entitlement="can_edit_machines",
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
-        services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.exists = AsyncMock(return_value=True)
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             AsyncOpenFGAClientMock(
                 {MAASResourceEntitlement.CAN_EDIT_IDENTITIES}
@@ -835,7 +798,7 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_add_entitlement_group_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -846,7 +809,6 @@ class TestUserGroupsApi(ApiCommonTests):
             resource_id=0,
             entitlement="can_edit_machines",
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = None
 
         response = await client.post(
@@ -857,7 +819,7 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_add_entitlement_invalid_resource_type(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -868,7 +830,6 @@ class TestUserGroupsApi(ApiCommonTests):
             "resource_id": 0,
             "entitlement": "can_edit_machines",
         }
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
 
         response = await client.post(
@@ -881,7 +842,7 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_add_entitlement_maas_invalid(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -892,7 +853,6 @@ class TestUserGroupsApi(ApiCommonTests):
             resource_id=-1,  # should be 0 for maas entitlements
             entitlement="can_edit_machines",
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
 
         response = await client.post(
@@ -903,7 +863,7 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_add_entitlement_pool_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -914,9 +874,7 @@ class TestUserGroupsApi(ApiCommonTests):
             resource_id=999,
             entitlement="can_edit_machines",
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
-        services_mock.resource_pools = Mock(ResourcePoolsService)
         services_mock.resource_pools.exists = AsyncMock(return_value=False)
 
         response = await client.post(
@@ -927,7 +885,7 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_add_entitlement_invalid_entitlement_name(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -938,7 +896,6 @@ class TestUserGroupsApi(ApiCommonTests):
             resource_id=0,
             entitlement="nonexistent_entitlement",
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
 
         response = await client.post(
@@ -952,12 +909,10 @@ class TestUserGroupsApi(ApiCommonTests):
     # DELETE /groups/{group_id}/entitlements
     async def test_remove_entitlement_maas(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             AsyncOpenFGAClientMock(
                 {MAASResourceEntitlement.CAN_EDIT_IDENTITIES}
@@ -982,12 +937,10 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_remove_entitlement_pool(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             AsyncOpenFGAClientMock(
                 {MAASResourceEntitlement.CAN_EDIT_IDENTITIES}
@@ -1012,13 +965,12 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_remove_entitlement_group_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = None
 
         response = await client.delete(
@@ -1033,13 +985,12 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_remove_entitlement_invalid_resource_type(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
 
         response = await client.delete(
@@ -1056,13 +1007,12 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_remove_entitlement_invalid_entitlement_name(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
 
         response = await client.delete(
@@ -1080,17 +1030,15 @@ class TestUserGroupsApi(ApiCommonTests):
     # POST /groups/{group_id}/members:batch_create
     async def test_bulk_add_members(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
         bulk_request = BulkGroupMemberRequest(user_ids=[10, 20])
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
         services_mock.usergroups.bulk_add_users_to_group.return_value = None
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = TEST_USER
 
         response = await client.post(
@@ -1101,14 +1049,13 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_bulk_add_members_group_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
         bulk_request = BulkGroupMemberRequest(user_ids=[10])
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = None
 
         response = await client.post(
@@ -1119,16 +1066,14 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_bulk_add_members_user_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
         bulk_request = BulkGroupMemberRequest(user_ids=[999])
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = None
 
         response = await client.post(
@@ -1139,19 +1084,17 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_bulk_add_members_already_in_group(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
         bulk_request = BulkGroupMemberRequest(user_ids=[10])
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
         services_mock.usergroups.bulk_add_users_to_group.side_effect = (
             UserAlreadyInGroup()
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = TEST_USER
 
         response = await client.post(
@@ -1163,13 +1106,12 @@ class TestUserGroupsApi(ApiCommonTests):
     # DELETE /groups/{group_id}/members
     async def test_bulk_remove_members(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
         services_mock.usergroups.bulk_remove_users_from_group.return_value = (
             None
@@ -1182,13 +1124,12 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_bulk_remove_members_group_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = None
 
         response = await client.delete(
@@ -1199,7 +1140,7 @@ class TestUserGroupsApi(ApiCommonTests):
     # POST /groups/{group_id}/entitlements:batch_delete
     async def test_bulk_remove_entitlements(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         bulk_request = BulkEntitlementDeleteRequest(
@@ -1216,9 +1157,7 @@ class TestUserGroupsApi(ApiCommonTests):
                 ),
             ]
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
             AsyncOpenFGAClientMock(
                 {MAASResourceEntitlement.CAN_EDIT_IDENTITIES}
@@ -1251,7 +1190,7 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_bulk_remove_entitlements_group_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -1266,7 +1205,6 @@ class TestUserGroupsApi(ApiCommonTests):
                 )
             ]
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = None
 
         response = await client.post(
@@ -1277,7 +1215,7 @@ class TestUserGroupsApi(ApiCommonTests):
 
     async def test_bulk_remove_entitlements_invalid_entitlement(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -1292,7 +1230,6 @@ class TestUserGroupsApi(ApiCommonTests):
                 )
             ]
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.get_by_id.return_value = TEST_GROUP
 
         response = await client.post(

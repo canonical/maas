@@ -13,7 +13,6 @@ from maasapiserver.v3.api.public.models.requests.staticroutes import (
 )
 from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.services import ServiceCollectionV3, SubnetsService
 
 
 class TestStaticRouteCreateRequest:
@@ -69,10 +68,7 @@ class TestStaticRouteCreateRequest:
 
 @pytest.mark.asyncio
 class TestStaticRouteCreateRequestToBuild:
-    async def test_no_destination_subnet(
-        self, services_mock: ServiceCollectionV3
-    ) -> None:
-        services_mock.subnets = Mock(SubnetsService)
+    async def test_no_destination_subnet(self, services_mock: Mock) -> None:
         services_mock.subnets.get_one.return_value = None
         request = StaticRouteRequest(
             gateway_ip="10.0.0.1", metric=0, destination_id=1
@@ -89,7 +85,7 @@ class TestStaticRouteCreateRequestToBuild:
         )
 
     async def test_ip_version_mismatch_between_source_and_destination_subnets(
-        self, services_mock: ServiceCollectionV3
+        self, services_mock: Mock
     ) -> None:
         source_subnet = Subnet(
             id=0,
@@ -113,7 +109,6 @@ class TestStaticRouteCreateRequestToBuild:
             disabled_boot_architectures=[],
             vlan_id=1,
         )
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = destination_subnet
         request = StaticRouteRequest(
             gateway_ip="10.0.0.1", metric=0, destination_id=1
@@ -129,9 +124,7 @@ class TestStaticRouteCreateRequestToBuild:
             == "source and destination subnets must have be the same IP version."
         )
 
-    async def test_gateway_ip_not_in_subnet(
-        self, services_mock: ServiceCollectionV3
-    ) -> None:
+    async def test_gateway_ip_not_in_subnet(self, services_mock: Mock) -> None:
         source_subnet = Subnet(
             id=0,
             cidr="10.0.0.0/24",
@@ -154,7 +147,6 @@ class TestStaticRouteCreateRequestToBuild:
             disabled_boot_architectures=[],
             vlan_id=1,
         )
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = destination_subnet
         request = StaticRouteRequest(
             gateway_ip="20.0.0.1", metric=0, destination_id=1
@@ -170,9 +162,7 @@ class TestStaticRouteCreateRequestToBuild:
             == "gateway_ip must be with in the source subnet 10.0.0.0/24."
         )
 
-    async def test_valid_build(
-        self, services_mock: ServiceCollectionV3
-    ) -> None:
+    async def test_valid_build(self, services_mock: Mock) -> None:
         source_subnet = Subnet(
             id=0,
             cidr="10.0.0.0/24",
@@ -195,7 +185,6 @@ class TestStaticRouteCreateRequestToBuild:
             disabled_boot_architectures=[],
             vlan_id=1,
         )
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = destination_subnet
         request = StaticRouteRequest(
             gateway_ip="10.0.0.1", metric=0, destination_id=1

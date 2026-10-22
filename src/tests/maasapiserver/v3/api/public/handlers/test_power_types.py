@@ -1,13 +1,12 @@
 #  Copyright 2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from httpx import AsyncClient
 import pytest
 
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.services import ServiceCollectionV3
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,
@@ -27,7 +26,7 @@ class TestPowerTypesApi(ApiCommonTests):
 
     async def test_list_power_types(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.power_types = AsyncMock()
@@ -70,7 +69,7 @@ class TestPowerTypesApi(ApiCommonTests):
 
     async def test_list_power_types_maps_fields_and_defaults_driver_type(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user: AsyncClient,
     ) -> None:
         services_mock.power_types = AsyncMock()

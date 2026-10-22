@@ -153,6 +153,7 @@ from maasservicelayer.services.consumers import ConsumersService
 from maasservicelayer.services.database_configurations import (
     DatabaseConfigurationsService,
 )
+from maasservicelayer.services.dhcp import DHCPService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.discoveries import DiscoveriesService
 from maasservicelayer.services.django_session import DjangoSessionService
@@ -276,6 +277,7 @@ class ServiceCollectionV3:
     database_configurations: DatabaseConfigurationsService
     configurations: ConfigurationsService
     consumers: ConsumersService
+    dhcp: DHCPService
     dhcpsnippets: DhcpSnippetsService
     discoveries: DiscoveriesService
     django_session: DjangoSessionService
@@ -659,6 +661,18 @@ class ServiceCollectionV3:
             dnspublications_service=services.dnspublications,
             nodegrouptorackcontrollers_service=services.nodegrouptorackcontrollers,
             subnets_repository=SubnetsRepository(context),
+        )
+        services.dhcp = DHCPService(
+            context=context,
+            configurations_service=services.configurations,
+            domains_service=services.domains,
+            interfaces_service=services.interfaces,
+            ipranges_service=services.ipranges,
+            nodes_service=services.nodes,
+            reservedips_service=services.reservedips,
+            staticipaddress_service=services.staticipaddress,
+            subnets_service=services.subnets,
+            vlans_service=services.vlans,
         )
         services.dnsdata = DNSDataService(
             context=context,

@@ -47,13 +47,7 @@ from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.secrets import MSMConnectorSecret
 from maasservicelayer.services import CacheForServices
-from maasservicelayer.services.boot_sources import (
-    BootSourceSelectionsService,
-    BootSourcesService,
-)
-from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.secrets import LocalSecretsStorageService
-from maasservicelayer.services.temporal import TemporalService
 from maastemporalworker.worker import REGION_TASK_QUEUE
 from maastemporalworker.workflow.msm import (
     CONFIGURATION_ACTIVITIES,
@@ -585,7 +579,6 @@ class TestMSMActivities:
     async def test_set_boot_source_activity(
         self, mocker, msm_act, enrol_param, services_mock
     ):
-        services_mock.boot_sources = Mock(BootSourcesService)
         mocker.patch.object(
             msm_act, "start_transaction"
         ).return_value = AsyncContextManagerMock(services_mock)
@@ -609,7 +602,6 @@ class TestMSMActivities:
     async def test_set_selections_activity(
         self, mocker, msm_act, services_mock
     ):
-        services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.get_one.return_value = BootSource(
             id=1,
             name="",
@@ -617,9 +609,6 @@ class TestMSMActivities:
             url=_MSM_BOOT_SOURCE_URL,
             priority=1,
             skip_keyring_verification=True,
-        )
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
         )
         mocker.patch.object(
             msm_act, "start_transaction"
@@ -663,7 +652,6 @@ class TestMSMActivities:
     async def test_set_selections_activity_no_source(
         self, mocker, msm_act, services_mock
     ):
-        services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.get_one.return_value = None
         mocker.patch.object(
             msm_act, "start_transaction"
@@ -683,7 +671,6 @@ class TestMSMActivities:
     async def test_set_selections_activity_bad_selection_format(
         self, mocker, msm_act, services_mock
     ):
-        services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.get_one.return_value = BootSource(
             id=1,
             name="",
@@ -691,9 +678,6 @@ class TestMSMActivities:
             url=_MSM_BOOT_SOURCE_URL,
             priority=1,
             skip_keyring_verification=True,
-        )
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
         )
         mocker.patch.object(
             msm_act, "start_transaction"
@@ -714,7 +698,6 @@ class TestMSMActivities:
             )
 
     async def test_set_global_config(self, mocker, msm_act, services_mock):
-        services_mock.configurations = Mock(ConfigurationsService)
         mocker.patch.object(
             msm_act, "start_transaction"
         ).return_value = AsyncContextManagerMock(services_mock)
@@ -729,7 +712,6 @@ class TestMSMActivities:
     async def test_set_global_config_err_non_retryable(
         self, mocker, msm_act, services_mock
     ):
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.clear_and_set_many.side_effect = (
             ValidationException
         )
@@ -746,7 +728,6 @@ class TestMSMActivities:
     async def test_set_global_config_err_includes_reason(
         self, mocker, msm_act, services_mock
     ):
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.clear_and_set_many.side_effect = (
             ValidationException.build_for_field(
                 field="theme", message="Invalid value for 'theme'."
@@ -764,7 +745,6 @@ class TestMSMActivities:
         )
 
     async def test_start_image_sync(self, mocker, msm_act, services_mock):
-        services_mock.temporal = Mock(TemporalService)
         temporal_client = Mock(Client)
         sched_handle = Mock(ScheduleHandle)
         temporal_client.get_schedule_handle.return_value = sched_handle
@@ -784,7 +764,6 @@ class TestMSMActivities:
     async def test_disable_bootsources_activity(
         self, mocker, msm_act, services_mock
     ):
-        services_mock.boot_sources = Mock(BootSourcesService)
         mocker.patch.object(
             msm_act, "start_transaction"
         ).return_value = AsyncContextManagerMock(services_mock)
@@ -795,7 +774,6 @@ class TestMSMActivities:
     async def test_delete_msm_bootsource_activity(
         self, mocker, msm_act, services_mock
     ):
-        services_mock.boot_sources = Mock(BootSourcesService)
         mocker.patch.object(
             msm_act, "start_transaction"
         ).return_value = AsyncContextManagerMock(services_mock)
@@ -816,7 +794,6 @@ class TestMSMActivities:
         msm_act,
         services_mock,
     ):
-        services_mock.boot_sources = Mock(BootSourcesService)
         mocker.patch.object(
             msm_act, "start_transaction"
         ).return_value = AsyncContextManagerMock(services_mock)
@@ -925,15 +902,11 @@ class TestMSMActivities:
         assert err.value.non_retryable == (return_code in [401, 404])
 
     async def test_get_config_hash(self, mocker, services_mock, msm_act):
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get_msm_config.return_value = {
             "theme": "dark",
             "default_dns_ttl": 21,
             "upstream_dns": ["2.2.2.2", "1.1.1.1"],  # should not be sorted
         }
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
         services_mock.boot_source_selections.get_all_highest_priority.return_value = [
             BootSourceSelection(
                 id=1,

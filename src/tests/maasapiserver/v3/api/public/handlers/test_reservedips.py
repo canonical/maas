@@ -36,10 +36,6 @@ from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.reservedips import ReservedIP
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.services import ReservedIPsService, ServiceCollectionV3
-from maasservicelayer.services.ipranges import IPRangesService
-from maasservicelayer.services.staticipaddress import StaticIPAddressService
-from maasservicelayer.services.subnets import SubnetsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -102,13 +98,12 @@ class TestReservedIPsApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.list.return_value = ListResult[ReservedIP](
             items=[TEST_RESERVEDIP], total=1
         )
@@ -134,13 +129,12 @@ class TestReservedIPsApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.list.return_value = ListResult[ReservedIP](
             items=[TEST_RESERVEDIP_2], total=2
         )
@@ -166,13 +160,12 @@ class TestReservedIPsApi(ApiCommonTests):
 
     async def test_get_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.get_one.return_value = TEST_RESERVEDIP
         response = await client.get(f"{self.BASE_PATH}/{TEST_RESERVEDIP.id}")
         assert response.status_code == 200
@@ -202,13 +195,12 @@ class TestReservedIPsApi(ApiCommonTests):
 
     async def test_get_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.get_one.return_value = None
         response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
@@ -220,13 +212,12 @@ class TestReservedIPsApi(ApiCommonTests):
 
     async def test_get_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.get_one.return_value = (
             RequestValidationError(errors=[])
         )
@@ -240,15 +231,13 @@ class TestReservedIPsApi(ApiCommonTests):
 
     async def test_post_201(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.create.return_value = TEST_RESERVEDIP
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = Subnet(
             id=1,
             cidr=IPv4Network(f"{TEST_RESERVEDIP.ip}/24", strict=False),
@@ -261,9 +250,7 @@ class TestReservedIPsApi(ApiCommonTests):
             vlan_id=1,
         )
         # we test the validation logic in the builder test
-        services_mock.staticipaddress = Mock(StaticIPAddressService)
         services_mock.staticipaddress.get_one.return_value = None
-        services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_dynamic_range_for_ip.return_value = None
         reservedip_request = ReservedIPCreateRequest(
             ip=TEST_RESERVEDIP.ip,
@@ -278,7 +265,7 @@ class TestReservedIPsApi(ApiCommonTests):
 
     async def test_put_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -286,7 +273,6 @@ class TestReservedIPsApi(ApiCommonTests):
         )
         updated_reservedip = TEST_RESERVEDIP
         updated_reservedip.comment = "updated comment"
-        services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.get_one.return_value = TEST_RESERVEDIP
         services_mock.reservedips.update_one.return_value = updated_reservedip
         reservedip_request = ReservedIPUpdateRequest(
@@ -323,13 +309,12 @@ class TestReservedIPsApi(ApiCommonTests):
 
     async def test_put_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.get_one.return_value = None
         reservedip_request = ReservedIPUpdateRequest(
             ip=TEST_RESERVEDIP.ip,
@@ -344,13 +329,12 @@ class TestReservedIPsApi(ApiCommonTests):
 
     async def test_delete(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.delete_one.return_value = TEST_RESERVEDIP
         response = await client.delete(
             f"{self.BASE_PATH}/{TEST_RESERVEDIP.id}"
@@ -372,13 +356,12 @@ class TestReservedIPsApi(ApiCommonTests):
 
     async def test_delete_with_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.reservedips = Mock(ReservedIPsService)
         services_mock.reservedips.delete_one.side_effect = PreconditionFailedException(
             details=[
                 BaseExceptionDetail(

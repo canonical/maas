@@ -3,7 +3,7 @@
 
 from datetime import datetime, timezone
 from typing import Callable
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from httpx import AsyncClient
 import pytest
@@ -16,7 +16,6 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.ssh_host_keys import TrustedSshHostKey
-from maasservicelayer.services import ServiceCollectionV3
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,
@@ -78,7 +77,7 @@ class TestSshHostKeysApi(ApiCommonTests):
 
     async def test_list_ssh_host_keys(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -98,7 +97,7 @@ class TestSshHostKeysApi(ApiCommonTests):
 
     async def test_get_ssh_host_key(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -116,7 +115,7 @@ class TestSshHostKeysApi(ApiCommonTests):
 
     async def test_get_ssh_host_key_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -130,7 +129,7 @@ class TestSshHostKeysApi(ApiCommonTests):
 
     async def test_create_ssh_host_key(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -155,7 +154,7 @@ class TestSshHostKeysApi(ApiCommonTests):
 
     async def test_update_ssh_host_key(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -183,7 +182,7 @@ class TestSshHostKeysApi(ApiCommonTests):
 
     async def test_update_ssh_host_key_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -207,7 +206,7 @@ class TestSshHostKeysApi(ApiCommonTests):
 
     async def test_update_ssh_host_key_precondition_failed(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -232,7 +231,7 @@ class TestSshHostKeysApi(ApiCommonTests):
 
     async def test_delete_ssh_host_key(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -249,7 +248,7 @@ class TestSshHostKeysApi(ApiCommonTests):
 
     async def test_delete_ssh_host_key_precondition_failed(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(

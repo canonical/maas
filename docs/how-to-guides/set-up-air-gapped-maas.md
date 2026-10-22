@@ -17,7 +17,7 @@ To manage snaps in an air-gapped setup, use the Enterprise Store. This  eliminat
 2. Secure your deployment with HTTP.
 3. Populate the store with snaps needed for your MAAS environment.
 
-For detailed guidance, see the [official documentation](https://documentation.ubuntu.com/enterprise-store).
+For detailed guidance, see the [official documentation](https://ubuntu.com/enterprise-store/docs/).
 
 ## Local package update
 
