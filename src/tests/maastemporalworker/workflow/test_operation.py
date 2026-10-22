@@ -18,9 +18,7 @@ from maascommon.enums.operations import OperationStatus, OperationType
 from maasservicelayer.db import Database
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.operations import Operation
-from maasservicelayer.services import CacheForServices, ServiceCollectionV3
-from maasservicelayer.services.operations import OperationsService
-from maasservicelayer.services.temporal import TemporalService
+from maasservicelayer.services import CacheForServices
 from maastemporalworker.worker import REGION_TASK_QUEUE
 import maastemporalworker.workflow.activity as activity_module
 import maastemporalworker.workflow.operation as operation_module
@@ -41,10 +39,8 @@ ERROR_MESSAGE = "operation failed"
 @pytest.mark.asyncio
 class TestOperationActivity:
     async def test_update_operation_status(
-        self, services_mock: ServiceCollectionV3, monkeypatch
+        self, services_mock: Mock, monkeypatch
     ) -> None:
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.operations = Mock(OperationsService)
         services_mock.produce.return_value = services_mock
         monkeypatch.setattr(
             activity_module, "ServiceCollectionV3", services_mock
@@ -74,10 +70,8 @@ class TestOperationActivity:
         )
 
     async def test_update_operation_status_passes_result(
-        self, services_mock: ServiceCollectionV3, monkeypatch
+        self, services_mock: Mock, monkeypatch
     ) -> None:
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.operations = Mock(OperationsService)
         services_mock.produce.return_value = services_mock
         monkeypatch.setattr(
             activity_module, "ServiceCollectionV3", services_mock
@@ -107,10 +101,8 @@ class TestOperationActivity:
         )
 
     async def test_update_current_task(
-        self, services_mock: ServiceCollectionV3, monkeypatch
+        self, services_mock: Mock, monkeypatch
     ) -> None:
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.operations = Mock(OperationsService)
         services_mock.produce.return_value = services_mock
         monkeypatch.setattr(
             activity_module, "ServiceCollectionV3", services_mock
@@ -139,10 +131,8 @@ class TestOperationActivity:
         )
 
     async def test_update_operation_status_not_found_raises(
-        self, services_mock: ServiceCollectionV3, monkeypatch
+        self, services_mock: Mock, monkeypatch
     ) -> None:
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.update_status = AsyncMock(
             side_effect=NotFoundException()
         )
@@ -322,10 +312,8 @@ class TestReconcileOperationsActivities:
         )
 
     async def test_reconcile_stuck_accepted_starts_mapped(
-        self, services_mock: ServiceCollectionV3, monkeypatch
+        self, services_mock: Mock, monkeypatch
     ) -> None:
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.list_stuck_accepted_operations = AsyncMock(
             return_value=[
                 _make_operation("op-uuid", parameters={"system_id": "abc"})
@@ -351,10 +339,8 @@ class TestReconcileOperationsActivities:
         )
 
     async def test_reconcile_stuck_accepted_swallows_already_started(
-        self, services_mock: ServiceCollectionV3, monkeypatch
+        self, services_mock: Mock, monkeypatch
     ) -> None:
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.list_stuck_accepted_operations = AsyncMock(
             return_value=[
                 _make_operation("op-uuid", parameters={"system_id": "abc"})
@@ -383,13 +369,11 @@ class TestReconcileOperationsActivities:
     )
     async def test_reconcile_in_progress_updates_terminal(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         monkeypatch,
         temporal_status,
         expected_status,
     ) -> None:
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.list_in_progress_operations = AsyncMock(
             return_value=[
                 _make_operation("op-uuid", status=OperationStatus.RUNNING)
@@ -416,10 +400,8 @@ class TestReconcileOperationsActivities:
         )
 
     async def test_reconcile_in_progress_skips_running(
-        self, services_mock: ServiceCollectionV3, monkeypatch
+        self, services_mock: Mock, monkeypatch
     ) -> None:
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.list_in_progress_operations = AsyncMock(
             return_value=[
                 _make_operation("op-uuid", status=OperationStatus.RUNNING)
@@ -456,14 +438,12 @@ class TestReconcileOperationsActivities:
     )
     async def test_reconcile_in_progress_when_workflow_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         monkeypatch,
         operation_status,
         expected_status,
         expected_error,
     ) -> None:
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.list_in_progress_operations = AsyncMock(
             return_value=[_make_operation("op-uuid", status=operation_status)]
         )

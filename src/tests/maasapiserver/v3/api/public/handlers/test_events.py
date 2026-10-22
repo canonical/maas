@@ -20,8 +20,6 @@ from maasservicelayer.models.events import (
     EventType,
     LoggingLevelEnum,
 )
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.events import EventsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -85,13 +83,12 @@ class TestEventsApi(ApiCommonTests):
 
     async def test_list_filters(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.events = Mock(EventsService)
         services_mock.events.list.side_effect = [
             ListResult[Event](items=[TEST_EVENT], total=1),
             ListResult[Event](items=[TEST_EVENT_2], total=1),

@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import AsyncIterator, Awaitable, Callable, Iterator
+from typing import AsyncIterator, Awaitable, Callable, Iterator, override
 from unittest.mock import Mock
 
 from aioresponses import aioresponses
@@ -27,10 +27,15 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.client_certificate import (
     RequireClientCertMiddleware,
 )
-from maascommon.openfga.base import MAASResourceEntitlement
+from maascommon.openfga.async_client import OpenFGAClient
+from maascommon.openfga.base import (
+    MAASResourceEntitlement,
+    OpenFGAEntitlementResourceType,
+    PoolResourceEntitlements,
+)
 from maasservicelayer.db import Database
 from maasservicelayer.models.users import User
-from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
+from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.session_hash import get_session_auth_hash
 from tests.fixtures.factories.user import create_test_user
@@ -105,17 +110,17 @@ def create_internal_app_with_mocks(
 
 
 @pytest.fixture
-def app_with_mocked_services(services_mock: ServiceCollectionV3):
+def app_with_mocked_services(services_mock: Mock):
     yield create_app_with_mocks(services_mock)
 
 
 @pytest.fixture
-def app_with_mocked_services_user(services_mock: ServiceCollectionV3):
+def app_with_mocked_services_user(services_mock: Mock):
     yield create_app_with_mocks(services_mock, with_user=True)
 
 
 @pytest.fixture
-def internal_app_with_mocked_services(services_mock: ServiceCollectionV3):
+def internal_app_with_mocked_services(services_mock: Mock):
     yield create_internal_app_with_mocks(services_mock)
 
 
@@ -152,33 +157,41 @@ async def mocked_api_client_user(
         yield client
 
 
-class AsyncOpenFGAClientMock:
+class AsyncOpenFGAClientMock(OpenFGAClient):
     def __init__(
         self,
         permissions: set[MAASResourceEntitlement] | None = None,
+        permissions_on_pools: dict[PoolResourceEntitlements, list[int]]
+        | None = None,
     ):
         self._permissions = permissions or set()
+        self._permissions_on_pools = permissions_on_pools or {}
 
-    async def has_permission_on_maas(
-        self, permission: MAASResourceEntitlement, user_id: int
-    ) -> bool:
-        return permission in self._permissions
+    def _unformat_pool(self, obj: str) -> int:
+        return int(obj.removeprefix(f"{OpenFGAEntitlementResourceType.POOL}:"))
 
-    def __getattr__(self, item):
-        """Mock the OpenFGA client methods for checking permissions."""
-        if item == "has_permission_on_maas":
-            return self.has_permission_on_maas
+    @override
+    async def _check(self, user_id: int, relation: str, obj: str) -> bool:
+        if obj.startswith(OpenFGAEntitlementResourceType.POOL):
+            pool_id = self._unformat_pool(obj)
+            return pool_id in self._permissions_on_pools.get(
+                PoolResourceEntitlements(relation), []
+            )
+        return relation in self._permissions
 
-        async def _has_permission(*args, **kwargs) -> bool:
-            return item in self._permissions
-
-        return _has_permission
+    @override
+    async def _list_objects(
+        self, user_id: int, relation: str, obj_type: str
+    ) -> list[int]:
+        return self._permissions_on_pools.get(
+            PoolResourceEntitlements(relation), []
+        )
 
 
 @pytest.fixture
 def mocked_api_client_user_with_permissions(
     mocked_api_client_user: AsyncClient,
-    services_mock: ServiceCollectionV3,
+    services_mock: Mock,
 ) -> Callable[..., AsyncClient]:
     """
     Returns a factory that grants the given OpenFGA permissions to the
@@ -195,10 +208,11 @@ def mocked_api_client_user_with_permissions(
 
     def _with_permissions(
         *permissions: MAASResourceEntitlement,
+        permissions_on_pools: dict[PoolResourceEntitlements, list[int]]
+        | None = None,
     ) -> AsyncClient:
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
-            AsyncOpenFGAClientMock(set(permissions))
+            AsyncOpenFGAClientMock(set(permissions), permissions_on_pools)
         )
         return mocked_api_client_user
 

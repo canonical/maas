@@ -11,8 +11,6 @@ import pytest
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.exceptions.catalog import NotFoundException
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.switches import SwitchesService
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,
@@ -65,10 +63,9 @@ class TestNOSInstallerApi(ApiCommonTests):
 
     async def test_get_nos_installer_switch_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client: AsyncClient,
     ) -> None:
-        services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_installer_file_for_switch = AsyncMock(
             side_effect=NotFoundException()
         )
@@ -85,10 +82,9 @@ class TestNOSInstallerApi(ApiCommonTests):
 
     async def test_get_nos_installer_no_installer_assigned(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client: AsyncClient,
     ) -> None:
-        services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_installer_file_for_switch = AsyncMock(
             return_value=None
         )
@@ -105,12 +101,11 @@ class TestNOSInstallerApi(ApiCommonTests):
 
     async def test_get_nos_installer_success(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client: AsyncClient,
     ) -> None:
         file_path = Path("/fake/boot/resources/test-file.bin")
 
-        services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_installer_file_for_switch = AsyncMock(
             return_value=(file_path, TEST_FILENAME, len(TEST_FILE_CONTENT))
         )

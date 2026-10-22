@@ -29,12 +29,6 @@ from maasservicelayer.models.agents import Agent
 from maasservicelayer.models.bootstraptokens import BootstrapToken
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.racks import Rack
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.agents import AgentsService
-from maasservicelayer.services.bootstraptoken import BootstrapTokensService
-from maasservicelayer.services.nodes import NodesService
-from maasservicelayer.services.racks import RacksService
-from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.utils.date import utcnow
 from provisioningserver.certificates import Certificate
 
@@ -97,7 +91,7 @@ class TestAgentsApi:
     async def test_agent_config_200_without_system_id(
         self,
         mock_cluster_config,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_app_with_mocked_services: FastAPI,
         internal_api_headers: dict,
@@ -105,9 +99,7 @@ class TestAgentsApi:
         internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
         mock_cluster_config.open.return_value.__enter__.return_value.temporal_server = "temporal.example:7233"
         mock_agent = Agent(id=1, uuid=UUID, rack_id=1)
-        services_mock.agents = Mock(AgentsService)
         services_mock.agents.get_one.return_value = mock_agent
-        services_mock.secrets = Mock(SecretsService)
         services_mock.secrets.get_composite_secret.return_value = {
             "secret": "rpc-secret"
         }
@@ -135,7 +127,7 @@ class TestAgentsApi:
     async def test_agent_config_200_with_system_id(
         self,
         mock_cluster_config,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_app_with_mocked_services: FastAPI,
         internal_api_headers: dict,
@@ -143,13 +135,10 @@ class TestAgentsApi:
         internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
         mock_cluster_config.open.return_value.__enter__.return_value.temporal_server = "temporal.example:7233"
         mock_agent = Agent(id=1, uuid=UUID, rack_id=1, rackcontroller_id=42)
-        services_mock.agents = Mock(AgentsService)
         services_mock.agents.get_one.return_value = mock_agent
         mock_node = Mock(Node)
         mock_node.system_id = "system-id"
-        services_mock.nodes = Mock(NodesService)
         services_mock.nodes.get_one.return_value = mock_node
-        services_mock.secrets = Mock(SecretsService)
         services_mock.secrets.get_composite_secret.return_value = {
             "secret": "rpc-secret"
         }
@@ -176,13 +165,12 @@ class TestAgentsApi:
 
     async def test_agent_config_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_app_with_mocked_services: FastAPI,
         internal_api_headers: dict,
     ) -> None:
         internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
-        services_mock.agents = Mock(AgentsService)
         services_mock.agents.get_one.return_value = None
 
         nonexistent_uuid = "no-uuid"
@@ -205,7 +193,7 @@ class TestAgentsApi:
 
     async def test_agent_config_503(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_app_with_mocked_services: FastAPI,
         internal_api_headers: dict,
@@ -213,13 +201,11 @@ class TestAgentsApi:
         internal_app_with_mocked_services.add_middleware(InjectFakeTLSCN)
 
         mock_agent = Agent(id=1, uuid=UUID, rack_id=1)
-        services_mock.agents = Mock(AgentsService)
         services_mock.agents.get_one.return_value = mock_agent
         services_mock.configurations = AsyncMock()
         services_mock.configurations.get.return_value = (
             "http://maas.example:5240/MAAS"
         )
-        services_mock.secrets = Mock(SecretsService)
         services_mock.secrets.get_composite_secret.return_value = None
 
         response = await mocked_internal_api_client.get(
@@ -251,7 +237,7 @@ class TestAgentsApi:
         mock_dump_certificate,
         mock_fetch_maas_ca_cert,
         mock_sign_certificate_request,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_api_headers: dict,
     ) -> None:
@@ -272,7 +258,6 @@ class TestAgentsApi:
         mock_ca_certificate.cert = Mock(crypto.X509)
         mock_fetch_maas_ca_cert.return_value = mock_ca_certificate
 
-        services_mock.bootstraptokens = Mock(BootstrapTokensService)
         mock_token = BootstrapToken(
             id=1,
             secret="test-secret",
@@ -280,10 +265,8 @@ class TestAgentsApi:
             expires_at=utcnow() + timedelta(minutes=5),
         )
         services_mock.bootstraptokens.get_one.return_value = mock_token
-        services_mock.racks = Mock(RacksService)
         mock_rack = Rack(id=1, name="test-rack")
         services_mock.racks.get_one.return_value = mock_rack
-        services_mock.secrets = Mock(SecretsService)
         mock_ca_secret = {
             "key": "mock-key",
             "cert": "mock-cert",
@@ -292,7 +275,6 @@ class TestAgentsApi:
         services_mock.secrets.get_composite_secret.return_value = (
             mock_ca_secret
         )
-        services_mock.agents = Mock(AgentsService)
         mock_agent = Agent(id=1, uuid=UUID, rack_id=1)
         services_mock.agents.create.return_value = mock_agent
 
@@ -315,11 +297,10 @@ class TestAgentsApi:
 
     async def test_agent_enrollment_failed_with_not_found_secret(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_api_headers: dict,
     ) -> None:
-        services_mock.bootstraptokens = Mock(BootstrapTokensService)
         services_mock.bootstraptokens.get_one.return_value = None
 
         request_data = {"secret": "invalid-secret", "csr": CSR}
@@ -341,11 +322,10 @@ class TestAgentsApi:
 
     async def test_agent_enrollment_with_expired_secret(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_api_headers: dict,
     ) -> None:
-        services_mock.bootstraptokens = Mock(BootstrapTokensService)
         mock_token = BootstrapToken(
             id=1,
             secret="test-secret",
@@ -376,12 +356,11 @@ class TestAgentsApi:
     async def test_agent_enrollment_token_reuse_logging(
         self,
         mock_logger,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_internal_api_client: AsyncClient,
         internal_api_headers: dict,
     ) -> None:
         """Test that bootstrap token reuse is logged when token is expired."""
-        services_mock.bootstraptokens = Mock(BootstrapTokensService)
         mock_token = BootstrapToken(
             id=1,
             secret="test-secret",

@@ -30,8 +30,6 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.spaces import Space
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.spaces import SpacesService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -90,13 +88,12 @@ class TestSpaceApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.list.return_value = ListResult[Space](
             items=[TEST_SPACE], total=1
         )
@@ -109,13 +106,12 @@ class TestSpaceApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.list.return_value = ListResult[Space](
             items=[TEST_SPACE_2], total=2
         )
@@ -129,13 +125,12 @@ class TestSpaceApi(ApiCommonTests):
     # GET /spaces/{space_id}
     async def test_get_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.get_by_id.return_value = TEST_SPACE
         response = await client.get(f"{self.BASE_PATH}/{TEST_SPACE.id}")
         assert response.status_code == 200
@@ -156,13 +151,12 @@ class TestSpaceApi(ApiCommonTests):
 
     async def test_get_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.get_by_id.return_value = None
         response = await client.get(f"{V3_API_PREFIX}/spaces/100")
         assert response.status_code == 404
@@ -174,13 +168,12 @@ class TestSpaceApi(ApiCommonTests):
 
     async def test_get_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.get_by_id.return_value = RequestValidationError(
             errors=[]
         )
@@ -195,7 +188,7 @@ class TestSpaceApi(ApiCommonTests):
     # POST /spaces
     async def test_post_201(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -206,7 +199,6 @@ class TestSpaceApi(ApiCommonTests):
             description=TEST_SPACE.description,
         )
 
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.create.return_value = TEST_SPACE
         response = await client.post(
             f"{self.BASE_PATH}",
@@ -235,7 +227,7 @@ class TestSpaceApi(ApiCommonTests):
 
     async def test_post_409(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -246,7 +238,6 @@ class TestSpaceApi(ApiCommonTests):
             description=TEST_SPACE.description,
         )
 
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.create.side_effect = [
             TEST_SPACE,
             AlreadyExistsException(
@@ -280,7 +271,7 @@ class TestSpaceApi(ApiCommonTests):
 
     async def test_post_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -288,7 +279,6 @@ class TestSpaceApi(ApiCommonTests):
         )
         create_space_request = {"name": ""}
 
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.create.side_effect = ValueError(
             "Invalid entity name."
         )
@@ -306,7 +296,7 @@ class TestSpaceApi(ApiCommonTests):
     # PUT /spaces/{space_id}
     async def test_put_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -321,7 +311,6 @@ class TestSpaceApi(ApiCommonTests):
             description="updated_description",
         )
 
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.update_by_id.return_value = updated_space
 
         response = await client.put(
@@ -340,7 +329,7 @@ class TestSpaceApi(ApiCommonTests):
 
     async def test_put_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -351,7 +340,6 @@ class TestSpaceApi(ApiCommonTests):
             description="updated_description",
         )
 
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.update_by_id.side_effect = NotFoundException(
             details=[
                 BaseExceptionDetail(
@@ -376,7 +364,7 @@ class TestSpaceApi(ApiCommonTests):
 
     async def test_put_422_request_path(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -387,7 +375,6 @@ class TestSpaceApi(ApiCommonTests):
             description="updated_description",
         )
 
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.update_by_id.side_effect = RequestValidationError(
             errors=[]
         )
@@ -408,14 +395,13 @@ class TestSpaceApi(ApiCommonTests):
     @pytest.mark.parametrize("update_space_request", [{"name": None}])
     async def test_put_422_request_body(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         update_space_request: dict[str, str],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.update_by_id.side_effect = RequestValidationError(
             errors=[]
         )
@@ -436,13 +422,12 @@ class TestSpaceApi(ApiCommonTests):
     # DELETE /spaces/{space_id}
     async def test_delete_204(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.delete_by_id.side_effect = None
 
         response = await client.delete(f"{self.BASE_PATH}/1")
@@ -451,13 +436,12 @@ class TestSpaceApi(ApiCommonTests):
 
     async def test_delete_with_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.spaces = Mock(SpacesService)
         services_mock.spaces.delete_by_id.side_effect = [
             PreconditionFailedException(
                 details=[
