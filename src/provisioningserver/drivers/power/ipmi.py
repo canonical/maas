@@ -7,7 +7,11 @@ import re
 from tempfile import NamedTemporaryFile
 
 from maascommon.enums.ipmi import IPMIPrivilegeLevel
-from maascommon.fips import is_fips_enabled
+from maascommon.fips import (
+    default_ipmi_cipher_suite_id,
+    FIPS_ALLOWED_IPMI_CIPHERS,
+    is_fips_enabled,
+)
 from provisioningserver.drivers import (
     make_ip_extractor,
     make_setting_field,
@@ -22,7 +26,6 @@ from provisioningserver.drivers.power import (
     PowerFatalError,
     PowerSettingError,
 )
-from provisioningserver.drivers.power.fips import FIPS_ALLOWED_IPMI_CIPHERS
 from provisioningserver.events import EVENT_TYPES, send_node_event
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import shell
@@ -283,11 +286,7 @@ class IPMIPowerDriver(PowerDriver):
             "Cipher Suite ID",
             field_type="choice",
             choices=IPMI_CIPHER_SUITE_ID_CHOICES,
-            # freeipmi-tools defaults to 3, but that is not FIPS-approved
-            # (see FIPS_ALLOWED_IPMI_CIPHERS); on a FIPS host default to 17
-            # instead so the default path passes fips_power.py's validator.
-            # Not all IPMI BMCs support 17, so a non-FIPS host keeps 3.
-            default=("17" if is_fips_enabled() else "3"),
+            default=default_ipmi_cipher_suite_id().value,
         ),
         make_setting_field(
             "privilege_level",

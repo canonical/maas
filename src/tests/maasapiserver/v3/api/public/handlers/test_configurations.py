@@ -21,6 +21,7 @@ from maasapiserver.v3.api.public.models.responses.configurations import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.events import EventTypeEnum
 from maascommon.events import EVENT_DETAILS_MAP
+from maasservicelayer.models import configurations
 from maasservicelayer.models.configurations import (
     ConfigFactory,
     MAASNameConfig,
@@ -243,6 +244,24 @@ class TestConfigurationsApi:
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+    async def test_set_config_validator_error_message(
+        self,
+        monkeypatch,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ):
+        monkeypatch.setattr(configurations, "is_fips_enabled", lambda: True)
+        services_mock.configurations = Mock(ConfigurationsService)
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/maas_auto_ipmi_cipher_suite_id",
+            json=jsonable_encoder(UpdateConfigurationRequest(value="3")),
+        )
+        assert response.status_code == 422
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.details is not None
+        assert "not FIPS-approved" in error_response.details[0].message
+        services_mock.configurations.set.assert_not_called()
 
     async def test_set_configs_forbidden_for_users(
         self,

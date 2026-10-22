@@ -272,7 +272,7 @@ class TestInitialiseImageStorage:
     ):
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
-        custom_dir = image_store_dir / "custom"
+        custom_dir = image_store_dir / "custom-bootloaders"
         custom_dir.mkdir(parents=True)
         lost_found_dir = image_store_dir / "lost+found"
         lost_found_dir.mkdir(parents=True)

@@ -7,7 +7,13 @@ from socket import gethostname
 from typing import Any, ClassVar, Generic, Optional, Type, TypeVar
 
 from netaddr import AddrFormatError, IPAddress, IPNetwork
-from pydantic import AnyHttpUrl, Field, IPvAnyAddress, validator
+from pydantic import (
+    AnyHttpUrl,
+    Field,
+    IPvAnyAddress,
+    ValidationError,
+    validator,
+)
 from pydantic.generics import GenericModel
 
 from maascommon.constants import IMPORT_RESOURCES_SERVICE_PERIOD, NODE_TIMEOUT
@@ -23,6 +29,11 @@ from maascommon.enums.ipmi import (
     IPMIWorkaroundFlags,
 )
 from maascommon.enums.storage import StorageLayoutEnum
+from maascommon.fips import (
+    default_ipmi_cipher_suite_id,
+    FIPS_ALLOWED_IPMI_CIPHERS,
+    is_fips_enabled,
+)
 from maascommon.osystem import UbuntuOS
 from maascommon.utils.dns import NAMESPEC, validate_hostname
 from maascommon.utils.time import systemd_interval_to_seconds
@@ -765,7 +776,9 @@ class MAASAutoIPMIKGBmcKeyConfig(Config[Optional[str]]):
 
 class MAASAutoIPMICipherSuiteIDConfig(Config[Optional[IPMICipherSuiteID]]):
     name: ClassVar[str] = "maas_auto_ipmi_cipher_suite_id"
-    default: ClassVar[Optional[IPMICipherSuiteID]] = IPMICipherSuiteID.SUITE_3
+    default: ClassVar[Optional[IPMICipherSuiteID]] = (
+        default_ipmi_cipher_suite_id()
+    )
     description: ClassVar[str] = "MAAS IPMI Default Cipher Suite ID"
     help_text: ClassVar[Optional[str]] = (
         "The default IPMI cipher suite ID to use when connecting to the BMC via ipmitools"
@@ -773,6 +786,22 @@ class MAASAutoIPMICipherSuiteIDConfig(Config[Optional[IPMICipherSuiteID]]):
     value: Optional[IPMICipherSuiteID] = Field(
         default=default, description=description
     )
+
+    @validator("value")
+    def validate_value(
+        cls, value: Optional[IPMICipherSuiteID]
+    ) -> Optional[IPMICipherSuiteID]:
+        if value is None or not is_fips_enabled():
+            return value
+        if value not in FIPS_ALLOWED_IPMI_CIPHERS:
+            allowed = ", ".join(sorted(FIPS_ALLOWED_IPMI_CIPHERS))
+            suite = f"'{value}'" if value else "'' (freeipmi-tools default)"
+            raise ValueError(
+                f"IPMI cipher suite {suite} is not FIPS-approved, and FIPS "
+                f"mode is enabled on this host. Use {allowed}, or unset the "
+                "value to use the default."
+            )
+        return value
 
 
 class MAASAutoIPMIWorkaroundFlagsConfig(
@@ -1245,3 +1274,22 @@ class ConfigFactory:
         if model:
             return model
         raise ValueError(f"The configuration '{name}' is unknown.")
+
+    @staticmethod
+    def get_validator_message(error: ValidationError) -> Optional[str]:
+        """Return the message raised by a config model's custom validator.
+
+        Returns None when the value failed for another reason, e.g. a type
+        mismatch.
+        """
+        # A ValueError raised by a validator is reported with the exact
+        # type "value_error"; pydantic's own errors use a dotted subtype
+        # such as "value_error.missing" or "type_error.enum".
+        return next(
+            (
+                str(err["msg"])
+                for err in error.errors()
+                if err["type"] == "value_error"
+            ),
+            None,
+        )

@@ -120,7 +120,7 @@ import traceback
 from formencode import ForEach, Schema
 from formencode.api import is_validator, NoDefault
 from formencode.declarative import DeclarativeMeta
-from formencode.validators import Number, Set
+from formencode.validators import Int, Number, Set
 import yaml
 
 from provisioningserver.path import get_maas_data_path, get_tentative_data_path
@@ -933,18 +933,22 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     )
     api_rate_limit_rate = ConfigurationOption(
         "api_rate_limit_rate",
-        "NGINX rate limit (e.g. '20r/s') applied per client IP.",
-        UnicodeString(if_missing="20r/s"),
+        "NGINX rate limit (e.g. '20r/s') applied per client IP.  "
+        "Empty string means: use the hardening default ('20r/s') when "
+        "hardening is active, otherwise no rate or connection limiting.",
+        UnicodeString(if_missing=""),
     )
     api_rate_limit_burst = ConfigurationOption(
         "api_rate_limit_burst",
-        "NGINX rate limit burst size.",
-        Number(min=1, if_missing=60),
+        "NGINX rate limit burst size.  "
+        "Unset means: use the default (60) when rate limiting is active.",
+        Int(min=0, if_missing=None),
     )
     api_conn_limit = ConfigurationOption(
         "api_conn_limit",
-        "NGINX concurrent connection limit per client IP.",
-        Number(min=1, if_missing=100),
+        "NGINX concurrent connection limit per client IP.  "
+        "0 means: use the default (100) when rate limiting is active.",
+        Int(min=0, if_missing=0),
     )
 
 

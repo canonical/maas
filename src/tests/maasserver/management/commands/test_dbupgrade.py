@@ -6,6 +6,7 @@
 from unittest import mock
 
 import pytest
+from sqlalchemy.engine import make_url
 
 from maasserver.management.commands.dbupgrade import Command
 
@@ -253,3 +254,16 @@ def test_build_alembic_postgres_dsn_no_certs_no_cert_params():
     assert "sslcert=" not in dsn
     assert "sslkey=" not in dsn
     assert "sslrootcert=" not in dsn
+
+
+def test_build_postgres_dsn_escapes_credentials():
+    params = {
+        "host": "localhost",
+        "dbname": "maasdb",
+        "user": "ma@s",
+        "password": "p@s%s#/?:",
+    }
+    url = make_url(Command._build_alembic_postgres_dsn(params))
+    assert url.username == "ma@s"
+    assert url.password == "p@s%s#/?:"
+    assert url.host == "localhost"
