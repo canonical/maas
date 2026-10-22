@@ -635,6 +635,41 @@ class TestMachinesApi(ApiCommonTests):
         )
         services_mock.operations.create_accepted_operation.assert_not_awaited()
 
+    @pytest.mark.parametrize(
+        "script_input, fields",
+        [
+            (
+                {"smartctl": {"runtime": value}},
+                {
+                    f"script_input.smartctl.runtime.{type_name}"
+                    for type_name in ("str", "int", "bool")
+                },
+            )
+            for value in (1.5, None, ["x"], {"x": 1})
+        ]
+        + [({"smartctl": ["runtime"]}, {"script_input.smartctl"})],
+    )
+    async def test_commission_machine_422_script_input_of_wrong_type(
+        self,
+        services_mock: Mock,
+        mocked_api_client_user: AsyncClient,
+        script_input: dict,
+        fields: set[str],
+    ) -> None:
+        self._mock_commission_services(services_mock, TEST_MACHINE)
+
+        response = await mocked_api_client_user.post(
+            f"{self.BASE_PATH}/{TEST_MACHINE.system_id}:commission",
+            json={"script_input": script_input},
+        )
+
+        assert response.status_code == 422
+        error_response = ErrorBodyResponse(**response.json())
+        assert {
+            detail.field for detail in error_response.details or []
+        } == fields
+        services_mock.script_parameters.validate_commissioning_input.assert_not_awaited()
+
 
 class TestUsbDevicesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/machines/1/usb_devices"

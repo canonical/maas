@@ -4,8 +4,9 @@
 from collections.abc import Mapping, Sequence
 import copy
 from dataclasses import dataclass, field
+from enum import Enum
 from ipaddress import ip_address
-from typing import Any
+from typing import Any, Final
 
 import structlog
 
@@ -98,8 +99,15 @@ _ARGUMENT_FORMAT_PLACEHOLDERS = {
 # carry "true" or "false" rather than a bool. Input must be a bool.
 _BOOLEAN_STRINGS = frozenset({"true", "false"})
 
-# Input values that count as not given, so that defaults apply.
-_NOT_GIVEN = object()
+
+class _NotGiven(Enum):
+    """Marks input values that count as not given, so that defaults apply,
+    and parameters without a default."""
+
+    NOT_GIVEN = "not given"
+
+
+_NOT_GIVEN: Final = _NotGiven.NOT_GIVEN
 
 # An error about a parameter, or about the script's input as a whole if the
 # parameter is None.
@@ -122,7 +130,7 @@ def _error(field_name: str, message: str) -> BaseExceptionDetail:
     )
 
 
-def _is_int(value: Any) -> bool:
+def _is_int(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
@@ -230,13 +238,17 @@ def validate_parameters_schema(parameters: Any) -> dict[str, dict[str, Any]]:
     return parameters
 
 
-def _with_value(param: dict[str, Any], value: Any) -> dict[str, Any]:
+def _with_value(
+    param: dict[str, Any], value: str | int | bool
+) -> dict[str, Any]:
     param = copy.deepcopy(param)
     param["value"] = value
     return param
 
 
-def _given_value(param_type: str, value: Any) -> tuple[Any, str | None]:
+def _given_value(
+    param_type: str, value: str | int | bool
+) -> tuple[str | int | bool | _NotGiven, str | None]:
     """Return the value given for a parameter of `param_type`, or
     `_NOT_GIVEN` if it counts as not given, and an error if its type is
     wrong."""
@@ -265,10 +277,12 @@ def _given_value(param_type: str, value: Any) -> tuple[Any, str | None]:
 
 
 def _given_values(
-    script: Script, parameters: dict[str, dict[str, Any]], script_input: dict
-) -> tuple[dict[str, Any], list[_InputError]]:
+    script: Script,
+    parameters: dict[str, dict[str, Any]],
+    script_input: Mapping[str, str | int | bool],
+) -> tuple[dict[str, str | int | bool], list[_InputError]]:
     """Return the values of `script_input` that count as given."""
-    given = {}
+    given: dict[str, str | int | bool] = {}
     errors: list[_InputError] = []
     for name, value in script_input.items():
         if name not in parameters:
@@ -279,7 +293,7 @@ def _given_values(
         value, error = _given_value(parameters[name]["type"], value)
         if error is not None:
             errors.append((name, error))
-        elif value is not _NOT_GIVEN:
+        elif not isinstance(value, _NotGiven):
             given[name] = value
     return given, errors
 
@@ -289,7 +303,7 @@ def _default_for(
     name: str,
     param: dict[str, Any],
     config_defaults: Mapping[str, Any],
-) -> Any:
+) -> str | int | bool | _NotGiven:
     """Return the default value of a parameter, or `_NOT_GIVEN`."""
     param_type = param["type"]
     if param_type in MULTI_RESULT_PARAMETER_TYPES:
@@ -314,7 +328,7 @@ def _default_for(
 def _set_up_input(
     script: Script,
     parameters: dict[str, dict[str, Any]],
-    script_input: dict[str, Any],
+    script_input: Mapping[str, str | int | bool],
     config_defaults: Mapping[str, Any],
 ) -> tuple[ScriptParametersInput, list[_InputError]]:
     cleaned = ScriptParametersInput()
@@ -331,7 +345,7 @@ def _set_up_input(
         if name in given or name in invalid:
             continue
         default = _default_for(script, name, param, config_defaults)
-        if default is _NOT_GIVEN:
+        if isinstance(default, _NotGiven):
             if _is_required(param):
                 errors.append((name, "Field is required"))
         elif param["type"] in MULTI_RESULT_PARAMETER_TYPES:
@@ -438,13 +452,9 @@ def _value_errors(param: dict[str, Any]) -> list[str]:
 def _clean_input(
     script: Script,
     parameters: dict[str, dict[str, Any]],
-    script_input: Any,
+    script_input: Mapping[str, str | int | bool],
     config_defaults: Mapping[str, Any],
 ) -> tuple[ScriptParametersInput, list[_InputError]]:
-    if script_input is None:
-        script_input = {}
-    if not isinstance(script_input, dict):
-        return ScriptParametersInput(), [(None, "Input must be a dictionary")]
     cleaned, errors = _set_up_input(
         script, parameters, script_input, config_defaults
     )
@@ -455,7 +465,7 @@ def _clean_input(
 
 def clean_parameters_input(
     script: Script,
-    script_input: Any,
+    script_input: Mapping[str, str | int | bool],
     config_defaults: Mapping[str, Any] | None = None,
 ) -> ScriptParametersInput:
     """Check the input given to a script and assign defaults.
@@ -486,12 +496,10 @@ def _is_required(param: dict[str, Any]) -> bool:
 
 
 def _given_input_errors(
-    script: Script, parameters: dict[str, dict[str, Any]], script_input: Any
+    script: Script,
+    parameters: dict[str, dict[str, Any]],
+    script_input: Mapping[str, str | int | bool],
 ) -> list[_InputError]:
-    if script_input is None:
-        script_input = {}
-    if not isinstance(script_input, dict):
-        return [(None, "Input must be a dictionary")]
     given, errors = _given_values(script, parameters, script_input)
     for name, value in given.items():
         errors.extend(
@@ -505,14 +513,17 @@ def _given_input_errors(
         if name not in given
         and name not in invalid
         and _is_required(param)
-        and _default_for(script, name, param, _ASSUMED_CONFIG_DEFAULTS)
-        is _NOT_GIVEN
+        and isinstance(
+            _default_for(script, name, param, _ASSUMED_CONFIG_DEFAULTS),
+            _NotGiven,
+        )
     )
     return errors
 
 
 def _scripts_with_input_to_check(
-    scripts: Sequence[Script], script_input: Mapping[str, Any]
+    scripts: Sequence[Script],
+    script_input: Mapping[str, Mapping[str, str | int | bool]],
 ) -> list[Script]:
     # TODO: like the legacy ScriptSet, check for_hardware scripts if and
     # only if they match the machine's known hardware, and resolve storage
@@ -535,7 +546,8 @@ def _scoped_to_script(
 
 
 def validate_scripts_input(
-    scripts: Sequence[Script], script_input: Mapping[str, Any] | None = None
+    scripts: Sequence[Script],
+    script_input: Mapping[str, Mapping[str, str | int | bool]] | None = None,
 ) -> None:
     """Check the given input of `scripts`, without assigning defaults.
 
@@ -566,7 +578,7 @@ def validate_scripts_input(
             _scoped_to_script(
                 script,
                 _given_input_errors(
-                    script, parameters, script_input.get(script.name)
+                    script, parameters, script_input.get(script.name, {})
                 ),
             )
         )
@@ -612,7 +624,8 @@ class ScriptParametersService(Service):
         self,
         commissioning_scripts: list[str] | None = None,
         testing_scripts: list[str] | None = None,
-        script_input: Mapping[str, Any] | None = None,
+        script_input: Mapping[str, Mapping[str, str | int | bool]]
+        | None = None,
     ) -> None:
         """Check the script selections and input of a commission request.
 
@@ -675,7 +688,8 @@ class ScriptParametersService(Service):
     async def clean_scripts_input(
         self,
         scripts: Sequence[Script],
-        script_input: Mapping[str, Any] | None = None,
+        script_input: Mapping[str, Mapping[str, str | int | bool]]
+        | None = None,
     ) -> dict[str, ScriptParametersInput]:
         """Check the input given to `scripts` and assign defaults, including
         those from the MAAS configuration, for preparing the scripts to run.
@@ -702,7 +716,7 @@ class ScriptParametersService(Service):
             cleaned[script.name], errors = _clean_input(
                 script,
                 parameters,
-                script_input.get(script.name),
+                script_input.get(script.name, {}),
                 await self._get_config_defaults(parameters),
             )
             details.extend(_scoped_to_script(script, errors))
