@@ -82,11 +82,13 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
                 method="POST",
                 path=self.BASE_PATH,
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="DELETE",
                 path=self.BASE_PATH,
                 permission=MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
+                rbac_admin_permission=True,
             ),
         ]
 
