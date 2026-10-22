@@ -319,7 +319,7 @@ class TestAgentsApi:
         services_mock.dhcp.get_kea_dhcp_data_for_agent.return_value = DHCP_DATA
 
         response = await mocked_internal_api_client.get(
-            f"{self.BASE_PATH}/rack-1/dhcp-data"
+            f"{self.BASE_PATH}/rack-1/dhcp_data"
         )
 
         assert response.status_code == 200
@@ -346,7 +346,7 @@ class TestAgentsApi:
         assert response_json["ntp_servers"] == ["10.0.0.3"]
         assert response_json["ha_data"][0]["secondary_rack_ip"] == "10.0.0.4"
         assert response_json["_links"]["self"]["href"] == (
-            f"{self.BASE_PATH}/rack-1/dhcp-data"
+            f"{self.BASE_PATH}/rack-1/dhcp_data"
         )
         services_mock.dhcp.get_kea_dhcp_data_for_agent.assert_called_once_with(
             "rack-1"
@@ -364,7 +364,7 @@ class TestAgentsApi:
         services_mock.dhcp = Mock(DHCPService)
 
         response = await mocked_internal_api_client.get(
-            f"{self.BASE_PATH}/rack-1/dhcp-data"
+            f"{self.BASE_PATH}/rack-1/dhcp_data"
         )
 
         assert response.status_code == 403
@@ -383,7 +383,7 @@ class TestAgentsApi:
         )
 
         response = await mocked_internal_api_client.get(
-            f"{self.BASE_PATH}/missing/dhcp-data"
+            f"{self.BASE_PATH}/missing/dhcp_data"
         )
 
         assert response.status_code == 404
@@ -404,7 +404,7 @@ class TestAgentsApi:
         )
 
         response = await mocked_internal_api_client.get(
-            f"{self.BASE_PATH}/rack-1/dhcp-data"
+            f"{self.BASE_PATH}/rack-1/dhcp_data"
         )
 
         assert response.status_code == 422

@@ -213,7 +213,7 @@ class AgentHandler(Handler):
         dhcp_data = await services.dhcp.get_kea_dhcp_data_for_agent(system_id)
         return AgentDHCPDataResponse.from_model(
             dhcp_data=dhcp_data,
-            self_base_hyperlink=f"{V3_INTERNAL_API_PREFIX}/agents/{system_id}/dhcp-data",
+            self_base_hyperlink=f"{V3_INTERNAL_API_PREFIX}/agents/{system_id}/dhcp_data",
         )
 
     @handler(
