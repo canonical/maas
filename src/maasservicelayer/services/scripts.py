@@ -19,7 +19,6 @@ NOAUTO_TAG = "noauto"
 
 
 def _selected_by(names_or_tags: list[str]) -> Clause:
-    # Like the v2 API, scripts are selected by name or tag, not by id.
     return ScriptsClauseFactory.or_clauses(
         [
             ScriptsClauseFactory.with_names(names_or_tags),
