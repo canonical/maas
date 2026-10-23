@@ -620,7 +620,7 @@ class TestMachinesApi(ApiCommonTests):
     ) -> None:
         self._mock_commission_services(services_mock, TEST_MACHINE)
         services_mock.script_parameters.validate_commissioning_input.side_effect = ValidationException.build_for_field(
-            "script_input.smartctl.runtime", "Must be an int"
+            "script_input.smartctl.runtime", "Input should be a valid integer"
         )
 
         response = await mocked_api_client_user.post(

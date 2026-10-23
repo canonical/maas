@@ -2,12 +2,26 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections.abc import Mapping, Sequence
-import copy
 from dataclasses import dataclass, field
-from enum import Enum
 from ipaddress import ip_address
-from typing import Any, Final
+from typing import Annotated, Any
 
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    field_validator,
+    PlainSerializer,
+    StrictBool,
+    StrictInt,
+    StrictStr,
+    StringConstraints,
+    TypeAdapter,
+    ValidationError,
+    ValidationInfo,
+)
 import structlog
 
 from maascommon.utils.url import validate_url
@@ -46,6 +60,10 @@ PARAMETER_TYPES = (
 
 # Parameters of these types may produce one ScriptResult per selected device.
 MULTI_RESULT_PARAMETER_TYPES = frozenset({"interface", "storage"})
+
+_REQUIRED_BY_DEFAULT_TYPES = MULTI_RESULT_PARAMETER_TYPES | {"runtime"}
+
+_UNBOUNDED_TYPES = frozenset({"choice", "interface", "storage", "url"})
 
 # A parameter named like one of these MAAS configurations defaults to the
 # configuration value. 30-maas-01-bmc-config relies on this.
@@ -95,280 +113,15 @@ _ARGUMENT_FORMAT_PLACEHOLDERS = {
     "interface": ("{input}", "{name}", "{mac}", "{vendor}", "{product}"),
 }
 
-# Schema defaults must be strings, so boolean parameters with a default
-# carry "true" or "false" rather than a bool. Input must be a bool.
+# Schema defaults must be strings, so boolean parameters declare their
+# default as "true" or "false".
 _BOOLEAN_STRINGS = frozenset({"true", "false"})
 
-
-class _NotGiven(Enum):
-    """Marks input values that count as not given, so that defaults apply,
-    and parameters without a default."""
-
-    NOT_GIVEN = "not given"
-
-
-_NOT_GIVEN: Final = _NotGiven.NOT_GIVEN
+ParameterValue = str | int | bool
 
 # An error about a parameter, or about the script's input as a whole if the
 # parameter is None.
 type _InputError = tuple[str | None, str]
-
-
-@dataclass
-class ScriptParametersInput:
-    result_params: dict[str, dict[str, Any]] = field(default_factory=dict)
-    multi_result_params: dict[str, dict[str, Any]] = field(
-        default_factory=dict
-    )
-
-
-def _error(field_name: str, message: str) -> BaseExceptionDetail:
-    return BaseExceptionDetail(
-        type=INVALID_ARGUMENT_VIOLATION_TYPE,
-        field=field_name,
-        message=message,
-    )
-
-
-def _is_int(value: object) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool)
-
-
-def _is_valid_choice(choice: Any) -> bool:
-    if not isinstance(choice, list):
-        return True
-    return len(choice) == 2 and all(isinstance(item, str) for item in choice)
-
-
-def _parameter_schema_errors(name: Any, fields: Any) -> list[str]:
-    if not isinstance(fields, dict):
-        return [f"{name}: must be a dictionary"]
-
-    param_type = fields.get("type")
-    param_min = fields.get("min")
-    param_max = fields.get("max")
-    argument_format = fields.get("argument_format")
-    allow_list = fields.get("allow_list")
-    choices = fields.get("choices")
-    required = fields.get("required", True)
-    errors = []
-
-    if not isinstance(name, str):
-        errors.append(f"{name}: parameter must be a string")
-    if not isinstance(param_type, str):
-        errors.append(f"{param_type}: type must be a string")
-    if param_min is not None and not isinstance(param_min, int):
-        errors.append(f"{param_min}: min must be an integer")
-    if param_max is not None and not isinstance(param_max, int):
-        errors.append(f"{param_max}: max must be an integer")
-    for key in ("title", "description", "argument_format", "default"):
-        value = fields.get(key)
-        if value is not None and not isinstance(value, str):
-            errors.append(f"{value}: {key} must be a string")
-    if required is not None and not isinstance(required, bool):
-        errors.append(f"{required}: required must be a boolean")
-    if allow_list is not None:
-        if not isinstance(allow_list, bool):
-            errors.append(f"{allow_list}: allow_list must be a boolean")
-        if param_type != "url":
-            errors.append("allow_list only supported with the url type.")
-    if choices is not None:
-        if not isinstance(choices, list):
-            errors.append("choices must be a list")
-        elif not all(_is_valid_choice(choice) for choice in choices):
-            errors.append("choice must be a string or a [value, label] pair")
-        if param_type != "choice":
-            errors.append("choices only supported with the choice type.")
-    if param_type == "choice" and not choices:
-        errors.append('choices must be given with a "choice" parameter type!')
-    if param_type not in PARAMETER_TYPES and required:
-        errors.append(
-            f"{param_type}: type must be one of {', '.join(PARAMETER_TYPES)}"
-        )
-    if param_type in ("storage", "interface", "url", "choice") and (
-        param_min is not None or param_max is not None
-    ):
-        errors.append("Type doesn't support min or max")
-    if (
-        param_type == "runtime"
-        and isinstance(param_min, int)
-        and param_min < 0
-    ):
-        errors.append("runtime minimum must be greater than zero")
-    if (
-        isinstance(param_min, int)
-        and isinstance(param_max, int)
-        and param_min > param_max
-    ):
-        errors.append("min must be less than max")
-    placeholders = (
-        _ARGUMENT_FORMAT_PLACEHOLDERS.get(param_type)
-        if isinstance(param_type, str)
-        else None
-    )
-    if (
-        placeholders is not None
-        and isinstance(argument_format, str)
-        and not any(p in argument_format for p in placeholders)
-    ):
-        errors.append(
-            f"{param_type}: argument_format must contain one of "
-            f"{', '.join(placeholders)}"
-        )
-    return errors
-
-
-def validate_parameters_schema(parameters: Any) -> dict[str, dict[str, Any]]:
-    """Check a script's parameters schema.
-
-    Raises:
-        ValidationException: With every error under `parameters`.
-    """
-    if not isinstance(parameters, dict):
-        raise ValidationException(
-            details=[_error("parameters", "Must be a dictionary")]
-        )
-    details = [
-        _error("parameters", message)
-        for name, fields in parameters.items()
-        for message in _parameter_schema_errors(name, fields)
-    ]
-    if details:
-        raise ValidationException(details=details)
-    return parameters
-
-
-def _with_value(
-    param: dict[str, Any], value: str | int | bool
-) -> dict[str, Any]:
-    param = copy.deepcopy(param)
-    param["value"] = value
-    return param
-
-
-def _given_value(
-    param_type: str, value: str | int | bool
-) -> tuple[str | int | bool | _NotGiven, str | None]:
-    """Return the value given for a parameter of `param_type`, or
-    `_NOT_GIVEN` if it counts as not given, and an error if its type is
-    wrong."""
-    match param_type:
-        case "boolean":
-            if not isinstance(value, bool):
-                return _NOT_GIVEN, "Must be a boolean"
-            # Boolean parameters are usually flags, passed to the script
-            # whenever they have a value, so false must leave them unset. The
-            # legacy API dropped false values for the same reason.
-            return (value if value else _NOT_GIVEN), None
-        case "string" | "password" | "url":
-            # Like the legacy API's form fields, surrounding whitespace is
-            # dropped, and empty values count as not given rather than adding
-            # an empty argument.
-            if isinstance(value, str):
-                value = value.strip()
-            return (_NOT_GIVEN if value == "" else value), None
-        case "choice" | "storage" | "interface":
-            return (_NOT_GIVEN if value == "" else value), None
-        case "runtime":
-            # The legacy API dropped a runtime of 0, so the default applies.
-            if _is_int(value) and value == 0:
-                return _NOT_GIVEN, None
-    return value, None
-
-
-def _given_values(
-    script: Script,
-    parameters: dict[str, dict[str, Any]],
-    script_input: Mapping[str, str | int | bool],
-) -> tuple[dict[str, str | int | bool], list[_InputError]]:
-    """Return the values of `script_input` that count as given."""
-    given: dict[str, str | int | bool] = {}
-    errors: list[_InputError] = []
-    for name, value in script_input.items():
-        if name not in parameters:
-            errors.append(
-                (None, f"Unknown parameter '{name}' for {script.name}")
-            )
-            continue
-        value, error = _given_value(parameters[name]["type"], value)
-        if error is not None:
-            errors.append((name, error))
-        elif not isinstance(value, _NotGiven):
-            given[name] = value
-    return given, errors
-
-
-def _default_for(
-    script: Script,
-    name: str,
-    param: dict[str, Any],
-    config_defaults: Mapping[str, Any],
-) -> str | int | bool | _NotGiven:
-    """Return the default value of a parameter, or `_NOT_GIVEN`."""
-    param_type = param["type"]
-    if param_type in MULTI_RESULT_PARAMETER_TYPES:
-        # A placeholder until commissioning discovers the devices.
-        default = param.get("default", "all")
-    elif param_type == "runtime":
-        # The legacy ParametersForm used `timeout.seconds`, which drops whole
-        # days, so a timeout of a day or more gave a shorter runtime. The
-        # full timeout is used instead.
-        default = param.get("default", int(script.timeout.total_seconds()))
-        # Schema defaults are strings, so only the timeout is a valid one.
-        return default if _is_int(default) else _NOT_GIVEN
-    else:
-        default = param.get("default", config_defaults.get(name, ""))
-    # As in the legacy ParametersForm, an empty default counts as no default.
-    # Schema defaults must be strings, so this only affects "". Passing it on
-    # would add an empty argument to the script's command line, and the
-    # script runner expects storage and interface values to be devices.
-    return default if default else _NOT_GIVEN
-
-
-def _set_up_input(
-    script: Script,
-    parameters: dict[str, dict[str, Any]],
-    script_input: Mapping[str, str | int | bool],
-    config_defaults: Mapping[str, Any],
-) -> tuple[ScriptParametersInput, list[_InputError]]:
-    cleaned = ScriptParametersInput()
-    given, errors = _given_values(script, parameters, script_input)
-    for name, value in given.items():
-        param = parameters[name]
-        if param["type"] in MULTI_RESULT_PARAMETER_TYPES:
-            cleaned.multi_result_params[name] = _with_value(param, value)
-        else:
-            cleaned.result_params[name] = _with_value(param, value)
-
-    invalid = {name for name, _ in errors}
-    for name, param in parameters.items():
-        if name in given or name in invalid:
-            continue
-        default = _default_for(script, name, param, config_defaults)
-        if isinstance(default, _NotGiven):
-            if _is_required(param):
-                errors.append((name, "Field is required"))
-        elif param["type"] in MULTI_RESULT_PARAMETER_TYPES:
-            cleaned.multi_result_params[name] = _with_value(param, default)
-        else:
-            cleaned.result_params[name] = _with_value(param, default)
-    return cleaned, errors
-
-
-def _runtime_errors(param: dict[str, Any]) -> list[str]:
-    value = param["value"]
-    if not _is_int(value):
-        return ["Must be an int"]
-    min_value = param.get("min")
-    if min_value is None:
-        min_value = 0
-    max_value = param.get("max")
-    errors = []
-    if value < min_value:
-        errors.append(f"Must be greater than {min_value}")
-    if max_value is not None and value > max_value:
-        errors.append(f"Must be less than {max_value}")
-    return errors
 
 
 def _is_valid_url(url: str) -> bool:
@@ -388,84 +141,356 @@ def _is_valid_url(url: str) -> bool:
     return True
 
 
-def _url_errors(param: dict[str, Any]) -> list[str]:
-    value = param["value"]
-    if not isinstance(value, str):
-        return ["Invalid URL"]
-    urls = value.split(",") if param.get("allow_list", False) else [value]
-    if not all(_is_valid_url(url) for url in urls):
-        return ["Invalid URL"]
-    return []
+def _as_choice_pair(choice: Any) -> Any:
+    # A choice is declared as a value, or as a [value, label] pair.
+    return (choice, choice) if isinstance(choice, str) else choice
 
 
-def _string_errors(param: dict[str, Any]) -> list[str]:
-    value = param["value"]
-    if not isinstance(value, str):
-        return ["Must be a string"]
-    min_length = param.get("min")
-    max_length = param.get("max")
-    errors = []
-    if min_length is not None and len(value) < min_length:
-        errors.append("Input too short")
-    if max_length is not None and len(value) > max_length:
-        errors.append("Input too long")
-    return errors
+def _as_declared_choice(choice: tuple[str, str]) -> str | list[str]:
+    value, label = choice
+    return value if value == label else [value, label]
 
 
-def _choice_errors(param: dict[str, Any]) -> list[str]:
-    value = param["value"]
-    if not isinstance(value, str):
-        return ["Must be a string"]
-    choices = [
-        choice[0] if isinstance(choice, (list, tuple)) else choice
-        for choice in param["choices"]
-    ]
-    if value not in choices:
-        return [f'Invalid choice "{value}"']
-    return []
+_Bound = Annotated[StrictInt, Field(ge=0)]
+_Choice = Annotated[
+    tuple[StrictStr, StrictStr],
+    BeforeValidator(_as_choice_pair),
+    PlainSerializer(_as_declared_choice),
+]
 
 
-def _boolean_errors(param: dict[str, Any]) -> list[str]:
-    value = param["value"]
-    if isinstance(value, bool) or (
-        isinstance(value, str) and value.lower() in _BOOLEAN_STRINGS
-    ):
-        return []
-    return ["Must be a boolean"]
+class ParameterSchema(BaseModel):
+    """The schema of a script parameter, as declared in the script's
+    metadata.
+
+    Fields are validated in the order they are declared, so each one can be
+    checked against the fields before it. Unknown keys are kept, like the
+    legacy API did, and serialized with the rest.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    required: StrictBool | None = None
+    type: StrictStr
+    min: _Bound | None = None
+    max: _Bound | None = None
+    allow_list: StrictBool | None = None
+    choices: list[_Choice] | None = Field(default=None, validate_default=True)
+    argument_format: StrictStr | None = None
+    default: StrictStr | None = None
+    title: StrictStr | None = None
+    description: StrictStr | None = None
+
+    @field_validator("type")
+    @classmethod
+    def _check_type(cls, type_: str, info: ValidationInfo) -> str:
+        # Parameters of other types are passed on as given, if optional.
+        if (
+            type_ not in PARAMETER_TYPES
+            and info.data.get("required") is not False
+        ):
+            raise ValueError(f"Must be one of {', '.join(PARAMETER_TYPES)}")
+        return type_
+
+    @field_validator("min", "max")
+    @classmethod
+    def _check_bounded(
+        cls, bound: int | None, info: ValidationInfo
+    ) -> int | None:
+        if bound is not None and info.data.get("type") in _UNBOUNDED_TYPES:
+            raise ValueError("Not supported by this type")
+        return bound
+
+    @field_validator("max")
+    @classmethod
+    def _check_max(cls, max_: int | None, info: ValidationInfo) -> int | None:
+        min_ = info.data.get("min")
+        if min_ is not None and max_ is not None and min_ > max_:
+            raise ValueError("Must not be less than min")
+        return max_
+
+    @field_validator("allow_list")
+    @classmethod
+    def _check_allow_list(
+        cls, allow_list: bool | None, info: ValidationInfo
+    ) -> bool | None:
+        if allow_list is not None and info.data.get("type") != "url":
+            raise ValueError("Only supported with the url type")
+        return allow_list
+
+    @field_validator("choices")
+    @classmethod
+    def _check_choices(
+        cls, choices: list[tuple[str, str]] | None, info: ValidationInfo
+    ) -> list[tuple[str, str]] | None:
+        is_choice = info.data.get("type") == "choice"
+        if is_choice and not choices:
+            raise ValueError("Required by the choice type")
+        if choices is not None and not is_choice:
+            raise ValueError("Only supported with the choice type")
+        return choices
+
+    @field_validator("argument_format")
+    @classmethod
+    def _check_argument_format(
+        cls, argument_format: str | None, info: ValidationInfo
+    ) -> str | None:
+        placeholders = _ARGUMENT_FORMAT_PLACEHOLDERS.get(
+            info.data.get("type", "")
+        )
+        if (
+            argument_format is not None
+            and placeholders is not None
+            and not any(p in argument_format for p in placeholders)
+        ):
+            raise ValueError(f"Must contain one of {', '.join(placeholders)}")
+        return argument_format
+
+    @field_validator("default")
+    @classmethod
+    def _check_default(
+        cls, default: str | None, info: ValidationInfo
+    ) -> str | None:
+        if (
+            default
+            and info.data.get("type") == "boolean"
+            and default.lower() not in _BOOLEAN_STRINGS
+        ):
+            raise ValueError("Must be true or false")
+        return default
+
+    @property
+    def is_required(self) -> bool:
+        if self.required is None:
+            return self.type in _REQUIRED_BY_DEFAULT_TYPES
+        return self.required
+
+    @property
+    def is_multi_result(self) -> bool:
+        return self.type in MULTI_RESULT_PARAMETER_TYPES
+
+    @property
+    def value_type(self) -> Any:
+        """The type of the parameter's value, constrained by the schema."""
+        match self.type:
+            case "boolean":
+                return StrictBool
+            case "runtime":
+                return Annotated[
+                    StrictInt, Field(ge=self.min or 0, le=self.max)
+                ]
+            case "string" | "password":
+                return Annotated[
+                    StrictStr,
+                    StringConstraints(
+                        strip_whitespace=True,
+                        min_length=self.min,
+                        max_length=self.max,
+                    ),
+                ]
+            case "url":
+                return Annotated[
+                    StrictStr,
+                    StringConstraints(strip_whitespace=True),
+                    AfterValidator(self._check_url),
+                ]
+            case "choice":
+                return Annotated[StrictStr, AfterValidator(self._check_choice)]
+        return Any
+
+    def _check_url(self, value: str) -> str:
+        urls = value.split(",") if self.allow_list else [value]
+        if not all(_is_valid_url(url) for url in urls):
+            raise ValueError("Invalid URL")
+        return value
+
+    def _check_choice(self, value: str) -> str:
+        if value not in (choice for choice, _label in self.choices or ()):
+            raise ValueError(f'Invalid choice "{value}"')
+        return value
+
+    def validate_value(self, value: Any) -> ParameterValue:
+        """Return `value` as constrained by the schema.
+
+        Raises:
+            ValidationError: If `value` does not fit the schema.
+        """
+        return TypeAdapter(self.value_type).validate_python(value)
+
+    def counts_as_given(self, value: ParameterValue) -> bool:
+        """Whether `value` was given, rather than left for the default.
+
+        Like the legacy API, empty values count as not given, rather than
+        adding an empty argument.
+        """
+        match self.type:
+            case "boolean":
+                # Boolean parameters are usually flags, passed to the script
+                # whenever they have a value, so false must leave them unset.
+                return value is not False
+            case "string" | "password" | "url":
+                return str(value).strip() != ""
+            case "runtime":
+                # False equals 0, but is not a runtime, so it must fail.
+                return value is False or value != 0
+            case "choice" | "storage" | "interface":
+                return value != ""
+        return True
+
+    def default_for(
+        self, name: str, script: Script, config_defaults: Mapping[str, Any]
+    ) -> Any:
+        """Return the default value of the parameter, or None.
+
+        As in the legacy ParametersForm, an empty default counts as none.
+        Passing it on would add an empty argument to the script's command
+        line, and the script runner expects storage and interface values to
+        be devices.
+        """
+        if "default" in self.model_fields_set:
+            match self.type:
+                case "runtime":
+                    # Schema defaults are strings, so never a valid runtime.
+                    return None
+                case "boolean":
+                    # Unlike the legacy ParametersForm, which passed the
+                    # string on, the default is a bool like the input. So
+                    # "false" leaves a flag unset, as false input does.
+                    if self.default and self.default.lower() == "true":
+                        return True
+                    return None
+            return self.default or None
+        match self.type:
+            case "storage" | "interface":
+                # A placeholder until commissioning discovers the devices.
+                return "all"
+            case "runtime":
+                # The legacy ParametersForm used `timeout.seconds`, which
+                # drops whole days, so a timeout of a day or more gave a
+                # shorter runtime. The full timeout is used instead.
+                return int(script.timeout.total_seconds())
+        return config_defaults.get(name) or None
+
+    def with_value(self, value: ParameterValue) -> "ParameterWithValue":
+        return ParameterWithValue.model_validate(
+            {**self.model_dump(exclude_unset=True), "value": value}
+        )
 
 
-def _value_errors(param: dict[str, Any]) -> list[str]:
-    match param["type"]:
-        case "runtime":
-            return _runtime_errors(param)
-        case "url":
-            return _url_errors(param)
-        case "string" | "password":
-            return _string_errors(param)
-        case "choice":
-            return _choice_errors(param)
-        case "boolean":
-            return _boolean_errors(param)
-    return []
+_PARAMETERS_SCHEMA = TypeAdapter(dict[str, ParameterSchema])
+
+
+class ParameterWithValue(ParameterSchema):
+    """A parameter's schema with its value, stored in ScriptResult.parameters
+    as dumped with `exclude_unset=True`.
+    """
+
+    value: ParameterValue
+
+
+@dataclass
+class ScriptParametersInput:
+    result_params: dict[str, ParameterWithValue] = field(default_factory=dict)
+    multi_result_params: dict[str, ParameterWithValue] = field(
+        default_factory=dict
+    )
+
+
+def _error(field_name: str, message: str) -> BaseExceptionDetail:
+    return BaseExceptionDetail(
+        type=INVALID_ARGUMENT_VIOLATION_TYPE,
+        field=field_name,
+        message=message,
+    )
+
+
+def _messages(error: ValidationError) -> list[str]:
+    """Return the messages of `error`, prefixed by where each one is, if not
+    at the top."""
+    messages = []
+    for detail in error.errors(include_url=False):
+        location = ".".join(str(part) for part in detail["loc"])
+        message = detail["msg"].removeprefix("Value error, ")
+        messages.append(f"{location}: {message}" if location else message)
+    return messages
+
+
+def validate_parameters_schema(
+    parameters: Any,
+) -> dict[str, ParameterSchema]:
+    """Check a script's parameters schema.
+
+    Raises:
+        ValidationException: With every error under `parameters`.
+    """
+    try:
+        return _PARAMETERS_SCHEMA.validate_python(parameters)
+    except ValidationError as e:
+        raise ValidationException(
+            details=[_error("parameters", message) for message in _messages(e)]
+        ) from e
+
+
+def _given_values(
+    script: Script,
+    schemas: Mapping[str, ParameterSchema],
+    script_input: Mapping[str, ParameterValue],
+) -> tuple[dict[str, ParameterValue], list[_InputError]]:
+    """Return the validated values of `script_input` that count as
+    given."""
+    given: dict[str, ParameterValue] = {}
+    errors: list[_InputError] = []
+    for name, value in script_input.items():
+        schema = schemas.get(name)
+        if schema is None:
+            errors.append(
+                (None, f"Unknown parameter '{name}' for {script.name}")
+            )
+        elif schema.counts_as_given(value):
+            try:
+                given[name] = schema.validate_value(value)
+            except ValidationError as e:
+                errors.extend((name, message) for message in _messages(e))
+    return given, errors
 
 
 def _clean_input(
     script: Script,
-    parameters: dict[str, dict[str, Any]],
-    script_input: Mapping[str, str | int | bool],
+    schemas: Mapping[str, ParameterSchema],
+    script_input: Mapping[str, ParameterValue],
     config_defaults: Mapping[str, Any],
 ) -> tuple[ScriptParametersInput, list[_InputError]]:
-    cleaned, errors = _set_up_input(
-        script, parameters, script_input, config_defaults
-    )
-    for name, param in cleaned.result_params.items():
-        errors.extend((name, message) for message in _value_errors(param))
+    given, errors = _given_values(script, schemas, script_input)
+    values = dict(given)
+    invalid = {name for name, _ in errors}
+    for name, schema in schemas.items():
+        if name in given or name in invalid:
+            continue
+        default = schema.default_for(name, script, config_defaults)
+        if default is None:
+            if schema.is_required:
+                errors.append((name, "Field is required"))
+            continue
+        try:
+            values[name] = schema.validate_value(default)
+        except ValidationError as e:
+            errors.extend((name, message) for message in _messages(e))
+
+    cleaned = ScriptParametersInput()
+    for name, value in values.items():
+        schema = schemas[name]
+        params = (
+            cleaned.multi_result_params
+            if schema.is_multi_result
+            else cleaned.result_params
+        )
+        params[name] = schema.with_value(value)
     return cleaned, errors
 
 
 def clean_parameters_input(
     script: Script,
-    script_input: Mapping[str, str | int | bool],
+    script_input: Mapping[str, ParameterValue],
     config_defaults: Mapping[str, Any] | None = None,
 ) -> ScriptParametersInput:
     """Check the input given to a script and assign defaults.
@@ -474,9 +499,9 @@ def clean_parameters_input(
         ValidationException: With schema errors under `parameters`, unknown
             parameters under `input`, and the others under their parameter.
     """
-    parameters = validate_parameters_schema(script.parameters)
+    schemas = validate_parameters_schema(script.parameters)
     cleaned, errors = _clean_input(
-        script, parameters, script_input, config_defaults or {}
+        script, schemas, script_input, config_defaults or {}
     )
     if errors:
         raise ValidationException(
@@ -487,43 +512,27 @@ def clean_parameters_input(
     return cleaned
 
 
-def _is_required(param: dict[str, Any]) -> bool:
-    required_by_default = (
-        param["type"] in MULTI_RESULT_PARAMETER_TYPES
-        or param["type"] == "runtime"
-    )
-    return param.get("required", required_by_default)
-
-
 def _given_input_errors(
     script: Script,
-    parameters: dict[str, dict[str, Any]],
-    script_input: Mapping[str, str | int | bool],
+    schemas: Mapping[str, ParameterSchema],
+    script_input: Mapping[str, ParameterValue],
 ) -> list[_InputError]:
-    given, errors = _given_values(script, parameters, script_input)
-    for name, value in given.items():
-        errors.extend(
-            (name, message)
-            for message in _value_errors(_with_value(parameters[name], value))
-        )
+    given, errors = _given_values(script, schemas, script_input)
     invalid = {name for name, _ in errors}
     errors.extend(
         (name, "Field is required")
-        for name, param in parameters.items()
+        for name, schema in schemas.items()
         if name not in given
         and name not in invalid
-        and _is_required(param)
-        and isinstance(
-            _default_for(script, name, param, _ASSUMED_CONFIG_DEFAULTS),
-            _NotGiven,
-        )
+        and schema.is_required
+        and schema.default_for(name, script, _ASSUMED_CONFIG_DEFAULTS) is None
     )
     return errors
 
 
 def _scripts_with_input_to_check(
     scripts: Sequence[Script],
-    script_input: Mapping[str, Mapping[str, str | int | bool]],
+    script_input: Mapping[str, Mapping[str, ParameterValue]],
 ) -> list[Script]:
     # TODO: like the legacy ScriptSet, check for_hardware scripts if and
     # only if they match the machine's known hardware, and resolve storage
@@ -547,7 +556,7 @@ def _scoped_to_script(
 
 def validate_scripts_input(
     scripts: Sequence[Script],
-    script_input: Mapping[str, Mapping[str, str | int | bool]] | None = None,
+    script_input: Mapping[str, Mapping[str, ParameterValue]] | None = None,
 ) -> None:
     """Check the given input of `scripts`, without assigning defaults.
 
@@ -563,7 +572,7 @@ def validate_scripts_input(
     details: list[BaseExceptionDetail] = []
     for script in _scripts_with_input_to_check(scripts, script_input):
         try:
-            parameters = validate_parameters_schema(script.parameters)
+            schemas = validate_parameters_schema(script.parameters)
         except ValidationException as e:
             # Schemas are checked when scripts are uploaded, so this is not a
             # problem with the request. It is reported when the input is
@@ -578,7 +587,7 @@ def validate_scripts_input(
             _scoped_to_script(
                 script,
                 _given_input_errors(
-                    script, parameters, script_input.get(script.name, {})
+                    script, schemas, script_input.get(script.name, {})
                 ),
             )
         )
@@ -624,8 +633,7 @@ class ScriptParametersService(Service):
         self,
         commissioning_scripts: list[str] | None = None,
         testing_scripts: list[str] | None = None,
-        script_input: Mapping[str, Mapping[str, str | int | bool]]
-        | None = None,
+        script_input: Mapping[str, Mapping[str, ParameterValue]] | None = None,
     ) -> None:
         """Check the script selections and input of a commission request.
 
@@ -688,8 +696,7 @@ class ScriptParametersService(Service):
     async def clean_scripts_input(
         self,
         scripts: Sequence[Script],
-        script_input: Mapping[str, Mapping[str, str | int | bool]]
-        | None = None,
+        script_input: Mapping[str, Mapping[str, ParameterValue]] | None = None,
     ) -> dict[str, ScriptParametersInput]:
         """Check the input given to `scripts` and assign defaults, including
         those from the MAAS configuration, for preparing the scripts to run.
@@ -704,7 +711,7 @@ class ScriptParametersService(Service):
         details: list[BaseExceptionDetail] = []
         for script in _scripts_with_input_to_check(scripts, script_input):
             try:
-                parameters = validate_parameters_schema(script.parameters)
+                schemas = validate_parameters_schema(script.parameters)
             except ValidationException as e:
                 details.extend(
                     detail.model_copy(
@@ -715,9 +722,9 @@ class ScriptParametersService(Service):
                 continue
             cleaned[script.name], errors = _clean_input(
                 script,
-                parameters,
+                schemas,
                 script_input.get(script.name, {}),
-                await self._get_config_defaults(parameters),
+                await self._get_config_defaults(schemas),
             )
             details.extend(_scoped_to_script(script, errors))
         if details:
@@ -725,9 +732,9 @@ class ScriptParametersService(Service):
         return cleaned
 
     async def _get_config_defaults(
-        self, parameters: dict[str, dict[str, Any]]
+        self, schemas: Mapping[str, ParameterSchema]
     ) -> dict[str, Any]:
-        names = DEFAULTS_FROM_MAAS_CONFIG.intersection(parameters)
+        names = DEFAULTS_FROM_MAAS_CONFIG.intersection(schemas)
         if not names:
             return {}
         defaults = await self.configurations_service.get_many(set(names))
