@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from temporalio import workflow
@@ -8,19 +8,31 @@ from maascommon.workflows.commission import (
     COMMISSION_N_WORKFLOW_NAME,
     COMMISSION_WORKFLOW_NAME,
     CommissionNParam,
+    CommissionParam,
 )
-from maastemporalworker.workflow.utils import workflow_run_with_context
+from maastemporalworker.workflow.activity import ActivityBase
+from maastemporalworker.workflow.utils import (
+    activity_defn_with_context,
+    workflow_run_with_context,
+)
 
 
-@workflow.defn(name=COMMISSION_N_WORKFLOW_NAME, sandboxed=False)
-class CommissionNWorkflow:
+class CommissionActivity(ActivityBase):
+    @activity_defn_with_context
+    def prepare_commissioning(self) -> None:
+        pass
+
+    @activity_defn_with_context
+    def resolve_power_rack_target(self) -> None:
+        pass
+
+    @activity_defn_with_context
+    def finalize_commissioning(self) -> None:
+        pass
+
+
+@workflow.defn(name=COMMISSION_WORKFLOW_NAME, sandboxed=False)
+class CommissionWorkflow:
     @workflow_run_with_context
-    async def run(self, params: CommissionNParam) -> None:
-        for param in params.params:
-            await workflow.execute_child_workflow(
-                COMMISSION_WORKFLOW_NAME,
-                param,
-                id=f"commission:{param.system_id}",
-                task_queue=param.queue,
-                retry_policy=RetryPolicy(maximum_attempts=5),
-            )
+    async def run(self, param: CommissionParam) -> None:
+        pass

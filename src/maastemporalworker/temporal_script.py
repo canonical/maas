@@ -47,7 +47,10 @@ from maastemporalworker.workflow.bootresource import (
     SyncRemoteBootResourcesWorkflow,
     SyncSelectionWorkflow,
 )
-from maastemporalworker.workflow.commission import CommissionNWorkflow
+from maastemporalworker.workflow.commission import (
+    CommissionActivity,
+    CommissionWorkflow,
+)
 from maastemporalworker.workflow.configure import (
     ConfigureAgentActivity,
     ConfigureAgentWorkflow,
@@ -196,6 +199,9 @@ async def main() -> None:
     tag_evaluation_activity = TagEvaluationActivity(
         db, services_cache, temporal_client
     )
+    commissioning_activity = CommissionActivity(
+        db, services_cache, temporal_client
+    )
     deploy_activity = DeployActivity(db, services_cache, temporal_client)
     dhcp_activity = DHCPConfigActivity(db, services_cache, temporal_client)
     power_activity = PowerActivity(db, services_cache, temporal_client)
@@ -228,7 +234,7 @@ async def main() -> None:
                 # Lifecycle workflows
                 DeployManyWorkflow,
                 DeployWorkflow,
-                CommissionNWorkflow,
+                CommissionWorkflow,
                 # MSM Connector service
                 MSMConfigureProfileWorkflow,
                 MSMEnrolSiteWorkflow,
@@ -266,6 +272,10 @@ async def main() -> None:
                 configure_activity.get_rack_controller_vlans,
                 configure_activity.get_region_controller_endpoints,
                 configure_activity.get_resolver_config,
+                # Commissioning activities
+                commissioning_activity.prepare_commissioning,
+                commissioning_activity.resolve_power_rack_target,
+                commissioning_activity.finalize_commissioning,
                 # Deploy activities
                 deploy_activity.set_node_status,
                 deploy_activity.get_boot_order,
