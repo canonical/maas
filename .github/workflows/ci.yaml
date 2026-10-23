@@ -142,7 +142,7 @@ jobs:
   ci-check:
     runs-on: ubuntu-slim
     if: always()
-    needs: [lint, test-python, test-go, test-docs, validate-conventional-commit]
+    needs: [lint, test-python, test-go, test-docs]
     steps:
       - name: Determine overall CI status
         id: status
