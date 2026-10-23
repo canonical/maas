@@ -307,6 +307,35 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
             "no-tags-script",
         }
 
+    async def test_get_many_filter_by_tags_overlap_builtin_names(
+        self, repository_instance: ScriptsRepository, fixture: Fixture
+    ) -> None:
+        await create_test_script_entry(fixture, name="builtin", default=True)
+        await create_test_script_entry(
+            fixture, name="tagged", tags=["other", "builtin"]
+        )
+        await create_test_script_entry(fixture, name="other", tags=["other"])
+        await create_test_script_entry(fixture, name="untagged", tags=None)
+
+        scripts = await repository_instance.get_many(
+            QuerySpec(
+                where=ScriptsClauseFactory.with_tags_overlap_builtin_names()
+            )
+        )
+        assert [script.name for script in scripts] == ["tagged"]
+
+    async def test_get_many_filter_by_tags_overlap_builtin_names_without_builtin(
+        self, repository_instance: ScriptsRepository, fixture: Fixture
+    ) -> None:
+        await create_test_script_entry(fixture, name="tagged", tags=["tag"])
+
+        scripts = await repository_instance.get_many(
+            QuerySpec(
+                where=ScriptsClauseFactory.with_tags_overlap_builtin_names()
+            )
+        )
+        assert scripts == []
+
     async def test_get_many_filter_by_empty_for_hardware(
         self, repository_instance: ScriptsRepository, fixture: Fixture
     ) -> None:
