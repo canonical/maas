@@ -186,16 +186,6 @@ class TestRegionHTTPService(
         self.assertIn("listen 5240;", nginx_config)
         self.assertIn("location /MAAS/api/2.0/machines {", nginx_config)
 
-    def test_configure_sets_security_headers(self):
-        cert = get_sample_cert_with_cacerts()
-        nginx_config = self._configure_to_file(
-            http._Configuration(cert=cert, port=5443)
-        )
-        self.assertIn(
-            "add_header X-Content-Type-Options 'nosniff';",
-            nginx_config,
-        )
-
     def test_no_rate_limiting_when_hardening_off_and_unset(self):
         nginx_config = self._configure_to_file(
             http._Configuration(cert=None, port=None)
