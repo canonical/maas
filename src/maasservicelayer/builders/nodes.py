@@ -29,6 +29,8 @@ class NodeBuilder(ResourceBuilder):
     current_testing_script_set_id: int | None | Unset = Field(default=UNSET)
     domain_id: int | None | Unset = Field(default=UNSET)
     error_description: str | Unset = Field(default=UNSET)
+    gateway_link_ipv4_id: int | None | Unset = Field(default=UNSET)
+    gateway_link_ipv6_id: int | None | Unset = Field(default=UNSET)
     hostname: str | Unset = Field(default=UNSET)
     node_type: NodeTypeEnum | Unset = Field(default=UNSET)
     owner_id: int | None | Unset = Field(default=UNSET)
