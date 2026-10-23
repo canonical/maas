@@ -116,6 +116,16 @@ jobs:
     if: always()
     needs: [lint, test-python, test-go]
     steps:
-      - name: Check job results
-        if: needs.*.result == 'failure'
+      - name: Determine overall CI status
+        id: status
+        run: |
+          # If any dependency failed or was cancelled, mark as failure
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "state=failure" >> $GITHUB_OUTPUT
+          else
+            echo "state=success" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fail pipeline if dependencies failed
+        if: steps.status.outputs.state == 'failure'
         run: exit 1
