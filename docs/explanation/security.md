@@ -107,7 +107,7 @@ Vault is compatible with MAAS version 3.3 and above. Please upgrade if you're us
 
 ## PostgreSQL security
 
-PostgreSQL contains secrets, and should be encrypted for maximum protection. You should consider [full disk encryption](https://help.ubuntu.com/community/Full_Disk_Encryption_Howto_2019). Also recommended is [TLS encryption between MAAS and PostgreSQL](https://www.postgresql.org/docs/current/ssl-tcp.html).
+PostgreSQL contains secrets, and should be encrypted for maximum protection. You should consider [full disk encryption](https://wiki.ubuntu.com/Full_Disk_Encryption_Howto_2019). Also recommended is [TLS encryption between MAAS and PostgreSQL](https://www.postgresql.org/docs/current/ssl-tcp.html).
 
 ## Strong passwords
 
