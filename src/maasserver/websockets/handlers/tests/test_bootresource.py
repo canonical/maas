@@ -26,6 +26,7 @@ from maasserver.models import (
     BootSourceSelection,
     Config,
 )
+import maasserver.models.bootsourceselection as bootsourceselection_module
 import maasserver.models.node as node_module
 from maasserver.models.signals import bootsources
 from maasserver.models.signals.testing import SignalsDisabled
@@ -1638,6 +1639,7 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
 
     def test_makes_correct_calls_for_downloading_resources(self):
         self.useFixture(SignalsDisabled("bootsources"))
+        self.patch(bootsourceselection_module, "stop_workflow")
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         os = factory.make_name("os")
@@ -1665,6 +1667,7 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
 
     def test_deletes_uploaded_image(self):
         self.useFixture(SignalsDisabled("bootsources"))
+        self.patch(bootsourceselection_module, "stop_workflow")
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         name = factory.make_name("name")
@@ -1680,6 +1683,7 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
 
     def test_deletes_uploaded_image_creates_audit_events_for_selection(self):
         self.useFixture(SignalsDisabled("bootsources"))
+        self.patch(bootsourceselection_module, "stop_workflow")
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         source = factory.make_BootSource()
