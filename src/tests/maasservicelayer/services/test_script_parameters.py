@@ -18,6 +18,7 @@ from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.script_parameters import (
     clean_parameters_input,
     PARAMETER_TYPES,
+    ParameterWithValue,
     ScriptParametersService,
     validate_parameters_schema,
     validate_scripts_input,
@@ -34,6 +35,13 @@ def script_with(parameters: Any, **extra_details: Any) -> Script:
 def errors_of(exc_info: pytest.ExceptionInfo) -> set[tuple[str, str]]:
     return {
         (detail.field, detail.message) for detail in exc_info.value.details
+    }
+
+
+def dumped(params: dict[str, ParameterWithValue]) -> dict[str, dict]:
+    return {
+        name: param.model_dump(exclude_unset=True)
+        for name, param in params.items()
     }
 
 
@@ -58,99 +66,141 @@ class TestValidateParametersSchema:
         }
         assert sorted(parameters) == sorted(PARAMETER_TYPES)
 
-        assert validate_parameters_schema(parameters) == parameters
+        schemas = validate_parameters_schema(parameters)
+
+        assert {
+            name: schema.model_dump(exclude_unset=True)
+            for name, schema in schemas.items()
+        } == parameters
+
+    def test_keeps_unknown_keys(self) -> None:
+        schemas = validate_parameters_schema(
+            {"string": {"type": "string", "extra": "kept"}}
+        )
+        assert schemas["string"].model_dump(exclude_unset=True) == {
+            "type": "string",
+            "extra": "kept",
+        }
 
     def test_accepts_unsupported_type_when_not_required(self) -> None:
         validate_parameters_schema({"foo": {"type": "foo", "required": False}})
 
-    def test_accepts_booleans_as_integers(self) -> None:
-        validate_parameters_schema(
-            {"runtime": {"type": "runtime", "min": False, "max": True}}
-        )
-
-    def test_accepts_choices_that_are_not_lists(self) -> None:
-        validate_parameters_schema(
-            {"choice": {"type": "choice", "choices": [1, {"a": "b"}]}}
-        )
-
     def test_rejects_non_dict_schema(self) -> None:
         with pytest.raises(ValidationException) as exc_info:
             validate_parameters_schema(["runtime"])
-        assert errors_of(exc_info) == {("parameters", "Must be a dictionary")}
+        assert errors_of(exc_info) == {
+            ("parameters", "Input should be a valid dictionary")
+        }
 
     @pytest.mark.parametrize(
         "parameter, message",
         [
-            ("not-a-dict", "param: must be a dictionary"),
-            ({"type": 1, "required": False}, "1: type must be a string"),
-            ({"type": "runtime", "min": "1"}, "1: min must be an integer"),
-            ({"type": "runtime", "max": 1.5}, "1.5: max must be an integer"),
-            ({"type": "string", "title": 1}, "1: title must be a string"),
+            (
+                "not-a-dict",
+                "param: Input should be a valid dictionary or instance of "
+                "ParameterSchema",
+            ),
+            (
+                {"type": 1, "required": False},
+                "param.type: Input should be a valid string",
+            ),
+            (
+                {"type": "runtime", "min": "1"},
+                "param.min: Input should be a valid integer",
+            ),
+            (
+                {"type": "runtime", "min": False},
+                "param.min: Input should be a valid integer",
+            ),
+            (
+                {"type": "runtime", "max": 1.5},
+                "param.max: Input should be a valid integer",
+            ),
+            (
+                {"type": "string", "title": 1},
+                "param.title: Input should be a valid string",
+            ),
             (
                 {"type": "string", "description": 1},
-                "1: description must be a string",
+                "param.description: Input should be a valid string",
             ),
             (
                 {"type": "string", "argument_format": []},
-                "[]: argument_format must be a string",
+                "param.argument_format: Input should be a valid string",
             ),
-            ({"type": "string", "default": 1}, "1: default must be a string"),
+            (
+                {"type": "string", "default": 1},
+                "param.default: Input should be a valid string",
+            ),
+            (
+                {"type": "boolean", "default": "yes"},
+                "param.default: Must be true or false",
+            ),
             (
                 {"type": "string", "required": "yes"},
-                "yes: required must be a boolean",
+                "param.required: Input should be a valid boolean",
             ),
             (
                 {"type": "url", "allow_list": "yes"},
-                "yes: allow_list must be a boolean",
+                "param.allow_list: Input should be a valid boolean",
             ),
             (
                 {"type": "string", "allow_list": True},
-                "allow_list only supported with the url type.",
+                "param.allow_list: Only supported with the url type",
             ),
             (
                 {"type": "choice", "choices": "a,b"},
-                "choices must be a list",
+                "param.choices: Input should be a valid list",
+            ),
+            (
+                {"type": "choice", "choices": [1]},
+                "param.choices.0: Input should be a valid tuple",
             ),
             (
                 {"type": "choice", "choices": [["a", "b", "c"]]},
-                "choice must be a string or a [value, label] pair",
+                "param.choices.0: Tuple should have at most 2 items after "
+                "validation, not 3",
             ),
             (
                 {"type": "choice", "choices": [["a", 1]]},
-                "choice must be a string or a [value, label] pair",
+                "param.choices.0.1: Input should be a valid string",
             ),
             (
                 {"type": "string", "choices": ["a"]},
-                "choices only supported with the choice type.",
+                "param.choices: Only supported with the choice type",
             ),
             (
                 {"type": "choice"},
-                'choices must be given with a "choice" parameter type!',
+                "param.choices: Required by the choice type",
             ),
             (
                 {"type": "foo"},
-                f"foo: type must be one of {', '.join(PARAMETER_TYPES)}",
+                f"param.type: Must be one of {', '.join(PARAMETER_TYPES)}",
             ),
             (
                 {"type": "storage", "min": 1},
-                "Type doesn't support min or max",
+                "param.min: Not supported by this type",
             ),
             (
                 {"type": "runtime", "min": -1},
-                "runtime minimum must be greater than zero",
+                "param.min: Input should be greater than or equal to 0",
+            ),
+            (
+                {"type": "string", "max": -1},
+                "param.max: Input should be greater than or equal to 0",
             ),
             (
                 {"type": "runtime", "min": 10, "max": 5},
-                "min must be less than max",
+                "param.max: Must not be less than min",
             ),
             (
                 {"type": "storage", "argument_format": "--disk"},
-                "storage: argument_format must contain one of {input}, "
+                "param.argument_format: Must contain one of {input}, "
                 "{name}, {path}, {model}, {serial}",
             ),
             (
                 {"type": "interface", "argument_format": "--nic"},
-                "interface: argument_format must contain one of {input}, "
+                "param.argument_format: Must contain one of {input}, "
                 "{name}, {mac}, {vendor}, {product}",
             ),
         ],
@@ -171,11 +221,8 @@ class TestValidateParametersSchema:
                 }
             )
         assert errors_of(exc_info) == {
-            ("parameters", "1: min must be an integer"),
-            (
-                "parameters",
-                'choices must be given with a "choice" parameter type!',
-            ),
+            ("parameters", "runtime.min: Input should be a valid integer"),
+            ("parameters", "choice.choices: Required by the choice type"),
         }
 
 
@@ -185,10 +232,7 @@ class TestCleanParametersInput:
         with pytest.raises(ValidationException) as exc_info:
             clean_parameters_input(script, {"unknown": "value"})
         assert errors_of(exc_info) == {
-            (
-                "parameters",
-                'choices must be given with a "choice" parameter type!',
-            )
+            ("parameters", "choice.choices: Required by the choice type")
         }
 
     def test_rejects_unknown_parameter(self) -> None:
@@ -222,7 +266,7 @@ class TestCleanParametersInput:
                 script, {"runtime": "soon", "url": "bad!url"}
             )
         assert errors_of(exc_info) == {
-            ("runtime", "Must be an int"),
+            ("runtime", "Input should be a valid integer"),
             ("url", "Invalid URL"),
             ("required", "Field is required"),
         }
@@ -230,7 +274,7 @@ class TestCleanParametersInput:
     def test_runtime(self) -> None:
         script = script_with({"runtime": {"type": "runtime"}})
         cleaned = clean_parameters_input(script, {"runtime": 30})
-        assert cleaned.result_params == {
+        assert dumped(cleaned.result_params) == {
             "runtime": {"type": "runtime", "value": 30}
         }
 
@@ -240,7 +284,7 @@ class TestCleanParametersInput:
             timeout=timedelta(days=1, seconds=30),
         )
         cleaned = clean_parameters_input(script, {})
-        assert cleaned.result_params == {
+        assert dumped(cleaned.result_params) == {
             "runtime": {"type": "runtime", "value": 86430}
         }
 
@@ -253,13 +297,13 @@ class TestCleanParametersInput:
     @pytest.mark.parametrize(
         "parameter, value, message",
         [
-            ({}, "soon", "Must be an int"),
-            ({}, "30", "Must be an int"),
-            ({}, "0", "Must be an int"),
-            ({}, True, "Must be an int"),
-            ({}, -1, "Must be greater than 0"),
-            ({"min": 10}, 9, "Must be greater than 10"),
-            ({"max": 10}, 11, "Must be less than 10"),
+            ({}, "soon", "Input should be a valid integer"),
+            ({}, "30", "Input should be a valid integer"),
+            ({}, "0", "Input should be a valid integer"),
+            ({}, True, "Input should be a valid integer"),
+            ({}, -1, "Input should be greater than or equal to 0"),
+            ({"min": 10}, 9, "Input should be greater than or equal to 10"),
+            ({"max": 10}, 11, "Input should be less than or equal to 10"),
         ],
     )
     def test_runtime_rejects_invalid_value(
@@ -285,40 +329,50 @@ class TestCleanParametersInput:
     def test_url(self, value: str) -> None:
         script = script_with({"url": {"type": "url"}})
         cleaned = clean_parameters_input(script, {"url": value})
-        assert cleaned.result_params == {
+        assert dumped(cleaned.result_params) == {
             "url": {"type": "url", "value": value}
         }
 
     @pytest.mark.parametrize(
-        "value",
+        "value, message",
         [
-            "bad!url",
-            "maas example",
-            "unknown://maas",
-            "10.0.0.1,maas",
-            "http://maas:65536",
-            167772161,
-            True,
+            ("bad!url", "Invalid URL"),
+            ("maas example", "Invalid URL"),
+            ("unknown://maas", "Invalid URL"),
+            ("10.0.0.1,maas", "Invalid URL"),
+            ("http://maas:65536", "Invalid URL"),
+            (167772161, "Input should be a valid string"),
+            (True, "Input should be a valid string"),
         ],
     )
-    def test_url_rejects_invalid_value(self, value: str | int | bool) -> None:
+    def test_url_rejects_invalid_value(
+        self, value: str | int | bool, message: str
+    ) -> None:
         script = script_with({"url": {"type": "url"}})
         with pytest.raises(ValidationException) as exc_info:
             clean_parameters_input(script, {"url": value})
-        assert errors_of(exc_info) == {("url", "Invalid URL")}
+        assert errors_of(exc_info) == {("url", message)}
 
     def test_url_allow_list(self) -> None:
         value = "10.0.0.1,2001:db8::1,maas.example.com,http://maas:5240"
         script = script_with({"url": {"type": "url", "allow_list": True}})
         cleaned = clean_parameters_input(script, {"url": value})
-        assert cleaned.result_params["url"]["value"] == value
+        assert cleaned.result_params["url"].value == value
 
-    @pytest.mark.parametrize("value", ["10.0.0.1,bad!url", 167772161])
-    def test_url_allow_list_rejects_invalid_value(self, value: Any) -> None:
+    @pytest.mark.parametrize(
+        "value, message",
+        [
+            ("10.0.0.1,bad!url", "Invalid URL"),
+            (167772161, "Input should be a valid string"),
+        ],
+    )
+    def test_url_allow_list_rejects_invalid_value(
+        self, value: Any, message: str
+    ) -> None:
         script = script_with({"url": {"type": "url", "allow_list": True}})
         with pytest.raises(ValidationException) as exc_info:
             clean_parameters_input(script, {"url": value})
-        assert errors_of(exc_info) == {("url", "Invalid URL")}
+        assert errors_of(exc_info) == {("url", message)}
 
     def test_url_is_omitted_without_input(self) -> None:
         script = script_with({"url": {"type": "url"}})
@@ -365,13 +419,13 @@ class TestCleanParametersInput:
     def test_string(self, param_type: str) -> None:
         script = script_with({param_type: {"type": param_type}})
         cleaned = clean_parameters_input(script, {param_type: "secret"})
-        assert cleaned.result_params[param_type]["value"] == "secret"
+        assert cleaned.result_params[param_type].value == "secret"
 
     @pytest.mark.parametrize("param_type", ["string", "password", "url"])
     def test_strips_whitespace(self, param_type: str) -> None:
         script = script_with({param_type: {"type": param_type}})
         cleaned = clean_parameters_input(script, {param_type: "  maas \n"})
-        assert cleaned.result_params[param_type]["value"] == "maas"
+        assert cleaned.result_params[param_type].value == "maas"
 
     @pytest.mark.parametrize(
         "parameter, value, default",
@@ -395,7 +449,7 @@ class TestCleanParametersInput:
         script = script_with({"param": parameter})
         cleaned = clean_parameters_input(script, {"param": value})
         params = {**cleaned.result_params, **cleaned.multi_result_params}
-        assert params["param"]["value"] == default
+        assert params["param"].value == default
 
     @pytest.mark.parametrize("param_type", ["string", "password"])
     def test_string_default(self, param_type: str) -> None:
@@ -403,7 +457,7 @@ class TestCleanParametersInput:
             {param_type: {"type": param_type, "default": "default"}}
         )
         cleaned = clean_parameters_input(script, {})
-        assert cleaned.result_params[param_type]["value"] == "default"
+        assert cleaned.result_params[param_type].value == "default"
 
     @pytest.mark.parametrize("param_type", ["string", "password"])
     def test_string_required(self, param_type: str) -> None:
@@ -417,10 +471,10 @@ class TestCleanParametersInput:
     @pytest.mark.parametrize(
         "parameter, value, message",
         [
-            ({"min": 5}, "abc", "Input too short"),
-            ({"max": 2}, "abc", "Input too long"),
-            ({}, 42, "Must be a string"),
-            ({}, True, "Must be a string"),
+            ({"min": 5}, "abc", "String should have at least 5 characters"),
+            ({"max": 2}, "abc", "String should have at most 2 characters"),
+            ({}, 42, "Input should be a valid string"),
+            ({}, True, "Input should be a valid string"),
         ],
     )
     def test_string_rejects_invalid_value(
@@ -440,7 +494,7 @@ class TestCleanParametersInput:
         cleaned = clean_parameters_input(
             script, {}, config_defaults={parameter_name: "from-config"}
         )
-        assert cleaned.result_params[parameter_name]["value"] == "from-config"
+        assert cleaned.result_params[parameter_name].value == "from-config"
 
     def test_schema_default_overrides_maas_config(self) -> None:
         script = script_with(
@@ -449,9 +503,7 @@ class TestCleanParametersInput:
         cleaned = clean_parameters_input(
             script, {}, config_defaults={"maas_auto_ipmi_user": "config"}
         )
-        assert cleaned.result_params["maas_auto_ipmi_user"]["value"] == (
-            "schema"
-        )
+        assert cleaned.result_params["maas_auto_ipmi_user"].value == "schema"
 
     @pytest.mark.parametrize("value", ["a", "b"])
     def test_choice(self, value: str) -> None:
@@ -459,7 +511,7 @@ class TestCleanParametersInput:
             {"choice": {"type": "choice", "choices": ["a", ["b", "Bee"]]}}
         )
         cleaned = clean_parameters_input(script, {"choice": value})
-        assert cleaned.result_params["choice"]["value"] == value
+        assert cleaned.result_params["choice"].value == value
 
     def test_choice_default_is_validated(self) -> None:
         script = script_with(
@@ -479,17 +531,17 @@ class TestCleanParametersInput:
 
     @pytest.mark.parametrize("value", [1, True])
     def test_choice_must_be_string(self, value: int | bool) -> None:
-        script = script_with(
-            {"choice": {"type": "choice", "choices": ["1", 1]}}
-        )
+        script = script_with({"choice": {"type": "choice", "choices": ["1"]}})
         with pytest.raises(ValidationException) as exc_info:
             clean_parameters_input(script, {"choice": value})
-        assert errors_of(exc_info) == {("choice", "Must be a string")}
+        assert errors_of(exc_info) == {
+            ("choice", "Input should be a valid string")
+        }
 
     def test_boolean(self) -> None:
         script = script_with({"flag": {"type": "boolean"}})
         cleaned = clean_parameters_input(script, {"flag": True})
-        assert cleaned.result_params == {
+        assert dumped(cleaned.result_params) == {
             "flag": {"type": "boolean", "value": True}
         }
 
@@ -503,8 +555,8 @@ class TestCleanParametersInput:
         cleaned = clean_parameters_input(
             script, {"flag": False, "default": False}
         )
-        assert cleaned.result_params == {
-            "default": {"type": "boolean", "default": "true", "value": "true"}
+        assert dumped(cleaned.result_params) == {
+            "default": {"type": "boolean", "default": "true", "value": True}
         }
 
     @pytest.mark.parametrize("value", ["true", "false", "yes", "1", 1, 0])
@@ -512,17 +564,35 @@ class TestCleanParametersInput:
         script = script_with({"flag": {"type": "boolean"}})
         with pytest.raises(ValidationException) as exc_info:
             clean_parameters_input(script, {"flag": value})
-        assert errors_of(exc_info) == {("flag", "Must be a boolean")}
+        assert errors_of(exc_info) == {
+            ("flag", "Input should be a valid boolean")
+        }
 
-    def test_boolean_default(self) -> None:
-        script = script_with({"flag": {"type": "boolean", "default": "true"}})
+    @pytest.mark.parametrize("default", ["true", "True", "TRUE"])
+    def test_boolean_default(self, default: str) -> None:
+        script = script_with({"flag": {"type": "boolean", "default": default}})
         cleaned = clean_parameters_input(script, {})
-        assert cleaned.result_params["flag"]["value"] == "true"
+        assert cleaned.result_params["flag"].value is True
+
+    @pytest.mark.parametrize("default", ["false", "False", ""])
+    def test_boolean_false_default_leaves_flag_unset(
+        self, default: str
+    ) -> None:
+        script = script_with({"flag": {"type": "boolean", "default": default}})
+        assert clean_parameters_input(script, {}).result_params == {}
+
+    def test_boolean_false_default_does_not_satisfy_required(self) -> None:
+        script = script_with(
+            {"flag": {"type": "boolean", "default": "false", "required": True}}
+        )
+        with pytest.raises(ValidationException) as exc_info:
+            clean_parameters_input(script, {})
+        assert errors_of(exc_info) == {("flag", "Field is required")}
 
     def test_unsupported_type_is_not_validated(self) -> None:
         script = script_with({"foo": {"type": "foo", "required": False}})
         cleaned = clean_parameters_input(script, {"foo": 42})
-        assert cleaned.result_params["foo"]["value"] == 42
+        assert cleaned.result_params["foo"].value == 42
 
     @pytest.mark.parametrize("param_type", ["storage", "interface"])
     def test_multi_result_params_default_to_all(self, param_type: str) -> None:
@@ -533,10 +603,10 @@ class TestCleanParametersInput:
             }
         )
         cleaned = clean_parameters_input(script, {})
-        assert cleaned.result_params == {
+        assert dumped(cleaned.result_params) == {
             "runtime": {"type": "runtime", "value": 300}
         }
-        assert cleaned.multi_result_params == {
+        assert dumped(cleaned.multi_result_params) == {
             param_type: {"type": param_type, "value": "all"}
         }
 
@@ -545,7 +615,7 @@ class TestCleanParametersInput:
         script = script_with({param_type: {"type": param_type}})
         cleaned = clean_parameters_input(script, {param_type: "sda,sdb"})
         assert cleaned.result_params == {}
-        assert cleaned.multi_result_params == {
+        assert dumped(cleaned.multi_result_params) == {
             param_type: {"type": param_type, "value": "sda,sdb"}
         }
 
@@ -576,7 +646,10 @@ class TestValidateScriptsInput:
             )
 
         assert errors_of(exc_info) == {
-            ("script_input.runtime.runtime", "Must be an int"),
+            (
+                "script_input.runtime.runtime",
+                "Input should be a valid integer",
+            ),
             ("script_input.url", "Unknown parameter 'unknown' for url"),
         }
 
@@ -595,7 +668,10 @@ class TestValidateScriptsInput:
             )
 
         assert errors_of(exc_info) == {
-            (f"script_input.{script.name}.{parameter_name}", "Must be an int")
+            (
+                f"script_input.{script.name}.{parameter_name}",
+                "Input should be a valid integer",
+            )
         }
 
     def test_skips_for_hardware_without_input(self) -> None:
@@ -626,7 +702,10 @@ class TestValidateScriptsInput:
             validate_scripts_input([script], {script.name: {"flag": "true"}})
 
         assert errors_of(exc_info) == {
-            ("script_input.test-script.flag", "Must be a boolean")
+            (
+                "script_input.test-script.flag",
+                "Input should be a valid boolean",
+            )
         }
 
     @pytest.mark.parametrize("value", ["", "   "])
@@ -778,7 +857,7 @@ class TestScriptParametersService:
         configurations_service.get_many.assert_awaited_once_with(
             {"maas_auto_ipmi_user"}
         )
-        assert cleaned[script.name].result_params == {
+        assert dumped(cleaned[script.name].result_params) == {
             "maas_auto_ipmi_user": {"type": "string", "value": "maas"},
             "other": {"type": "string", "default": "other", "value": "other"},
         }
@@ -801,7 +880,7 @@ class TestScriptParametersService:
 
         cleaned = await service.clean_scripts_input([script])
 
-        assert cleaned[script.name].result_params[name]["value"] == (
+        assert cleaned[script.name].result_params[name].value == (
             MAASAutoIPMICipherSuiteIDConfig.default
         )
 
@@ -816,7 +895,7 @@ class TestScriptParametersService:
 
         cleaned = await service.clean_scripts_input([script])
 
-        assert cleaned[script.name].result_params[name]["value"] == "17"
+        assert cleaned[script.name].result_params[name].value == "17"
 
     async def test_clean_scripts_input_by_script_name(
         self, service: ScriptParametersService
@@ -829,10 +908,10 @@ class TestScriptParametersService:
             {"url": {"url": "maas"}, "unselected": {"foo": "bar"}},
         )
 
-        assert cleaned["runtime"].result_params == {
+        assert dumped(cleaned["runtime"].result_params) == {
             "runtime": {"type": "runtime", "value": 300}
         }
-        assert cleaned["url"].result_params == {
+        assert dumped(cleaned["url"].result_params) == {
             "url": {"type": "url", "value": "maas"}
         }
 
@@ -862,7 +941,7 @@ class TestScriptParametersService:
         assert errors_of(exc_info) == {
             (
                 "script_input.script",
-                'choices must be given with a "choice" parameter type!',
+                "choice.choices: Required by the choice type",
             )
         }
 
