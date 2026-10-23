@@ -98,7 +98,9 @@ class UserClauseFactory(ClauseFactory):
 class UsersRepository(BaseRepository[User]):
     def __init__(self, context: Context):
         super().__init__(context)
-        self.userprofile_mapper = DefaultDomainDataMapper(UserProfileTable)
+        self.userprofile_mapper = DefaultDomainDataMapper(
+            UserProfile, UserProfileTable
+        )
 
     def get_repository_table(self) -> Table:
         return UserTable

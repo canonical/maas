@@ -27,7 +27,9 @@ from maasservicelayer.models.image_manifests import ImageManifest
 class ImageManifestsRepository(Repository):
     def __init__(self, context: Context):
         super().__init__(context)
-        self.mapper = DefaultDomainDataMapper(ImageManifestTable)
+        self.mapper = DefaultDomainDataMapper(
+            ImageManifest, ImageManifestTable
+        )
 
     async def get(self, boot_source_id: int) -> ImageManifest | None:
         stmt = (

@@ -6,8 +6,8 @@ from fastapi import Query
 from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
-from maasservicelayer.db.filters import Clause
-from maasservicelayer.db.repositories.events import EventsClauseFactory
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.events import EventFilters
 
 
 class EventsFiltersParams(BaseModel):
@@ -15,11 +15,9 @@ class EventsFiltersParams(BaseModel):
         Query(default=None, title="Filter by system id", alias="system_id")
     )
 
-    def to_clause(self) -> Clause | None:
+    def to_filter(self) -> Filter | None:
         if self.system_ids:
-            return EventsClauseFactory.with_system_ids(
-                system_ids=self.system_ids
-            )
+            return EventFilters.with_system_ids(self.system_ids)
         return None
 
     def to_href_format(self) -> str:

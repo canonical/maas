@@ -41,7 +41,9 @@ class NodeUserDataRepository(BaseRepository[NodeUserData]):
         return NodeUserData
 
     def get_mapper(self) -> BaseDomainDataMapper:
-        return NodeUserDataDomainDataMapper(self.get_repository_table())
+        return NodeUserDataDomainDataMapper(
+            NodeUserData, self.get_repository_table()
+        )
 
     async def upsert(self, builder: NodeUserDataBuilder) -> NodeUserData:
         resource = self.mapper.build_resource(builder)

@@ -5,11 +5,12 @@ from maasservicelayer.db.mappers.nodeuserdata import (
     NodeUserDataDomainDataMapper,
 )
 from maasservicelayer.db.tables import NodeUserDataTable
+from maasservicelayer.models.nodeuserdata import NodeUserData
 
 
 class TestNodeUserDataDomainDataMapper:
     def test_build_resource(self):
-        mapper = NodeUserDataDomainDataMapper(NodeUserDataTable)
+        mapper = NodeUserDataDomainDataMapper(NodeUserData, NodeUserDataTable)
         builder = NodeUserDataBuilder(
             node_id=1,
             data=b"\x00\xff\xfe",

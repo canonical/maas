@@ -43,7 +43,6 @@ from maasservicelayer.db.repositories.nodes import NodeClauseFactory
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
 )
-from maasservicelayer.db.repositories.sshkeys import SshKeyClauseFactory
 from maasservicelayer.db.repositories.sslkeys import SSLKeyClauseFactory
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
@@ -62,6 +61,7 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
     PRECONDITION_FAILED,
 )
+from maasservicelayer.filters.sshkeys import SshKeyFilters
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.usergroups import UserGroupsByUser
 from maasservicelayer.models.users import User, UserProfile, UserStatistics
@@ -275,9 +275,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
             )
         )
         await self.sshkey_service.delete_many(
-            query=QuerySpec(
-                where=SshKeyClauseFactory.with_user_id(resource.id)
-            )
+            query=QuerySpec(where=SshKeyFilters.with_user_id(resource.id))
         )
         await self.sslkey_service.delete_many(
             query=QuerySpec(

@@ -56,6 +56,17 @@ It defines method in the form of `with_<column>` where "column" is the column na
 
 It also provides some utilities to put a list of `Clause`s in AND or OR, and one to negate a `Clause`.
 
+### Domain filters (prototype)
+
+A `Clause` is written against table columns, so every service or API handler that builds one depends on the database layout.
+Domain filters remove that dependency: they are written against domain model fields and the repository translates them into a `Clause` through its domain data mapper.
+SSH keys and events use them; the other entities still use clause factories.
+
+- Filters live in `src/maasservicelayer/filters/`. A `FilterFactory` per entity exposes the same `with_<field>` methods as a clause factory, and `and_filters`, `or_filters` and `not_filter` to combine them.
+- A `FieldFilter` compares one domain field with a value. The mapper finds the column with the same name, or the one declared in `field_mappings()` when the names differ (see `Event.owner`, stored in `username`).
+- A `CustomFilter` covers conditions that are not a comparison on a single field, such as joins on other tables. The entity mapper translates it in `custom_filter_clause()` (see `EventsOfNodes`).
+- `QuerySpec.where` accepts both a `Clause` and a filter, so entities can migrate one at a time. Don't mix the two for the same entity.
+
 
 ## Builders and Domain Data Mappers
 

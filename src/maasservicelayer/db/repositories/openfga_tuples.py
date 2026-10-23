@@ -67,7 +67,7 @@ class OpenFGATuplesClauseFactory(ClauseFactory):
 
 class OpenFGATuplesDataMapper(BaseDomainDataMapper):
     def __init__(self):
-        super().__init__(OpenFGATupleTable)
+        super().__init__(OpenFGATuple, OpenFGATupleTable)
 
     def build_resource(
         self, builder: ResourceBuilder

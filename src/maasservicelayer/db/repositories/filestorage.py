@@ -45,7 +45,9 @@ class FileStorageRepository(BaseRepository[FileStorage]):
         return FileStorage
 
     def get_mapper(self) -> BaseDomainDataMapper:
-        return FileStorageDomainDataMapper(self.get_repository_table())
+        return FileStorageDomainDataMapper(
+            FileStorage, self.get_repository_table()
+        )
 
     async def create(self, builder):
         raise NotImplementedError(

@@ -25,7 +25,7 @@ from maasservicelayer.builders.operations import (
     OperationTaskBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.filters import Clause, QuerySpec
 from maasservicelayer.db.repositories.operation_tasks import (
     OperationTasksRepository,
 )
@@ -235,6 +235,8 @@ class OperationsService(
             )
         user_clause = OperationsClauseFactory.with_user_id(user_id)
         if query and query.where:
+            # Operations are not migrated to domain filters yet.
+            assert isinstance(query.where, Clause)
             combined = OperationsClauseFactory.and_clauses(
                 [query.where, user_clause]
             )

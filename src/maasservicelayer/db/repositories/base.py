@@ -167,7 +167,17 @@ class ReadOnlyRepository(Repository, Generic[T]):
         """
         How this repository should convert the domain model into the data model.
         """
-        return DefaultDomainDataMapper(self.get_repository_table())
+        return DefaultDomainDataMapper(
+            self.get_model_factory(), self.get_repository_table()
+        )
+
+    def _translate(self, query: QuerySpec) -> QuerySpec:
+        """Translate a domain filter into SQL through the mapper."""
+        if query.where is None or isinstance(query.where, Clause):
+            return query
+        return QuerySpec(
+            where=self.mapper.to_clause(query.where), order_by=query.order_by
+        )
 
     def select_all_statement(self) -> Select[Any]:
         return select(self.get_repository_table()).select_from(
@@ -178,7 +188,7 @@ class ReadOnlyRepository(Repository, Generic[T]):
         exists_stmt = select(self.get_repository_table().c.id).select_from(
             self.get_repository_table()
         )
-        exists_stmt = query.enrich_stmt(exists_stmt).exists()
+        exists_stmt = self._translate(query).enrich_stmt(exists_stmt).exists()
         stmt = select(exists_stmt)
         return bool((await self.execute_stmt(stmt)).scalar())
 
@@ -203,7 +213,7 @@ class ReadOnlyRepository(Repository, Generic[T]):
 
     async def _get(self, query: QuerySpec) -> List[T]:
         stmt = self.select_all_statement()
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return [self.get_model_factory()(**row._asdict()) for row in result]
@@ -215,7 +225,7 @@ class ReadOnlyRepository(Repository, Generic[T]):
         if query:
             # Don't apply the order by clause in the total_stmt
             where_query = QuerySpec(where=query.where)
-            total_stmt = where_query.enrich_stmt(total_stmt)
+            total_stmt = self._translate(where_query).enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
@@ -225,7 +235,7 @@ class ReadOnlyRepository(Repository, Generic[T]):
             .limit(size)
         )
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[T](
@@ -241,7 +251,7 @@ class ReadOnlyRepository(Repository, Generic[T]):
             desc(self.get_repository_table().c.id)
         )
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return [self.get_model_factory()(**row._asdict()) for row in result]
@@ -338,7 +348,7 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
             .returning(self.get_repository_table())
             .values(**resource.get_values())
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         try:
             updated_resources = (await self.execute_stmt(stmt)).all()
         except IntegrityError:
@@ -373,7 +383,7 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
         stmt = delete(self.get_repository_table()).returning(
             self.get_repository_table()
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
         return [self.get_model_factory()(**row._asdict()) for row in results]
 

@@ -34,7 +34,6 @@ from maasservicelayer.db.repositories.nodes import NodeClauseFactory
 from maasservicelayer.db.repositories.notifications import (
     NotificationsClauseFactory,
 )
-from maasservicelayer.db.repositories.sshkeys import SshKeyClauseFactory
 from maasservicelayer.db.repositories.sslkeys import SSLKeyClauseFactory
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressClauseFactory,
@@ -50,6 +49,7 @@ from maasservicelayer.exceptions.catalog import (
     NotFoundException,
     PreconditionFailedException,
 )
+from maasservicelayer.filters.sshkeys import SshKeyFilters
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.consumers import Consumer
 from maasservicelayer.models.tokens import Token
@@ -484,9 +484,7 @@ class TestUsersService:
             )
         )
         users_service.sshkey_service.delete_many.assert_called_once_with(
-            query=QuerySpec(
-                where=SshKeyClauseFactory.with_user_id(TEST_USER.id)
-            )
+            query=QuerySpec(where=SshKeyFilters.with_user_id(TEST_USER.id))
         )
         users_service.sslkey_service.delete_many.assert_called_once_with(
             query=QuerySpec(

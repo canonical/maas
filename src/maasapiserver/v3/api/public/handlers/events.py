@@ -53,7 +53,7 @@ class EventsHandler(Handler):
         events = await services.events.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=filters.to_clause()),
+            query=QuerySpec(where=filters.to_filter()),
         )
         next_link = None
         if events.has_next(pagination_params.page, pagination_params.size):

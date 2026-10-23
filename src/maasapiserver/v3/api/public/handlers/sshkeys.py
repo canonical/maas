@@ -27,8 +27,8 @@ from maasapiserver.v3.auth.base import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.sshkeys import SshKeyClauseFactory
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.sshkeys import SshKeyFilters
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -63,7 +63,7 @@ class SshKeysHandler(Handler):
             page=pagination_params.page,
             size=pagination_params.size,
             query=QuerySpec(
-                where=SshKeyClauseFactory.with_user_id(authenticated_user.id)
+                where=SshKeyFilters.with_user_id(authenticated_user.id)
             ),
         )
 
@@ -110,12 +110,10 @@ class SshKeysHandler(Handler):
         assert authenticated_user is not None
         ssh_key = await services.sshkeys.get_one(
             query=QuerySpec(
-                where=SshKeyClauseFactory.and_clauses(
+                where=SshKeyFilters.and_filters(
                     [
-                        SshKeyClauseFactory.with_id(sshkey_id),
-                        SshKeyClauseFactory.with_user_id(
-                            authenticated_user.id
-                        ),
+                        SshKeyFilters.with_id(sshkey_id),
+                        SshKeyFilters.with_user_id(authenticated_user.id),
                     ]
                 )
             )
@@ -225,12 +223,10 @@ class SshKeysHandler(Handler):
         assert authenticated_user is not None
         await services.sshkeys.delete_one(
             query=QuerySpec(
-                where=SshKeyClauseFactory.and_clauses(
+                where=SshKeyFilters.and_filters(
                     [
-                        SshKeyClauseFactory.with_id(id),
-                        SshKeyClauseFactory.with_user_id(
-                            authenticated_user.id
-                        ),
+                        SshKeyFilters.with_id(id),
+                        SshKeyFilters.with_user_id(authenticated_user.id),
                     ]
                 )
             ),

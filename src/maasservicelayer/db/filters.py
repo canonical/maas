@@ -17,6 +17,8 @@ from sqlalchemy import (
     Update,
 )
 
+from maasservicelayer.filters.base import Filter
+
 
 @dataclass
 class OrderByClause:
@@ -59,7 +61,9 @@ class QuerySpec:
     Contains the query specification to be executed.
     """
 
-    where: Clause | None = None
+    # A Filter is expressed on domain model fields. The repository translates
+    # it into a Clause through its mapper before building the statement.
+    where: Clause | Filter | None = None
     # order_by can't be a single clause as SQLAlchemy requires the order_by args to be a list
     order_by: list[OrderByClause] = field(default_factory=list)
     # In the future this is the right place where we will put additional query pieces
@@ -87,11 +91,12 @@ class QuerySpec:
         Returns:
             The original statement (possibly) enriched with the clauses.
         """
-        if not self.where and not self.order_by:
+        where = self._where_clause()
+        if not where and not self.order_by:
             return stmt
 
-        if self.where:
-            stmt = stmt.where(self.where.condition)
+        if where:
+            stmt = stmt.where(where.condition)
 
         if isinstance(stmt, Select):
             stmt = self._enrich_select_stmt(stmt)
@@ -100,10 +105,19 @@ class QuerySpec:
 
         return stmt
 
+    def _where_clause(self) -> Clause | None:
+        if self.where is None or isinstance(self.where, Clause):
+            return self.where
+        raise TypeError(
+            "Filters must be translated into a Clause by the repository "
+            "mapper before building a statement."
+        )
+
     def _enrich_select_stmt(self, stmt: Select) -> Select:
         already_joined = self._get_already_joined(stmt)
+        where = self._where_clause()
         joins = []
-        joins.extend(self.where.joins if self.where else [])
+        joins.extend(where.joins if where else [])
 
         if self.order_by:
             # Reset the already present order by
@@ -116,20 +130,35 @@ class QuerySpec:
             right_in_joined = join.right in already_joined
 
             if not left_in_joined and not right_in_joined:
-                stmt = stmt.join_from(join.left, join.right, join.onclause)
+                stmt = stmt.join_from(
+                    join.left,
+                    join.right,
+                    join.onclause,
+                    isouter=join.isouter,
+                )
                 already_joined.update([join.left, join.right])
             elif not left_in_joined:
+                # Joining the left side onto the right one would flip
+                # which side an outer join preserves.
+                if join.isouter:
+                    raise ValueError(
+                        "An outer join can't be added when only its right "
+                        "side is already part of the statement."
+                    )
                 stmt = stmt.join(join.left, join.onclause)
                 already_joined.add(join.left)
             elif not right_in_joined:
-                stmt = stmt.join(join.right, join.onclause)
+                stmt = stmt.join(
+                    join.right, join.onclause, isouter=join.isouter
+                )
                 already_joined.add(join.right)
 
         return stmt
 
     def _enrich_update_delete_stmt(self, stmt: UD) -> UD:
         # Order by won't be applied to update/delete statements.
-        joins = self.where.joins if self.where else []
+        where = self._where_clause()
+        joins = where.joins if where else []
         for join in joins:
             assert join.onclause is not None, "Join onclause must be defined."
             if all(

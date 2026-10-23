@@ -3,6 +3,7 @@
 
 from operator import eq
 
+import pytest
 from sqlalchemy import (
     asc,
     BigInteger,
@@ -25,6 +26,7 @@ from maasservicelayer.db.filters import (
     OrderByClause,
     QuerySpec,
 )
+from maasservicelayer.filters.sshkeys import SshKeyFilters
 
 METADATA = MetaData()
 
@@ -552,6 +554,41 @@ class TestQuerySpec:
             ).replace("\n", "")
             == "DELETE FROM test_table_a USING test_table_b WHERE test_table_a.id < 3 AND test_table_b.id = 1 AND test_table_b.id = 2 AND test_table_a.b_id = test_table_b.id"
         )
+
+    def test_enrich_stmt_select_keeps_outer_join(self):
+        stmt = select(A.c.id)
+        query = QuerySpec(
+            Clause(
+                condition=eq(B.c.id, 1),
+                joins=[join(A, B, eq(A.c.b_id, B.c.id), isouter=True)],
+            )
+        )
+        stmt = query.enrich_stmt(stmt)
+        assert (
+            str(
+                stmt.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            ).replace("\n", "")
+            == "SELECT test_table_a.id FROM test_table_a LEFT OUTER JOIN test_table_b ON test_table_a.b_id = test_table_b.id WHERE test_table_b.id = 1"
+        )
+
+    def test_enrich_stmt_select_rejects_outer_join_from_right_side(self):
+        stmt = select(B.c.id)
+        query = QuerySpec(
+            Clause(
+                condition=eq(A.c.id, 1),
+                joins=[join(A, B, eq(A.c.b_id, B.c.id), isouter=True)],
+            )
+        )
+        with pytest.raises(ValueError):
+            query.enrich_stmt(stmt)
+
+    def test_enrich_stmt_rejects_untranslated_filter(self):
+        query = QuerySpec(where=SshKeyFilters.with_user_id(1))
+        with pytest.raises(TypeError):
+            query.enrich_stmt(select(A.c.id))
 
     def test_sqlalchemy_setup_joins(self):
         stmt = select(A)

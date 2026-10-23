@@ -15,7 +15,6 @@ from maasapiserver.v3.api.public.models.responses.sshkeys import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.sshkeys import SshKeysProtocolType
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.sshkeys import SshKeyClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     PreconditionFailedException,
@@ -23,6 +22,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.sshkeys import SshKeyFilters
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.sshkeys import SshKey
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -238,10 +238,10 @@ class TestSshKeyApi(ApiCommonTests):
         assert response.status_code == 412
         services_mock.sshkeys.delete_one.assert_called_with(
             query=QuerySpec(
-                where=SshKeyClauseFactory.and_clauses(
+                where=SshKeyFilters.and_filters(
                     [
-                        SshKeyClauseFactory.with_id(1),
-                        SshKeyClauseFactory.with_user_id(0),
+                        SshKeyFilters.with_id(1),
+                        SshKeyFilters.with_user_id(0),
                     ]
                 )
             ),

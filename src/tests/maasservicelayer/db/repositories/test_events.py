@@ -2,22 +2,19 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
-from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.events import EventTypeEnum
 from maascommon.events import EventDetail
 from maasservicelayer.builders.events import EventBuilder, EventTypeBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db._debug import CompiledQuery
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.events import (
-    EventsClauseFactory,
     EventsRepository,
     EventTypesRepository,
 )
-from maasservicelayer.db.tables import EventTable, NodeTable
+from maasservicelayer.filters.base import FieldFilter, Operator
+from maasservicelayer.filters.events import EventFilters
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.events import (
     EndpointChoicesEnum,
@@ -37,30 +34,6 @@ from tests.fixtures.factories.machines import (
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestEventsClauseFactory:
-    def test_factory(self):
-        clause = EventsClauseFactory.with_system_ids(["1", "2", "3"])
-
-        stmt = (
-            select(EventTable.c.id)
-            .select_from(EventTable)
-            .join(
-                NodeTable,
-                eq(NodeTable.c.id, EventTable.c.node_id),
-                isouter=True,
-            )
-            .where(clause.condition)
-        )
-        assert (
-            str(CompiledQuery(stmt).sql)
-            == "SELECT maasserver_event.id \nFROM maasserver_event LEFT OUTER JOIN maasserver_node ON maasserver_node.id = maasserver_event.node_id \nWHERE maasserver_event.node_system_id IN (__[POSTCOMPILE_node_system_id_1]) OR maasserver_node.system_id IN (__[POSTCOMPILE_system_id_1])"
-        )
-        assert CompiledQuery(stmt).params == {
-            "node_system_id_1": ["1", "2", "3"],
-            "system_id_1": ["1", "2", "3"],
-        }
 
 
 class TestEventsRepository(RepositoryCommonTests[Event]):
@@ -204,9 +177,7 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
         assert events_result.total == 2
 
         query = QuerySpec(
-            where=EventsClauseFactory.with_system_ids(
-                [created_machine.system_id]
-            )
+            where=EventFilters.with_system_ids([created_machine.system_id])
         )
         events_result = await repository_instance.list(
             page=1, size=10, query=query
@@ -215,14 +186,47 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
         assert events_result.total == 1
         assert events_result.items[0].id == event.id
 
-        query = QuerySpec(
-            where=EventsClauseFactory.with_system_ids(["NO MATCH"])
-        )
+        query = QuerySpec(where=EventFilters.with_system_ids(["NO MATCH"]))
         events_result = await repository_instance.list(
             page=1, size=10, query=query
         )
         assert len(events_result.items) == 0
         assert events_result.total == 0
+
+    async def test_list_filter_counts_events_of_deleted_nodes(
+        self, repository_instance: EventsRepository, fixture: Fixture
+    ) -> None:
+        event = await create_test_event_entry(
+            fixture, node_system_id="deleted-node"
+        )
+
+        events_result = await repository_instance.list(
+            page=1,
+            size=10,
+            query=QuerySpec(
+                where=EventFilters.with_system_ids(["deleted-node"])
+            ),
+        )
+
+        assert [item.id for item in events_result.items] == [event.id]
+        assert events_result.total == 1
+
+    async def test_get_many_filters_on_owner(
+        self, repository_instance: EventsRepository, fixture: Fixture
+    ) -> None:
+        event_type = await create_test_event_type_entry(fixture)
+        event = await create_test_event_entry(
+            fixture, event_type=event_type, username="alice"
+        )
+        await create_test_event_entry(
+            fixture, event_type=event_type, username="bob"
+        )
+
+        events = await repository_instance.get_many(
+            QuerySpec(where=FieldFilter(Event, "owner", Operator.EQ, "alice"))
+        )
+
+        assert [item.id for item in events] == [event.id]
 
 
 class TestEventTypesRepository(RepositoryCommonTests[EventType]):

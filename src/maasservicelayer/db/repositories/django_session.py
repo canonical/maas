@@ -27,7 +27,7 @@ from maasservicelayer.utils.date import utcnow
 class DjangoSessionRepository(Repository):
     def __init__(self, context: Context):
         super().__init__(context)
-        self.mapper = DefaultDomainDataMapper(SessionTable)
+        self.mapper = DefaultDomainDataMapper(DjangoSession, SessionTable)
 
     async def create(self, builder: DjangoSessionBuilder) -> DjangoSession:
         resource = self.mapper.build_resource(builder)

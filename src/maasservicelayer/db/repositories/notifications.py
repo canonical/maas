@@ -21,7 +21,10 @@ from maasservicelayer.db.tables import (
     NotificationTable,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.notifications import Notification
+from maasservicelayer.models.notifications import (
+    Notification,
+    NotificationDismissal,
+)
 from maasservicelayer.utils.date import utcnow
 
 
@@ -39,7 +42,7 @@ class NotificationsRepository(BaseRepository[Notification]):
     def __init__(self, context: Context):
         super().__init__(context)
         self.notificationdismissal_mapper = DefaultDomainDataMapper(
-            NotificationDismissalTable
+            NotificationDismissal, NotificationDismissalTable
         )
 
     def get_repository_table(self) -> Table:

@@ -3,48 +3,25 @@
 
 from typing import Any, Type
 
-from sqlalchemy import case, insert, join, Select, select, Table
+from sqlalchemy import case, insert, Select, select, Table
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.expression import func
-from sqlalchemy.sql.operators import eq, ne, or_
+from sqlalchemy.sql.operators import eq, ne
 
 from maascommon.enums.events import EventTypeEnum
 from maascommon.events import EventDetail
 from maasservicelayer.builders.events import EventTypeBuilder
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.mappers.base import BaseDomainDataMapper
 from maasservicelayer.db.mappers.event import EventDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import EventTable, EventTypeTable, NodeTable
 from maasservicelayer.exceptions.catalog import AlreadyExistsException
+from maasservicelayer.filters.events import EventTypeFilters
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.events import Event, EventType
 from maasservicelayer.utils.date import utcnow
-
-
-class EventTypesClauseFactory(ClauseFactory):
-    @classmethod
-    def with_name(cls, name: str) -> Clause:
-        return Clause(condition=eq(EventTypeTable.c.name, name))
-
-
-class EventsClauseFactory(ClauseFactory):
-    @classmethod
-    def with_system_ids(cls, system_ids: list[str]) -> Clause:
-        return Clause(
-            condition=or_(
-                EventTable.c.node_system_id.in_(system_ids),
-                NodeTable.c.system_id.in_(system_ids),
-            ),
-            joins=[
-                join(
-                    EventTable,
-                    NodeTable,
-                    eq(NodeTable.c.id, EventTable.c.node_id),
-                )
-            ],
-        )
 
 
 class EventTypesRepository(BaseRepository[EventType]):
@@ -57,9 +34,7 @@ class EventTypesRepository(BaseRepository[EventType]):
     async def ensure(
         self, event_type: EventTypeEnum, detail: EventDetail
     ) -> EventType:
-        query = QuerySpec(
-            where=EventTypesClauseFactory.with_name(event_type.value)
-        )
+        query = QuerySpec(where=EventTypeFilters.with_name(event_type.value))
         if t := await self.get_one(query):
             return t
         else:
@@ -99,7 +74,7 @@ class EventsRepository(BaseRepository[Event]):
         return Event
 
     def get_mapper(self) -> BaseDomainDataMapper:
-        return EventDomainDataMapper(self.get_repository_table())
+        return EventDomainDataMapper(Event, self.get_repository_table())
 
     def select_all_statement(self) -> Select[Any]:
         return (

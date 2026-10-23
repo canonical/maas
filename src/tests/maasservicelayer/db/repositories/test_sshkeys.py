@@ -4,11 +4,11 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.enums.sshkeys import SshKeysProtocolType
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.sshkeys import (
-    SshKeyClauseFactory,
-    SshKeysRepository,
-)
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.sshkeys import SshKeysRepository
+from maasservicelayer.filters.sshkeys import SshKeyFilters
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.sshkeys import SshKey
 from tests.fixtures.factories.user import (
@@ -17,30 +17,6 @@ from tests.fixtures.factories.user import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestSshKeyClauseFactory:
-    def test_with_id(self) -> None:
-        clause = SshKeyClauseFactory.with_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_sshkey.id = 1"
-        )
-
-    def test_with_user_id(self) -> None:
-        clause = SshKeyClauseFactory.with_user_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_sshkey.user_id = 1"
-        )
 
 
 class TestSshKeysRepository(RepositoryCommonTests[SshKey]):
@@ -121,3 +97,49 @@ class TestSshKeysRepository(RepositoryCommonTests[SshKey]):
     @pytest.mark.skip(reason="Does not apply to ssh keys")
     async def test_update_by_id(self, repository_instance, instance_builder):
         raise NotImplementedError()
+
+    async def test_get_many_filters_on_null_protocol(
+        self, repository_instance: SshKeysRepository, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture)
+        manual_key = await create_test_user_sshkey(
+            fixture, key="ssh-ed25519 manual comment", user_id=user.id
+        )
+        await create_test_user_sshkey(
+            fixture,
+            key="ssh-ed25519 imported comment",
+            user_id=user.id,
+            protocol=SshKeysProtocolType.LP,
+            auth_id="someone",
+        )
+
+        keys = await repository_instance.get_many(
+            QuerySpec(
+                where=SshKeyFilters.and_filters(
+                    [
+                        SshKeyFilters.with_user_id(user.id),
+                        SshKeyFilters.with_protocol(None),
+                    ]
+                )
+            )
+        )
+
+        assert keys == [manual_key]
+
+    async def test_delete_many_only_deletes_matching_keys(
+        self, repository_instance: SshKeysRepository, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture)
+        other_user = await create_test_user(fixture)
+        await create_test_user_sshkey(
+            fixture, key="ssh-ed25519 first comment", user_id=user.id
+        )
+        other_key = await create_test_user_sshkey(
+            fixture, key="ssh-ed25519 second comment", user_id=other_user.id
+        )
+
+        await repository_instance.delete_many(
+            QuerySpec(where=SshKeyFilters.with_user_id(user.id))
+        )
+
+        assert await repository_instance.get_many(QuerySpec()) == [other_key]
