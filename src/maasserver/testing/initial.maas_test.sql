@@ -4841,23 +4841,25 @@ ALTER TABLE public.maasserver_bootsourceselection ALTER COLUMN id ADD GENERATED 
 --
 
 CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
- WITH sync_subq AS (
+ WITH file_sync_stats AS (
          SELECT file.id AS file_id,
             file.size AS file_size,
-            sum(file_sync.size) AS total_size
-           FROM (public.maasserver_bootresourcefilesync file_sync
-             JOIN public.maasserver_bootresourcefile file ON ((file.id = file_sync.file_id)))
+            COALESCE(sum(file_sync.size), (0)::numeric) AS total_size
+           FROM (public.maasserver_bootresourcefile file
+             LEFT JOIN public.maasserver_bootresourcefilesync file_sync ON ((file_sync.file_id = file.id)))
           GROUP BY file.id, file.size
         ), sync_stats AS (
          SELECT rset.resource_id,
             rset.id AS set_id,
             rset.version,
-            COALESCE((((sum(sync_subq.total_size) * (100)::numeric) / sum(sync_subq.file_size)) / (NULLIF(( SELECT count(*) AS count
+            count(*) OVER (PARTITION BY rset.resource_id) AS set_count,
+            count(file_sync_stats.file_id) AS file_count,
+            COALESCE((((sum(file_sync_stats.total_size) * (100)::numeric) / NULLIF(sum(file_sync_stats.file_size), (0)::numeric)) / (NULLIF(( SELECT count(*) AS count
                    FROM public.maasserver_node
-                  WHERE (maasserver_node.node_type = ANY (ARRAY[3, 4]))), 0))::numeric), (0)::numeric) AS sync_percentage
-           FROM ((sync_subq
-             JOIN public.maasserver_bootresourcefile file ON ((file.id = sync_subq.file_id)))
-             JOIN public.maasserver_bootresourceset rset ON ((rset.id = file.resource_set_id)))
+                  WHERE (maasserver_node.node_type = ANY (ARRAY[3, 4]))), 0))::numeric), 0.0) AS sync_percentage
+           FROM ((public.maasserver_bootresourceset rset
+             LEFT JOIN public.maasserver_bootresourcefile file ON ((file.resource_set_id = rset.id)))
+             LEFT JOIN file_sync_stats ON ((file_sync_stats.file_id = file.id)))
           GROUP BY rset.resource_id, rset.id, rset.version
         ), latest_versions AS (
          SELECT res.id AS resource_id,
@@ -4865,12 +4867,7 @@ CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
            FROM (((public.maasserver_bootsourcecache cache
              JOIN public.maasserver_bootsource source ON ((source.id = cache.boot_source_id)))
              JOIN public.maasserver_bootsourceselection sel ON ((sel.boot_source_id = source.id)))
-             JOIN public.maasserver_bootresource res ON (((res.selection_id = sel.id) AND ((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND (((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text)) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
-        ), resource_set_counts AS (
-         SELECT sync_stats.resource_id,
-            count(*) AS set_count
-           FROM sync_stats
-          GROUP BY sync_stats.resource_id
+             JOIN public.maasserver_bootresource res ON (((res.selection_id = sel.id) AND ((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND ((((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text))) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
         ), resource_status AS (
          SELECT DISTINCT ON (ss.resource_id) ss.resource_id,
             ss.set_id,
@@ -4878,21 +4875,21 @@ CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
             lv.latest_version,
             ss.sync_percentage,
                 CASE
-                    WHEN ((rsc.set_count = 1) AND (ss.sync_percentage = (0)::numeric)) THEN 'Waiting for download'::text
-                    WHEN ((rsc.set_count = 1) AND (ss.sync_percentage < (100)::numeric)) THEN 'Downloading'::text
-                    WHEN ((rsc.set_count = 1) AND (ss.sync_percentage = (100)::numeric)) THEN 'Ready'::text
-                    WHEN (rsc.set_count = 2) THEN 'Ready'::text
+                    WHEN (ss.set_count = 2) THEN 'Ready'::text
+                    WHEN ((ss.file_count = 0) OR (ss.sync_percentage = 0.0)) THEN 'Waiting for download'::text
+                    WHEN (ss.sync_percentage < (100)::numeric) THEN 'Downloading'::text
+                    WHEN (ss.sync_percentage = (100)::numeric) THEN 'Ready'::text
                     ELSE 'Waiting for download'::text
                 END AS status,
                 CASE
-                    WHEN (rsc.set_count = 2) THEN 'Downloading'::text
+                    WHEN ((ss.set_count = 2) AND (ss.sync_percentage = 0.0)) THEN 'Waiting for download'::text
+                    WHEN ((ss.set_count = 2) AND (ss.sync_percentage < (100)::numeric)) THEN 'Downloading'::text
                     WHEN (lv.latest_version IS NULL) THEN 'No updates available'::text
                     WHEN ((ss.version)::text >= (lv.latest_version)::text) THEN 'No updates available'::text
                     WHEN ((ss.version)::text < (lv.latest_version)::text) THEN 'Update available'::text
                     ELSE 'No updates available'::text
                 END AS update_status
-           FROM ((sync_stats ss
-             JOIN resource_set_counts rsc ON ((rsc.resource_id = ss.resource_id)))
+           FROM (sync_stats ss
              LEFT JOIN latest_versions lv ON ((lv.resource_id = ss.resource_id)))
           ORDER BY ss.resource_id, ss.set_id DESC
         ), selection_resources AS (
@@ -4907,33 +4904,35 @@ CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
         ), selection_rank AS (
          SELECT sel.id AS selection_id,
             source.priority,
-            row_number() OVER (PARTITION BY sel.os, sel.arch, sel.release ORDER BY source.priority DESC) AS rank
+            source.enabled,
+            row_number() OVER (PARTITION BY sel.os, sel.arch, sel.release ORDER BY source.enabled DESC, source.priority DESC) AS rank
            FROM (public.maasserver_bootsourceselection sel
              JOIN public.maasserver_bootsource source ON ((source.id = sel.boot_source_id)))
         )
  SELECT selection_resources.selection_id AS id,
         CASE
             WHEN (count(selection_resources.resource_id) = 0) THEN 'Waiting for download'::text
-            WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Waiting for download'::text)) = count(*)) THEN 'Waiting for download'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Downloading'::text)) > 0) THEN 'Downloading'::text
+            WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Waiting for download'::text)) > 0) THEN 'Waiting for download'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Ready'::text)) = count(*)) THEN 'Ready'::text
             ELSE 'Waiting for download'::text
         END AS status,
         CASE
             WHEN (count(selection_resources.resource_id) = 0) THEN 'No updates available'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'Downloading'::text)) > 0) THEN 'Downloading'::text
+            WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'Waiting for download'::text)) > 0) THEN 'Waiting for download'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'Update available'::text)) > 0) THEN 'Update available'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'No updates available'::text)) = count(*)) THEN 'No updates available'::text
             ELSE 'No updates available'::text
         END AS update_status,
     COALESCE((avg(selection_resources.sync_percentage))::numeric(10,2), 0.00) AS sync_percentage,
         CASE
-            WHEN (selection_rank.rank = 1) THEN true
+            WHEN ((selection_rank.rank = 1) AND selection_rank.enabled) THEN true
             ELSE false
         END AS selected
    FROM (selection_resources
      JOIN selection_rank ON ((selection_rank.selection_id = selection_resources.selection_id)))
-  GROUP BY selection_resources.selection_id, selection_rank.rank;
+  GROUP BY selection_resources.selection_id, selection_rank.rank, selection_rank.enabled;
 
 
 --
@@ -9173,7 +9172,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0042
+0044
 \.
 
 
