@@ -66,6 +66,7 @@ Package: maas-common
 Architecture: all
 Depends: avahi-utils,
          nginx-core,
+         python3-pythonjsonlogger,
          rsyslog,
          ${misc:Depends},
          ${python3:Depends},
