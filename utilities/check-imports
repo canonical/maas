@@ -242,6 +242,7 @@ CommonRule = Rule(
     Allow("maascommon|maascommon.**"),
     Allow("OpenSSL|OpenSSL.**"),
     Allow("netaddr|netaddr.**"),
+    Allow("pythonjsonlogger.**"),
 )
 
 MAASCLI = files("src/maascli/**/*.py")
