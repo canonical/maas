@@ -4,27 +4,10 @@
 import logging
 import sys
 
-from pythonjsonlogger import jsonlogger
 import structlog
 from structlog.contextvars import merge_contextvars
 
-from maasservicelayer.utils.date import utcnow
-
-
-class CustomJsonFormatter(jsonlogger.JsonFormatter):
-    def add_fields(self, log_record, record: logging.LogRecord, message_dict):
-        super(CustomJsonFormatter, self).add_fields(
-            log_record, record, message_dict
-        )
-
-        log_record["logger"] = f"{record.name}:{record.lineno}"
-        log_record["level"] = record.levelname
-        log_record["thread"] = f"{record.threadName}:{record.thread}"
-        if not log_record.get("timestamp"):
-            # this doesn't use record.created, so it is slightly off
-            log_record["timestamp"] = utcnow().strftime(
-                "%Y-%m-%dT%H:%M:%S.%fZ"
-            )
+from maascommon.logging.formatter import CustomJsonFormatter
 
 
 def configure_logging(level=logging.INFO, query_level=logging.WARNING):
