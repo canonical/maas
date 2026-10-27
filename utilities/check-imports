@@ -258,6 +258,7 @@ CommonRule = Rule(
     Allow("temporalio.client.**"),
     Allow("temporalio.worker.**"),
     Allow("temporalio.converter.**"),
+    Allow("pythonjsonlogger.**"),
 )
 
 MAASCLI = files("src/maascli/**/*.py")

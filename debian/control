@@ -66,6 +66,7 @@ Architecture: all
 Pre-Depends: debconf
 Depends: avahi-utils,
          nginx-core,
+         python3-pythonjsonlogger,
          rsyslog,
          maas-machine-resources (= ${binary:Version}),
          ${misc:Depends},
