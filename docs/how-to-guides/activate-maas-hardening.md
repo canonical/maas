@@ -89,7 +89,7 @@ To pin any other service to a specific interface, set its key explicitly. For ex
 sudo maas config-hardening set api_bind 10.0.0.5,fd00::5
 ```
 
-If you pin `temporal_bind` to an address other than the MAAS URL host, also set `temporal_server` on each rack controller. See [Point MAAS Agent at Temporal](/how-to-guides/harden-a-rack-controller.md#point-maas-agent-at-temporal).
+If you pin `temporal_bind` to an address other than the MAAS URL host, also set `temporal_server` on each rack controller. See [Point the rack controller at Temporal](/how-to-guides/harden-a-rack-controller.md#point-the-rack-controller-at-temporal).
 
 For the full list of keys and their defaults, see [Bind addresses](/reference/configuration-guides/security-hardening.md#bind-addresses).
 

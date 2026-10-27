@@ -26,6 +26,10 @@ With the CLI, it is necessary to perform this action before deploying. With the 
 
 A bond interface is capable of aggregating two or more physical interfaces into a single logical interface. You can use bonds in conjunction with a managed switch (using Link Aggregation and Control Protocol, or LACP), or independently (software bonds).
 
+#### Bootstrap token
+
+A single-use, short-lived token generated for a [rack](#rack). A rack controller presents it when it enrolls with the region controller, which then issues the rack controller its client certificate. See [rack controller](#rack-controller).
+
 #### Broken
 
 The node is broken. See node action 'Mark broken'.
@@ -92,8 +96,11 @@ A rack controller provides the following services:
 
 - DHCP
 - TFTP
-- HTTP (for images)
+- HTTP (for images and caching proxy)
+- DNS resolution
 - power management
+
+These services are provided by the `maas-rack-controller` service together with the legacy rack controller daemon, [rackd](#rackd). See [rack controller](#rack-controller) and [rack controller node](#rack-controller-node).
 
 A rack controller is attached to each "fabric". As the name implies, a typical setup is to have a rack controller in each data center server rack. The rack controller will cache large items for performance, such as operating system install images, but maintains no independent state other than the credentials required to talk to the region controller.
 
@@ -442,6 +449,24 @@ This action turns on a node's underlying machine.
 ## R-S
 
 ### R
+
+#### Rack
+
+A rack groups the [rack controllers](#rack-controller) that serve one physical server rack. Rack controllers enroll into a rack using a [bootstrap token](#bootstrap-token) generated for that rack.
+
+Not to be confused with the shorthand "rack" for a rack controller, as in a VLAN's primary and secondary rack.
+
+#### Rack controller
+
+The MAAS service (`maas-rack-controller`) that runs on a rack controller host and provides DHCP, DNS resolution, an HTTP caching proxy and power management. It enrolls into a [rack](#rack) with a [bootstrap token](#bootstrap-token) and is linked to the host's [rack controller node](#rack-controller-node). It progressively replaces the legacy rack controller daemon, [rackd](#rackd). Earlier versions of MAAS called this service the "MAAS agent".
+
+#### Rack controller node
+
+The node record of a machine acting as a rack controller (node type "Rack controller" or "Region and rack controller"). It is what the controllers list, the `rack-controllers` CLI commands and the DHCP primary and secondary rack settings of a VLAN refer to.
+
+#### rackd
+
+The legacy Python rack controller daemon (`maas-rackd`), configured through `rackd.conf` and the `maas-rack` command. It registers the [rack controller node](#rack-controller-node) with the region controller and currently runs alongside the [rack controller](#rack-controller) service, which is replacing it. Older documentation and configuration also refer to it as the "cluster" controller.
 
 #### Ready
 
