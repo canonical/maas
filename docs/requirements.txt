@@ -49,6 +49,7 @@ psycopg2-binary==2.9.11
 pydantic==1.10.26
 pymongo==4.16.0
 python-dateutil==2.9.0
+python-json-logger==4.2.0
 python-jose==3.5.0
 SQLAlchemy==2.0.49
 structlog==25.5.0
