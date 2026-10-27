@@ -157,7 +157,7 @@ Follow the same process as for repositories.
 The API layer is the Presentation Layer.
 It's a FastAPI application that exposes a REST API to interact with MAAS entities.
 
-To be precise, we currently have two different FastAPI applications, the REST API and an internal one that's mainly used by the agent to communicate with MAAS.
+To be precise, we currently have two different FastAPI applications, the REST API and an internal one that's mainly used by the rack controller to communicate with MAAS.
 
 ## Middlewares
 

@@ -251,7 +251,7 @@ Logged when a new authentication token is created.
 **Token Types**:
 
 - `JWT`: JSON Web Token for API authentication
-- `bootstraptoken`: Token for agent enrollment
+- `bootstraptoken`: Token for rack controller enrollment
 - `OIDC:access_token`: OAuth2/OIDC access token
 - `OIDC:refresh_token`: OAuth2/OIDC refresh token
 

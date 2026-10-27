@@ -22,15 +22,15 @@ Understanding what MAAS is doing under the hood is critical when troubleshooting
 
 ### Rack controller logs
 
+- Snap: `journalctl -u snap.maas.pebble -t maas-rack-controller`
+
+- Debian: `journalctl -u maas-rack-controller`
+
+### Legacy rack controller daemon (rackd) logs
+
 - `Snap: journalctl -u snap.maas.pebble -t maas-rackd`
 
 - `Debian: journalctl -u maas-rackd`
-
-### Agent logs
-
-- Snap: `journalctl -u snap.maas.pebble -t maas-agent`
-
-- Debian: `journalctl -u maas-agent`
 
 ### API server logs
 

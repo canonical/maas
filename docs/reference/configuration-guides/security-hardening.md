@@ -133,7 +133,7 @@ A bind key sets the address or addresses that a service listens on. List-valued 
 |---|---|---|---|---|
 | `api_bind` | Public web UI and API | List | All interfaces | Derived from `maas_url`, per address family |
 | `api_int_bind` | Internal HTTP listener used by rack controllers when TLS is enabled | List | All interfaces | Violation |
-| `agent_api_bind` | Internal API server used by MAAS Agent (port 5242) | List | All interfaces | Derived from `maas_url`, per address family |
+| `rack_ctrl_api_bind` | Internal API server used by rack controllers (port 5242) | List | All interfaces | Derived from `maas_url`, per address family |
 | `rpc_bind` | Region RPC service | List | All interfaces | Derived from `maas_url` |
 | `temporal_bind` | Temporal services | Single | All interfaces | Derived from `maas_url` |
 | `syslog_bind` | Syslog service | List | All interfaces | Derived from `maas_url` |
@@ -182,7 +182,7 @@ Rack keys are stored in `/var/snap/maas/current/rackd.conf`.
 
 When hardening is inactive, an unset rack bind key listens on all interfaces.
 
-`temporal_server` in `rackd.conf` is not a hardening key, and `maas config-hardening` does not manage it. It sets the host name or IP address that MAAS Agent connects to for Temporal, on port 5271. When unset, MAAS Agent uses the host from the first `maas_url`. Set it when the region controllers bind Temporal to an address that differs from that host, for example after you pin `temporal_bind`.
+`temporal_server` in `rackd.conf` is not a hardening key, and `maas config-hardening` does not manage it. It sets the host name or IP address that the rack controller connects to for Temporal, on port 5271. When unset, the rack controller uses the host from the first `maas_url`. Set it when the region controllers bind Temporal to an address that differs from that host, for example after you pin `temporal_bind`.
 
 ## Violation codes
 
