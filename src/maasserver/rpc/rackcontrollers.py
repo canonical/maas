@@ -26,9 +26,11 @@ from maasserver.models import (
 from maasserver.sqlalchemy import service_layer
 from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
-from maasservicelayer.builders.agents import AgentBuilder
+from maasservicelayer.builders.rackcontrollers import RackControllerBuilder
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.agents import AgentsClauseFactory
+from maasservicelayer.db.repositories.rackcontrollers import (
+    RackControllersClauseFactory,
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchNode, NoSuchScope
 from provisioningserver.utils.snap import (
@@ -51,7 +53,7 @@ def register(
     url=None,
     is_loopback=None,
     version=None,
-    agent_uuid=None,
+    rack_controller_uuid=None,
 ):
     """Register a new rack controller if not already registered.
 
@@ -63,7 +65,7 @@ def register(
     data.
 
     The parameter ``is_loopback`` is only referenced if ``url`` is not None.
-    Provide a MAAS agent UUID to register a MAAS agent that has been already
+    Provide a rack controller UUID to register a rack controller that has been already
     enrolled.
 
     :return: A ``rack-controller``.
@@ -150,34 +152,36 @@ def register(
     if version is not None:
         ControllerInfo.objects.set_version(rackcontroller, version)
 
-    if agent_uuid:
+    if rack_controller_uuid:
         try:
             service_layer.ensure_connection()
-            agents_service = service_layer.services.agents
-            agent = agents_service.get_one(
+            rack_controllers_service = service_layer.services.rack_controllers
+            rack_controller = rack_controllers_service.get_one(
                 query=QuerySpec(
-                    where=AgentsClauseFactory.with_uuid(agent_uuid)
+                    where=RackControllersClauseFactory.with_uuid(
+                        rack_controller_uuid
+                    )
                 )
             )
-            if agent and agent.rackcontroller_id is None:
-                agents_service.update_by_id(
-                    agent.id, AgentBuilder(rackcontroller_id=node.id)
+            if rack_controller and rack_controller.node_id is None:
+                rack_controllers_service.update_by_id(
+                    rack_controller.id, RackControllerBuilder(node_id=node.id)
                 )
                 maaslog.info(
-                    "Linked agent '%s' to rack controller '%s' (id: %s).",
-                    agent_uuid,
+                    "Linked rack controller '%s' to node '%s' (id: %s).",
+                    rack_controller_uuid,
                     node.hostname,
                     node.id,
                 )
             else:
                 maaslog.info(
-                    "Agent with UUID '%s' not found during registration.",
-                    agent_uuid,
+                    "Rack controller with UUID '%s' not found during registration.",
+                    rack_controller_uuid,
                 )
         except Exception as e:
             maaslog.error(
-                "Failed to link agent '%s' to rack controller: %s",
-                agent_uuid,
+                "Failed to link rack controller '%s' to node: %s",
+                rack_controller_uuid,
                 str(e),
             )
     return rackcontroller

@@ -7,15 +7,17 @@ import pytest
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.agents import AgentsClauseFactory
 from maasservicelayer.db.repositories.bootstraptokens import (
     BootstrapTokensClauseFactory,
 )
+from maasservicelayer.db.repositories.rackcontrollers import (
+    RackControllersClauseFactory,
+)
 from maasservicelayer.db.repositories.racks import RacksRepository
 from maasservicelayer.models.racks import Rack
-from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.bootstraptoken import BootstrapTokensService
 from maasservicelayer.services.configurations import ConfigurationsService
+from maasservicelayer.services.rackcontrollers import RackControllersService
 from maasservicelayer.services.racks import RacksService
 from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.utils.date import utcnow
@@ -29,7 +31,7 @@ class TestRacksService(ServiceCommonTests):
         return RacksService(
             context=Context(),
             repository=Mock(RacksRepository),
-            agents_service=Mock(AgentsService),
+            rack_controllers_service=Mock(RackControllersService),
             bootstraptokens_service=Mock(BootstrapTokensService),
             configurations_service=Mock(ConfigurationsService),
             secrets_service=Mock(SecretsService),
@@ -47,7 +49,7 @@ class TestRacksService(ServiceCommonTests):
         repository_mock.get_one.return_value = rack
         repository_mock.delete_by_id.return_value = rack
 
-        agents_service_mock = Mock(AgentsService)
+        rack_controllers_service_mock = Mock(RackControllersService)
         bootstraptokens_service_mock = Mock(BootstrapTokensService)
         configurations_service_mock = Mock(ConfigurationsService)
         secrets_service_mock = Mock(SecretsService)
@@ -55,7 +57,7 @@ class TestRacksService(ServiceCommonTests):
         rack_service = RacksService(
             context=Context(),
             repository=repository_mock,
-            agents_service=agents_service_mock,
+            rack_controllers_service=rack_controllers_service_mock,
             bootstraptokens_service=bootstraptokens_service_mock,
             configurations_service=configurations_service_mock,
             secrets_service=secrets_service_mock,
@@ -71,8 +73,10 @@ class TestRacksService(ServiceCommonTests):
                 where=BootstrapTokensClauseFactory.with_rack_id(rack.id)
             )
         )
-        agents_service_mock.delete_many.assert_called_once_with(
-            query=QuerySpec(where=AgentsClauseFactory.with_rack_id(rack.id))
+        rack_controllers_service_mock.delete_many.assert_called_once_with(
+            query=QuerySpec(
+                where=RackControllersClauseFactory.with_rack_id(rack.id)
+            )
         )
 
     @patch("maasservicelayer.services.racks.get_maas_cluster_cert_paths")
@@ -88,7 +92,7 @@ class TestRacksService(ServiceCommonTests):
         rack = test_instance
 
         repository_mock = Mock(RacksRepository)
-        agents_service_mock = Mock(AgentsService)
+        rack_controllers_service_mock = Mock(RackControllersService)
         bootstraptokens_service_mock = Mock(BootstrapTokensService)
         configurations_service_mock = Mock(ConfigurationsService)
         secrets_service_mock = Mock(SecretsService)
@@ -127,7 +131,7 @@ class TestRacksService(ServiceCommonTests):
         rack_service = RacksService(
             context=Context(),
             repository=repository_mock,
-            agents_service=agents_service_mock,
+            rack_controllers_service=rack_controllers_service_mock,
             bootstraptokens_service=bootstraptokens_service_mock,
             configurations_service=configurations_service_mock,
             secrets_service=secrets_service_mock,
@@ -172,7 +176,7 @@ class TestRacksService(ServiceCommonTests):
         rack = test_instance
 
         repository_mock = Mock(RacksRepository)
-        agents_service_mock = Mock(AgentsService)
+        rack_controllers_service_mock = Mock(RackControllersService)
         bootstraptokens_service_mock = Mock(BootstrapTokensService)
         configurations_service_mock = Mock(ConfigurationsService)
         secrets_service_mock = Mock(SecretsService)
@@ -205,7 +209,7 @@ class TestRacksService(ServiceCommonTests):
         rack_service = RacksService(
             context=Context(),
             repository=repository_mock,
-            agents_service=agents_service_mock,
+            rack_controllers_service=rack_controllers_service_mock,
             bootstraptokens_service=bootstraptokens_service_mock,
             configurations_service=configurations_service_mock,
             secrets_service=secrets_service_mock,

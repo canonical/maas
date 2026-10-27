@@ -10,7 +10,7 @@ from twisted.internet import defer
 
 import maasserver.api.reservedip as reservedip_module
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
-from maasserver.dhcp import configure_dhcp_on_agents
+from maasserver.dhcp import configure_dhcp_on_rack_controllers
 from maasserver.models import ReservedIP
 from maasserver.models.signals import subnet as subnet_signals_module
 from maasserver.testing.api import APITestCase
@@ -80,7 +80,7 @@ class TestReservedIPsAPI(APITestCase.ForUser):
         self.assertEqual(content["comment"], "this is a comment")
 
         reservedip_module.post_commit_do.assert_called_once_with(
-            configure_dhcp_on_agents, reserved_ip_ids=[content["id"]]
+            configure_dhcp_on_rack_controllers, reserved_ip_ids=[content["id"]]
         )
 
     def test_create_requires_admin(self):
@@ -223,7 +223,8 @@ class TestReservedIPAPI(APITestCase.ForUser):
         status_code = response.status_code
         self.assertEqual(status_code, http.client.NO_CONTENT)
         reservedip_module.post_commit_do.assert_called_once_with(
-            configure_dhcp_on_agents, subnet_ids=[reserved_ip.subnet.id]
+            configure_dhcp_on_rack_controllers,
+            subnet_ids=[reserved_ip.subnet.id],
         )
 
     def test_delete_return_404_when_no_id_matches_the_request(self):

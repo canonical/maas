@@ -12,18 +12,20 @@ from maasservicelayer.builders.bootstraptokens import BootstrapTokenBuilder
 from maasservicelayer.builders.racks import RackBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.agents import AgentsClauseFactory
 from maasservicelayer.db.repositories.bootstraptokens import (
     BootstrapTokensClauseFactory,
+)
+from maasservicelayer.db.repositories.rackcontrollers import (
+    RackControllersClauseFactory,
 )
 from maasservicelayer.db.repositories.racks import RacksRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.configurations import MAASUrlConfig
 from maasservicelayer.models.racks import Rack, RackWithSummary
-from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.bootstraptoken import BootstrapTokensService
 from maasservicelayer.services.configurations import ConfigurationsService
+from maasservicelayer.services.rackcontrollers import RackControllersService
 from maasservicelayer.services.secrets import SecretsService
 from maasservicelayer.utils.date import utcnow
 from provisioningserver.certificates import (
@@ -42,13 +44,13 @@ class RacksService(BaseService[Rack, RacksRepository, RackBuilder]):
         self,
         context: Context,
         repository: RacksRepository,
-        agents_service: AgentsService,
+        rack_controllers_service: RackControllersService,
         bootstraptokens_service: BootstrapTokensService,
         configurations_service: ConfigurationsService,
         secrets_service: SecretsService,
     ) -> None:
         super().__init__(context, repository)
-        self.agents_service = agents_service
+        self.rack_controllers_service = rack_controllers_service
         self.bootstraptokens_service = bootstraptokens_service
         self.configurations_service = configurations_service
         self.secrets_service = secrets_service
@@ -60,9 +62,9 @@ class RacksService(BaseService[Rack, RacksRepository, RackBuilder]):
                 where=BootstrapTokensClauseFactory.with_rack_id(resource.id)
             )
         )
-        await self.agents_service.delete_many(
+        await self.rack_controllers_service.delete_many(
             query=QuerySpec(
-                where=AgentsClauseFactory.with_rack_id(resource.id)
+                where=RackControllersClauseFactory.with_rack_id(resource.id)
             )
         )
 
@@ -75,28 +77,28 @@ class RacksService(BaseService[Rack, RacksRepository, RackBuilder]):
                 where=BootstrapTokensClauseFactory.with_rack_id_in(rack_ids)
             )
         )
-        await self.agents_service.delete_many(
+        await self.rack_controllers_service.delete_many(
             query=QuerySpec(
-                where=AgentsClauseFactory.with_rack_id_in(rack_ids)
+                where=RackControllersClauseFactory.with_rack_id_in(rack_ids)
             )
         )
 
     async def generate_bootstrap_token(self, resource: Rack) -> dict:
         """
-        Generate the bootstrap token used for MAAS Agent enrollment.
+        Generate the bootstrap token used for rack controller enrollment.
 
         The bootstrap token contains the necessary information to establish
         secure communication between a running MAAS region and a rack. In
-        practice, this communication occurs between MAAS and the MAAS Agent
+        practice, this communication occurs between MAAS and the rack controller
         running on the rack.
 
         The generated token includes the following components:
-        - secret: a short-lived authentication secret used by the Agent to prove
+        - secret: a short-lived authentication secret used by the rack controller to prove
           its identity to MAAS. It is generated at the time the token is created
-          and is stored in MAAS for future verification of the Agent.
+          and is stored in MAAS for future verification of the rack controller.
         - fingerprint: a fingerprint of the MAAS TLS certificate, used by the
-          Agent to authenticate the MAAS server during HTTPS communication.
-        - url: the URL the Agent must use to send its registration request to
+          rack controller to authenticate the MAAS server during HTTPS communication.
+        - url: the URL the rack controller must use to send its registration request to
           MAAS.
         """
         rack_id = resource.id

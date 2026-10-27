@@ -69,12 +69,12 @@ class SyslogServiceOnRack(RackToggleableService):
     snap_service_name = "syslog"
 
 
-class AgentServiceOnRack(AlwaysOnService):
-    """Monitored MAAS Agent service on a rack controller host."""
+class RackControllerServiceOnRack(AlwaysOnService):
+    """Monitored rack controller service on a rack controller host."""
 
-    name = "agent"
-    service_name = "maas-agent"
-    snap_service_name = "agent"
+    name = "rack-controller"
+    service_name = "maas-rack-controller"
+    snap_service_name = "rack-controller"
 
 
 # Global service monitor for rackd. NOTE that changes to this need to be
@@ -86,5 +86,5 @@ service_monitor = ServiceMonitor(
     NTPServiceOnRack(),
     ProxyServiceOnRack(),
     SyslogServiceOnRack(),
-    AgentServiceOnRack(),
+    RackControllerServiceOnRack(),
 )

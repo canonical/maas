@@ -8,12 +8,12 @@ upstream maas-regions {
 }
 {{endif}}
 
-upstream maas-agent-httpproxy {
-    server unix:{{maas_agent_httpproxy_socket_path}};
+upstream maas-rack-controller-httpproxy {
+    server unix:{{maas_rack_controller_httpproxy_socket_path}};
 }
 
-upstream maas-agent-http {
-  server unix:{{maas_agent_http_socket_path}};
+upstream maas-rack-controller-http {
+  server unix:{{maas_rack_controller_http_socket_path}};
 }
 
 {{if api_rate_limit_rate}}
@@ -62,30 +62,30 @@ server {
         gzip on;
     }
 
-    # MAAS Agent (supervised by rackd) implements caching HTTP Proxy that is
+    # The rack controller (supervised by rackd) implements caching HTTP Proxy that is
     # configured to cache boot resources. When MAAS is initialised as region+rack
     # regiond will keep boot resources under image-storage, hence we can serve
-    # them right away and fallback to the Agent Caching HTTP Proxy (@agent location)
+    # them right away and fallback to its caching HTTP proxy (@rack-controller location)
     # only if file was not found locally.
     location ~ ^/images/([^/]+) {
         auth_request /log;
         root {{boot_resources_dir}};
-        try_files /$1 @agent;
+        try_files /$1 @rack-controller;
     }
 
-    location @agent {
+    location @rack-controller {
         # Proxy the request if the file is not found in boot-resources
         proxy_set_header X-Original-URI $request_uri;
         proxy_set_header X-Original-Remote-IP $remote_addr;
-        proxy_pass http://maas-agent-httpproxy;
+        proxy_pass http://maas-rack-controller-httpproxy;
     }
 
-    location /metrics/agent {
-        proxy_pass http://maas-agent-http/metrics;
+    location /metrics/rack-controller {
+        proxy_pass http://maas-rack-controller-http/metrics;
     }
 
-    location ~ ^/profiling/agent/(.*) {
-        proxy_pass http://maas-agent-http/$1;
+    location ~ ^/profiling/rack-controller/(.*) {
+        proxy_pass http://maas-rack-controller-http/$1;
     }
 
     location = /log {

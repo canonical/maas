@@ -18,7 +18,9 @@ from maasservicelayer.models.subnets import Subnet
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.iprange import create_test_ip_range_entry
 from tests.fixtures.factories.neighbours import create_test_neighbour_entry
-from tests.fixtures.factories.node import create_test_rack_controller_entry
+from tests.fixtures.factories.node import (
+    create_test_rack_controller_node_entry,
+)
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
 )
@@ -227,7 +229,7 @@ class TestSubnetUtilizationRepositoryManaged:
             destination_subnet=Subnet(**destination_subnet),
             gateway_ip="10.0.0.30",
         )
-        rack_controller = await create_test_rack_controller_entry(fixture)
+        rack_controller = await create_test_rack_controller_node_entry(fixture)
         interface = await create_test_interface_entry(
             fixture, node=rack_controller, vlan=vlan
         )
@@ -539,7 +541,7 @@ class TestSubnetUtilizationRepositoryUnmanaged:
             destination_subnet=Subnet(**destination_subnet),
             gateway_ip="10.0.0.30",
         )
-        rack_controller = await create_test_rack_controller_entry(fixture)
+        rack_controller = await create_test_rack_controller_node_entry(fixture)
         interface = await create_test_interface_entry(
             fixture, node=rack_controller, vlan=vlan
         )

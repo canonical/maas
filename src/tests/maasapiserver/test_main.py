@@ -64,7 +64,7 @@ async def server(db, ca_cert):
 
     app.fastapi_app.add_api_route("/test", endpoint=index, methods=["GET"])
     app.fastapi_app.add_api_route(
-        "/agents:enroll", endpoint=index, methods=["POST"]
+        "/rack_controllers:enroll", endpoint=index, methods=["POST"]
     )
 
     server = app.server
@@ -98,10 +98,12 @@ class TestMTLSInternalServer:
         assert len(tls_ext1["client_cert_chain"]) == 1
         assert "tls_version" in tls_ext1
 
-    async def test_mtls_agent_enrol_endpoint(self, server, ca_cert):
+    async def test_mtls_rack_controller_enrol_endpoint(self, server, ca_cert):
         ssl_context = _create_client_ssl_context(ca_cert)
         async with httpx.AsyncClient(verify=ssl_context) as client:
-            r2 = await client.post("https://localhost:9443/agents:enroll")
+            r2 = await client.post(
+                "https://localhost:9443/rack_controllers:enroll"
+            )
         assert r2.status_code == 200
         data2 = r2.json()
         tls_ext2 = data2["tls"]

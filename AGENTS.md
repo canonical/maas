@@ -244,13 +244,13 @@ Follow the isort configuration in `pyproject.toml`:
 
 ## Go Guidelines
 
-MAAS Go code (primarily in `maasagent` and `host-info`) follows the standards documented in [`go-style-guide.md`](go-style-guide.md).
+MAAS Go code (primarily in `maasrackcontroller` and `host-info`) follows the standards documented in [`go-style-guide.md`](go-style-guide.md).
 
 Key points:
 - Follow standard Go formatting (`gofmt` / `go fmt`)
-- Check `go.mod` for Go version (currently Go 1.24.4 for `maasagent`, Go 1.18 for `host-info`)
+- Check `go.mod` for Go version (currently Go 1.26 for `maasrackcontroller`, Go 1.18 for `host-info`)
 - Use table-driven tests where appropriate
-- Follow the microcluster patterns in `maasagent`
+- Follow the existing service patterns in `maasrackcontroller`
 
 ## Subdirectory-Specific Rules
 
@@ -318,7 +318,7 @@ Key points:
 
 ### `src/provisioningserver`
 
-**Purpose**: Rack controller provisioning services
+**Purpose**: Legacy rack controller daemon (rackd) provisioning services
 
 - **Technology**: Python, Twisted
 - **Key Patterns**:
@@ -378,20 +378,19 @@ Key points:
     - Pytest plugins
 - **Notes**: Add reusable test utilities here
 
-### `src/maasagent`
+### `src/maasrackcontroller`
 
-**Purpose**: Go-based MAAS agent using microcluster
+**Purpose**: Go-based MAAS rack controller (`maas-rack-controller`, formerly the MAAS agent)
 
-- **Technology**: Go 1.24.4, microcluster, Temporal
+- **Technology**: Go 1.26, Temporal
 - **Key Patterns**:
-    - Microcluster-based architecture
-    - DHCP and DNS services
+    - DHCP, DNS resolver, HTTP proxy and power services
     - Temporal workflow integration
     - Prometheus metrics
     - OpenTelemetry tracing
 - **Testing**: Use Go testing with testify
 - **Dependencies**: Check `go.mod` before adding dependencies
-- **Notes**: Modern Go service; follow Go best practices
+- **Notes**: Modern Go service; follow Go best practices. It progressively replaces the legacy Python rack controller daemon (rackd, `src/provisioningserver`). A "rack controller node" (Django `RackController`, `NodeTypeEnum.RACK_CONTROLLER`) is the controller's node record, not this service.
 
 ### `src/host-info`
 
@@ -443,14 +442,14 @@ make lint
 make test
 
 # Go tests (in respective directories)
-cd src/maasagent && make test
+cd src/maasrackcontroller && make test
 cd src/host-info && go test ./...
 ```
 
 ## Additional Resources
 
 - Python configuration: `pyproject.toml`
-- Go configuration: `src/maasagent/go.mod`, `src/host-info/go.mod`
+- Go configuration: `src/maasrackcontroller/go.mod`, `src/host-info/go.mod`
 - Service layer architecture: `src/maasservicelayer/README.md`
 - Database migrations: `src/maasservicelayer/db/alembic/`
 

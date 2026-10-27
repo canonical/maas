@@ -12,10 +12,10 @@ from maasservicelayer.services import CacheForServices
 from maastemporalworker.workflow.dhcp import (
     ConfigureDHCPParam,
     DHCPConfigActivity,
-    DHCPDataForAgent,
+    DHCPDataForRackController,
     FetchHostsForUpdateParam,
-    GetActiveInterfacesForAgentParam,
-    GetDHCPDataForAgentParam,
+    GetActiveInterfacesForRackControllerParam,
+    GetDHCPDataForRackControllerParam,
     Host,
     HostReservationData,
     InterfaceData,
@@ -28,7 +28,7 @@ from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.iprange import create_test_ip_range_entry
 from tests.fixtures.factories.node import (
     create_test_machine_entry,
-    create_test_rack_controller_entry,
+    create_test_rack_controller_node_entry,
 )
 from tests.fixtures.factories.reserved_ips import create_test_reserved_ip_entry
 from tests.fixtures.factories.secret import create_test_secret
@@ -42,12 +42,18 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 @pytest.mark.asyncio
 class TestDHCPConfigActivity:
-    async def test_get_agents_for_vlans(
+    async def test_get_rack_controllers_for_vlans(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
-        rack_controller1 = await create_test_rack_controller_entry(fixture)
-        rack_controller2 = await create_test_rack_controller_entry(fixture)
-        rack_controller3 = await create_test_rack_controller_entry(fixture)
+        rack_controller1 = await create_test_rack_controller_node_entry(
+            fixture
+        )
+        rack_controller2 = await create_test_rack_controller_node_entry(
+            fixture
+        )
+        rack_controller3 = await create_test_rack_controller_node_entry(
+            fixture
+        )
 
         vlan = await create_test_vlan_entry(
             fixture,
@@ -64,7 +70,7 @@ class TestDHCPConfigActivity:
             connection=db_connection,
         )
 
-        result = await activities._get_agents_for_vlans(
+        result = await activities._get_rack_controllers_for_vlans(
             db_connection, {vlan["id"]}
         )
 
@@ -193,14 +199,20 @@ class TestDHCPConfigActivity:
         )
         assert result == {vlan["id"] for vlan in vlans}
 
-    async def test_find_agents_for_update(
+    async def test_find_rack_controllers_for_update(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
         env = ActivityEnvironment()
 
-        rack_controller1 = await create_test_rack_controller_entry(fixture)
-        rack_controller2 = await create_test_rack_controller_entry(fixture)
-        rack_controller3 = await create_test_rack_controller_entry(fixture)
+        rack_controller1 = await create_test_rack_controller_node_entry(
+            fixture
+        )
+        rack_controller2 = await create_test_rack_controller_node_entry(
+            fixture
+        )
+        rack_controller3 = await create_test_rack_controller_node_entry(
+            fixture
+        )
 
         vlan1 = await create_test_vlan_entry(
             fixture,
@@ -224,7 +236,7 @@ class TestDHCPConfigActivity:
         )
 
         result = await env.run(
-            activities.find_agents_for_updates,
+            activities.find_rack_controllers_for_updates,
             ConfigureDHCPParam(
                 system_ids=[rack_controller2["system_id"]],
                 vlan_ids=[vlan1["id"]],
@@ -236,12 +248,12 @@ class TestDHCPConfigActivity:
         )
 
         for rc in [rack_controller1, rack_controller2, rack_controller3]:
-            assert rc["system_id"] in result.agent_system_ids
+            assert rc["system_id"] in result.rack_controller_system_ids
 
     async def test_get_rack_id(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
-        rack = await create_test_rack_controller_entry(fixture)
+        rack = await create_test_rack_controller_node_entry(fixture)
 
         services_cache = CacheForServices()
         activities = DHCPConfigActivity(
@@ -260,7 +272,7 @@ class TestDHCPConfigActivity:
     async def test_get_hosts_for_static_ip_addrs(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
-        rack = await create_test_rack_controller_entry(fixture)
+        rack = await create_test_rack_controller_node_entry(fixture)
         vlan = await create_test_vlan_entry(
             fixture, dhcp_on=True, primary_rack_id=rack["id"]
         )
@@ -294,7 +306,7 @@ class TestDHCPConfigActivity:
     async def test_get_hosts_for_static_ip_addrs_skips_released_ip(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
-        rack = await create_test_rack_controller_entry(fixture)
+        rack = await create_test_rack_controller_node_entry(fixture)
         vlan = await create_test_vlan_entry(
             fixture, dhcp_on=True, primary_rack_id=rack["id"]
         )
@@ -324,7 +336,7 @@ class TestDHCPConfigActivity:
     async def test_get_hosts_for_static_ip_addrs_skips_null_mac(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
-        rack = await create_test_rack_controller_entry(fixture)
+        rack = await create_test_rack_controller_node_entry(fixture)
         vlan = await create_test_vlan_entry(
             fixture, dhcp_on=True, primary_rack_id=rack["id"]
         )
@@ -356,8 +368,8 @@ class TestDHCPConfigActivity:
     async def test_get_hosts_for_static_ip_addrs_ignores_other_racks(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
-        rack = await create_test_rack_controller_entry(fixture)
-        other_rack = await create_test_rack_controller_entry(fixture)
+        rack = await create_test_rack_controller_node_entry(fixture)
+        other_rack = await create_test_rack_controller_node_entry(fixture)
         vlan = await create_test_vlan_entry(
             fixture, dhcp_on=True, primary_rack_id=rack["id"]
         )
@@ -385,7 +397,7 @@ class TestDHCPConfigActivity:
     async def test_get_hosts_for_reserved_ips(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
-        rack = await create_test_rack_controller_entry(fixture)
+        rack = await create_test_rack_controller_node_entry(fixture)
         vlan = await create_test_vlan_entry(
             fixture, dhcp_on=True, primary_rack_id=rack["id"]
         )
@@ -418,7 +430,7 @@ class TestDHCPConfigActivity:
     ) -> None:
         env = ActivityEnvironment()
 
-        rack = await create_test_rack_controller_entry(fixture)
+        rack = await create_test_rack_controller_node_entry(fixture)
         vlan = await create_test_vlan_entry(
             fixture, dhcp_on=True, primary_rack_id=rack["id"]
         )
@@ -469,7 +481,7 @@ class TestDHCPConfigActivity:
     ) -> None:
         env = ActivityEnvironment()
 
-        rack = await create_test_rack_controller_entry(fixture)
+        rack = await create_test_rack_controller_node_entry(fixture)
         vlan = await create_test_vlan_entry(
             fixture, dhcp_on=True, primary_rack_id=rack["id"]
         )
@@ -521,12 +533,12 @@ class TestDHCPConfigActivity:
 
         assert result.key == key.value["secret"]
 
-    async def test_get_active_interfaces_for_agent(
+    async def test_get_active_interfaces_for_rack_controller(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
         env = ActivityEnvironment()
 
-        rack_controller = await create_test_rack_controller_entry(fixture)
+        rack_controller = await create_test_rack_controller_node_entry(fixture)
         vlan1 = await create_test_vlan_entry(fixture, dhcp_on=True)
         vlan2 = await create_test_vlan_entry(fixture, dhcp_on=False)
         iface1 = await create_test_interface_entry(
@@ -545,15 +557,15 @@ class TestDHCPConfigActivity:
         )
 
         result = await env.run(
-            activities.get_active_interfaces_for_agent,
-            GetActiveInterfacesForAgentParam(
+            activities.get_active_interfaces_for_rack_controller,
+            GetActiveInterfacesForRackControllerParam(
                 system_id=rack_controller["system_id"]
             ),
         )
 
         assert result.ifaces == [iface1.name]
 
-    async def test_get_dhcp_data_for_agent(
+    async def test_get_dhcp_data_for_rack_controller(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ) -> None:
         env = ActivityEnvironment()
@@ -561,7 +573,7 @@ class TestDHCPConfigActivity:
         await create_test_configuration(
             fixture, name="use_external_ntp_only", value=False
         )
-        rack_controller = await create_test_rack_controller_entry(fixture)
+        rack_controller = await create_test_rack_controller_node_entry(fixture)
         vlan1 = await create_test_vlan_entry(fixture, dhcp_on=True)
         vlan2 = await create_test_vlan_entry(fixture, dhcp_on=False)
         subnet1 = await create_test_subnet_entry(fixture, vlan_id=vlan1["id"])
@@ -603,13 +615,13 @@ class TestDHCPConfigActivity:
         )
 
         result = await env.run(
-            activities.get_dhcp_data_for_agent,
-            GetDHCPDataForAgentParam(
+            activities.get_dhcp_data_for_rack_controller,
+            GetDHCPDataForRackControllerParam(
                 system_id=rack_controller["system_id"],
             ),
         )
 
-        assert result == DHCPDataForAgent(
+        assert result == DHCPDataForRackController(
             vlans=[
                 VlanData(
                     id=vlan1["id"],

@@ -856,7 +856,7 @@ def generate_dhcp_configuration(rack_controller):
     return result
 
 
-def configure_dhcp_on_agents(
+def configure_dhcp_on_rack_controllers(
     system_ids: list[str] | None = None,
     vlan_ids: list[int] | None = None,
     subnet_ids: list[int] | None = None,

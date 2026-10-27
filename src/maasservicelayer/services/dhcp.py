@@ -39,7 +39,7 @@ from maasservicelayer.exceptions.catalog import (
     ValidationException,
 )
 from maasservicelayer.models.dhcp import (
-    DHCPDataForAgent,
+    DHCPDataForRackController,
     HostReservationData,
     InterfaceData,
     IPRangeData,
@@ -115,9 +115,9 @@ class DHCPService(Service):
         self.subnets_service = subnets_service
         self.vlans_service = vlans_service
 
-    async def get_kea_dhcp_data_for_agent(
+    async def get_kea_dhcp_data_for_rack_controller(
         self, system_id: str
-    ) -> DHCPDataForAgent:
+    ) -> DHCPDataForRackController:
         """Retrieve Kea configuration inputs for a rack controller system ID."""
         rack = await self.nodes_service.get_one(
             query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id))
@@ -384,7 +384,7 @@ class DHCPService(Service):
             for iprange in ranges
             if iprange.subnet_id in {subnet.id for subnet in subnet_data}
         ]
-        return DHCPDataForAgent(
+        return DHCPDataForRackController(
             vlans=[
                 VlanData(
                     id=vlan.id,

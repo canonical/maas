@@ -322,7 +322,7 @@ class TestValidateBindings:
         "prometheus_bind": "127.0.0.1",
         "temporal_bind": "127.0.0.1",
         "rpc_bind": ["10.0.0.2"],
-        "agent_api_bind": ["10.0.0.4", "fd00::4"],
+        "rack_ctrl_api_bind": ["10.0.0.4", "fd00::4"],
         "dns_bind": ["10.0.0.3", "fd00::3"],
         "syslog_bind": ["10.0.0.5"],
         "http_proxy_bind": ["10.0.0.6", "fd00::6"],
@@ -353,7 +353,7 @@ class TestValidateBindings:
             )
 
     def test_auto_derived_keys_unset_produce_no_violation(self) -> None:
-        # api_bind/temporal_bind/rpc_bind/agent_api_bind/http_proxy_bind
+        # api_bind/temporal_bind/rpc_bind/rack_ctrl_api_bind/http_proxy_bind
         # are auto-derived from maas_url at runtime when unset (see
         # eventloop.resolve_rpc_bind_addresses/resolve_bind_address/
         # resolve_bind_addresses/resolve_dual_stack_bind_addresses), so an
@@ -378,7 +378,7 @@ class TestValidateBindings:
     def test_each_key_ipv6_wildcard_produces_its_own_violation(self) -> None:
         for key, wildcard in (
             ("api_bind", ["::"]),
-            ("agent_api_bind", ["::"]),
+            ("rack_ctrl_api_bind", ["::"]),
             ("http_proxy_bind", ["::"]),
         ):
             v_list = self._validator(**{key: wildcard})._validate_bindings()

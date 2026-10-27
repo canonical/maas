@@ -57,7 +57,7 @@ def post_update_dhcp_workflow(instance, old_values, **kwargs):
             # The old relay VLAN needs updating
             vlan_ids.append(old_relay_vlan_id)
         if instance.relay_vlan_id:
-            # The new relay VLAN needs updating, the DHCP workflow will figure out what agents needs to be updated..
+            # The new relay VLAN needs updating, the DHCP workflow will figure out what rack controllers need to be updated..
             vlan_ids.append(instance.id)
     else:
         # Include all the old/new rack controllers

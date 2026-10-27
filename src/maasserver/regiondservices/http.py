@@ -81,8 +81,8 @@ class RegionHTTPService(Service):
                 configuration.api_conn_limit = region_config.api_conn_limit
                 configuration.api_bind = list(region_config.api_bind)
                 configuration.api_int_bind = list(region_config.api_int_bind)
-                configuration.agent_api_bind = list(
-                    region_config.agent_api_bind
+                configuration.rack_ctrl_api_bind = list(
+                    region_config.rack_ctrl_api_bind
                 )
                 configuration.api_tls_dhparam = region_config.api_tls_dhparam
                 configuration.maas_url = str(region_config.maas_url)
@@ -156,14 +156,14 @@ class RegionHTTPService(Service):
             "MAAS_INTERNALAPISERVER_HTTP_SOCKET_PATH",
             get_maas_data_path("internalapiserver-http.sock"),
         )
-        agent_api_bind = resolve_dual_stack_bind_addresses(
-            configuration.agent_api_bind,
+        rack_ctrl_api_bind = resolve_dual_stack_bind_addresses(
+            configuration.rack_ctrl_api_bind,
             configuration.maas_url,
             hardening_active=configuration.hardening_active,
         )
         environ = {
             "internal_api_listen": compose_listen_addresses(
-                5242, agent_api_bind
+                5242, rack_ctrl_api_bind
             ),
             "internalapiserver_socket_path": internalapiserver_socket_path,
         }
@@ -219,7 +219,7 @@ class _Configuration:
     api_conn_limit: int = 0
     api_bind: list = field(default_factory=list)
     api_int_bind: list = field(default_factory=list)
-    agent_api_bind: list = field(default_factory=list)
+    rack_ctrl_api_bind: list = field(default_factory=list)
     api_tls_dhparam: str = ""
     maas_url: str = ""
 
