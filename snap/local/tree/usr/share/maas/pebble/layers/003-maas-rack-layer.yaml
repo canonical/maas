@@ -29,7 +29,7 @@ services:
     startup: disabled
     command: sh -c "exec systemd-cat -t dhcpd6 $SNAP/usr/bin/run-dhcpd6"
 
-  agent:
+  rack-controller:
     override: replace
     startup: disabled
-    command: sh -c "exec systemd-cat -t maas-agent $SNAP/usr/bin/run-maas-agent"
+    command: sh -c "exec systemd-cat -t maas-rack-controller $SNAP/usr/bin/run-maas-rack-controller"

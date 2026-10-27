@@ -221,7 +221,7 @@ class TestConfigHardeningValidate(_Base):
             prometheus_bind="",
             temporal_bind="",
             rpc_bind=[],
-            agent_api_bind=[],
+            rack_ctrl_api_bind=[],
             dns_bind=[],
             syslog_bind=[],
             http_proxy_bind=[],
@@ -371,7 +371,7 @@ class TestConfigHardeningListEffectiveBinds(_Base):
             prometheus_bind="",
             temporal_bind="",
             rpc_bind=[],
-            agent_api_bind=[],
+            rack_ctrl_api_bind=[],
             dns_bind=[],
             syslog_bind=[],
             http_proxy_bind=[],
@@ -433,7 +433,7 @@ class TestConfigHardeningListEffectiveBinds(_Base):
             output = self._run_list(self._mock_cfg(), hardening_active=False)
         for key in (
             "api_bind",
-            "agent_api_bind",
+            "rack_ctrl_api_bind",
             "http_proxy_bind",
             "syslog_bind",
             "temporal_bind",

@@ -335,7 +335,7 @@ def get_cluster_certificates_path() -> Path:
     return Path(maas_root) / "certificates"
 
 
-def get_agent_certificates_path() -> Path:
+def get_rack_controller_certificates_path() -> Path:
     maas_root = os.getenv("MAAS_ROOT", "/var/lib/maas")
     return Path(maas_root) / "certificates"
 
@@ -356,12 +356,12 @@ def get_maas_cluster_cert_paths() -> tuple[str, str, str] | None:
     return str(certificate), str(private_key), str(cacerts)
 
 
-def get_maas_agent_cert_paths() -> tuple[str, str, str] | None:
+def get_maas_rack_controller_cert_paths() -> tuple[str, str, str] | None:
     """Return a 2-tuple with certificate and private key paths for the client certificates."""
 
-    cert_dir = get_agent_certificates_path()
-    private_key = cert_dir / "agent.key"
-    certificate = cert_dir / "agent.crt"
+    cert_dir = get_rack_controller_certificates_path()
+    private_key = cert_dir / "rackcontroller.key"
+    certificate = cert_dir / "rackcontroller.crt"
     cacerts = cert_dir / "ca.pem"
     if (
         not private_key.exists()
@@ -402,24 +402,24 @@ def store_maas_cluster_cert_tuple(
     )
 
 
-def store_maas_agent_cert_tuple(
+def store_maas_rack_controller_cert_tuple(
     private_key: bytes, certificate: bytes, cacerts: bytes
 ) -> None:
     """
     Stores the private key and the certificate on the disk.
     """
 
-    cert_dir = get_agent_certificates_path()
+    cert_dir = get_rack_controller_certificates_path()
     atomic_write(
         private_key,
-        cert_dir / "agent.key",
+        cert_dir / "rackcontroller.key",
         overwrite=True,
         mode=0o600,
     )
 
     atomic_write(
         certificate,
-        cert_dir / "agent.crt",
+        cert_dir / "rackcontroller.crt",
         overwrite=True,
         mode=0o644,
     )

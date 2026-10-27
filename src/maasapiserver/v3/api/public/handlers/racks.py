@@ -10,12 +10,12 @@ from maasapiserver.common.api.models.responses.errors import (
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.query import PaginationParams
 from maasapiserver.v3.api.public.models.requests.racks import RackRequest
-from maasapiserver.v3.api.public.models.responses.agents import (
-    AgentListResponse,
-    AgentResponse,
-)
 from maasapiserver.v3.api.public.models.responses.base import (
     OPENAPI_ETAG_HEADER,
+)
+from maasapiserver.v3.api.public.models.responses.rackcontrollers import (
+    RackControllerListResponse,
+    RackControllerResponse,
 )
 from maasapiserver.v3.api.public.models.responses.racks import (
     RackBootstrapTokenResponse,
@@ -28,7 +28,9 @@ from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.agents import AgentsClauseFactory
+from maasservicelayer.db.repositories.rackcontrollers import (
+    RackControllersClauseFactory,
+)
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -297,12 +299,12 @@ class RacksHandler(Handler):
         )
 
     @handler(
-        path="/racks/{rack_id}/agents",
+        path="/racks/{rack_id}/rack_controllers",
         methods=["GET"],
         tags=TAGS,
         responses={
             200: {
-                "model": AgentListResponse,
+                "model": RackControllerListResponse,
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
@@ -317,33 +319,35 @@ class RacksHandler(Handler):
             )
         ],
     )
-    async def list_rack_agents(
+    async def list_rack_controllers(
         self,
         rack_id: int,
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> AgentListResponse:
-        agents = await services.agents.list(
+    ) -> RackControllerListResponse:
+        rack_controllers = await services.rack_controllers.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=AgentsClauseFactory.with_rack_id(rack_id)),
+            query=QuerySpec(
+                where=RackControllersClauseFactory.with_rack_id(rack_id)
+            ),
         )
-        if not agents:
+        if not rack_controllers:
             raise NotFoundException()
 
-        return AgentListResponse(
+        return RackControllerListResponse(
             items=[
-                AgentResponse.from_model(
-                    agent=agent,
-                    self_base_hyperlink=f"{V3_API_PREFIX}/racks/{rack_id}/agents/",
+                RackControllerResponse.from_model(
+                    rack_controller=rack_controller,
+                    self_base_hyperlink=f"{V3_API_PREFIX}/racks/{rack_id}/rack_controllers/",
                 )
-                for agent in agents.items
+                for rack_controller in rack_controllers.items
             ],
-            total=agents.total,
+            total=rack_controllers.total,
             next=(
-                f"{V3_API_PREFIX}/racks/{rack_id}/agents?"
+                f"{V3_API_PREFIX}/racks/{rack_id}/rack_controllers?"
                 f"{pagination_params.to_next_href_format()}"
-                if agents.has_next(
+                if rack_controllers.has_next(
                     pagination_params.page, pagination_params.size
                 )
                 else None
@@ -351,12 +355,12 @@ class RacksHandler(Handler):
         )
 
     @handler(
-        path="/racks/{rack_id}/agents/{id}",
+        path="/racks/{rack_id}/rack_controllers/{id}",
         methods=["GET"],
         tags=TAGS,
         responses={
             200: {
-                "model": AgentResponse,
+                "model": RackControllerResponse,
                 "headers": {"ETag": OPENAPI_ETAG_HEADER},
             },
             404: {"model": NotFoundBodyResponse},
@@ -371,34 +375,34 @@ class RacksHandler(Handler):
             )
         ],
     )
-    async def get_rack_agent(
+    async def get_rack_controller(
         self,
         rack_id: int,
         id: int,
         response: Response,
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
-    ) -> AgentResponse:
-        agent = await services.agents.get_one(
+    ) -> RackControllerResponse:
+        rack_controller = await services.rack_controllers.get_one(
             QuerySpec(
-                where=AgentsClauseFactory.and_clauses(
+                where=RackControllersClauseFactory.and_clauses(
                     [
-                        AgentsClauseFactory.with_id(id),
-                        AgentsClauseFactory.with_rack_id(rack_id),
+                        RackControllersClauseFactory.with_id(id),
+                        RackControllersClauseFactory.with_rack_id(rack_id),
                     ]
                 )
             )
         )
-        if not agent:
+        if not rack_controller:
             raise NotFoundException()
 
-        response.headers["ETag"] = agent.etag()
-        return AgentResponse.from_model(
-            agent=agent,
-            self_base_hyperlink=f"{V3_API_PREFIX}/racks/{rack_id}/agents/",
+        response.headers["ETag"] = rack_controller.etag()
+        return RackControllerResponse.from_model(
+            rack_controller=rack_controller,
+            self_base_hyperlink=f"{V3_API_PREFIX}/racks/{rack_id}/rack_controllers/",
         )
 
     @handler(
-        path="/racks/{rack_id}/agents/{id}",
+        path="/racks/{rack_id}/rack_controllers/{id}",
         methods=["DELETE"],
         tags=TAGS,
         responses={
@@ -415,7 +419,7 @@ class RacksHandler(Handler):
             )
         ],
     )
-    async def delete_rack_agent(
+    async def delete_rack_controller(
         self,
         rack_id: int,
         id: int,
@@ -423,14 +427,14 @@ class RacksHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         query = QuerySpec(
-            where=AgentsClauseFactory.and_clauses(
+            where=RackControllersClauseFactory.and_clauses(
                 [
-                    AgentsClauseFactory.with_id(id),
-                    AgentsClauseFactory.with_rack_id(rack_id),
+                    RackControllersClauseFactory.with_id(id),
+                    RackControllersClauseFactory.with_rack_id(rack_id),
                 ]
             )
         )
-        await services.agents.delete_one(
+        await services.rack_controllers.delete_one(
             query=query,
             etag_if_match=etag_if_match,
         )

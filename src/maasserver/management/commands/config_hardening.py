@@ -33,7 +33,7 @@ _CONFIG_KEYS = frozenset({"hardening_enabled", "fips_enabled"})
 # `temporal_bind`, `syslog_bind`, `prometheus_bind`) are resolved
 # differently -- see `_effective_bind_value`.
 _DUAL_STACK_BIND_KEYS = frozenset(
-    {"api_bind", "agent_api_bind", "http_proxy_bind"}
+    {"api_bind", "rack_ctrl_api_bind", "http_proxy_bind"}
 )
 
 

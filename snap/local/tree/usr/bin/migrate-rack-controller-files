@@ -1,0 +1,32 @@
+#!/bin/bash -e
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+#
+# Renames files left by the pre-4.0 MAAS agent to their rack controller
+# names. Safe to run repeatedly and when none of the old files exist
+# (e.g. on 4.0 -> 4.1 refreshes).
+
+move() {
+    local old="$1" new="$2"
+    [ -e "$old" ] || return 0
+    if [ -e "$new" ]; then
+        rm -f "$old"
+    else
+        mv "$old" "$new"
+    fi
+}
+
+move "$SNAP_COMMON/maas/agent_uuid" "$SNAP_COMMON/maas/rack_controller_uuid"
+
+for certs_dir in "$SNAP_COMMON/var/lib/maas/certificates" "$SNAP_DATA/certificates"; do
+    for ext in crt key; do
+        move "$certs_dir/agent.$ext" "$certs_dir/rackcontroller.$ext"
+    done
+done
+
+config_dir="$SNAP_COMMON/etc/maas"
+move "$config_dir/agent.yaml" "$config_dir/rackcontroller.yaml"
+if [ -f "$config_dir/rackcontroller.yaml" ]; then
+    sed -i -E 's#/agent\.(crt|key)\b#/rackcontroller.\1#g' \
+        "$config_dir/rackcontroller.yaml"
+fi

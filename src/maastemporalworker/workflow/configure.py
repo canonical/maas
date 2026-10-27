@@ -11,13 +11,13 @@ from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 
 from maascommon.enums.node import NodeTypeEnum
 from maascommon.workflows.configure import (
-    CONFIGURE_AGENT_WORKFLOW_NAME,
     CONFIGURE_DHCP_SERVICE_WORKFLOW_NAME,
     CONFIGURE_HTTPPROXY_SERVICE_WORKFLOW_NAME,
     CONFIGURE_POWER_SERVICE_WORKFLOW_NAME,
+    CONFIGURE_RACK_CONTROLLER_WORKFLOW_NAME,
     CONFIGURE_RESOLVER_SERVICE_WORKFLOW_NAME,
-    ConfigureAgentParam,
     ConfigureDHCPServiceParam,
+    ConfigureRackControllerParam,
 )
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.nodes import NodeClauseFactory
@@ -76,7 +76,7 @@ class GetResolverConfigResult:
     authoritative_ips: Optional[list[str]] = None
 
 
-class ConfigureAgentActivity(ActivityBase):
+class ConfigureRackControllerActivity(ActivityBase):
     @activity_defn_with_context(name=GET_RACK_CONTROLLER_VLANS_ACTIVITY_NAME)
     async def get_rack_controller_vlans(
         self, input: GetRackControllerVLANsInput
@@ -144,7 +144,7 @@ class ConfigureAgentActivity(ActivityBase):
         self, param: GetResolverConfigInput
     ) -> GetResolverConfigResult:
         async with self.start_transaction() as services:
-            agent_node = await services.nodes.get_one(
+            rack_controller_node = await services.nodes.get_one(
                 query=QuerySpec(
                     where=NodeClauseFactory.with_system_id(param.system_id),
                 )
@@ -152,10 +152,11 @@ class ConfigureAgentActivity(ActivityBase):
 
             # TODO remove BIND check once recursive resolver is fully functional
             # and BIND can be removed from the rack controller
-            assert agent_node is not None
+            assert rack_controller_node is not None
             if (
-                agent_node.node_type == NodeTypeEnum.REGION_CONTROLLER
-                or agent_node.node_type
+                rack_controller_node.node_type
+                == NodeTypeEnum.REGION_CONTROLLER
+                or rack_controller_node.node_type
                 == NodeTypeEnum.REGION_AND_RACK_CONTROLLER
             ):
                 return GetResolverConfigResult(
@@ -172,7 +173,7 @@ class ConfigureAgentActivity(ActivityBase):
                 subnet.id for subnet in dns_enabled_subnets
             ]
 
-            agent_ips = await services.staticipaddress.get_for_nodes(
+            rack_controller_ips = await services.staticipaddress.get_for_nodes(
                 query=QuerySpec(
                     where=StaticIPAddressClauseFactory.and_clauses(
                         [
@@ -211,7 +212,7 @@ class ConfigureAgentActivity(ActivityBase):
 
             return GetResolverConfigResult(
                 enabled=True,
-                bind_ips=list(set(str(sip.ip) for sip in agent_ips)),
+                bind_ips=list(set(str(sip.ip) for sip in rack_controller_ips)),
                 authoritative_ips=list(set(str(sip.ip) for sip in region_ips)),
             )
 
@@ -223,24 +224,24 @@ def _format_endpoint(ip: str) -> str:
     return f"http://[{ip}]:5240/MAAS/"
 
 
-# NOTE: Once Region can detect that Agent was reconnected or restarted
+# NOTE: Once Region can detect that the rack controller was reconnected or restarted
 # via Temporal server API, we should no longer need this workflow
 # and Region should execute per-service workflow for configuration.
-@workflow.defn(name=CONFIGURE_AGENT_WORKFLOW_NAME, sandboxed=False)
-class ConfigureAgentWorkflow:
-    """A ConfigureAgent workflow to setup MAAS Agent"""
+@workflow.defn(name=CONFIGURE_RACK_CONTROLLER_WORKFLOW_NAME, sandboxed=False)
+class ConfigureRackControllerWorkflow:
+    """A ConfigureRackController workflow to setup rack controller"""
 
     @workflow_run_with_context
-    async def run(self, param: ConfigureAgentParam) -> None:
-        # Agent registers workflows for configuring it's services
+    async def run(self, param: ConfigureRackControllerParam) -> None:
+        # The rack controller registers workflows for configuring it's services
         # during Temporal worker pool initialization using WithConfigurator.
-        # Make sure that used workflow names are in sync with the Agent.
+        # Make sure that used workflow names are in sync with the rack controller.
         await workflow.execute_child_workflow(
             CONFIGURE_POWER_SERVICE_WORKFLOW_NAME,
             param.system_id,
             id=f"configure-power-service:{param.system_id}",
             id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-            task_queue=f"{param.system_id}@agent:main",
+            task_queue=f"{param.system_id}@rack-controller:main",
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
 
@@ -249,7 +250,7 @@ class ConfigureAgentWorkflow:
             param.system_id,
             id=f"configure-httpproxy-service:{param.system_id}",
             id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-            task_queue=f"{param.system_id}@agent:main",
+            task_queue=f"{param.system_id}@rack-controller:main",
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
 
@@ -258,13 +259,13 @@ class ConfigureAgentWorkflow:
             ConfigureDHCPServiceParam(enabled=True),
             id=f"configure-dhcp-service:{param.system_id}",
             id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
-            task_queue=f"{param.system_id}@agent:main",
+            task_queue=f"{param.system_id}@rack-controller:main",
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
 
         await workflow.execute_child_workflow(
             CONFIGURE_RESOLVER_SERVICE_WORKFLOW_NAME,
             param.system_id,
-            task_queue=f"{param.system_id}@agent:main",
+            task_queue=f"{param.system_id}@rack-controller:main",
             retry_policy=RetryPolicy(maximum_attempts=1),
         )

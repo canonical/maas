@@ -22,7 +22,7 @@ from maasservicelayer.models.resource_pools import ResourcePool
 from tests.fixtures.factories.node import (
     create_test_device_entry,
     create_test_machine_entry,
-    create_test_rack_controller_entry,
+    create_test_rack_controller_node_entry,
 )
 from tests.fixtures.factories.resource_pools import (
     create_n_test_resource_pools,
@@ -146,7 +146,7 @@ class TestResourcePoolRepositoryListSummary:
     ) -> None:
         # Controllers and devices should not be taken into account
         await create_test_device_entry(fixture, pool_id=0)
-        await create_test_rack_controller_entry(fixture, pool_id=0)
+        await create_test_rack_controller_node_entry(fixture, pool_id=0)
 
         # One machine ready and one testing
         await create_test_machine_entry(

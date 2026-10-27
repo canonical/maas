@@ -21,7 +21,9 @@ from django.db.models import Q
 from temporalio.common import WorkflowIDReusePolicy
 
 from maascommon.fields import normalise_macaddress
-from maascommon.workflows.configure import CONFIGURE_AGENT_WORKFLOW_NAME
+from maascommon.workflows.configure import (
+    CONFIGURE_RACK_CONTROLLER_WORKFLOW_NAME,
+)
 from maasserver.enum import (
     NODE_DEVICE_BUS,
     NODE_METADATA,
@@ -1225,7 +1227,7 @@ def process_lxd_results(node, output, exit_status):
     )
 
     # If there is a change in the Rack controller configuration, we should
-    # trigger configure-agent workflow execution, so MAAS Agent can consume
+    # trigger configure-rack-controller workflow execution, so rack controller can consume
     # workflows from certain task queues.
     configuration_required = False
     if node.node_type in (
@@ -1253,8 +1255,8 @@ def process_lxd_results(node, output, exit_status):
         )
         if new_vlans != old_vlans:
             start_workflow(
-                workflow_name=CONFIGURE_AGENT_WORKFLOW_NAME,
-                workflow_id=f"configure-agent:{node.system_id}",
+                workflow_name=CONFIGURE_RACK_CONTROLLER_WORKFLOW_NAME,
+                workflow_id=f"configure-rack-controller:{node.system_id}",
                 task_queue="region",
                 id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
                 param={

@@ -17,9 +17,9 @@ from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.ipranges import IPRangeType
 from maascommon.enums.node import NodeTypeEnum
 from maascommon.workflows.dhcp import (
-    CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
+    CONFIGURE_DHCP_FOR_RACK_CONTROLLER_WORKFLOW_NAME,
     CONFIGURE_DHCP_WORKFLOW_NAME,
-    ConfigureDHCPForAgentParam,
+    ConfigureDHCPForRackControllerParam,
     ConfigureDHCPParam,
 )
 from maasservicelayer.db.filters import QuerySpec
@@ -55,7 +55,7 @@ from maastemporalworker.workflow.utils import (
     workflow_run_with_context,
 )
 
-FIND_AGENTS_FOR_UPDATE_TIMEOUT = timedelta(minutes=5)
+FIND_RACK_CONTROLLERS_FOR_UPDATE_TIMEOUT = timedelta(minutes=5)
 APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT = timedelta(minutes=5)
 FETCH_HOSTS_FOR_UPDATE_TIMEOUT = timedelta(minutes=5)
 GET_OMAPI_KEY_TIMEOUT = timedelta(minutes=5)
@@ -63,12 +63,16 @@ APPLY_DHCP_CONFIG_VIA_OMAPI_TIMEOUT = timedelta(minutes=5)
 RESTART_DHCP_SERVICE_TIMEOUT = timedelta(minutes=5)
 
 # Activities names
-FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME = "find-agents-for-update"
+FIND_RACK_CONTROLLERS_FOR_UPDATE_ACTIVITY_NAME = (
+    "find-rack-controllers-for-update"
+)
 FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME = "fetch-hosts-for-update"
 GET_OMAPI_KEY_ACTIVITY_NAME = "get-omapi-key"
-GET_ACTIVE_INTERFACES_FOR_AGENT_NAME = "get-active-interfaces-for-agent"
+GET_ACTIVE_INTERFACES_FOR_RACK_CONTROLLER_NAME = (
+    "get-active-interfaces-for-rack-controller"
+)
 
-# Executed on maasagent
+# Executed on maasrackcontroller
 APPLY_DHCP_CONFIG_VIA_FILE_ACTIVITY_NAME = "apply-dhcp-config-via-file"
 RESTART_DHCP_SERVICE_ACTIVITY_NAME = "restart-dhcp-service"
 APPLY_DHCP_CONFIG_VIA_OMAPI_ACTIVITY_NAME = "apply-dhcp-config-via-omapi"
@@ -76,8 +80,8 @@ APPLY_DHCP_CONFIG_VIA_OMAPI_ACTIVITY_NAME = "apply-dhcp-config-via-omapi"
 
 # Activities parameters
 @dataclass
-class AgentsForUpdateResult:
-    agent_system_ids: list[str]
+class RackControllersForUpdateResult:
+    rack_controller_system_ids: list[str]
 
 
 @dataclass
@@ -117,7 +121,7 @@ class OMAPIKeyResult:
 
 
 @dataclass
-class GetActiveInterfacesForAgentParam:
+class GetActiveInterfacesForRackControllerParam:
     system_id: str
 
 
@@ -127,7 +131,7 @@ class SetActiveInterfacesParam:
 
 
 @dataclass
-class ActiveInterfacesForAgentResult:
+class ActiveInterfacesForRackControllerResult:
     ifaces: list[str]
 
 
@@ -177,7 +181,7 @@ class HostReservationData:
 
 
 @dataclass
-class DHCPDataForAgent:
+class DHCPDataForRackController:
     vlans: list[VlanData]
     subnets: list[SubnetData]
     ipranges: list[IPRangeData]
@@ -188,14 +192,14 @@ class DHCPDataForAgent:
 
 
 @dataclass
-class GetDHCPDataForAgentParam:
+class GetDHCPDataForRackControllerParam:
     system_id: str
 
 
 class DHCPConfigActivity(ActivityBase):
     OMAPI_KEY_SECRET = OMAPIKeySecret()
 
-    async def _get_agents_for_vlans(
+    async def _get_rack_controllers_for_vlans(
         self, tx: AsyncConnection, vlan_ids: set[int]
     ) -> set[str]:
         relay_stmt = (
@@ -335,10 +339,12 @@ class DHCPConfigActivity(ActivityBase):
         result = await tx.execute(stmt)
         return {r[0] for r in result.all()}
 
-    @activity_defn_with_context(name=FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME)
-    async def find_agents_for_updates(
+    @activity_defn_with_context(
+        name=FIND_RACK_CONTROLLERS_FOR_UPDATE_ACTIVITY_NAME
+    )
+    async def find_rack_controllers_for_updates(
         self, param: ConfigureDHCPParam
-    ) -> AgentsForUpdateResult:
+    ) -> RackControllersForUpdateResult:
         async with self._start_transaction() as tx:
             system_ids = set(
                 [] if param.system_ids is None else param.system_ids
@@ -366,9 +372,13 @@ class DHCPConfigActivity(ActivityBase):
                 )
 
             if vlan_ids:
-                system_ids |= await self._get_agents_for_vlans(tx, vlan_ids)
+                system_ids |= await self._get_rack_controllers_for_vlans(
+                    tx, vlan_ids
+                )
 
-            return AgentsForUpdateResult(agent_system_ids=list(system_ids))
+            return RackControllersForUpdateResult(
+                rack_controller_system_ids=list(system_ids)
+            )
 
     async def _get_rack_id(self, tx: AsyncConnection, system_id: str) -> int:
         rack_stmt = (
@@ -494,7 +504,7 @@ class DHCPConfigActivity(ActivityBase):
             )
             return OMAPIKeyResult(key=key)
 
-    async def _get_active_vlans_for_agent(
+    async def _get_active_vlans_for_rack_controller(
         self, svc: ServiceCollectionV3, system_id: str
     ) -> list[Vlan]:
         return await svc.vlans.get_node_vlans(
@@ -508,12 +518,14 @@ class DHCPConfigActivity(ActivityBase):
             ),
         )
 
-    @activity_defn_with_context(name=GET_ACTIVE_INTERFACES_FOR_AGENT_NAME)
-    async def get_active_interfaces_for_agent(
-        self, param: GetActiveInterfacesForAgentParam
-    ) -> ActiveInterfacesForAgentResult:
+    @activity_defn_with_context(
+        name=GET_ACTIVE_INTERFACES_FOR_RACK_CONTROLLER_NAME
+    )
+    async def get_active_interfaces_for_rack_controller(
+        self, param: GetActiveInterfacesForRackControllerParam
+    ) -> ActiveInterfacesForRackControllerResult:
         async with self.start_transaction() as svc:
-            vlans = await self._get_active_vlans_for_agent(
+            vlans = await self._get_active_vlans_for_rack_controller(
                 svc, param.system_id
             )
             node = await svc.nodes.get_one(
@@ -537,7 +549,7 @@ class DHCPConfigActivity(ActivityBase):
                     )
                 )
             )
-            return ActiveInterfacesForAgentResult(
+            return ActiveInterfacesForRackControllerResult(
                 ifaces=[
                     iface.name
                     for iface in ifaces
@@ -656,12 +668,12 @@ class DHCPConfigActivity(ActivityBase):
 
         return hosts
 
-    @activity_defn_with_context(name="get_dhcp_data_for_agent")
-    async def get_dhcp_data_for_agent(
-        self, param: GetDHCPDataForAgentParam
-    ) -> DHCPDataForAgent:
+    @activity_defn_with_context(name="get_dhcp_data_for_rack_controller")
+    async def get_dhcp_data_for_rack_controller(
+        self, param: GetDHCPDataForRackControllerParam
+    ) -> DHCPDataForRackController:
         async with self.start_transaction() as svc:
-            vlans = await self._get_active_vlans_for_agent(
+            vlans = await self._get_active_vlans_for_rack_controller(
                 svc, param.system_id
             )
             node = await svc.nodes.get_one(
@@ -747,7 +759,7 @@ class DHCPConfigActivity(ActivityBase):
 
             hosts = await self._get_dhcp_host_reservations(svc, subnets)
 
-            return DHCPDataForAgent(
+            return DHCPDataForRackController(
                 interfaces=[
                     InterfaceData(
                         id=iface.id, name=iface.name, vlan_id=iface.vlan_id
@@ -791,12 +803,16 @@ class DHCPConfigActivity(ActivityBase):
             )
 
 
-@workflow.defn(name=CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME, sandboxed=False)
-class ConfigureDHCPForAgentWorkflow:
-    async def _run_internal(self, param: ConfigureDHCPForAgentParam) -> None:
+@workflow.defn(
+    name=CONFIGURE_DHCP_FOR_RACK_CONTROLLER_WORKFLOW_NAME, sandboxed=False
+)
+class ConfigureDHCPForRackControllerWorkflow:
+    async def _run_internal(
+        self, param: ConfigureDHCPForRackControllerParam
+    ) -> None:
         data = await workflow.execute_activity(
-            "get_dhcp_data_for_agent",
-            GetDHCPDataForAgentParam(
+            "get_dhcp_data_for_rack_controller",
+            GetDHCPDataForRackControllerParam(
                 system_id=param.system_id,
             ),
             start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
@@ -807,12 +823,12 @@ class ConfigureDHCPForAgentWorkflow:
             SetActiveInterfacesParam(
                 ifaces=[iface["name"] for iface in data["interfaces"]]
             ),
-            task_queue=f"{param.system_id}@agent:main",
+            task_queue=f"{param.system_id}@rack-controller:main",
             start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
         )
 
     @workflow_run_with_context
-    async def run(self, param: ConfigureDHCPForAgentParam) -> None:
+    async def run(self, param: ConfigureDHCPForRackControllerParam) -> None:
         if os.environ.get("MAAS_INTERNAL_DHCP") == "1":
             await self._run_internal(param)
             return
@@ -820,17 +836,17 @@ class ConfigureDHCPForAgentWorkflow:
         # scenario we want to update the dhcpd config.
         await workflow.execute_activity(
             APPLY_DHCP_CONFIG_VIA_FILE_ACTIVITY_NAME,
-            task_queue=f"{param.system_id}@agent:main",
+            task_queue=f"{param.system_id}@rack-controller:main",
             start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT,
         )
         if param.full_reload:
             await workflow.execute_activity(
                 RESTART_DHCP_SERVICE_ACTIVITY_NAME,
-                task_queue=f"{param.system_id}@agent:main",
+                task_queue=f"{param.system_id}@rack-controller:main",
                 start_to_close_timeout=RESTART_DHCP_SERVICE_TIMEOUT,
             )
-            # TODO call get_active_interfaces_for_agent and set config
-            # directly on the agent
+            # TODO call get_active_interfaces_for_rack_controller and set config
+            # directly on the rack controller
         else:
             hosts = await workflow.execute_activity(
                 FETCH_HOSTS_FOR_UPDATE_ACTIVITY_NAME,
@@ -853,7 +869,7 @@ class ConfigureDHCPForAgentWorkflow:
                     hosts=hosts["hosts"],
                     secret=omapi_key["key"],
                 ),
-                task_queue=f"{param.system_id}@agent:main",
+                task_queue=f"{param.system_id}@rack-controller:main",
                 start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_OMAPI_TIMEOUT,
             )
 
@@ -862,10 +878,10 @@ class ConfigureDHCPForAgentWorkflow:
 class ConfigureDHCPWorkflow:
     @workflow_run_with_context
     async def run(self, param: ConfigureDHCPParam) -> None:
-        agent_system_ids_for_update = await workflow.execute_activity(
-            FIND_AGENTS_FOR_UPDATE_ACTIVITY_NAME,
+        rack_controller_system_ids_for_update = await workflow.execute_activity(
+            FIND_RACK_CONTROLLERS_FOR_UPDATE_ACTIVITY_NAME,
             param,
-            start_to_close_timeout=FIND_AGENTS_FOR_UPDATE_TIMEOUT,
+            start_to_close_timeout=FIND_RACK_CONTROLLERS_FOR_UPDATE_TIMEOUT,
         )
 
         full_reload = bool(
@@ -877,11 +893,13 @@ class ConfigureDHCPWorkflow:
 
         children = []
 
-        for system_id in agent_system_ids_for_update["agent_system_ids"]:
+        for system_id in rack_controller_system_ids_for_update[
+            "rack_controller_system_ids"
+        ]:
             try:
                 cfg_child = await workflow.start_child_workflow(
-                    CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
-                    ConfigureDHCPForAgentParam(
+                    CONFIGURE_DHCP_FOR_RACK_CONTROLLER_WORKFLOW_NAME,
+                    ConfigureDHCPForRackControllerParam(
                         system_id=system_id,
                         full_reload=full_reload,
                         static_ip_addr_ids=param.static_ip_addr_ids,
@@ -894,8 +912,8 @@ class ConfigureDHCPWorkflow:
             # This is because only temporal signals are guaranteed to be processed in sequence as they arrive.
             except WorkflowAlreadyStartedError:
                 cfg_child = await workflow.start_child_workflow(
-                    CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME,
-                    ConfigureDHCPForAgentParam(
+                    CONFIGURE_DHCP_FOR_RACK_CONTROLLER_WORKFLOW_NAME,
+                    ConfigureDHCPForRackControllerParam(
                         system_id=system_id,
                         full_reload=True,
                     ),

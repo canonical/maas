@@ -3546,7 +3546,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         dpu = Node.objects.get(id=dpu.id)
         self.assertEqual(host.id, dpu.parent_id)
 
-    def test_rack_change_triggers_configure_agent_workflow(self):
+    def test_rack_change_triggers_configure_rack_controller_workflow(self):
         rack = factory.make_RackController()
         mock_start_workflow = self.patch(hooks_module, "start_workflow")
 
@@ -3557,7 +3557,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
         mock_start_workflow.assert_called_once()
 
-    def test_rack_no_change_doesnt_trigger_configure_agent_workflow(self):
+    def test_rack_no_change_doesnt_trigger_configure_rack_controller_workflow(
+        self,
+    ):
         rack = factory.make_RackController()
         mock_start_workflow = self.patch(hooks_module, "start_workflow")
 
@@ -3569,7 +3571,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
         mock_start_workflow.assert_called_once()
 
-    def test_rack_storage_change_doesnt_trigger_configure_agent_workflow(self):
+    def test_rack_storage_change_doesnt_trigger_configure_rack_controller_workflow(
+        self,
+    ):
         rack = factory.make_Node()
         mock_start_workflow = self.patch(hooks_module, "start_workflow")
 
@@ -3580,7 +3584,7 @@ class TestProcessLXDResults(MAASServerTestCase):
             process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
         mock_start_workflow.assert_not_called()
 
-    def test_non_rack_node_change_doesnt_trigger_configure_agent_workflow(
+    def test_non_rack_node_change_doesnt_trigger_configure_rack_controller_workflow(
         self,
     ):
         node = factory.make_Node()

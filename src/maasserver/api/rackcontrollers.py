@@ -12,9 +12,15 @@ from maasserver.api.nodes import (
     PowerMixin,
     PowersMixin,
 )
-from maasserver.api.support import check_permission, operation
+from maasserver.api.support import (
+    check_permission,
+    internal_method,
+    operation,
+    OperationsHandler,
+)
 from maasserver.api.utils import get_optional_param
 from maasserver.clusterrpc.driver_parameters import get_all_power_types
+from maasserver.dhcp import generate_dhcp_configuration
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ControllerForm
 from maasserver.models import BootResource, RackController
@@ -279,3 +285,36 @@ class RackControllersHandler(NodesHandler, PowersMixin):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return ("rackcontrollers_handler", [])
+
+
+class RackControllerServiceConfigHandler(OperationsHandler):
+    """Internal API used by the rack controller to fetch service
+    configurations for its rack controller node."""
+
+    api_doc_section_name = "RackControllerServiceConfiguration"
+    update = delete = None
+    fields = ()
+    hidden = True
+
+    @classmethod
+    def resource_uri(cls, system_id=None, service_name=None):
+        sys_id = "system_id"
+        svc_name = "service_name"
+        if system_id is not None:
+            sys_id = system_id
+        if service_name is not None:
+            svc_name = service_name
+        return (
+            "rackcontroller_service_config_handler",
+            (
+                sys_id,
+                svc_name,
+            ),
+        )
+
+    @internal_method
+    def read(self, request, system_id, service_name):
+        if service_name == "dhcp":
+            rack_controller = RackController.objects.get(system_id=system_id)
+            config = generate_dhcp_configuration(rack_controller)
+            return config

@@ -7,7 +7,7 @@ import pytest
 from twisted.internet import defer
 
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
-from maasserver.dhcp import configure_dhcp_on_agents
+from maasserver.dhcp import configure_dhcp_on_rack_controllers
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.reservedip import ReservedIP
 from maasserver.testing.factory import factory
@@ -47,7 +47,8 @@ class TestReservedIPHandler(MAASServerTestCase):
         assert reserved_ip["comment"] == "this is a comment"
 
         reservedip_module.post_commit_do.assert_called_once_with(
-            configure_dhcp_on_agents, reserved_ip_ids=[reserved_ip["id"]]
+            configure_dhcp_on_rack_controllers,
+            reserved_ip_ids=[reserved_ip["id"]],
         )
 
     def test_create_mandatory_fields(self):
@@ -214,7 +215,8 @@ class TestReservedIPHandler(MAASServerTestCase):
         self.assertEqual(len(ReservedIP.objects.all()), 0)
 
         reservedip_module.post_commit_do.assert_called_once_with(
-            configure_dhcp_on_agents, subnet_ids=[reserved_ip["subnet"]]
+            configure_dhcp_on_rack_controllers,
+            subnet_ids=[reserved_ip["subnet"]],
         )
 
     def test_delete_with_invalid_params(self):

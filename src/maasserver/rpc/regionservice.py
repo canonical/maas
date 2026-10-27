@@ -616,7 +616,7 @@ class RegionServer(Region):
         url,
         beacon_support=False,
         version=None,
-        agent_uuid=None,
+        rack_controller_uuid=None,
     ):
         result = yield self._register(
             system_id,
@@ -624,7 +624,7 @@ class RegionServer(Region):
             interfaces,
             url,
             version=version,
-            agent_uuid=agent_uuid,
+            rack_controller_uuid=rack_controller_uuid,
         )
         if beacon_support:
             # The remote supports beaconing, so acknowledge that.
@@ -642,7 +642,7 @@ class RegionServer(Region):
         interfaces,
         url,
         version=None,
-        agent_uuid=None,
+        rack_controller_uuid=None,
     ):
         try:
             # Register, which includes updating interfaces.
@@ -655,7 +655,7 @@ class RegionServer(Region):
                 url=url,
                 is_loopback=is_loopback,
                 version=version,
-                agent_uuid=agent_uuid,
+                rack_controller_uuid=rack_controller_uuid,
             )
 
             yield self.initResponder(rack_controller)

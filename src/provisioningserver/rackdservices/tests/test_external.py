@@ -838,8 +838,8 @@ class TestRackSyslog(MAASTestCase):
         self.assertEqual("", logger.output)
 
 
-class TestRackAgent(MAASTestCase):
-    """Tests for `RackAgent` for `RackExternalService`."""
+class TestRackRackController(MAASTestCase):
+    """Tests for `RackControllerExternalService` for `RackExternalService`."""
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
@@ -861,8 +861,8 @@ class TestRackAgent(MAASTestCase):
         self.useFixture(MAASUUIDFixture(maas_uuid))
         self.useFixture(MAASIDFixture(system_id))
 
-        agent = external.RackAgent()
-        observed = agent._getConfiguration()
+        rack_controller = external.RackControllerExternalService()
+        observed = rack_controller._getConfiguration()
 
         self.assertEqual(observed.maas_uuid, maas_uuid)
         self.assertEqual(observed.system_id, system_id)
@@ -882,8 +882,8 @@ class TestRackAgent(MAASTestCase):
             )
         )
 
-        agent = external.RackAgent()
-        observed = agent._getConfiguration()
+        rack_controller = external.RackControllerExternalService()
+        observed = rack_controller._getConfiguration()
 
         self.assertEqual(observed.temporal.host, "some.other.server")
 
@@ -893,29 +893,31 @@ class TestRackAgent(MAASTestCase):
         self.useFixture(MAASIDFixture(factory.make_name("system-id")))
 
         restartService = self.patch_autospec(service_monitor, "restartService")
-        agent = external.RackAgent()
-        agent._configure = Mock()
-        self.assertIsNone(agent._configuration)
+        rack_controller = external.RackControllerExternalService()
+        rack_controller._configure = Mock()
+        self.assertIsNone(rack_controller._configuration)
 
-        config = agent._getConfiguration()
+        config = rack_controller._getConfiguration()
 
-        yield agent._maybeApplyConfiguration(config)
-        agent._configure.assert_called_once_with(config)
-        restartService.assert_called_once_with("agent")
-        self.assertIsNotNone(agent._configuration)
+        yield rack_controller._maybeApplyConfiguration(config)
+        rack_controller._configure.assert_called_once_with(config)
+        restartService.assert_called_once_with("rack-controller")
+        self.assertIsNotNone(rack_controller._configuration)
 
-        agent._configure.reset_mock()
+        rack_controller._configure.reset_mock()
         restartService.reset_mock()
-        yield agent._maybeApplyConfiguration(config)
-        agent._configure.assert_not_called()
+        yield rack_controller._maybeApplyConfiguration(config)
+        rack_controller._configure.assert_not_called()
         restartService.assert_not_called()
 
     @inlineCallbacks
     def test_tryUpdate_uses_maybeApplyConfiguration(self):
         self.patch_autospec(service_monitor, "restartService")
-        agent = external.RackAgent()
-        config = agent._getConfiguration()
-        agent._maybeApplyConfiguration = Mock()
-        yield agent._tryUpdate(Mock())
+        rack_controller = external.RackControllerExternalService()
+        config = rack_controller._getConfiguration()
+        rack_controller._maybeApplyConfiguration = Mock()
+        yield rack_controller._tryUpdate(Mock())
 
-        agent._maybeApplyConfiguration.assert_called_once_with(config)
+        rack_controller._maybeApplyConfiguration.assert_called_once_with(
+            config
+        )

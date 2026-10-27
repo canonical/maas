@@ -4,7 +4,6 @@
 from typing import Callable, Self
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.agents import AgentsRepository
 from maasservicelayer.db.repositories.bootresourcefiles import (
     BootResourceFilesRepository,
 )
@@ -86,6 +85,9 @@ from maasservicelayer.db.repositories.package_repositories import (
     PackageRepositoriesRepository,
 )
 from maasservicelayer.db.repositories.power_types import PowerTypeRepository
+from maasservicelayer.db.repositories.rackcontrollers import (
+    RackControllersRepository,
+)
 from maasservicelayer.db.repositories.racks import RacksRepository
 from maasservicelayer.db.repositories.rdns import RDNSRepository
 from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
@@ -130,7 +132,6 @@ from maasservicelayer.db.repositories.usergroups_members import (
 from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.db.repositories.zones import ZonesRepository
-from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.base import ServiceCache
 from maasservicelayer.services.boot_sources import BootSourcesService
@@ -196,6 +197,7 @@ from maasservicelayer.services.package_repositories import (
     PackageRepositoriesService,
 )
 from maasservicelayer.services.power_types import PowerTypesService
+from maasservicelayer.services.rackcontrollers import RackControllersService
 from maasservicelayer.services.racks import RacksService
 from maasservicelayer.services.rdns import RDNSService
 from maasservicelayer.services.reservedips import ReservedIPsService
@@ -262,7 +264,7 @@ class ServiceCollectionV3:
     """Provide all v3 services."""
 
     # Keep them in alphabetical order, please
-    agents: AgentsService
+    rack_controllers: RackControllersService
     auth: AuthService
     boot_resources: BootResourceService
     boot_resource_sets: BootResourceSetsService
@@ -707,13 +709,14 @@ class ServiceCollectionV3:
                 ExternalOAuthService.build_cache_object,
             ),  # type: ignore
         )
-        services.agents = AgentsService(
+        services.rack_controllers = RackControllersService(
             context=context,
-            repository=AgentsRepository(context),
+            repository=RackControllersRepository(context),
             configurations_service=services.configurations,
             users_service=services.users,
             cache=cache.get(
-                AgentsService.__name__, AgentsService.build_cache_object
+                RackControllersService.__name__,
+                RackControllersService.build_cache_object,
             ),  # type: ignore
         )
         services.v3dnsrrsets = V3DNSResourceRecordSetsService(
@@ -744,7 +747,7 @@ class ServiceCollectionV3:
         services.racks = RacksService(
             context=context,
             repository=RacksRepository(context),
-            agents_service=services.agents,
+            rack_controllers_service=services.rack_controllers,
             bootstraptokens_service=services.bootstraptokens,
             configurations_service=services.configurations,
             secrets_service=services.secrets,

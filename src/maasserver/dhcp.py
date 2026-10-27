@@ -993,7 +993,7 @@ def _get_dhcp_rackcontrollers(dhcp_snippet):
         return dhcp_snippet.node.get_boot_rack_controllers()
 
 
-def configure_dhcp_on_agents(
+def configure_dhcp_on_rack_controllers(
     system_ids: list[str] | None = None,
     vlan_ids: list[int] | None = None,
     subnet_ids: list[int] | None = None,

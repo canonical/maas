@@ -774,7 +774,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         OneWayStringBool(if_missing=True),
     )
 
-    # MAAS Agent options
+    # Rack controller options
     httpproxy_cache_size = ConfigurationOption(
         "httpproxy_cache_size",
         "The size of a cache used by HTTP proxy",
@@ -782,7 +782,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     )
     temporal_server = ConfigurationOption(
         "temporal_server",
-        "Address MAAS Agent dials to reach Temporal; empty derives it "
+        "Address rack controller dials to reach Temporal; empty derives it "
         "from maas_url.",
         UnicodeString(if_missing=""),
     )

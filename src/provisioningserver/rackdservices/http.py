@@ -198,10 +198,12 @@ class RackHTTPService(TimerService):
         template = load_template("http", "rackd.nginx.conf.template")
         root_prefix = get_root_path()
         httpproxy_socket_path = os.getenv(
-            "MAAS_AGENT_HTTPPROXY_SOCKET_PATH",
+            "MAAS_RACK_CONTROLLER_HTTPPROXY_SOCKET_PATH",
             str(get_maas_run_path() / "httpproxy.sock"),
         )
-        agent_http_socket_path = str(get_maas_run_path() / "agent-http.sock")
+        rack_controller_http_socket_path = str(
+            get_maas_run_path() / "rack-controller-http.sock"
+        )
 
         hardening_active = is_hardening_enabled()
         api_bind = []
@@ -249,8 +251,8 @@ class RackHTTPService(TimerService):
                 {
                     "upstream_http": list(sorted(upstream_http)),
                     "machine_resources": str(root_prefix / "usr/share/maas"),
-                    "maas_agent_httpproxy_socket_path": httpproxy_socket_path,
-                    "maas_agent_http_socket_path": agent_http_socket_path,
+                    "maas_rack_controller_httpproxy_socket_path": httpproxy_socket_path,
+                    "maas_rack_controller_http_socket_path": rack_controller_http_socket_path,
                     "boot_resources_dir": get_maas_data_path("image-storage"),
                     "hardening": hardening_active,
                     "api_listen": compose_listen_addresses(5248, api_bind),

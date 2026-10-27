@@ -144,7 +144,7 @@ class MAASProxyPortConfig(Config[int | None]):
         # 5241 - 4247 -> reserved for other MAAS services.
         # 5248 -> reserved for rack HTTP.
         # 5250 - 5270 -> reserved for region workers (RPC).
-        # 5271 - 5274 -> reserved for communication between Rack Controller (specifically maas-agent) and Region Controller.
+        # 5271 - 5274 -> reserved for communication between Rack Controller (specifically maas-rack-controller) and Region Controller.
         # 5281 - 5284 -> Region Controller Temporal cluster membership gossip communication.
         if value >= 5239 and value <= 5284:
             raise ValueError(
@@ -366,7 +366,7 @@ class MAASSyslogPortConfig(Config[int | None]):
         # 5241 - 4247 -> reserved for other MAAS services.
         # 5248 -> reserved for rack HTTP.
         # 5250 - 5270 -> reserved for region workers (RPC).
-        # 5271 - 5274 -> reserved for communication between Rack Controller (specifically maas-agent) and Region Controller.
+        # 5271 - 5274 -> reserved for communication between Rack Controller (specifically maas-rack-controller) and Region Controller.
         # 5281 - 5284 -> Region Controller Temporal cluster membership gossip communication.
         if value >= 5239 and value <= 5284:
             raise ValueError(

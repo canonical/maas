@@ -37,8 +37,8 @@ from maastesting.twisted import (
 from provisioningserver.certificates import (
     Certificate,
     CertificateRequest,
-    get_maas_agent_cert_paths,
     get_maas_cluster_cert_paths,
+    get_maas_rack_controller_cert_paths,
 )
 from provisioningserver.drivers.power import PowerError
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -1289,9 +1289,11 @@ class TestClusterClientClusterCertificatesAreStored(TestClusterClientBase):
         )
 
 
-class TestClusterClientAgentCertificatesAreStored(TestClusterClientBase):
+class TestClusterClientRackControllerCertificatesAreStored(
+    TestClusterClientBase
+):
     @inlineCallbacks
-    def test_agent_certificates_are_stored(self):
+    def test_rack_controller_certificates_are_stored(self):
         maas_data = os.getenv("MAAS_ROOT")
         certs_dir = f"{maas_data}/certificates"
         os.mkdir(certs_dir)
@@ -1321,10 +1323,10 @@ class TestClusterClientAgentCertificatesAreStored(TestClusterClientBase):
         result = yield client.registerRackWithRegion()
         self.assertTrue(result)
         self.assertEqual(
-            get_maas_agent_cert_paths(),
+            get_maas_rack_controller_cert_paths(),
             (
-                f"{certs_dir}/agent.crt",
-                f"{certs_dir}/agent.key",
+                f"{certs_dir}/rackcontroller.crt",
+                f"{certs_dir}/rackcontroller.key",
                 f"{certs_dir}/ca.pem",
             ),
         )
@@ -1770,7 +1772,7 @@ class TestClusterClient(TestClusterClientBase):
             url=urlparse(maas_url),
             beacon_support=True,
             version=str(get_running_version()),
-            agent_uuid=None,
+            rack_controller_uuid=None,
         )
 
 

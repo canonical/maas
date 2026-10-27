@@ -6,7 +6,11 @@ from sqlalchemy.sql.operators import eq
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
-from maasservicelayer.db.tables import AgentTable, NodeTable, RackTable
+from maasservicelayer.db.tables import (
+    NodeTable,
+    RackControllerTable,
+    RackTable,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.racks import Rack, RackWithSummary
 
@@ -35,12 +39,15 @@ class RacksRepository(BaseRepository[Rack]):
                 RackTable.c.name,
                 func.array_remove(
                     func.array_agg(NodeTable.c.system_id), None
-                ).label("registered_agents_system_ids"),
+                ).label("registered_rack_controllers_system_ids"),
             )
             .select_from(RackTable)
-            .outerjoin(AgentTable, AgentTable.c.rack_id == RackTable.c.id)
             .outerjoin(
-                NodeTable, NodeTable.c.id == AgentTable.c.rackcontroller_id
+                RackControllerTable,
+                RackControllerTable.c.rack_id == RackTable.c.id,
+            )
+            .outerjoin(
+                NodeTable, NodeTable.c.id == RackControllerTable.c.node_id
             )
             .offset((page - 1) * size)
             .limit(size)
