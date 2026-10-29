@@ -68,30 +68,19 @@ from maascommon.workflows.bootresource import (
     SyncSelectionParam,
 )
 from maasservicelayer.builders.notifications import NotificationBuilder
-from maasservicelayer.db.filters import ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.bootresourcefiles import (
-    BootResourceFileClauseFactory,
-)
-from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsourcecache import (
-    BootSourceCacheClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsources import (
-    BootSourcesClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-)
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
-from maasservicelayer.db.repositories.notifications import (
-    NotificationsClauseFactory,
-)
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.base import FilterFactory
+from maasservicelayer.filters.bootresourcefiles import BootResourceFileFilters
+from maasservicelayer.filters.bootresources import BootResourceFilters
+from maasservicelayer.filters.bootsourcecache import BootSourceCacheFilters
+from maasservicelayer.filters.bootsources import BootSourcesFilters
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+)
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.notifications import NotificationsFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
 from maasservicelayer.models.configurations import MAASUrlConfig
 from maasservicelayer.utils.buffer import ChunkBuffer
 from maasservicelayer.utils.image_local_files import (
@@ -196,12 +185,12 @@ class BootResourcesActivity(ActivityBase):
         async with self.start_transaction() as services:
             regions = await services.nodes.get_many(
                 query=QuerySpec(
-                    where=NodeClauseFactory.or_clauses(
+                    where=NodeFilters.or_filters(
                         [
-                            NodeClauseFactory.with_type(
+                            NodeFilters.with_type(
                                 NodeTypeEnum.REGION_CONTROLLER
                             ),
-                            NodeClauseFactory.with_type(
+                            NodeFilters.with_type(
                                 NodeTypeEnum.REGION_AND_RACK_CONTROLLER
                             ),
                         ]
@@ -211,7 +200,7 @@ class BootResourcesActivity(ActivityBase):
             for region in regions:
                 ip_addresses = await services.staticipaddress.get_for_nodes(
                     query=QuerySpec(
-                        where=StaticIPAddressClauseFactory.with_node_system_id(
+                        where=StaticIPAddressFilters.with_node_system_id(
                             region.system_id
                         )
                     )
@@ -384,7 +373,7 @@ class BootResourcesActivity(ActivityBase):
                 f.sha256
                 for f in await services.boot_resource_files.get_many(
                     query=QuerySpec(
-                        where=BootResourceFileClauseFactory.with_sha256_in(
+                        where=BootResourceFileFilters.with_sha256_in(
                             list({file.sha256 for file in param.files})
                         )
                     )
@@ -424,12 +413,12 @@ class BootResourcesActivity(ActivityBase):
             if not await services.image_sync.check_boot_source_enabled():
                 return
 
-            where_clauses = [BootSourcesClauseFactory.with_enabled(True)]
+            where_clauses = [BootSourcesFilters.with_enabled(True)]
 
             # TODO: MAASENG-6418 remove this
             if boot_source_id:
                 where_clauses.append(
-                    BootSourcesClauseFactory.with_id(boot_source_id)
+                    BootSourcesFilters.with_id(boot_source_id)
                 )
             else:
                 # If we are fetching manifests for all the boot sources,
@@ -442,12 +431,12 @@ class BootResourcesActivity(ActivityBase):
                 )
 
             boot_sources = await services.boot_sources.get_many(
-                query=QuerySpec(where=ClauseFactory.and_clauses(where_clauses))
+                query=QuerySpec(where=FilterFactory.and_filters(where_clauses))
             )
 
             for boot_source in boot_sources:
                 query = QuerySpec(
-                    where=NotificationsClauseFactory.with_ident(
+                    where=NotificationsFilters.with_ident(
                         NotificationComponent.FETCH_IMAGE_MANIFEST.format(
                             id=boot_source.id
                         )
@@ -513,14 +502,14 @@ class BootResourcesActivity(ActivityBase):
             available_selection_ids = []
             selections = await services.boot_source_selections.get_many(
                 query=QuerySpec(
-                    where=BootSourceSelectionClauseFactory.with_boot_source_id(
+                    where=BootSourceSelectionFilters.with_boot_source_id(
                         boot_source_id
                     )
                 )
             )
             cache_list = await services.boot_source_cache.get_many(
                 query=QuerySpec(
-                    where=BootSourceCacheClauseFactory.with_boot_source_id(
+                    where=BootSourceCacheFilters.with_boot_source_id(
                         boot_source_id
                     )
                 )
@@ -528,7 +517,7 @@ class BootResourcesActivity(ActivityBase):
             cache_key_list = [(c.os, c.arch, c.release) for c in cache_list]
             for selection in selections:
                 query = QuerySpec(
-                    where=NotificationsClauseFactory.with_ident(
+                    where=NotificationsFilters.with_ident(
                         NotificationComponent.SELECTION_AVAILABILITY.format(
                             id=selection.id
                         )
@@ -593,19 +582,17 @@ class BootResourcesActivity(ActivityBase):
                 existing_selection
             ) in await services.boot_source_selections.get_many(
                 query=QuerySpec(
-                    where=BootSourceSelectionClauseFactory.and_clauses(
+                    where=BootSourceSelectionFilters.and_filters(
                         [
-                            BootSourceSelectionClauseFactory.with_os(
-                                selection.os
-                            ),
-                            BootSourceSelectionClauseFactory.with_arch(
+                            BootSourceSelectionFilters.with_os(selection.os),
+                            BootSourceSelectionFilters.with_arch(
                                 selection.arch
                             ),
-                            BootSourceSelectionClauseFactory.with_release(
+                            BootSourceSelectionFilters.with_release(
                                 selection.release
                             ),
-                            BootSourceSelectionClauseFactory.not_clause(
-                                BootSourceSelectionClauseFactory.with_id(
+                            BootSourceSelectionFilters.not_filter(
+                                BootSourceSelectionFilters.with_id(
                                     selection.id
                                 )
                             ),
@@ -615,7 +602,7 @@ class BootResourcesActivity(ActivityBase):
             ):
                 await services.boot_resources.delete_many(
                     query=QuerySpec(
-                        where=BootResourceClauseFactory.with_selection_id(
+                        where=BootResourceFilters.with_selection_id(
                             existing_selection.id
                         )
                     )
@@ -660,7 +647,7 @@ class BootResourcesActivity(ActivityBase):
         async with self.start_transaction() as services:
             boot_resources = await services.boot_resources.get_many(
                 query=QuerySpec(
-                    where=BootResourceClauseFactory.with_rtype(
+                    where=BootResourceFilters.with_rtype(
                         BootResourceType.UPLOADED
                     )
                 )
@@ -700,7 +687,7 @@ class BootResourcesActivity(ActivityBase):
         async with self.start_transaction() as services:
             await services.boot_resource_files.delete_many(
                 query=QuerySpec(
-                    where=BootResourceFileClauseFactory.with_ids(file_ids)
+                    where=BootResourceFileFilters.with_ids(file_ids)
                 )
             )
 
@@ -724,7 +711,7 @@ class BootResourcesActivity(ActivityBase):
         async with self.start_transaction() as services:
             await services.notifications.create_or_update(
                 query=QuerySpec(
-                    where=NotificationsClauseFactory.with_ident(param.ident)
+                    where=NotificationsFilters.with_ident(param.ident)
                 ),
                 builder=NotificationBuilder(
                     ident=param.ident,
@@ -746,9 +733,7 @@ class BootResourcesActivity(ActivityBase):
             try:
                 await services.notifications.delete_one(
                     query=QuerySpec(
-                        where=NotificationsClauseFactory.with_ident(
-                            param.ident
-                        )
+                        where=NotificationsFilters.with_ident(param.ident)
                     ),
                 )
             except NotFoundException:

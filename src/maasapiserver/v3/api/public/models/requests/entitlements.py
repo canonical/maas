@@ -6,10 +6,6 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field
 
 from maascommon.openfga.base import OpenFGAEntitlementResourceType
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.resource_pools import (
-    ResourcePoolClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -18,6 +14,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.resource_pools import ResourcePoolFilters
 from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.models.openfga_tuple import EntitlementDeleteSpec
 from maasservicelayer.services import ServiceCollectionV3
@@ -53,9 +51,7 @@ class EntitlementRequest(BaseModel):
         if self.resource_type == OpenFGAEntitlementResourceType.POOL:
             pool_exists = await services.resource_pools.exists(
                 QuerySpec(
-                    where=ResourcePoolClauseFactory.with_ids(
-                        [self.resource_id]
-                    )
+                    where=ResourcePoolFilters.with_ids([self.resource_id])
                 )
             )
             if not pool_exists:

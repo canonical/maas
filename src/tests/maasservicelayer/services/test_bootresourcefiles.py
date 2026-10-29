@@ -15,11 +15,11 @@ from maascommon.workflows.bootresource import (
 )
 from maasservicelayer.builders.bootresourcefiles import BootResourceFileBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresourcefiles import (
-    BootResourceFileClauseFactory,
     BootResourceFilesRepository,
 )
+from maasservicelayer.filters.bootresourcefiles import BootResourceFileFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.services.bootresourcefiles import (
     BootResourceFilesService,
@@ -260,17 +260,15 @@ class TestBootResourceFilesService:
 
         mock_repository.get_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.with_sha256(file.sha256)
+                where=BootResourceFileFilters.with_sha256(file.sha256)
             )
         )
         mock_repository.get_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.and_clauses(
+                where=BootResourceFileFilters.and_filters(
                     [
-                        BootResourceFileClauseFactory.with_resource_set_id(1),
-                        BootResourceFileClauseFactory.with_filename(
-                            "boot-initrd"
-                        ),
+                        BootResourceFileFilters.with_resource_set_id(1),
+                        BootResourceFileFilters.with_filename("boot-initrd"),
                     ]
                 )
             )
@@ -303,14 +301,12 @@ class TestBootResourceFilesService:
             [
                 call(
                     query=QuerySpec(
-                        where=BootResourceFileClauseFactory.with_sha256(
-                            file.sha256
-                        )
+                        where=BootResourceFileFilters.with_sha256(file.sha256)
                     )
                 ),
                 call(
                     query=QuerySpec(
-                        where=BootResourceFileClauseFactory.with_sha256_starting_with(
+                        where=BootResourceFileFilters.with_sha256_starting_with(
                             file.sha256[:SHORTSHA256_MIN_PREFIX_LEN]
                         )
                     )
@@ -319,12 +315,10 @@ class TestBootResourceFilesService:
         )
         mock_repository.get_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.and_clauses(
+                where=BootResourceFileFilters.and_filters(
                     [
-                        BootResourceFileClauseFactory.with_resource_set_id(1),
-                        BootResourceFileClauseFactory.with_filename(
-                            "boot-initrd"
-                        ),
+                        BootResourceFileFilters.with_resource_set_id(1),
+                        BootResourceFileFilters.with_filename("boot-initrd"),
                     ]
                 )
             )
@@ -357,14 +351,12 @@ class TestBootResourceFilesService:
             [
                 call(
                     query=QuerySpec(
-                        where=BootResourceFileClauseFactory.with_sha256(
-                            file.sha256
-                        )
+                        where=BootResourceFileFilters.with_sha256(file.sha256)
                     )
                 ),
                 call(
                     query=QuerySpec(
-                        where=BootResourceFileClauseFactory.with_sha256_starting_with(
+                        where=BootResourceFileFilters.with_sha256_starting_with(
                             file.sha256[:SHORTSHA256_MIN_PREFIX_LEN]
                         )
                     )
@@ -373,12 +365,10 @@ class TestBootResourceFilesService:
         )
         mock_repository.get_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.and_clauses(
+                where=BootResourceFileFilters.and_filters(
                     [
-                        BootResourceFileClauseFactory.with_resource_set_id(1),
-                        BootResourceFileClauseFactory.with_filename(
-                            "boot-initrd"
-                        ),
+                        BootResourceFileFilters.with_resource_set_id(1),
+                        BootResourceFileFilters.with_filename("boot-initrd"),
                     ]
                 )
             )

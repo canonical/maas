@@ -1,11 +1,8 @@
 #  Copyright 2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from operator import eq
-
 from sqlalchemy import func, Select, select, Table
 
-from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     BootResourceTable,
@@ -14,18 +11,6 @@ from maasservicelayer.db.tables import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.switches import Switch, SwitchWithTargetImage
-
-
-class SwitchClauseFactory(ClauseFactory):
-    """Factory for creating query clauses for Switch queries."""
-
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(SwitchTable.c.id, id))
-
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=SwitchTable.c.id.in_(ids))
 
 
 class SwitchesRepository(BaseRepository[Switch]):

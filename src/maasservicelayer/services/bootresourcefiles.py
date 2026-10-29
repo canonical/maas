@@ -11,15 +11,15 @@ from maascommon.workflows.bootresource import (
 )
 from maasservicelayer.builders.bootresourcefiles import BootResourceFileBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresourcefiles import (
-    BootResourceFileClauseFactory,
     BootResourceFilesRepository,
 )
-from maasservicelayer.db.repositories.bootresourcefilesync import (
-    BootResourceFileSyncClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.bootresourcefiles import BootResourceFileFilters
+from maasservicelayer.filters.bootresourcefilesync import (
+    BootResourceFileSyncFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.services.base import BaseService, ServiceCache
 from maasservicelayer.services.bootresourcefilesync import (
@@ -51,15 +51,13 @@ class BootResourceFilesService(
     async def calculate_filename_on_disk(self, sha256: str) -> str:
         # there can be multiple files with the same sha256, so we can't use get_one
         matching_resources = await self.get_many(
-            query=QuerySpec(
-                where=BootResourceFileClauseFactory.with_sha256(sha256)
-            )
+            query=QuerySpec(where=BootResourceFileFilters.with_sha256(sha256))
         )
         if matching_resources:
             return matching_resources[0].filename_on_disk
         collisions = await self.get_many(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.with_sha256_starting_with(
+                where=BootResourceFileFilters.with_sha256_starting_with(
                     sha256[:SHORTSHA256_MIN_PREFIX_LEN]
                 )
             )
@@ -85,9 +83,7 @@ class BootResourceFilesService(
         """
         if not await self.exists(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.with_sha256(
-                    resource.sha256
-                )
+                where=BootResourceFileFilters.with_sha256(resource.sha256)
             )
         ):
             self.temporal_service.register_or_update_workflow_call(
@@ -111,7 +107,7 @@ class BootResourceFilesService(
         """
         still_exist = await self.get_many(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.with_sha256_in(
+                where=BootResourceFileFilters.with_sha256_in(
                     [r.sha256 for r in resources]
                 )
             )
@@ -151,12 +147,12 @@ class BootResourceFilesService(
 
         resource_file = await self.get_one(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.and_clauses(
+                where=BootResourceFileFilters.and_filters(
                     [
-                        BootResourceFileClauseFactory.with_resource_set_id(
+                        BootResourceFileFilters.with_resource_set_id(
                             resource_set_id
                         ),
-                        BootResourceFileClauseFactory.with_filename(
+                        BootResourceFileFilters.with_filename(
                             builder.ensure_set(builder.filename)
                         ),
                     ]
@@ -179,7 +175,7 @@ class BootResourceFilesService(
     ) -> None:
         await self.boot_resource_file_sync_service.delete_many(
             query=QuerySpec(
-                where=BootResourceFileSyncClauseFactory.with_file_id(
+                where=BootResourceFileSyncFilters.with_file_id(
                     resource_to_be_deleted.id
                 )
             )
@@ -190,7 +186,7 @@ class BootResourceFilesService(
     ) -> None:
         await self.boot_resource_file_sync_service.delete_many(
             query=QuerySpec(
-                where=BootResourceFileSyncClauseFactory.with_file_ids(
+                where=BootResourceFileSyncFilters.with_file_ids(
                     {file.id for file in resources}
                 )
             )

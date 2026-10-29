@@ -10,13 +10,13 @@ from maasservicelayer.builders.tokens import (
     RefreshTokenBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.tokens import (
-    OIDCRevokedTokenClauseFactory,
     OIDCRevokedTokenRepository,
     RefreshTokenRepository,
     TokensRepository,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.tokens import OIDCRevokedTokenFilters
 from maasservicelayer.models.tokens import (
     OIDCRevokedToken,
     RefreshToken,
@@ -220,6 +220,6 @@ class TestRevokedTokensService:
 
         mock_repository.exists.assert_awaited_once_with(
             query=QuerySpec(
-                where=OIDCRevokedTokenClauseFactory.with_token_hash("abc123")
+                where=OIDCRevokedTokenFilters.with_token_hash("abc123")
             )
         )

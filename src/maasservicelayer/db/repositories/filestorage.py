@@ -5,36 +5,18 @@ from base64 import b64decode
 from operator import eq
 from typing import List
 
-from sqlalchemy import Table, update
+from sqlalchemy import delete, Table, update
 from sqlalchemy.dialects.postgresql import insert
 
 from maasservicelayer.builders.filestorage import FileStorageBuilder
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.mappers.base import BaseDomainDataMapper
 from maasservicelayer.db.mappers.filestorage import FileStorageDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import FileStorageTable
+from maasservicelayer.filters.filestorage import FileStorageFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.filestorage import FileStorage
-
-
-class FileStorageClauseFactory(ClauseFactory):
-    @classmethod
-    def with_filename(cls, filename: str) -> Clause:
-        return Clause(condition=eq(FileStorageTable.c.filename, filename))
-
-    @classmethod
-    def with_filename_prefix(cls, prefix: str) -> Clause:
-        return Clause(
-            condition=FileStorageTable.c.filename.ilike(f"{prefix}%")
-        )
-
-    @classmethod
-    def with_key(cls, key: str) -> Clause:
-        return Clause(condition=eq(FileStorageTable.c.key, key))
-
-    @classmethod
-    def with_owner_id(cls, owner_id: int) -> Clause:
-        return Clause(condition=eq(FileStorageTable.c.owner_id, owner_id))
 
 
 class FileStorageRepository(BaseRepository[FileStorage]):
@@ -70,14 +52,10 @@ class FileStorageRepository(BaseRepository[FileStorage]):
         # check if we need to overwrite any existing file.
         existing_file = await self.get_one(
             query=QuerySpec(
-                where=FileStorageClauseFactory.and_clauses(
+                where=FileStorageFilters.and_filters(
                     [
-                        FileStorageClauseFactory.with_filename(
-                            resource["filename"]
-                        ),
-                        FileStorageClauseFactory.with_owner_id(
-                            resource["owner_id"]
-                        ),
+                        FileStorageFilters.with_filename(resource["filename"]),
+                        FileStorageFilters.with_owner_id(resource["owner_id"]),
                     ]
                 )
             )
@@ -108,12 +86,10 @@ class FileStorageRepository(BaseRepository[FileStorage]):
         file content that the database uses, to a valid `bytes` representation
         used by the service layer model.
 
-        This is called by `get_one`, `get_by_id`, and `get_many. In the future,
-        if this `list` is ever used over `get_many`, then that will need
-        overriding also.
+        This is called by `get_one`, `get_by_id`, and `get_many`.
         """
         stmt = self.select_all_statement()
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         stored_files = []
@@ -122,6 +98,33 @@ class FileStorageRepository(BaseRepository[FileStorage]):
             row_dict["content"] = b64decode(row_dict["content"])
             stored_files.append(self.get_model_factory()(**row_dict))
         return stored_files
+
+    async def _delete(self, query: QuerySpec) -> List[FileStorage]:
+        stmt = delete(FileStorageTable).returning(FileStorageTable)
+        stmt = self._translate(query).enrich_stmt(stmt)
+        result = (await self.execute_stmt(stmt)).all()
+        stored_files = []
+        for row in result:
+            row_dict = row._asdict()
+            row_dict["content"] = b64decode(row_dict["content"])
+            stored_files.append(self.get_model_factory()(**row_dict))
+        return stored_files
+
+    async def list(
+        self, page: int, size: int, query: QuerySpec | None = None
+    ) -> ListResult[FileStorage]:
+        result = await super().list(page, size, query)
+        for file in result.items:
+            file.content = b64decode(file.content)
+        return result
+
+    async def list_all(
+        self, query: QuerySpec | None = None
+    ) -> List[FileStorage]:
+        files = await super().list_all(query)
+        for file in files:
+            file.content = b64decode(file.content)
+        return files
 
     async def update_one(self, query, builder):
         raise NotImplementedError("Update is not supported for file storage")

@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.operation_tasks import (
-    OperationTasksClauseFactory,
     OperationTasksRepository,
 )
 from maasservicelayer.models.operations import OperationTask
@@ -18,19 +17,6 @@ from tests.fixtures.factories.operations import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestOperationTasksClauseFactory:
-    def test_with_operation_uuid(self) -> None:
-        clause = OperationTasksClauseFactory.with_operation_uuid("op-uuid")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_operation_task.operation_uuid = 'op-uuid'"
-        )
 
 
 class TestOperationTasksRepository(RepositoryCommonTests[OperationTask]):

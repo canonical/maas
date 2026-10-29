@@ -14,16 +14,15 @@ from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maascommon.enums.power import PowerState
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
-from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.exceptions.catalog import (
     NotFoundException,
     ValidationException,
 )
+from maasservicelayer.filters.interfaces import InterfaceFilters
+from maasservicelayer.filters.query import OrderBy
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
+from maasservicelayer.filters.subnets import SubnetFilters
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.models.dhcp import (
     DHCPDataForAgent,
     HostReservationData,
@@ -287,19 +286,20 @@ class TestDHCPService:
         await dhcp.get_kea_dhcp_data_for_agent(rack.system_id)
 
         vlan_query = dhcp.vlans_service.get_many.call_args_list[0].args[0]
-        assert vlan_query.where == VlansClauseFactory.and_clauses(
+        assert vlan_query.where == VlansFilters.and_filters(
             [
-                VlansClauseFactory.with_dhcp_on(True),
-                VlansClauseFactory.with_primary_or_secondary_rack_id(rack.id),
+                VlansFilters.with_dhcp_on(True),
+                VlansFilters.with_primary_or_secondary_rack_id(rack.id),
             ]
         )
+        assert vlan_query.order_by == (OrderBy(Vlan, "id"),)
         subnet_query = dhcp.subnets_service.get_many.call_args_list[0].kwargs[
             "query"
         ]
-        assert subnet_query.where == SubnetClauseFactory.and_clauses(
+        assert subnet_query.where == SubnetFilters.and_filters(
             [
-                SubnetClauseFactory.with_vlan_id_in([1]),
-                SubnetClauseFactory.with_managed(True),
+                SubnetFilters.with_vlan_id_in([1]),
+                SubnetFilters.with_managed(True),
             ]
         )
 
@@ -523,9 +523,7 @@ class TestDHCPService:
         }[id]
         dhcp.interfaces_service.get_many.side_effect = lambda query: (
             [interface]
-            if query.where.condition.compare(
-                InterfaceClauseFactory.with_node_config_id(1).condition
-            )
+            if query.where == InterfaceFilters.with_node_config_id(1)
             else [secondary_interface]
         )
         dhcp.staticipaddress_service.get_for_interfaces.side_effect = (
@@ -707,21 +705,22 @@ class TestDHCPService:
             HostReservationData("10.0.0.100", "00:11:22:33:44:77", "rsvd-3"),
         ]
         query = dhcp.staticipaddress_service.get_many.call_args.kwargs["query"]
-        expected = StaticIPAddressClauseFactory.and_clauses(
+        expected = StaticIPAddressFilters.and_filters(
             [
-                StaticIPAddressClauseFactory.with_subnet_id_in([1]),
-                StaticIPAddressClauseFactory.with_alloc_type_in(
+                StaticIPAddressFilters.with_subnet_id_in([1]),
+                StaticIPAddressFilters.with_alloc_type_in(
                     [
                         IpAddressType.AUTO,
                         IpAddressType.STICKY,
                         IpAddressType.USER_RESERVED,
                     ]
                 ),
-                StaticIPAddressClauseFactory.with_ip_not_null(),
-                StaticIPAddressClauseFactory.with_temp_expires_on_is_null(),
+                StaticIPAddressFilters.with_ip_not_null(),
+                StaticIPAddressFilters.with_temp_expires_on_is_null(),
             ]
         )
         assert query.where == expected
+        assert query.order_by == (OrderBy(StaticIPAddress, "id"),)
 
     async def test_host_interface_deduplication_spans_vlan_subnets(
         self, dhcp, interface
@@ -843,13 +842,14 @@ class TestDHCPService:
         query = dhcp.staticipaddress_service.get_for_nodes.call_args.kwargs[
             "query"
         ]
-        assert query.where == StaticIPAddressClauseFactory.and_clauses(
+        assert query.where == StaticIPAddressFilters.and_filters(
             [
-                StaticIPAddressClauseFactory.with_node_system_id("rack-1"),
-                StaticIPAddressClauseFactory.with_subnet_id(subnet.id),
-                StaticIPAddressClauseFactory.with_ip_not_null(),
+                StaticIPAddressFilters.with_node_system_id("rack-1"),
+                StaticIPAddressFilters.with_subnet_id(subnet.id),
+                StaticIPAddressFilters.with_ip_not_null(),
             ]
         )
+        assert query.order_by == (OrderBy(StaticIPAddress, "ip"),)
 
     async def test_dns_prioritizes_rack_and_deduplicates_explicit_servers(
         self, dhcp, subnet

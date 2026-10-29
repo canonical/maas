@@ -6,7 +6,6 @@ from typing import List
 from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
 from maasservicelayer.builders.resource_pools import ResourcePoolBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolRepository,
 )
@@ -17,6 +16,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_RESOURCEPOOL_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import (
     ResourcePool,

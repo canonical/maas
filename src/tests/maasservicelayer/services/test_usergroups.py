@@ -10,15 +10,13 @@ from sqlalchemy.sql.operators import eq
 from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
 from maasservicelayer.builders.usergroups import UserGroupBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.usergroups import (
-    UserGroupsClauseFactory,
-    UserGroupsRepository,
-)
+from maasservicelayer.db.repositories.usergroups import UserGroupsRepository
 from maasservicelayer.db.repositories.usergroups_members import (
     UserGroupMembersRepository,
 )
 from maasservicelayer.db.tables import OpenFGATupleTable
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.usergroups import UserGroupsFilters
 from maasservicelayer.models.base import ListResult, MaasBaseModel
 from maasservicelayer.models.usergroup_members import UserGroupMember
 from maasservicelayer.models.usergroups import UserGroup, UserGroupStatistics
@@ -440,7 +438,7 @@ class TestIntegrationUserGroupsService:
         services: ServiceCollectionV3,
     ) -> None:
         exists = await services.usergroups.exists(
-            query=QuerySpec(where=UserGroupsClauseFactory.with_name("Users"))
+            query=QuerySpec(where=UserGroupsFilters.with_name("Users"))
         )
         assert exists is True
 
@@ -451,7 +449,7 @@ class TestIntegrationUserGroupsService:
     ) -> None:
         exists = await services.usergroups.exists(
             query=QuerySpec(
-                where=UserGroupsClauseFactory.with_name("Administrators")
+                where=UserGroupsFilters.with_name("Administrators")
             )
         )
         assert exists is True

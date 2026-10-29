@@ -15,15 +15,11 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dhcpsnippets import (
-    DhcpSnippetsClauseFactory,
-)
-from maasservicelayer.db.repositories.ipranges import (
-    IPRangeClauseFactory,
-    IPRangesRepository,
-)
+from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.exceptions.catalog import AlreadyExistsException
+from maasservicelayer.filters.dhcpsnippets import DhcpSnippetsFilters
+from maasservicelayer.filters.ipranges import IPRangeFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -200,12 +196,12 @@ class TestIPRangesService:
             await ipranges_service.create(builder)
         mock_ipranges_repository.exists.assert_called_once_with(
             query=QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
-                        IPRangeClauseFactory.with_type(iprange.type),
-                        IPRangeClauseFactory.with_start_ip(iprange.start_ip),
-                        IPRangeClauseFactory.with_start_ip(iprange.end_ip),
-                        IPRangeClauseFactory.with_subnet_id(iprange.subnet_id),
+                        IPRangeFilters.with_type(iprange.type),
+                        IPRangeFilters.with_start_ip(iprange.start_ip),
+                        IPRangeFilters.with_start_ip(iprange.end_ip),
+                        IPRangeFilters.with_subnet_id(iprange.subnet_id),
                     ]
                 )
             )
@@ -334,7 +330,7 @@ class TestIPRangesService:
         )
         dhcpsnippets_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=DhcpSnippetsClauseFactory.with_iprange_id(iprange.id)
+                where=DhcpSnippetsFilters.with_iprange_id(iprange.id)
             )
         )
         mock_temporal.register_or_update_workflow_call.assert_called_once_with(

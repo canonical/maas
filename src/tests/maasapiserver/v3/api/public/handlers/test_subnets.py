@@ -21,8 +21,6 @@ from maasapiserver.v3.api.public.models.responses.ui_subnets import (
 from maasapiserver.v3.constants import V3_API_PREFIX, V3_API_UI_PREFIX
 from maascommon.enums.subnet import RdnsMode
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -31,6 +29,9 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import OrderBy, QuerySpec
+from maasservicelayer.filters.subnets import SubnetFilters
+from maasservicelayer.filters.ui_subnets import UISubnetsFilters
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.models.ui_subnets import UISubnet, UISubnetStatistics
@@ -396,11 +397,11 @@ class TestSubnetApi(ApiCommonTests):
         assert response.status_code == 412
         services_mock.subnets.delete_one.assert_called_with(
             query=QuerySpec(
-                where=SubnetClauseFactory.and_clauses(
+                where=SubnetFilters.and_filters(
                     [
-                        SubnetClauseFactory.with_id(1),
-                        SubnetClauseFactory.with_vlan_id(1),
-                        SubnetClauseFactory.with_fabric_id(1),
+                        SubnetFilters.with_id(1),
+                        SubnetFilters.with_vlan_id(1),
+                        SubnetFilters.with_fabric_id(1),
                     ]
                 )
             ),
@@ -491,6 +492,38 @@ class TestUISubnetApi(ApiCommonTests):
         assert (
             subnets_response.next
             == f"{self.BASE_PATH}?page=2&size=1&vlan_id=5001&fabric=fabric-0&subnet_id=1&q=foo&order_by=asc(cidr)&order_by=asc(fabric)&order_by=desc(space)"
+        )
+        services_mock.ui_subnets.list.assert_awaited_once_with(
+            page=1,
+            size=1,
+            query=QuerySpec(
+                where=UISubnetsFilters.and_filters(
+                    [
+                        UISubnetsFilters.and_filters(
+                            [
+                                UISubnetsFilters.with_vlan_ids([5001]),
+                                UISubnetsFilters.with_fabric_names(
+                                    ["fabric-0"]
+                                ),
+                                UISubnetsFilters.with_subnet_ids([1]),
+                            ]
+                        ),
+                        UISubnetsFilters.or_filters(
+                            [
+                                UISubnetsFilters.with_fabric_name_like("foo"),
+                                UISubnetsFilters.with_vlan_name_like("foo"),
+                                UISubnetsFilters.with_space_name_like("foo"),
+                                UISubnetsFilters.with_cidr_like("foo"),
+                            ]
+                        ),
+                    ]
+                ),
+                order_by=(
+                    OrderBy(UISubnet, "cidr"),
+                    OrderBy(UISubnet, "fabric_name"),
+                    OrderBy(UISubnet, "space_name", descending=True),
+                ),
+            ),
         )
 
     @pytest.mark.parametrize(

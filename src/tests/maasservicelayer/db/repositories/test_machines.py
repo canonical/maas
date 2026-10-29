@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
@@ -6,11 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.machines import (
-    MachineClauseFactory,
-    MachinesRepository,
-)
+from maasservicelayer.db.mappers.base import UnsupportedFilterError
+from maasservicelayer.db.repositories.machines import MachinesRepository
+from maasservicelayer.filters.base import FieldFilter, Operator
+from maasservicelayer.filters.machines import MachineFilters
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.zones import ZonesFilters
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.machines import Machine
 from tests.fixtures.factories.bmc import create_test_bmc
@@ -28,28 +30,91 @@ from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
-class TestMachineClauseFactory:
-    def test_builder(self) -> None:
-        clause = MachineClauseFactory.with_resource_pool_ids(None)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_node.pool_id IN (NULL) AND (1 != 1)")
-
-        clause = MachineClauseFactory.with_resource_pool_ids({1, 2, 3})
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_node.pool_id IN (1, 2, 3)")
-        clause = MachineClauseFactory.with_owner(None)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("auth_user.username IS NULL")
-        clause = MachineClauseFactory.with_owner("test")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("auth_user.username = 'test'")
-
-
 class TestMachinesRepository(RepositoryCommonTests[Machine]):
+    async def test_list_with_node_filters(
+        self,
+        repository_instance: MachinesRepository,
+        created_instance: Machine,
+        fixture: Fixture,
+    ) -> None:
+        await create_test_region_controller_entry(fixture)
+        result = await repository_instance.list(
+            page=1,
+            size=10,
+            query=QuerySpec(
+                where=NodeFilters.and_filters(
+                    [
+                        NodeFilters.with_ids([created_instance.id]),
+                        NodeFilters.with_system_id(created_instance.system_id),
+                        NodeFilters.with_hostname(created_instance.hostname),
+                        NodeFilters.with_owner_id(created_instance.owner_id),
+                        NodeFilters.with_type(created_instance.node_type),
+                    ]
+                )
+            ),
+        )
+        assert result.items == [created_instance]
+        assert result.total == 1
+
+    @pytest.mark.parametrize("field", ["owner", "power_type", "fqdn"])
+    async def test_list_with_relationship_field_filter(
+        self,
+        repository_instance: MachinesRepository,
+        created_instance: Machine,
+        field: str,
+    ) -> None:
+        result = await repository_instance.list(
+            page=1,
+            size=10,
+            query=QuerySpec(
+                where=FieldFilter(
+                    Machine,
+                    field,
+                    Operator.EQ,
+                    getattr(created_instance, field),
+                )
+            ),
+        )
+        assert result.items == [created_instance]
+        assert result.total == 1
+
+        result = await repository_instance.list(
+            page=1,
+            size=10,
+            query=QuerySpec(
+                where=FieldFilter(Machine, field, Operator.EQ, "missing")
+            ),
+        )
+        assert result.items == []
+        assert result.total == 0
+
+    @pytest.mark.parametrize("pool_ids", [None, set()])
+    async def test_list_with_empty_resource_pool_filter(
+        self,
+        repository_instance: MachinesRepository,
+        created_instance: Machine,
+        pool_ids: set[int] | None,
+    ) -> None:
+        result = await repository_instance.list(
+            page=1,
+            size=10,
+            query=QuerySpec(
+                where=MachineFilters.with_resource_pool_ids(pool_ids)
+            ),
+        )
+        assert result.items == []
+        assert result.total == 0
+
+    async def test_list_rejects_unrelated_model_filter(
+        self, repository_instance: MachinesRepository
+    ) -> None:
+        with pytest.raises(UnsupportedFilterError):
+            await repository_instance.list(
+                page=1,
+                size=10,
+                query=QuerySpec(where=ZonesFilters.with_ids([1])),
+            )
+
     @pytest.fixture
     def repository_instance(
         self, db_connection: AsyncConnection
@@ -191,7 +256,7 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
             page=1,
             size=20,
             query=QuerySpec(
-                where=MachineClauseFactory.with_resource_pool_ids({rp1.id})
+                where=MachineFilters.with_resource_pool_ids({rp1.id})
             ),
         )
         assert len(retrieved_machines.items) == 5
@@ -207,9 +272,7 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         retrieved_machines = await repository_instance.list(
             page=1,
             size=20,
-            query=QuerySpec(
-                where=MachineClauseFactory.with_owner(user2.username)
-            ),
+            query=QuerySpec(where=MachineFilters.with_owner(user2.username)),
         )
 
         assert len(retrieved_machines.items) == 5

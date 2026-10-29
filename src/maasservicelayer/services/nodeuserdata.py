@@ -3,11 +3,11 @@
 
 from maasservicelayer.builders.nodeuserdata import NodeUserDataBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.nodeuserdata import (
-    NodeUserDataClauseFactory,
     NodeUserDataRepository,
 )
+from maasservicelayer.filters.nodeuserdata import NodeUserDataFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.nodeuserdata import NodeUserData
 from maasservicelayer.services.base import BaseService
 
@@ -44,9 +44,7 @@ class NodeUserDataService(
     async def has_any_user_data(self, node_id: int) -> bool:
         """Whether the node has user data for either environment."""
         return await self.exists(
-            query=QuerySpec(
-                where=NodeUserDataClauseFactory.with_node_id(node_id)
-            )
+            query=QuerySpec(where=NodeUserDataFilters.with_node_id(node_id))
         )
 
     async def _get(self, node_id: int, for_ephemeral: bool) -> bytes | None:
@@ -75,10 +73,10 @@ class NodeUserDataService(
 
     def _query_for(self, node_id: int, for_ephemeral: bool) -> QuerySpec:
         return QuerySpec(
-            where=NodeUserDataClauseFactory.and_clauses(
+            where=NodeUserDataFilters.and_filters(
                 [
-                    NodeUserDataClauseFactory.with_node_id(node_id),
-                    NodeUserDataClauseFactory.with_for_ephemeral_environment(
+                    NodeUserDataFilters.with_node_id(node_id),
+                    NodeUserDataFilters.with_for_ephemeral_environment(
                         for_ephemeral
                     ),
                 ]

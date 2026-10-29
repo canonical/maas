@@ -55,14 +55,6 @@ from maasservicelayer.builders.bootresourcefilesync import (
     BootResourceFileSyncBuilder,
 )
 from maasservicelayer.builders.bootresourcesets import BootResourceSetBuilder
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootresourcefilesync import (
-    BootResourceFileSyncClauseFactory,
-)
-from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
-)
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -72,6 +64,13 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.bootresourcefilesync import (
+    BootResourceFileSyncFilters,
+)
+from maasservicelayer.filters.bootresources import BootResourceFilters
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.buffer import ChunkBuffer
@@ -248,14 +247,14 @@ class CustomImagesHandler(Handler):
 
         region_info = await services.nodes.get_one(
             query=QuerySpec(
-                where=NodeClauseFactory.with_system_id(maas_system_id),
+                where=NodeFilters.with_system_id(maas_system_id),
             )
         )
         assert region_info is not None
 
         await services.boot_resource_file_sync.get_or_create(
             query=QuerySpec(
-                where=BootResourceFileSyncClauseFactory.with_file_id(
+                where=BootResourceFileSyncFilters.with_file_id(
                     resource_file.id
                 ),
             ),
@@ -317,12 +316,12 @@ class CustomImagesHandler(Handler):
         pagination_params: PaginationParams = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ImageListResponse:
-        clauses = [
-            BootResourceClauseFactory.with_rtype(BootResourceType.UPLOADED)
+        clauses: list[Filter] = [
+            BootResourceFilters.with_rtype(BootResourceType.UPLOADED)
         ]
-        if filter_clause := filters.to_clause():
+        if filter_clause := filters.to_filter():
             clauses.append(filter_clause)
-        where_clause = BootResourceClauseFactory.and_clauses(clauses)
+        where_clause = BootResourceFilters.and_filters(clauses)
 
         boot_resources = await services.boot_resources.list(
             page=pagination_params.page,
@@ -382,10 +381,10 @@ class CustomImagesHandler(Handler):
     ) -> ImageResponse:
         boot_resource = await services.boot_resources.get_one(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_id(boot_resource_id),
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_id(boot_resource_id),
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
                     ]
@@ -427,10 +426,10 @@ class CustomImagesHandler(Handler):
     ) -> Response:
         await services.boot_resources.delete_one(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_id(boot_resource_id),
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_id(boot_resource_id),
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
                     ]
@@ -471,10 +470,10 @@ class CustomImagesHandler(Handler):
     ) -> Response:
         await services.boot_resources.delete_many(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_ids(ids),
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_ids(ids),
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
                     ]
@@ -511,7 +510,7 @@ class CustomImagesHandler(Handler):
         statuses = await services.boot_resources.list_custom_images_status(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=filters.to_clause()),
+            query=QuerySpec(where=filters.to_filter()),
         )
 
         next_link = None
@@ -593,7 +592,7 @@ class CustomImagesHandler(Handler):
             await services.boot_resources.list_custom_images_statistics(
                 page=pagination_params.page,
                 size=pagination_params.size,
-                query=QuerySpec(where=filters.to_clause()),
+                query=QuerySpec(where=filters.to_filter()),
             )
         )
 
@@ -681,8 +680,8 @@ class BootloadersHandler(Handler):
             page=pagination_params.page,
             size=pagination_params.size,
             query=QuerySpec(
-                where=BootResourceClauseFactory.not_clause(
-                    BootResourceClauseFactory.with_bootloader_type(None)
+                where=BootResourceFilters.not_filter(
+                    BootResourceFilters.with_bootloader_type(None)
                 )
             ),
         )
@@ -734,14 +733,12 @@ class BootloadersHandler(Handler):
     ) -> BootloaderResponse:
         bootloader = await services.boot_resources.get_one(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.not_clause(
-                            BootResourceClauseFactory.with_bootloader_type(
-                                None
-                            )
+                        BootResourceFilters.not_filter(
+                            BootResourceFilters.with_bootloader_type(None)
                         ),
-                        BootResourceClauseFactory.with_id(bootloader_id),
+                        BootResourceFilters.with_id(bootloader_id),
                     ]
                 )
             )

@@ -26,8 +26,8 @@ from maasapiserver.v3.auth.base import (
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.filters.sshkeys import SshKeyFilters
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3

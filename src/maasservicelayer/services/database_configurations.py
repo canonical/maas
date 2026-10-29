@@ -7,10 +7,10 @@ from maasservicelayer.builders.configurations import (
     DatabaseConfigurationBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.database_configurations import (
     DatabaseConfigurationsRepository,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.configurations import DatabaseConfiguration
 from maasservicelayer.services.base import Service
 

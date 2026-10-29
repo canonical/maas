@@ -1,4 +1,4 @@
-# Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -8,9 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.builders.resource_pools import ResourcePoolBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
-    ResourcePoolClauseFactory,
     ResourcePoolRepository,
 )
 from maasservicelayer.db.tables import ResourcePoolTable
@@ -18,6 +16,8 @@ from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     NotFoundException,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.resource_pools import ResourcePoolFilters
 from maasservicelayer.models.resource_pools import ResourcePool
 from tests.fixtures.factories.node import (
     create_test_device_entry,
@@ -30,19 +30,6 @@ from tests.fixtures.factories.resource_pools import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestResourcePoolClauseFactory:
-    def test_builder(self) -> None:
-        clause = ResourcePoolClauseFactory.with_ids([])
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_resourcepool.id IN (NULL) AND (1 != 1)")
-
-        clause = ResourcePoolClauseFactory.with_ids([1, 2, 3])
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_resourcepool.id IN (1, 2, 3)")
 
 
 class TestResourcePoolRepository(RepositoryCommonTests[ResourcePool]):
@@ -98,9 +85,7 @@ class TestResourcePoolRepository(RepositoryCommonTests[ResourcePool]):
         retrieved_resource_pools = await repository_instance.list(
             page=1,
             size=20,
-            query=QuerySpec(
-                where=ResourcePoolClauseFactory.with_ids(selected_ids)
-            ),
+            query=QuerySpec(where=ResourcePoolFilters.with_ids(selected_ids)),
         )
         assert len(retrieved_resource_pools.items) == 2
         assert retrieved_resource_pools.total == 2
@@ -255,9 +240,7 @@ class TestResourcePoolRepositoryListSummary:
                 page=1,
                 size=20,
                 query=QuerySpec(
-                    ResourcePoolClauseFactory.with_ids(
-                        [created_resource_pool.id]
-                    )
+                    ResourcePoolFilters.with_ids([created_resource_pool.id])
                 ),
             )
         )

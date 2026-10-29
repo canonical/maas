@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
 from maasservicelayer.builders.usergroups import UserGroupBuilder
-from maasservicelayer.db.filters import Clause
-from maasservicelayer.db.repositories.usergroups import UserGroupsClauseFactory
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.usergroups import UserGroupsFilters
 
 
 class UserGroupsFiltersParam(BaseModel):
@@ -28,11 +28,11 @@ class UserGroupsFiltersParam(BaseModel):
         )
     )
 
-    def to_clause(self) -> Clause | None:
+    def to_filter(self) -> Filter | None:
         if self.ids is not None:
-            return UserGroupsClauseFactory.with_ids(self.ids)
+            return UserGroupsFilters.with_ids(self.ids)
         if self.group_name is not None:
-            return UserGroupsClauseFactory.with_name_like(self.group_name)
+            return UserGroupsFilters.with_name_like(self.group_name)
         return None
 
     def to_href_format(self) -> str | None:

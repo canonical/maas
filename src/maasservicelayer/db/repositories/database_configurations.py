@@ -10,23 +10,21 @@ from sqlalchemy.sql.operators import eq
 from maasservicelayer.builders.configurations import (
     DatabaseConfigurationBuilder,
 )
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.context import Context
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import Repository
 from maasservicelayer.db.tables import ConfigTable
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.configurations import DatabaseConfiguration
 
 
-class DatabaseConfigurationsClauseFactory(ClauseFactory):
-    @classmethod
-    def with_name(cls, name: str) -> Clause:
-        return Clause(condition=eq(ConfigTable.c.name, name))
-
-    @classmethod
-    def with_names(cls, names: set[str]) -> Clause:
-        return Clause(condition=ConfigTable.c.name.in_(names))
-
-
 class DatabaseConfigurationsRepository(Repository):
+    def __init__(self, context: Context):
+        super().__init__(context)
+        self.mapper = DefaultDomainDataMapper(
+            DatabaseConfiguration, ConfigTable
+        )
+
     async def get(self, name: str) -> DatabaseConfiguration | None:
         stmt = (
             select(
@@ -44,7 +42,7 @@ class DatabaseConfigurationsRepository(Repository):
         stmt = select(
             "*",
         ).select_from(ConfigTable)
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         result = (await self.execute_stmt(stmt)).all()
         return [DatabaseConfiguration(**row._asdict()) for row in result]
 

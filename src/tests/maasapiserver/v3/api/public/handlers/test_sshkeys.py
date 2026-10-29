@@ -14,7 +14,6 @@ from maasapiserver.v3.api.public.models.responses.sshkeys import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.sshkeys import SshKeysProtocolType
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     PreconditionFailedException,
@@ -22,6 +21,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.filters.sshkeys import SshKeyFilters
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.sshkeys import SshKey

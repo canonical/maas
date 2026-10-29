@@ -9,11 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maascommon.enums.scriptresult import ScriptStatus
 from maasservicelayer.builders.scriptresult import ScriptResultBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.scriptresults import (
-    ScriptResultClauseFactory,
     ScriptResultsRepository,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.scriptresults import ScriptResultFilters
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.scriptresult import ScriptResult
@@ -24,87 +24,6 @@ from tests.fixtures.factories.scriptresult import (
 from tests.fixtures.factories.scriptset import create_test_scriptset_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestScriptResultClauseFactory:
-    def test_with_script_id(self):
-        clause = ScriptResultClauseFactory.with_script_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_scriptresult.script_id = 1"
-        )
-
-    def test_with_script_id_in(self):
-        clause = ScriptResultClauseFactory.with_script_id_in([1, 2, 3])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_scriptresult.script_id IN (1, 2, 3)"
-        )
-
-    def test_with_script_set_id(self):
-        clause = ScriptResultClauseFactory.with_script_set_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_scriptresult.script_set_id = 1"
-        )
-
-    def test_with_script_set_id_in(self):
-        clause = ScriptResultClauseFactory.with_script_set_id_in([1, 2, 3])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_scriptresult.script_set_id IN (1, 2, 3)"
-        )
-
-    def test_with_status(self):
-        clause = ScriptResultClauseFactory.with_status(ScriptStatus.PASSED)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == f"maasserver_scriptresult.status = {ScriptStatus.PASSED}"
-        )
-
-    def test_with_status_in(self):
-        clause = ScriptResultClauseFactory.with_status_in(
-            [ScriptStatus.PENDING, ScriptStatus.RUNNING]
-        )
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == f"maasserver_scriptresult.status IN ({ScriptStatus.PENDING}, {ScriptStatus.RUNNING})"
-        )
-
-    def test_with_node_id(self):
-        clause = ScriptResultClauseFactory.with_node_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_scriptset.node_id = 1"
-        )
 
 
 class TestScriptResultsRepository(RepositoryCommonTests[ScriptResult]):
@@ -163,6 +82,29 @@ class TestScriptResultsRepository(RepositoryCommonTests[ScriptResult]):
         return await create_test_scriptresult_entry(
             fixture, script_set_id=scriptset_instance["id"]
         )
+
+    async def test_get_many_filter_by_node(
+        self,
+        repository_instance: ScriptResultsRepository,
+        fixture: Fixture,
+        node_instance,
+        created_instance: ScriptResult,
+    ) -> None:
+        other_node = await create_test_machine_entry(fixture)
+        other_set = await create_test_scriptset_entry(
+            fixture, node_id=other_node["id"]
+        )
+        await create_test_scriptresult_entry(
+            fixture, script_set_id=other_set["id"]
+        )
+
+        results = await repository_instance.get_many(
+            QuerySpec(
+                where=ScriptResultFilters.with_node_id(node_instance["id"])
+            )
+        )
+
+        assert results == [created_instance]
 
     @pytest.mark.skip(reason="There's no constraint in the DB for this table")
     async def test_create_duplicated(
@@ -257,7 +199,7 @@ class TestScriptResultsRepository(RepositoryCommonTests[ScriptResult]):
 
         results = await repository_instance.get_many(
             query=QuerySpec(
-                where=ScriptResultClauseFactory.with_script_set_id(
+                where=ScriptResultFilters.with_script_set_id(
                     scriptset_instance["id"]
                 )
             )

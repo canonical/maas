@@ -6,9 +6,9 @@ from typing import Annotated
 from pydantic import BaseModel, Field, IPvAnyAddress
 
 from maasservicelayer.builders.staticroutes import StaticRouteBuilder
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.subnets import SubnetFilters
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -30,9 +30,7 @@ class StaticRouteRequest(BaseModel):
         self, source_subnet: Subnet, services: ServiceCollectionV3
     ) -> StaticRouteBuilder:
         destination_subnet = await services.subnets.get_one(
-            query=QuerySpec(
-                where=SubnetClauseFactory.with_id(self.destination_id)
-            )
+            query=QuerySpec(where=SubnetFilters.with_id(self.destination_id))
         )
         if not destination_subnet:
             raise ValidationException.build_for_field(

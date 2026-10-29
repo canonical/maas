@@ -24,10 +24,6 @@ from maascommon.openfga.base import (
     MAASResourceEntitlement,
     PoolResourceEntitlements,
 )
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.resource_pools import (
-    ResourcePoolClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -37,6 +33,8 @@ from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.resource_pools import ResourcePoolFilters
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import (
     ResourcePool,
@@ -490,7 +488,7 @@ class TestResourcePoolsWithSummary:
             page=1,
             size=1,
             query=QuerySpec(
-                where=ResourcePoolClauseFactory.with_ids(
+                where=ResourcePoolFilters.with_ids(
                     [self.RESOURCE_POOL_WITH_STATISTICS_0.id]
                 )
             ),

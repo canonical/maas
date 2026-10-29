@@ -12,13 +12,13 @@ from sqlalchemy.sql.operators import eq, ne
 from maascommon.enums.events import EventTypeEnum
 from maascommon.events import EventDetail
 from maasservicelayer.builders.events import EventTypeBuilder
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.mappers.base import BaseDomainDataMapper
 from maasservicelayer.db.mappers.event import EventDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import EventTable, EventTypeTable, NodeTable
 from maasservicelayer.exceptions.catalog import AlreadyExistsException
 from maasservicelayer.filters.events import EventTypeFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.events import Event, EventType
 from maasservicelayer.utils.date import utcnow

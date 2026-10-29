@@ -25,14 +25,10 @@ from maasservicelayer.builders.operations import (
     OperationTaskBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import Clause, QuerySpec
 from maasservicelayer.db.repositories.operation_tasks import (
     OperationTasksRepository,
 )
-from maasservicelayer.db.repositories.operations import (
-    OperationsClauseFactory,
-    OperationsRepository,
-)
+from maasservicelayer.db.repositories.operations import OperationsRepository
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ConflictException,
@@ -44,6 +40,8 @@ from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.operations import OperationsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.operations import Operation, OperationTask
 from maasservicelayer.services.base import BaseService
@@ -130,12 +128,12 @@ class OperationsService(
         """Return ACCEPTED operations created before ``created_before``."""
         return await self.repository.get_many(
             query=QuerySpec(
-                where=OperationsClauseFactory.and_clauses(
+                where=OperationsFilters.and_filters(
                     [
-                        OperationsClauseFactory.with_status(
+                        OperationsFilters.with_status(
                             OperationStatus.ACCEPTED
                         ),
-                        OperationsClauseFactory.created_before(created_before),
+                        OperationsFilters.created_before(created_before),
                     ]
                 )
             )
@@ -151,13 +149,11 @@ class OperationsService(
         """
         return await self.exists(
             query=QuerySpec(
-                where=OperationsClauseFactory.and_clauses(
+                where=OperationsFilters.and_filters(
                     [
-                        OperationsClauseFactory.with_resource_type(
-                            resource_type
-                        ),
-                        OperationsClauseFactory.with_resource_id(resource_id),
-                        OperationsClauseFactory.with_statuses(
+                        OperationsFilters.with_resource_type(resource_type),
+                        OperationsFilters.with_resource_id(resource_id),
+                        OperationsFilters.with_statuses(
                             [
                                 OperationStatus.ACCEPTED,
                                 OperationStatus.RUNNING,
@@ -173,7 +169,7 @@ class OperationsService(
         """Return operations that are RUNNING or CANCELLING."""
         return await self.repository.get_many(
             query=QuerySpec(
-                where=OperationsClauseFactory.with_statuses(
+                where=OperationsFilters.with_statuses(
                     [OperationStatus.RUNNING, OperationStatus.CANCELLING]
                 )
             )
@@ -205,9 +201,7 @@ class OperationsService(
             builder.result = {"error": error}
 
         return await self.update_one(
-            query=QuerySpec(
-                where=OperationsClauseFactory.with_uuid(operation_uuid)
-            ),
+            query=QuerySpec(where=OperationsFilters.with_uuid(operation_uuid)),
             builder=builder,
         )
 
@@ -215,9 +209,7 @@ class OperationsService(
         self, operation_uuid: str, name: str
     ) -> Operation:
         return await self.update_one(
-            query=QuerySpec(
-                where=OperationsClauseFactory.with_uuid(operation_uuid)
-            ),
+            query=QuerySpec(where=OperationsFilters.with_uuid(operation_uuid)),
             builder=OperationBuilder(current_task=name),
         )
 
@@ -233,16 +225,14 @@ class OperationsService(
             return await self.repository.list(
                 page=page, size=size, query=query
             )
-        user_clause = OperationsClauseFactory.with_user_id(user_id)
+        user_filter = OperationsFilters.with_user_id(user_id)
         if query and query.where:
-            # Operations are not migrated to domain filters yet.
-            assert isinstance(query.where, Clause)
-            combined = OperationsClauseFactory.and_clauses(
-                [query.where, user_clause]
+            combined = OperationsFilters.and_filters(
+                [query.where, user_filter]
             )
             filtered_query = QuerySpec(where=combined)
         else:
-            filtered_query = QuerySpec(where=user_clause)
+            filtered_query = QuerySpec(where=user_filter)
         return await self.repository.list(
             page=page, size=size, query=filtered_query
         )

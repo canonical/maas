@@ -4,10 +4,10 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv6Address
+from operator import eq
 from typing import Type
 
 from sqlalchemy import and_, select, Table, text
-from sqlalchemy.sql.operators import eq
 
 from maascommon.dns import (
     get_iface_name_based_hostname,
@@ -17,7 +17,6 @@ from maascommon.dns import (
 )
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.node import NodeTypeEnum
-from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     DomainTable,
@@ -71,24 +70,6 @@ class DnsDataMappingQueryResult:
     rrtype: int | None = None
     rrdata: str | None = None
     node_id: int | None = None
-
-
-class DomainsClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(DomainTable.c.id, id))
-
-    @classmethod
-    def with_name(cls, name: str) -> Clause:
-        return Clause(condition=eq(DomainTable.c.name, name))
-
-    @classmethod
-    def with_authoritative(cls, authoritative: bool) -> Clause:
-        return Clause(condition=eq(DomainTable.c.authoritative, authoritative))
-
-    @classmethod
-    def with_ttl(cls, ttl: int) -> Clause:
-        return Clause(condition=eq(DomainTable.c.ttl, ttl))
 
 
 class DomainsRepository(BaseRepository[Domain]):

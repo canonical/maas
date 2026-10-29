@@ -10,10 +10,6 @@ from maasapiserver.v3.api.public.models.requests.reservedips import (
     ReservedIPCreateRequest,
     ReservedIPUpdateRequest,
 )
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ValidationException,
@@ -21,6 +17,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.reservedips import ReservedIP
@@ -51,13 +49,11 @@ class TestReservedIPCreateRequest:
             == f"The ip {ip} is already in use by another machine."
         )
         services_mock.staticipaddress.get_one.assert_called_once_with(
-            QuerySpec(where=StaticIPAddressClauseFactory.with_ip(ip))
+            QuerySpec(where=StaticIPAddressFilters.with_ip(ip))
         )
         services_mock.staticipaddress.get_mac_addresses.assert_called_once_with(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_id(
-                    staticipaddress_mock.id
-                )
+                where=StaticIPAddressFilters.with_id(staticipaddress_mock.id)
             )
         )
 
@@ -85,7 +81,7 @@ class TestReservedIPCreateRequest:
         )
 
         services_mock.staticipaddress.get_one.assert_called_once_with(
-            QuerySpec(where=StaticIPAddressClauseFactory.with_ip(ip))
+            QuerySpec(where=StaticIPAddressFilters.with_ip(ip))
         )
         services_mock.ipranges.get_dynamic_range_for_ip.assert_called_once_with(
             1, ip
@@ -110,7 +106,7 @@ class TestReservedIPCreateRequest:
             == "The provided ip is not part of the subnet."
         )
         services_mock.staticipaddress.get_one.assert_called_once_with(
-            QuerySpec(where=StaticIPAddressClauseFactory.with_ip(ip))
+            QuerySpec(where=StaticIPAddressFilters.with_ip(ip))
         )
 
     async def test_ip_is_network_address(self, services_mock: Mock) -> None:
@@ -132,7 +128,7 @@ class TestReservedIPCreateRequest:
             == "The network address cannot be a reserved IP."
         )
         services_mock.staticipaddress.get_one.assert_called_once_with(
-            QuerySpec(where=StaticIPAddressClauseFactory.with_ip(ip))
+            QuerySpec(where=StaticIPAddressFilters.with_ip(ip))
         )
 
     async def test_ip_is_broadcast_address(self, services_mock: Mock) -> None:
@@ -154,7 +150,7 @@ class TestReservedIPCreateRequest:
             == "The broadcast address cannot be a reserved IP."
         )
         services_mock.staticipaddress.get_one.assert_called_once_with(
-            QuerySpec(where=StaticIPAddressClauseFactory.with_ip(ip))
+            QuerySpec(where=StaticIPAddressFilters.with_ip(ip))
         )
 
 

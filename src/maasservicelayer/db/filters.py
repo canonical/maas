@@ -4,28 +4,18 @@
 from dataclasses import dataclass, field
 from typing import TypeVar
 
-from sqlalchemy import (
-    and_,
-    asc,
-    ColumnElement,
-    Delete,
-    desc,
-    Join,
-    not_,
-    or_,
-    Select,
-    Update,
-)
-
-from maasservicelayer.filters.base import Filter
+from sqlalchemy import and_, ColumnElement, Delete, Join, or_, Select, Update
 
 
 @dataclass
 class OrderByClause:
     column: ColumnElement
+    joins: list[Join] = field(default_factory=list)
 
     def __eq__(self, other) -> bool:
-        return self.column.compare(other.column)
+        return isinstance(other, type(self)) and Clause(
+            condition=self.column, joins=self.joins
+        ) == Clause(condition=other.column, joins=other.joins)
 
 
 @dataclass
@@ -56,14 +46,10 @@ UD = TypeVar("UD", Update, Delete)
 
 
 @dataclass
-class QuerySpec:
-    """
-    Contains the query specification to be executed.
-    """
+class SQLQuerySpec:
+    """SQL clauses to apply to a statement inside the data layer."""
 
-    # A Filter is expressed on domain model fields. The repository translates
-    # it into a Clause through its mapper before building the statement.
-    where: Clause | Filter | None = None
+    where: Clause | None = None
     # order_by can't be a single clause as SQLAlchemy requires the order_by args to be a list
     order_by: list[OrderByClause] = field(default_factory=list)
     # In the future this is the right place where we will put additional query pieces
@@ -72,9 +58,8 @@ class QuerySpec:
         """Enrich the SQL statement by adding the clauses (if present) in the object.
 
         The purpose of this method is to handle all the logic for enriching a statement
-        in a single spot, so when you have to apply a QuerySpec to a statement, all you
-        have to do is: `stmt = query.enrich_stmt(stmt)`, where `query` is the QuerySpec
-        object.
+        in a single spot: `stmt = query.enrich_stmt(stmt)`, where `query` is
+        an internal SQLQuerySpec produced by the mapper.
 
         The where condition is added to all kind of statements through the .where() method,
         the join conditions, instead, works different based on the statement type.
@@ -124,6 +109,8 @@ class QuerySpec:
             stmt = stmt.order_by(None)
 
             stmt = stmt.order_by(*[clause.column for clause in self.order_by])
+            for clause in self.order_by:
+                joins.extend(clause.joins)
 
         for join in joins:
             left_in_joined = join.left in already_joined
@@ -173,6 +160,15 @@ class QuerySpec:
             item for join in stmt._setup_joins for item in (join[0], join[2])
         }
         already_joined.update(stmt.columns_clause_froms)
+        # A SELECT can project another table while its explicit root is
+        # already joined. WHERE-only references are not joined tables.
+        froms = list(stmt._from_obj)
+        while froms:
+            source = froms.pop()
+            if isinstance(source, Join):
+                froms.extend((source.left, source.right))
+            else:
+                already_joined.add(source)
         return already_joined
 
 
@@ -198,19 +194,3 @@ class ClauseFactory:
             condition=and_(*[clause.condition for clause in clauses]),
             joins=cls._combine_joins(clauses),
         )
-
-    @classmethod
-    def not_clause(cls, clause: Clause) -> Clause:
-        return Clause(condition=not_(clause.condition), joins=clause.joins)
-
-
-class OrderByClauseFactory:
-    @staticmethod
-    def asc_clause(clause: OrderByClause) -> OrderByClause:
-        clause.column = asc(clause.column)
-        return clause
-
-    @staticmethod
-    def desc_clause(clause: OrderByClause) -> OrderByClause:
-        clause.column = desc(clause.column)
-        return clause

@@ -4,11 +4,9 @@
 from pydantic import BaseModel, Field
 
 from maasservicelayer.builders.switches import SwitchBuilder
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.bootresources import BootResourceFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -38,7 +36,7 @@ async def resolve_image_id(
 
     # Try to find the boot resource with the provided name
     boot_resource = await services.boot_resources.get_one(
-        query=QuerySpec(where=BootResourceClauseFactory.with_name(image))
+        query=QuerySpec(where=BootResourceFilters.with_name(image))
     )
 
     if (
@@ -56,9 +54,7 @@ async def resolve_image_id(
     if not boot_resource and "/" not in image:
         prefixed_name = f"onie/{image}"
         boot_resource = await services.boot_resources.get_one(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_name(prefixed_name)
-            )
+            query=QuerySpec(where=BootResourceFilters.with_name(prefixed_name))
         )
 
     if not boot_resource:

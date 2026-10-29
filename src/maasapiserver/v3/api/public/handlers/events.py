@@ -16,7 +16,7 @@ from maasapiserver.v3.api.public.models.responses.events import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.services import ServiceCollectionV3
 
 

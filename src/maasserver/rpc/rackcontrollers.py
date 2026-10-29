@@ -27,8 +27,8 @@ from maasserver.sqlalchemy import service_layer
 from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
 from maasservicelayer.builders.agents import AgentBuilder
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.agents import AgentsClauseFactory
+from maasservicelayer.filters.agents import AgentsFilters
+from maasservicelayer.filters.query import QuerySpec
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchNode, NoSuchScope
 from provisioningserver.utils.snap import (
@@ -155,9 +155,7 @@ def register(
             service_layer.ensure_connection()
             agents_service = service_layer.services.agents
             agent = agents_service.get_one(
-                query=QuerySpec(
-                    where=AgentsClauseFactory.with_uuid(agent_uuid)
-                )
+                query=QuerySpec(where=AgentsFilters.with_uuid(agent_uuid))
             )
             if agent and agent.rackcontroller_id is None:
                 agents_service.update_by_id(

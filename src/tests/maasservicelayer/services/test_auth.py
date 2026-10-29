@@ -18,9 +18,9 @@ from maascommon.logging.security import (
 )
 from maasservicelayer.auth.jwt import InvalidToken, JWT
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import UnauthorizedException
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.users import UserFilters
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
 from maasservicelayer.services import AuthService, SecretsService, UsersService
@@ -76,7 +76,7 @@ class TestAuthService:
         assert tokens.access_token.subject == user.username
         assert tokens.refresh_token == "refresh_token_hash_abc123"
         users_service_mock.get_one.assert_awaited_once_with(
-            QuerySpec(UserClauseFactory.with_username(user.username))
+            QuerySpec(UserFilters.with_username(user.username))
         )
         refresh_tokens_service_mock.create_refresh_token.assert_awaited_once_with(
             token="refresh_token_hash_abc123", user_id=user.id
@@ -149,7 +149,7 @@ class TestAuthService:
         assert tokens.access_token.subject == admin.username
         assert tokens.refresh_token == "refresh_token_hash_abc123"
         users_service_mock.get_one.assert_awaited_once_with(
-            QuerySpec(UserClauseFactory.with_username(admin.username))
+            QuerySpec(UserFilters.with_username(admin.username))
         )
         refresh_tokens_service_mock.create_refresh_token.assert_awaited_once_with(
             token="refresh_token_hash_abc123", user_id=admin.id

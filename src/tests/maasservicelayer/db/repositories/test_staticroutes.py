@@ -6,62 +6,61 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.staticroutes import (
-    StaticRoutesClauseFactory,
     StaticRoutesRepository,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.staticroutes import StaticRoutesFilters
 from maasservicelayer.models.staticroutes import StaticRoute
+from maasservicelayer.models.subnets import Subnet
+from tests.fixtures.factories.staticroutes import create_test_staticroute_entry
+from tests.fixtures.factories.subnet import create_test_subnet_entry
+from tests.fixtures.factories.vlan import create_test_vlan_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
-class TestStaticRoutesClauseFactory:
-    def test_id(self) -> None:
-        clause = StaticRoutesClauseFactory.with_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_staticroute.id = 1")
-
-    def test_with_vlan_id(self) -> None:
-        clause = StaticRoutesClauseFactory.with_vlan_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_subnet.vlan_id = 1")
-        assert str(
-            clause.joins[0].compile(compile_kwargs={"literal_binds": True})
-        ) == (
-            "maasserver_staticroute JOIN maasserver_subnet ON maasserver_subnet.id = maasserver_staticroute.source_id"
-        )
-
-    def test_with_fabric_id(self) -> None:
-        clause = StaticRoutesClauseFactory.with_fabric_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_vlan.fabric_id = 1")
-        assert str(
-            clause.joins[0].compile(compile_kwargs={"literal_binds": True})
-        ) == (
-            "maasserver_staticroute JOIN maasserver_subnet ON maasserver_subnet.id = maasserver_staticroute.source_id"
-        )
-        assert str(
-            clause.joins[1].compile(compile_kwargs={"literal_binds": True})
-        ) == (
-            "maasserver_subnet JOIN maasserver_vlan ON maasserver_subnet.vlan_id = maasserver_vlan.id"
-        )
-
-    def test_with_source_id(self) -> None:
-        clause = StaticRoutesClauseFactory.with_source_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_staticroute.source_id = 1")
-
-    def test_with_destination_id(self) -> None:
-        clause = StaticRoutesClauseFactory.with_destination_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_staticroute.destination_id = 1")
-
-
 class TestStaticRoutesRepository(RepositoryCommonTests[StaticRoute]):
+    async def test_related_filters_use_source_subnet(
+        self, fixture: Fixture, repository_instance: StaticRoutesRepository
+    ) -> None:
+        vlan = await create_test_vlan_entry(fixture)
+        source = Subnet(
+            **await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
+        )
+        destination = Subnet(**await create_test_subnet_entry(fixture))
+        expected = await create_test_staticroute_entry(
+            fixture, source, destination
+        )
+        await create_test_staticroute_entry(fixture, destination, source)
+        result = await repository_instance.get_many(
+            QuerySpec(
+                where=StaticRoutesFilters.and_filters(
+                    [
+                        StaticRoutesFilters.with_vlan_id(vlan["id"]),
+                        StaticRoutesFilters.with_fabric_id(vlan["fabric_id"]),
+                    ]
+                )
+            )
+        )
+        assert result == [expected]
+        assert (
+            await repository_instance.get_many(
+                QuerySpec(
+                    where=StaticRoutesFilters.and_filters(
+                        [
+                            StaticRoutesFilters.with_vlan_id(vlan["id"]),
+                            StaticRoutesFilters.not_filter(
+                                StaticRoutesFilters.with_fabric_id(
+                                    vlan["fabric_id"]
+                                )
+                            ),
+                        ]
+                    )
+                )
+            )
+            == []
+        )
+
     @pytest.fixture
     def repository_instance(
         self, db_connection: AsyncConnection

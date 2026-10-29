@@ -8,13 +8,14 @@ from maascommon.enums.events import EventTypeEnum
 from maascommon.events import EventDetail
 from maasservicelayer.builders.events import EventBuilder, EventTypeBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.mappers.base import UnsupportedFilterError
 from maasservicelayer.db.repositories.events import (
     EventsRepository,
     EventTypesRepository,
 )
 from maasservicelayer.filters.base import FieldFilter, Operator
 from maasservicelayer.filters.events import EventFilters
+from maasservicelayer.filters.query import OrderBy, QuerySpec
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.events import (
     EndpointChoicesEnum,
@@ -37,6 +38,38 @@ from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
 class TestEventsRepository(RepositoryCommonTests[Event]):
+    @pytest.mark.parametrize("descending", [False, True])
+    async def test_order_by_owner(
+        self, repository_instance, fixture, event_type, descending
+    ):
+        events = [
+            await create_test_event_entry(
+                fixture,
+                event_type=event_type,
+                username=owner,
+                node_hostname="test-node",
+            )
+            for owner in ["charlie", "alice", "bob"]
+        ]
+        result = await repository_instance.get_many(
+            QuerySpec(order_by=(OrderBy(Event, "owner", descending),))
+        )
+        assert result == sorted(
+            events, key=lambda event: event.owner, reverse=descending
+        )
+
+    async def test_rejects_unmapped_order(
+        self, repository_instance, created_instance
+    ):
+        with pytest.raises(UnsupportedFilterError):
+            await repository_instance.get_many(
+                QuerySpec(order_by=(OrderBy(Event, "type"),))
+            )
+        assert (
+            await repository_instance.get_by_id(created_instance.id)
+            == created_instance
+        )
+
     @pytest.fixture
     def repository_instance(
         self, db_connection: AsyncConnection
@@ -227,6 +260,32 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
         )
 
         assert [item.id for item in events] == [event.id]
+
+    async def test_get_many_negates_custom_filter_for_deleted_nodes(
+        self,
+        repository_instance: EventsRepository,
+        fixture: Fixture,
+        event_type: EventType,
+    ) -> None:
+        await create_test_event_entry(
+            fixture, event_type=event_type, node_system_id="target"
+        )
+        other = await create_test_event_entry(
+            fixture, event_type=event_type, node_system_id="other"
+        )
+        unattached = await create_test_event_entry(
+            fixture, event_type=event_type, node_system_id=None
+        )
+
+        events = await repository_instance.get_many(
+            QuerySpec(
+                where=EventFilters.not_filter(
+                    EventFilters.with_system_ids(["target"])
+                )
+            )
+        )
+
+        assert {event.id for event in events} == {other.id, unattached.id}
 
 
 class TestEventTypesRepository(RepositoryCommonTests[EventType]):

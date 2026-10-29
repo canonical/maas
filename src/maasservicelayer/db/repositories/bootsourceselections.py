@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import Iterable, List
+from typing import List
 
 from sqlalchemy import desc, func, Select, select, Table
 
@@ -11,7 +11,7 @@ from maascommon.enums.boot_resources import (
     BootResourceType,
 )
 from maascommon.enums.node import NodeStatus
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import SQLQuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ReadOnlyRepository,
@@ -25,61 +25,13 @@ from maasservicelayer.db.tables import (
     BootSourceTable,
     NodeTable,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
     BootSourceSelectionStatistic,
     BootSourceSelectionStatus,
 )
-
-
-class BootSourceSelectionClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(BootSourceSelectionTable.c.id, id))
-
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=BootSourceSelectionTable.c.id.in_(ids))
-
-    @classmethod
-    def with_boot_source_id(cls, boot_source_id: int) -> Clause:
-        return Clause(
-            condition=eq(
-                BootSourceSelectionTable.c.boot_source_id, boot_source_id
-            )
-        )
-
-    @classmethod
-    def with_boot_source_ids(cls, boot_source_ids: Iterable[int]) -> Clause:
-        return Clause(
-            condition=BootSourceSelectionTable.c.boot_source_id.in_(
-                boot_source_ids
-            )
-        )
-
-    @classmethod
-    def with_os(cls, os: str) -> Clause:
-        return Clause(condition=eq(BootSourceSelectionTable.c.os, os))
-
-    @classmethod
-    def with_release(cls, release: str) -> Clause:
-        return Clause(
-            condition=eq(BootSourceSelectionTable.c.release, release)
-        )
-
-    @classmethod
-    def with_arch(cls, arch: str) -> Clause:
-        return Clause(condition=eq(BootSourceSelectionTable.c.arch, arch))
-
-    @classmethod
-    def with_legacyselection_id(cls, legacyselection_id: int) -> Clause:
-        return Clause(
-            condition=eq(
-                BootSourceSelectionTable.c.legacyselection_id,
-                legacyselection_id,
-            )
-        )
 
 
 class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
@@ -135,12 +87,12 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
         result = await self.execute_stmt(stmt)
         return [BootSourceSelection(**row._asdict()) for row in result]
 
-    async def update_one(self, query, builder):
+    async def update_one(self, query: QuerySpec, builder):
         raise NotImplementedError(
             "Update is not supported for bootsourceselections"
         )
 
-    async def update_many(self, query, builder):
+    async def update_many(self, query: QuerySpec, builder):
         raise NotImplementedError(
             "Update is not supported for bootsourceselections"
         )
@@ -150,7 +102,7 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
             "Update is not supported for bootsourceselections"
         )
 
-    async def _update(self, query, builder):
+    async def _update(self, query: QuerySpec, builder):
         raise NotImplementedError(
             "Update is not supported for bootsourceselections"
         )
@@ -269,11 +221,14 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
     async def list_selections_statistics(
         self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[BootSourceSelectionStatistic]:
+        sql_query = self._translate(query) if query is not None else None
         total_stmt = select(func.count()).select_from(
             self.get_repository_table()
         )
-        if query:
-            total_stmt = query.enrich_stmt(total_stmt)
+        if sql_query:
+            total_stmt = SQLQuerySpec(where=sql_query.where).enrich_stmt(
+                total_stmt
+            )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = self._selection_statistics_stmt()
@@ -282,8 +237,8 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
             .offset((page - 1) * size)
             .limit(size)
         )
-        if query:
-            stmt = query.enrich_stmt(stmt)
+        if sql_query:
+            stmt = sql_query.enrich_stmt(stmt)
 
         result = await self.execute_stmt(stmt)
         return ListResult(
@@ -293,18 +248,6 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
             ],
             total=total,
         )
-
-
-class BootSourceSelectionStatusClauseFactory(ClauseFactory):
-    @classmethod
-    def with_selected(cls, selected: bool) -> Clause:
-        return Clause(
-            condition=eq(BootSourceSelectionStatusView.c.selected, selected)
-        )
-
-    @classmethod
-    def with_ids(cls, ids: List[int]) -> Clause:
-        return Clause(condition=BootSourceSelectionStatusView.c.id.in_(ids))
 
 
 class BootSourceSelectionStatusRepository(

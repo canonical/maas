@@ -1,17 +1,17 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv4Address, IPv6Address
 from typing import List, Type
 
-from sqlalchemy import and_, delete, func, join, not_, select, Table
+from sqlalchemy import and_, delete, func, not_, select, Table
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
-from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.mappers.staticipaddress import (
+    StaticIPAddressDomainDataMapper,
+)
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
@@ -21,126 +21,24 @@ from maasservicelayer.db.tables import (
     StaticIPAddressTable,
     SubnetTable,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.utils.date import utcnow
 
 
-class StaticIPAddressClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(StaticIPAddressTable.c.id, id))
-
-    @classmethod
-    def with_node_type(cls, type: NodeTypeEnum) -> Clause:
-        return Clause(condition=eq(NodeTable.c.node_type, type))
-
-    @classmethod
-    def with_node_system_id(cls, system_id: str) -> Clause:
-        return Clause(condition=eq(NodeTable.c.system_id, system_id))
-
-    @classmethod
-    def with_subnet_id(cls, subnet_id: int) -> Clause:
-        return Clause(
-            condition=eq(StaticIPAddressTable.c.subnet_id, subnet_id)
-        )
-
-    @classmethod
-    def with_subnet_id_in(cls, subnet_ids: list[int]) -> Clause:
-        return Clause(
-            condition=StaticIPAddressTable.c.subnet_id.in_(subnet_ids)
-        )
-
-    @classmethod
-    def with_ip(cls, ip: IPv4Address | IPv6Address | None) -> Clause:
-        return Clause(condition=eq(StaticIPAddressTable.c.ip, ip))
-
-    @classmethod
-    def with_user_id(cls, user_id: int) -> Clause:
-        return Clause(condition=eq(StaticIPAddressTable.c.user_id, user_id))
-
-    @classmethod
-    def with_alloc_type(cls, alloc_type: IpAddressType) -> Clause:
-        return Clause(
-            condition=eq(StaticIPAddressTable.c.alloc_type, alloc_type)
-        )
-
-    @classmethod
-    def with_linked_to_interface(cls) -> Clause:
-        return Clause(
-            condition=InterfaceIPAddressTable.c.interface_id.isnot(None),
-            joins=[
-                join(
-                    StaticIPAddressTable,
-                    InterfaceIPAddressTable,
-                    eq(
-                        StaticIPAddressTable.c.id,
-                        InterfaceIPAddressTable.c.staticipaddress_id,
-                    ),
-                ),
-            ],
-        )
-
-    @classmethod
-    def with_alloc_type_not_in(
-        cls, alloc_types: List[IpAddressType]
-    ) -> Clause:
-        return Clause(
-            condition=StaticIPAddressTable.c.alloc_type.notin_(alloc_types)
-        )
-
-    @classmethod
-    def with_alloc_type_in(cls, alloc_types: list[IpAddressType]) -> Clause:
-        return Clause(
-            condition=StaticIPAddressTable.c.alloc_type.in_(alloc_types)
-        )
-
-    @classmethod
-    def with_temp_expires_on_is_null(cls) -> Clause:
-        return Clause(
-            condition=StaticIPAddressTable.c.temp_expires_on.is_(None)
-        )
-
-    @classmethod
-    def with_interface_enabled(cls, enabled: bool) -> Clause:
-        return Clause(condition=eq(InterfaceTable.c.enabled, enabled))
-
-    @classmethod
-    def with_ip_not_null(cls) -> Clause:
-        return Clause(condition=StaticIPAddressTable.c.ip.isnot(None))
-
-    @classmethod
-    def with_interface_ids(cls, interface_ids: List[int]) -> Clause:
-        return Clause(
-            condition=InterfaceTable.c.id.in_(interface_ids),
-            joins=[
-                join(
-                    StaticIPAddressTable,
-                    InterfaceIPAddressTable,
-                    eq(
-                        StaticIPAddressTable.c.id,
-                        InterfaceIPAddressTable.c.staticipaddress_id,
-                    ),
-                ),
-                join(
-                    InterfaceIPAddressTable,
-                    InterfaceTable,
-                    eq(
-                        InterfaceIPAddressTable.c.interface_id,
-                        InterfaceTable.c.id,
-                    ),
-                ),
-            ],
-        )
-
-
-class StaticIPAddressRepository(BaseRepository):
+class StaticIPAddressRepository(BaseRepository[StaticIPAddress]):
     def get_repository_table(self) -> Table:
         return StaticIPAddressTable
 
     def get_model_factory(self) -> Type[StaticIPAddress]:
         return StaticIPAddress
+
+    def get_mapper(self) -> StaticIPAddressDomainDataMapper:
+        return StaticIPAddressDomainDataMapper(
+            StaticIPAddress, StaticIPAddressTable
+        )
 
     async def create_or_update(
         self, builder: StaticIPAddressBuilder
@@ -250,7 +148,7 @@ class StaticIPAddressRepository(BaseRepository):
                 SubnetTable.c.id == StaticIPAddressTable.c.subnet_id,
             )
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
         return [StaticIPAddress(**row._asdict()) for row in results]
 
@@ -268,7 +166,7 @@ class StaticIPAddressRepository(BaseRepository):
                 == InterfaceIPAddressTable.c.staticipaddress_id,
             )
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
         return [MacAddress(row._asdict()["mac_address"]) for row in results]
 

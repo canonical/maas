@@ -12,20 +12,9 @@ from maasservicelayer.builders.legacybootsourceselections import (
     LegacyBootSourceSelectionBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsourcecache import (
-    BootSourceCacheClauseFactory,
-)
 from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
     BootSourceSelectionsRepository,
     BootSourceSelectionStatusRepository,
-)
-from maasservicelayer.db.repositories.legacybootsourceselections import (
-    LegacyBootSourceSelectionClauseFactory,
 )
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
@@ -34,6 +23,15 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.bootresources import BootResourceFilters
+from maasservicelayer.filters.bootsourcecache import BootSourceCacheFilters
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+)
+from maasservicelayer.filters.legacybootsourceselections import (
+    LegacyBootSourceSelectionFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
@@ -95,9 +93,7 @@ class BootSourceSelectionsService(
             return
         await self.boot_resource_service.delete_many(
             query=QuerySpec(
-                where=BootResourceClauseFactory.with_selection_ids(
-                    selection_ids
-                )
+                where=BootResourceFilters.with_selection_ids(selection_ids)
             )
         )
 
@@ -161,14 +157,14 @@ class BootSourceSelectionsService(
 
         boot_source_cache = await self.boot_source_cache_service.exists(
             query=QuerySpec(
-                where=BootSourceCacheClauseFactory.and_clauses(
+                where=BootSourceCacheFilters.and_filters(
                     [
-                        BootSourceCacheClauseFactory.with_boot_source_id(
+                        BootSourceCacheFilters.with_boot_source_id(
                             boot_source_id
                         ),
-                        BootSourceCacheClauseFactory.with_os(os),
-                        BootSourceCacheClauseFactory.with_release(release),
-                        BootSourceCacheClauseFactory.with_arch(arch),
+                        BootSourceCacheFilters.with_os(os),
+                        BootSourceCacheFilters.with_release(release),
+                        BootSourceCacheFilters.with_arch(arch),
                     ]
                 )
             )
@@ -190,15 +186,15 @@ class BootSourceSelectionsService(
     ) -> None:
         legacy_selection = await self.legacy_boot_source_selection_service.get_one(
             query=QuerySpec(
-                where=LegacyBootSourceSelectionClauseFactory.and_clauses(
+                where=LegacyBootSourceSelectionFilters.and_filters(
                     [
-                        LegacyBootSourceSelectionClauseFactory.with_os(
+                        LegacyBootSourceSelectionFilters.with_os(
                             builder.ensure_set(builder.os)
                         ),
-                        LegacyBootSourceSelectionClauseFactory.with_release(
+                        LegacyBootSourceSelectionFilters.with_release(
                             builder.ensure_set(builder.release)
                         ),
-                        LegacyBootSourceSelectionClauseFactory.with_boot_source_id(
+                        LegacyBootSourceSelectionFilters.with_boot_source_id(
                             builder.ensure_set(builder.boot_source_id)
                         ),
                     ]
@@ -248,7 +244,7 @@ class BootSourceSelectionsService(
         legacy_selections = (
             await self.legacy_boot_source_selection_service.get_many(
                 query=QuerySpec(
-                    where=LegacyBootSourceSelectionClauseFactory.with_ids(
+                    where=LegacyBootSourceSelectionFilters.with_ids(
                         legacy_selection_ids
                     )
                 )
@@ -259,7 +255,7 @@ class BootSourceSelectionsService(
             if legacy_sel.arches == ["*"]:
                 if not await self.exists(
                     QuerySpec(
-                        where=BootSourceSelectionClauseFactory.with_legacyselection_id(
+                        where=BootSourceSelectionFilters.with_legacyselection_id(
                             legacy_sel.id
                         ),
                     )
@@ -300,20 +296,22 @@ class BootSourceSelectionsService(
         )
         for legacy_selection in legacy_selections:
             if legacy_selection.arches == ["*"]:
-                arches = await self.boot_source_cache_service.get_supported_arches(
-                    query=QuerySpec(
-                        where=BootSourceCacheClauseFactory.and_clauses(
-                            [
-                                BootSourceCacheClauseFactory.with_os(
-                                    legacy_selection.os
-                                ),
-                                BootSourceCacheClauseFactory.with_release(
-                                    legacy_selection.release
-                                ),
-                                BootSourceCacheClauseFactory.with_boot_source_id(
-                                    legacy_selection.boot_source_id
-                                ),
-                            ]
+                arches = (
+                    await self.boot_source_cache_service.get_supported_arches(
+                        query=QuerySpec(
+                            where=BootSourceCacheFilters.and_filters(
+                                [
+                                    BootSourceCacheFilters.with_os(
+                                        legacy_selection.os
+                                    ),
+                                    BootSourceCacheFilters.with_release(
+                                        legacy_selection.release
+                                    ),
+                                    BootSourceCacheFilters.with_boot_source_id(
+                                        legacy_selection.boot_source_id
+                                    ),
+                                ]
+                            )
                         )
                     )
                 )
@@ -329,18 +327,16 @@ class BootSourceSelectionsService(
                 )
                 if not await self.exists(
                     query=QuerySpec(
-                        where=BootSourceSelectionClauseFactory.and_clauses(
+                        where=BootSourceSelectionFilters.and_filters(
                             [
-                                BootSourceSelectionClauseFactory.with_os(
+                                BootSourceSelectionFilters.with_os(
                                     legacy_selection.os
                                 ),
-                                BootSourceSelectionClauseFactory.with_release(
+                                BootSourceSelectionFilters.with_release(
                                     legacy_selection.release
                                 ),
-                                BootSourceSelectionClauseFactory.with_arch(
-                                    arch
-                                ),
-                                BootSourceSelectionClauseFactory.with_boot_source_id(
+                                BootSourceSelectionFilters.with_arch(arch),
+                                BootSourceSelectionFilters.with_boot_source_id(
                                     legacy_selection.boot_source_id
                                 ),
                             ]

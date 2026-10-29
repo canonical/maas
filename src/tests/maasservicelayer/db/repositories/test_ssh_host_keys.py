@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maasservicelayer.builders.ssh_host_keys import TrustedSshHostKeyBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.ssh_host_keys import (
-    TrustedSshHostKeyClauseFactory,
     TrustedSshHostKeyRepository,
 )
 from maasservicelayer.exceptions.catalog import AlreadyExistsException
@@ -41,30 +40,6 @@ async def create_test_trusted_ssh_host_key_entry(
         "maasserver_trustedsshhostkey", ssh_host_key
     )
     return created
-
-
-class TestTrustedSshHostKeyClauseFactory:
-    def test_with_id_filters_on_id_column(self) -> None:
-        clause = TrustedSshHostKeyClauseFactory.with_id(42)
-        sql = str(clause.condition)
-        assert "trustedsshhostkey.id" in sql
-
-    def test_with_host_filters_on_host_column(self) -> None:
-        clause = TrustedSshHostKeyClauseFactory.with_host("192.168.1.1")
-        sql = str(clause.condition)
-        assert "trustedsshhostkey.host" in sql
-
-    def test_with_key_type_filters_on_key_type_column(self) -> None:
-        clause = TrustedSshHostKeyClauseFactory.with_key_type("ssh-rsa")
-        sql = str(clause.condition)
-        assert "trustedsshhostkey.key_type" in sql
-
-    def test_with_public_key_filters_on_public_key_column(self) -> None:
-        clause = TrustedSshHostKeyClauseFactory.with_public_key(
-            "AAAAB3NzaC1yc2E="
-        )
-        sql = str(clause.condition)
-        assert "trustedsshhostkey.public_key" in sql
 
 
 class TestTrustedSshHostKeysRepository(

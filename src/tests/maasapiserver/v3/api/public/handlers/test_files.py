@@ -15,10 +15,6 @@ from maasapiserver.v3.api.public.models.responses.files import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.filestorage import (
-    FileStorageClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -26,6 +22,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.filestorage import FileStorageFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.filestorage import FileStorage
 from maasservicelayer.services import FileStorageService
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -245,10 +243,10 @@ class TestFilesApi(ApiCommonTests):
 
         services_mock.filestorage.get_one.assert_called_once_with(
             query=QuerySpec(
-                where=FileStorageClauseFactory.and_clauses(
+                where=FileStorageFilters.and_filters(
                     [
-                        FileStorageClauseFactory.with_key(key_to_get),
-                        FileStorageClauseFactory.with_owner_id(0),
+                        FileStorageFilters.with_key(key_to_get),
+                        FileStorageFilters.with_owner_id(0),
                     ]
                 )
             )
@@ -471,14 +469,10 @@ class TestFilesApi(ApiCommonTests):
         # Make sure it only looks at the files the authenticated user owns
         services_mock.filestorage.delete_one.assert_called_once_with(
             query=QuerySpec(
-                where=FileStorageClauseFactory.and_clauses(
+                where=FileStorageFilters.and_filters(
                     [
-                        FileStorageClauseFactory.with_filename(
-                            FILE_1.filename
-                        ),
-                        FileStorageClauseFactory.with_owner_id(
-                            expected_user_id
-                        ),
+                        FileStorageFilters.with_filename(FILE_1.filename),
+                        FileStorageFilters.with_owner_id(expected_user_id),
                     ]
                 )
             ),
@@ -506,12 +500,10 @@ class TestFilesApi(ApiCommonTests):
         # Ensure that the query filters by files owned by the requesting user
         services_mock.filestorage.delete_one.assert_called_with(
             query=QuerySpec(
-                where=FileStorageClauseFactory.and_clauses(
+                where=FileStorageFilters.and_filters(
                     [
-                        FileStorageClauseFactory.with_filename(
-                            FILE_1.filename
-                        ),
-                        FileStorageClauseFactory.with_owner_id(0),
+                        FileStorageFilters.with_filename(FILE_1.filename),
+                        FileStorageFilters.with_owner_id(0),
                     ]
                 )
             ),
@@ -558,12 +550,10 @@ class TestFilesApi(ApiCommonTests):
         # Ensure that the query filters by files owned by the requesting user
         services_mock.filestorage.delete_one.assert_called_with(
             query=QuerySpec(
-                where=FileStorageClauseFactory.and_clauses(
+                where=FileStorageFilters.and_filters(
                     [
-                        FileStorageClauseFactory.with_filename(
-                            filename_to_delete
-                        ),
-                        FileStorageClauseFactory.with_owner_id(0),
+                        FileStorageFilters.with_filename(filename_to_delete),
+                        FileStorageFilters.with_owner_id(0),
                     ]
                 )
             ),

@@ -4,10 +4,8 @@
 from typing import Type
 
 from sqlalchemy import delete, insert, select, Table
-from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.ipaddress import IpAddressType
-from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     DNSDataTable,
@@ -19,24 +17,6 @@ from maasservicelayer.models.dnsdata import DNSData
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.staticipaddress import StaticIPAddress
-
-
-class DNSResourceClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(DNSResourceTable.c.id, id))
-
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=DNSResourceTable.c.id.in_(ids))
-
-    @classmethod
-    def with_name(cls, name: str) -> Clause:
-        return Clause(condition=eq(DNSResourceTable.c.name, name))
-
-    @classmethod
-    def with_domain_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(DNSResourceTable.c.domain_id, id))
 
 
 class DNSResourceRepository(BaseRepository[DNSResource]):

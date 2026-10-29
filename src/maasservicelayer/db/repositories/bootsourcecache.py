@@ -2,64 +2,19 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import Iterable
 
 from sqlalchemy import desc, not_, select, Table
 from sqlalchemy.sql.functions import count
 
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import BootSourceCacheTable
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourcecache import BootSourceCache
 from maasservicelayer.models.bootsources import (
     BootSourceAvailableImage,
     BootSourceCacheOSRelease,
 )
-
-
-class BootSourceCacheClauseFactory(ClauseFactory):
-    @classmethod
-    def with_os(cls, os: str) -> Clause:
-        return Clause(condition=eq(BootSourceCacheTable.c.os, os))
-
-    @classmethod
-    def with_arch(cls, arch: str) -> Clause:
-        return Clause(condition=eq(BootSourceCacheTable.c.arch, arch))
-
-    @classmethod
-    def with_subarch(cls, subarch: str) -> Clause:
-        return Clause(condition=eq(BootSourceCacheTable.c.subarch, subarch))
-
-    @classmethod
-    def with_release(cls, release: str) -> Clause:
-        return Clause(condition=eq(BootSourceCacheTable.c.release, release))
-
-    @classmethod
-    def with_label(cls, label: str) -> Clause:
-        return Clause(condition=eq(BootSourceCacheTable.c.label, label))
-
-    @classmethod
-    def with_kflavor(cls, kflavor: str | None) -> Clause:
-        return Clause(condition=eq(BootSourceCacheTable.c.kflavor, kflavor))
-
-    @classmethod
-    def with_boot_source_id(cls, boot_source_id: int) -> Clause:
-        return Clause(
-            condition=eq(BootSourceCacheTable.c.boot_source_id, boot_source_id)
-        )
-
-    @classmethod
-    def with_boot_source_ids(cls, boot_source_ids: Iterable[int]) -> Clause:
-        return Clause(
-            condition=BootSourceCacheTable.c.boot_source_id.in_(
-                boot_source_ids
-            )
-        )
-
-    @classmethod
-    def with_ids(cls, ids: set[int]) -> Clause:
-        return Clause(condition=BootSourceCacheTable.c.id.in_(ids))
 
 
 class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
@@ -210,6 +165,6 @@ class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
             .select_from(self.get_repository_table())
         )
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
         result = (await self.execute_stmt(stmt)).all()
         return [row[0] for row in result]

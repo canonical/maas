@@ -10,11 +10,9 @@ from maascommon.node import (
 )
 from maasservicelayer.builders.nodes import NodeBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.nodes import (
-    AbstractNodesRepository,
-    NodeClauseFactory,
-)
+from maasservicelayer.db.repositories.nodes import AbstractNodesRepository
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.secrets import BMCPowerParametersSecret
@@ -48,7 +46,7 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
         self, system_id: str, builder: NodeBuilder
     ) -> Node:
         return await self.repository.update_one(
-            query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id)),
+            query=QuerySpec(where=NodeFilters.with_system_id(system_id)),
             builder=builder,
         )
 
@@ -77,7 +75,7 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
     ) -> Node | None:
         """Mark node as failed."""
         node = await self.repository.get_one(
-            query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id))
+            query=QuerySpec(where=NodeFilters.with_system_id(system_id))
         )
         if node:
             await self.events_service.record_event(

@@ -12,14 +12,7 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dhcpsnippets import (
-    DhcpSnippetsClauseFactory,
-)
-from maasservicelayer.db.repositories.ipranges import (
-    IPRangeClauseFactory,
-    IPRangesRepository,
-)
+from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -27,6 +20,9 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.dhcpsnippets import DhcpSnippetsFilters
+from maasservicelayer.filters.ipranges import IPRangeFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
@@ -58,13 +54,13 @@ class IPRangesService(
     async def pre_create_hook(self, builder: IPRangeBuilder) -> None:
         iprange = await self.exists(
             query=QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
                         # TODO: remove type ignore after implementing safe get for builders
-                        IPRangeClauseFactory.with_type(builder.type),  # type: ignore
-                        IPRangeClauseFactory.with_start_ip(builder.start_ip),  # type: ignore
-                        IPRangeClauseFactory.with_start_ip(builder.end_ip),  # type: ignore
-                        IPRangeClauseFactory.with_subnet_id(builder.subnet_id),  # type: ignore
+                        IPRangeFilters.with_type(builder.type),  # type: ignore
+                        IPRangeFilters.with_start_ip(builder.start_ip),  # type: ignore
+                        IPRangeFilters.with_start_ip(builder.end_ip),  # type: ignore
+                        IPRangeFilters.with_subnet_id(builder.subnet_id),  # type: ignore
                     ]
                 )
             )
@@ -105,7 +101,7 @@ class IPRangesService(
     async def post_delete_hook(self, resource: IPRange) -> None:
         await self.dhcpsnippets_service.delete_many(
             query=QuerySpec(
-                where=DhcpSnippetsClauseFactory.with_iprange_id(resource.id)
+                where=DhcpSnippetsFilters.with_iprange_id(resource.id)
             )
         )
         self.temporal_service.register_or_update_workflow_call(

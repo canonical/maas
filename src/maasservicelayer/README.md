@@ -35,37 +35,50 @@ You can find all the definitions of the database tables in `src/maasservicelayer
 These have to be in sync with the current database status in order to make the generation of [Alembic](https://alembic.sqlalchemy.org/en/latest/) migrations work.
 The Alembic migrations are stored in the `src/maasservicelayer/db/alembic/versions/` directory.
 
-## SQL Query Specification
+## Domain Query Specification
 
-While it's true that we don't use an ORM, we still want to make our life easier when writing queries.
-That's why we implemented the class `QuerySpec` (see `src/maasservicelayer/db/filters.py`).
-This is accepted by different methods in the repository classes and its main purpose is to apply some filtering on the query being made.
-As of now, it implements "where" and "order by" clauses.
+All repository and service query inputs use `QuerySpec` from `maasservicelayer.filters.query`.
+It contains only domain filters and ordering; callers do not construct SQL clauses or refer to table columns.
 
-### What is a `Clause`?
+### SQL compilation
 
-A `Clause` is a simple representation of a database filter.
-It's composed by a condition, a SQLAlchemy `ColumnElement` (like `eq(YourTable.c.your_column, "value")`) and a list of joins, a SQLAlchemy `Join`, so you can make it as complicated as you want.
+The repository translates incoming queries through its mapper before executing statements.
+The resulting `SQLQuerySpec`, `Clause`, and `OrderByClause` in `maasservicelayer.db.filters` are internal SQL representations, not accepted query inputs.
 
-### How do you specify a `Clause`?
+### Domain queries and filters
 
-The gold standard way to specify a `Clause` is by implementing a `ClauseFactory`.
-Usually you'll end up with re-using most of the filters that you write, so a `ClauseFactory` serves this purpose.
-It's strictly tied to an entity, and you must define it in the same module of the repository for that entity.
-It defines method in the form of `with_<column>` where "column" is the column name of the table you're filtering on.
+Domain filters and ordering live in `src/maasservicelayer/filters/`, without SQLAlchemy types or statement-building methods.
 
-It also provides some utilities to put a list of `Clause`s in AND or OR, and one to negate a `Clause`.
-
-### Domain filters (prototype)
-
-A `Clause` is written against table columns, so every service or API handler that builds one depends on the database layout.
-Domain filters remove that dependency: they are written against domain model fields and the repository translates them into a `Clause` through its domain data mapper.
-SSH keys and events use them; the other entities still use clause factories.
-
-- Filters live in `src/maasservicelayer/filters/`. A `FilterFactory` per entity exposes the same `with_<field>` methods as a clause factory, and `and_filters`, `or_filters` and `not_filter` to combine them.
+- A `FilterFactory` per entity exposes `with_<field>` methods, and `and_filters`, `or_filters` and `not_filter` to combine predicates.
 - A `FieldFilter` compares one domain field with a value. The mapper finds the column with the same name, or the one declared in `field_mappings()` when the names differ (see `Event.owner`, stored in `username`).
 - A `CustomFilter` covers conditions that are not a comparison on a single field, such as joins on other tables. The entity mapper translates it in `custom_filter_clause()` (see `EventsOfNodes`).
-- `QuerySpec.where` accepts both a `Clause` and a filter, so entities can migrate one at a time. Don't mix the two for the same entity.
+- The domain `QuerySpec` is a frozen value containing `where: Filter | None` and an immutable tuple of ordering values. It cannot contain a SQL `Clause` or `OrderByClause`.
+- `OrderBy(Model, "field", descending=False)` checks that the field exists on the domain model. The mapper rejects ordering for another model or an unmapped field, and translates ordering through the same field mappings as filters.
+- `CustomOrderBy` covers domain ordering rules, such as boot-resource release priority. The mapper translates these in `custom_order_by_clause()`; `OrderByFactory.asc()` and `.desc()` preserve the ordering rule while changing its direction.
+- Ordering joins apply only to SELECT statements. Ordering is omitted from count queries and does not add restrictions to UPDATE or DELETE statements.
+
+For example, ordering events by owner and then newest ID does not expose the `username` storage column:
+
+```python
+from maasservicelayer.filters.query import OrderBy, QuerySpec
+from maasservicelayer.models.events import Event
+
+query = QuerySpec(
+    order_by=(OrderBy(Event, "owner"), OrderBy(Event, "id", descending=True))
+)
+```
+
+The mapper's `to_query()` compiles domain queries; SQL statement enrichment remains inside `db`.
+Repositories accept filters for their model or a genuine domain base class, such as `Node` filters applied to `Machine`; unrelated models are rejected before execution.
+Field mappings may translate names or storage representations. For example, file content and node user data compare domain bytes against decoded base64 storage without exposing the encoding to callers.
+
+#### Filter semantics
+
+- An empty `And` matches every resource; an empty `Or` matches none.
+- `Not` matches the complement of its operand, including resources whose nullable fields do not match that operand. This also applies to custom filters.
+- `EQ None` matches null values. `IN` is equivalent to an `Or` of equality filters: it matches null values when `None` is included, and matches nothing when its collection is empty.
+- Every operand is validated, even if another operand already determines the result. Filters for another model, unmapped fields, and unsupported custom filters raise `UnsupportedFilterError` before execution.
+
 
 
 ## Builders and Domain Data Mappers
@@ -99,11 +112,10 @@ To be able to test common methods easier, some base test classes are provided in
 You can just inherit from them and provide the necessary fixtures to have all the tests already in place.
 If for some reason a test doesn't apply to your repository, mark it with `@pytest.mark.skip(reason="your valid reason")`.
 
-### Testing Clause Factories
+### Testing Domain Queries
 
-While testing a `ClauseFactory` the main thing we want to make sure is that the conditions we wrote, correctly maps to the db columns we have specified.
-In order to do so we can compile the condition and the joins and compare the result with our expected values.
-See for example `src/tests/maasservicelayer/db/repositories/test_ipranges.py`.
+Test filters and ordering through repository results, including joins, nullable values, storage conversions, and write scoping.
+Custom predicates should cover their consumer-visible boundaries; avoid pinning generated SQL text or repeating simple factory construction.
 
 # Service layer
 

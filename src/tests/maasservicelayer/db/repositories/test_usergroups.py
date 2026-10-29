@@ -7,53 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.usergroups import UserGroupBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.usergroups import (
-    UserGroupsClauseFactory,
-    UserGroupsRepository,
-)
+from maasservicelayer.db.repositories.usergroups import UserGroupsRepository
 from maasservicelayer.db.tables import UserGroupTable
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.usergroups import UserGroupsFilters
 from maasservicelayer.models.usergroups import UserGroup
 from tests.fixtures.factories.openfga_tuples import create_openfga_tuple
 from tests.fixtures.factories.user import create_test_user
 from tests.fixtures.factories.usergroups import create_test_usergroup
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestUserGroupsClauseFactory:
-    def test_with_ids(self):
-        clause = UserGroupsClauseFactory.with_ids([1, 2])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_usergroup.id IN (1, 2)"
-        )
-
-    def test_with_name(self):
-        clause = UserGroupsClauseFactory.with_name("test-group")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_usergroup.name = 'test-group'"
-        )
-
-    def test_with_name_like(self):
-        clause = UserGroupsClauseFactory.with_name_like("te")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "lower(maasserver_usergroup.name) LIKE lower('%te%')"
-        )
 
 
 class TestUserGroupsRepository(RepositoryCommonTests[UserGroup]):
@@ -108,14 +71,14 @@ class TestUserGroupsRepository(RepositoryCommonTests[UserGroup]):
             fixture, name="group-b", description="b"
         )
 
-        query = QuerySpec(where=UserGroupsClauseFactory.with_ids([group1.id]))
+        query = QuerySpec(where=UserGroupsFilters.with_ids([group1.id]))
         groups = await repository_instance.list(1, 20, query)
         assert len(groups.items) == 1
         assert groups.total == 1
         assert groups.items[0].id == group1.id
 
         query = QuerySpec(
-            where=UserGroupsClauseFactory.with_ids([group1.id, group2.id])
+            where=UserGroupsFilters.with_ids([group1.id, group2.id])
         )
         groups = await repository_instance.list(1, 20, query)
         assert len(groups.items) == 2
@@ -131,16 +94,12 @@ class TestUserGroupsRepository(RepositoryCommonTests[UserGroup]):
             fixture, name="other-group", description="b"
         )
 
-        query = QuerySpec(
-            where=UserGroupsClauseFactory.with_name_like("group")
-        )
+        query = QuerySpec(where=UserGroupsFilters.with_name_like("group"))
         groups = await repository_instance.list(1, 20, query)
         assert len(groups.items) == 2
         assert groups.total == 2
 
-        query = QuerySpec(
-            where=UserGroupsClauseFactory.with_name_like("other")
-        )
+        query = QuerySpec(where=UserGroupsFilters.with_name_like("other"))
         groups = await repository_instance.list(1, 20, query)
         assert len(groups.items) == 1
         assert groups.total == 1
@@ -162,9 +121,7 @@ class TestUserGroupsRepository(RepositoryCommonTests[UserGroup]):
         await create_openfga_tuple(
             fixture, f"user:{user3.id}", "user", "member", "group", "2"
         )
-        search_query = QuerySpec(
-            where=UserGroupsClauseFactory.with_ids([1, 2])
-        )
+        search_query = QuerySpec(where=UserGroupsFilters.with_ids([1, 2]))
         groups = await repository_instance.list_groups_statistics(
             1, 20, search_query
         )

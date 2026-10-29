@@ -50,7 +50,6 @@ from maascommon.openfga.base import (
     MAASResourceEntitlement,
     OpenFGAEntitlementResourceType,
 )
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -61,6 +60,7 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
     USER_ALREADY_IN_GROUP,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.openfga_tuples import EntitlementsBuilderFactory
@@ -103,7 +103,7 @@ class UserGroupsHandler(Handler):
         groups = await services.usergroups.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=filters.to_clause()),
+            query=QuerySpec(where=filters.to_filter()),
         )
         next_link = None
         if groups.has_next(pagination_params.page, pagination_params.size):
@@ -152,7 +152,7 @@ class UserGroupsHandler(Handler):
         groups = await services.usergroups.list_groups_statistics(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=filters.to_clause()),
+            query=QuerySpec(where=filters.to_filter()),
         )
         next_link = None
         if groups.has_next(pagination_params.page, pagination_params.size):

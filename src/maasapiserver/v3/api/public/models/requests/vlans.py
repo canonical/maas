@@ -9,14 +9,6 @@ from maasapiserver.v3.api.public.models.requests.base import (
 from maascommon.enums.node import NodeTypeEnum
 from maascommon.enums.service import ServiceName, ServiceStatusEnum
 from maasservicelayer.builders.vlans import VlanBuilder
-from maasservicelayer.db.filters import ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
-from maasservicelayer.db.repositories.service_status import (
-    ServiceStatusClauseFactory,
-)
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
-from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ValidationException,
@@ -24,6 +16,13 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     MISSING_DYNAMIC_RANGE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.base import FilterFactory
+from maasservicelayer.filters.ipranges import IPRangeFilters
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.service_status import ServiceStatusFilters
+from maasservicelayer.filters.subnets import SubnetFilters
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.vlans import DEFAULT_MTU, DEFAULT_VID
 
@@ -116,19 +115,19 @@ class VlanUpdateRequest(VlanCreateRequest):
 
             racks = await services.nodes.get_many(
                 query=QuerySpec(
-                    ClauseFactory.and_clauses(
+                    FilterFactory.and_filters(
                         [
-                            ClauseFactory.or_clauses(
+                            FilterFactory.or_filters(
                                 [
-                                    NodeClauseFactory.with_type(
+                                    NodeFilters.with_type(
                                         NodeTypeEnum.REGION_AND_RACK_CONTROLLER
                                     ),
-                                    NodeClauseFactory.with_type(
+                                    NodeFilters.with_type(
                                         NodeTypeEnum.RACK_CONTROLLER
                                     ),
                                 ]
                             ),
-                            NodeClauseFactory.with_ids(node_ids),
+                            NodeFilters.with_ids(node_ids),
                         ]
                     )
                 )
@@ -142,11 +141,11 @@ class VlanUpdateRequest(VlanCreateRequest):
 
             # There must be at least one subnet with a dynamic range defined.
             vlan_subnets = await services.subnets.get_many(
-                query=QuerySpec(SubnetClauseFactory.with_vlan_id(vlan_id))
+                query=QuerySpec(SubnetFilters.with_vlan_id(vlan_id))
             )
             dynamic_ranges = await services.ipranges.get_many(
                 query=QuerySpec(
-                    IPRangeClauseFactory.with_subnet_ids(
+                    IPRangeFilters.with_subnet_ids(
                         [subnet.id for subnet in vlan_subnets]
                     )
                 )
@@ -174,12 +173,12 @@ class VlanUpdateRequest(VlanCreateRequest):
             ):
                 rackd_service = await services.service_status.get_one(
                     query=QuerySpec(
-                        ClauseFactory.and_clauses(
+                        FilterFactory.and_filters(
                             [
-                                ServiceStatusClauseFactory.with_node_id(
+                                ServiceStatusFilters.with_node_id(
                                     self.primary_rack_id
                                 ),
-                                ServiceStatusClauseFactory.with_name(
+                                ServiceStatusFilters.with_name(
                                     ServiceName.RACKD
                                 ),
                             ]
@@ -216,7 +215,7 @@ class VlanUpdateRequest(VlanCreateRequest):
                 )
 
             relayed_vlan = await services.vlans.get_one(
-                query=QuerySpec(VlansClauseFactory.with_id(self.relay_vlan_id))
+                query=QuerySpec(VlansFilters.with_id(self.relay_vlan_id))
             )
             if not relayed_vlan:
                 raise ValidationException.build_for_field(

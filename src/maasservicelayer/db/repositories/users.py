@@ -23,8 +23,9 @@ from sqlalchemy.sql.operators import and_, eq, gt
 from maasservicelayer.builders.users import UserProfileBuilder
 from maasservicelayer.constants import SYSTEM_USERS
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import SQLQuerySpec
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
+from maasservicelayer.db.mappers.users import UsersDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     NodeTable,
@@ -43,56 +44,11 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.usergroups import UserGroup, UserGroupsByUser
 from maasservicelayer.models.users import User, UserProfile, UserStatistics
 from maasservicelayer.utils.date import utcnow
-
-
-class UserClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(UserTable.c.id, id))
-
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=UserTable.c.id.in_(ids))
-
-    @classmethod
-    def with_username(cls, username: str) -> Clause:
-        return Clause(condition=eq(UserTable.c.username, username))
-
-    @classmethod
-    def with_username_or_email_like(
-        cls, username_or_email_like: str
-    ) -> Clause:
-        return UserClauseFactory.or_clauses(
-            [
-                Clause(
-                    condition=UserTable.c.username.ilike(
-                        f"%{username_or_email_like}%"
-                    )
-                ),
-                Clause(
-                    condition=UserTable.c.email.ilike(
-                        f"%{username_or_email_like}%"
-                    )
-                ),
-            ]
-        )
-
-    @classmethod
-    def with_provider_id(cls, provider_id: int) -> Clause:
-        return Clause(
-            condition=eq(UserProfileTable.c.provider_id, provider_id),
-            joins=[
-                join(
-                    UserTable,
-                    UserProfileTable,
-                    eq(UserTable.c.id, UserProfileTable.c.user_id),
-                )
-            ],
-        )
 
 
 class UsersRepository(BaseRepository[User]):
@@ -101,6 +57,9 @@ class UsersRepository(BaseRepository[User]):
         self.userprofile_mapper = DefaultDomainDataMapper(
             UserProfile, UserProfileTable
         )
+
+    def get_mapper(self) -> UsersDataMapper:
+        return UsersDataMapper()
 
     def get_repository_table(self) -> Table:
         return UserTable
@@ -236,14 +195,17 @@ class UsersRepository(BaseRepository[User]):
     async def list(
         self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[User]:
+        sql_query = self._translate(query) if query is not None else None
         # Exclude the SYSTEM_USERS from the queries.
         total_stmt = (
             select(func.count())
             .select_from(UserTable)
             .where(not_(UserTable.c.username.in_(SYSTEM_USERS)))
         )
-        if query:
-            total_stmt = query.enrich_stmt(total_stmt)
+        if sql_query is not None:
+            total_stmt = SQLQuerySpec(where=sql_query.where).enrich_stmt(
+                total_stmt
+            )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
@@ -254,8 +216,8 @@ class UsersRepository(BaseRepository[User]):
             .offset((page - 1) * size)
             .limit(size)
         )
-        if query:
-            stmt = query.enrich_stmt(stmt)
+        if sql_query is not None:
+            stmt = sql_query.enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[User](
@@ -353,12 +315,15 @@ class UsersRepository(BaseRepository[User]):
                 )
             )
         )
-        total_stmt = query.enrich_stmt(total_stmt)
+        sql_query = self._translate(query)
+        total_stmt = SQLQuerySpec(where=sql_query.where).enrich_stmt(
+            total_stmt
+        )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
         stmt = (
             self._user_statistics_stmt().offset((page - 1) * size).limit(size)
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = sql_query.enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[UserStatistics](

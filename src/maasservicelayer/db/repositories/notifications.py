@@ -1,7 +1,7 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from operator import and_, eq, or_
+from operator import eq
 from typing import List, override
 
 from sqlalchemy import delete, desc, insert, select, Table
@@ -13,29 +13,23 @@ from maasservicelayer.builders.notifications import (
     NotificationDismissalBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
+from maasservicelayer.db.mappers.notifications import (
+    NotificationsDomainDataMapper,
+)
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     NotificationDismissalTable,
     NotificationTable,
 )
+from maasservicelayer.filters.notifications import NotificationsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.notifications import (
     Notification,
     NotificationDismissal,
 )
 from maasservicelayer.utils.date import utcnow
-
-
-class NotificationsClauseFactory(ClauseFactory):
-    @classmethod
-    def with_user_id(cls, user_id: int) -> Clause:
-        return Clause(condition=eq(NotificationTable.c.user_id, user_id))
-
-    @classmethod
-    def with_ident(cls, ident: str) -> Clause:
-        return Clause(condition=eq(NotificationTable.c.ident, ident))
 
 
 class NotificationsRepository(BaseRepository[Notification]):
@@ -51,40 +45,31 @@ class NotificationsRepository(BaseRepository[Notification]):
     def get_model_factory(self) -> type[Notification]:
         return Notification
 
+    def get_mapper(self) -> NotificationsDomainDataMapper:
+        return NotificationsDomainDataMapper(Notification, NotificationTable)
+
     def all_notifications_for_user_stmt(
         self, user_id: int, is_admin: bool
     ) -> Select:
         """Statement for all the notifications for the user."""
-        if is_admin:
-            for_user_role = eq(NotificationTable.c.admins, True)
-        else:
-            for_user_role = eq(NotificationTable.c.users, True)
-
-        return self.select_all_statement().where(
-            or_(eq(NotificationTable.c.user_id, user_id), for_user_role),
-        )
+        return self._translate(
+            QuerySpec(where=NotificationsFilters.for_user(user_id, is_admin))
+        ).enrich_stmt(self.select_all_statement())
 
     def active_notifications_for_user_stmt(
         self, user_id: int, is_admin: bool
     ) -> Select:
         """Statement for all the non-dismissed notifications for the user."""
-        return (
-            self.all_notifications_for_user_stmt(user_id, is_admin)
-            .join(
-                NotificationDismissalTable,
-                and_(
-                    eq(
-                        NotificationTable.c.id,
-                        NotificationDismissalTable.c.notification_id,
-                    ),
-                    eq(NotificationDismissalTable.c.user_id, user_id),
-                ),
-                isouter=True,
+        return self._translate(
+            QuerySpec(
+                where=NotificationsFilters.and_filters(
+                    [
+                        NotificationsFilters.for_user(user_id, is_admin),
+                        NotificationsFilters.not_dismissed_by_user(user_id),
+                    ]
+                )
             )
-            .where(
-                eq(NotificationDismissalTable.c.id, None),
-            )
-        )
+        ).enrich_stmt(self.select_all_statement())
 
     async def _list_with_stmt(
         self, page: int, size: int, stmt: Select
@@ -170,7 +155,7 @@ class NotificationsRepository(BaseRepository[Notification]):
     @override
     async def _delete(self, query: QuerySpec) -> List[Notification]:
         stmt = delete(NotificationTable).returning(self.get_repository_table())
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
         deleted = [Notification(**row._asdict()) for row in results]
         cascade_stmt = delete(NotificationDismissalTable).where(

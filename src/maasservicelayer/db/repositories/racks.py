@@ -2,19 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from sqlalchemy import func, select, Table
-from sqlalchemy.sql.operators import eq
 
-from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import AgentTable, NodeTable, RackTable
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.racks import Rack, RackWithSummary
-
-
-class RacksClauseFactory(ClauseFactory):
-    @classmethod
-    def with_rack_id(cls, rack_id: int) -> Clause:
-        return Clause(condition=eq(RackTable.c.id, rack_id))
 
 
 class RacksRepository(BaseRepository[Rack]):

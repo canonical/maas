@@ -7,11 +7,11 @@ import pytest
 
 from maasservicelayer.builders.bootsourcecache import BootSourceCacheBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourcecache import (
-    BootSourceCacheClauseFactory,
     BootSourceCacheRepository,
 )
+from maasservicelayer.filters.bootsourcecache import BootSourceCacheFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootsourcecache import BootSourceCache
 from maasservicelayer.models.image_manifests import ImageManifest
 from maasservicelayer.services.bootsourcecache import BootSourceCacheService
@@ -174,11 +174,11 @@ class TestBootSourceCacheService:
         service.create_or_update.assert_awaited_once()
         service.delete_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootSourceCacheClauseFactory.and_clauses(
+                where=BootSourceCacheFilters.and_filters(
                     [
-                        BootSourceCacheClauseFactory.with_boot_source_id(1),
-                        BootSourceCacheClauseFactory.not_clause(
-                            BootSourceCacheClauseFactory.with_ids({1})
+                        BootSourceCacheFilters.with_boot_source_id(1),
+                        BootSourceCacheFilters.not_filter(
+                            BootSourceCacheFilters.with_ids({1})
                         ),
                     ]
                 )

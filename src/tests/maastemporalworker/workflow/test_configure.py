@@ -13,11 +13,9 @@ from temporalio.testing import ActivityEnvironment
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.db import Database
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
-from maasservicelayer.db.repositories.vlans import VlansClauseFactory
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services import CacheForServices
@@ -79,15 +77,15 @@ class TestConfigureAgentActivity:
         assert result == GetRackControllerVLANsResult([1])
         services_mock.vlans.get_node_vlans.assert_called_once_with(
             query=QuerySpec(
-                where=VlansClauseFactory.and_clauses(
+                where=VlansFilters.and_filters(
                     [
-                        VlansClauseFactory.with_system_id("abc"),
-                        VlansClauseFactory.or_clauses(
+                        VlansFilters.with_system_id("abc"),
+                        VlansFilters.or_filters(
                             [
-                                VlansClauseFactory.with_node_type(
+                                VlansFilters.with_node_type(
                                     NodeTypeEnum.RACK_CONTROLLER
                                 ),
-                                VlansClauseFactory.with_node_type(
+                                VlansFilters.with_node_type(
                                     NodeTypeEnum.REGION_AND_RACK_CONTROLLER
                                 ),
                             ]
@@ -141,20 +139,20 @@ class TestConfigureAgentActivity:
         )
         services_mock.staticipaddress.get_for_nodes.assert_called_once_with(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.and_clauses(
+                where=StaticIPAddressFilters.and_filters(
                     [
-                        StaticIPAddressClauseFactory.or_clauses(
+                        StaticIPAddressFilters.or_filters(
                             [
-                                StaticIPAddressClauseFactory.with_node_type(
+                                StaticIPAddressFilters.with_node_type(
                                     NodeTypeEnum.REGION_CONTROLLER
                                 ),
-                                StaticIPAddressClauseFactory.with_node_type(
+                                StaticIPAddressFilters.with_node_type(
                                     NodeTypeEnum.REGION_AND_RACK_CONTROLLER
                                 ),
                             ]
                         ),
-                        StaticIPAddressClauseFactory.not_clause(
-                            StaticIPAddressClauseFactory.with_ip(None)
+                        StaticIPAddressFilters.not_filter(
+                            StaticIPAddressFilters.with_ip(None)
                         ),
                     ]
                 )

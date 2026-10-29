@@ -1,21 +1,17 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maasservicelayer.builders.zones import ZoneBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db._debug import CompiledQuery
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.zones import (
-    ZonesClauseFactory,
-    ZonesRepository,
-)
+from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.db.tables import ZoneTable
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.zones import ZonesFilters
 from maasservicelayer.models.zones import Zone
 from tests.fixtures.factories.node import (
     create_test_device_entry,
@@ -25,24 +21,6 @@ from tests.fixtures.factories.node import (
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestZonesClauseFactory:
-    def test_factory(self):
-        clause = ZonesClauseFactory.with_ids([1, 2])
-
-        stmt = (
-            select(ZoneTable.c.id)
-            .select_from(ZoneTable)
-            .where(clause.condition)
-        )
-        assert (
-            str(CompiledQuery(stmt).sql)
-            == "SELECT maasserver_zone.id \nFROM maasserver_zone \nWHERE maasserver_zone.id IN (__[POSTCOMPILE_id_1])"
-        )
-        assert CompiledQuery(stmt).params == {
-            "id_1": [1, 2],
-        }
 
 
 class TestZonesRepository(RepositoryCommonTests[Zone]):
@@ -89,14 +67,14 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
     async def test_list_with_filters(
         self, repository_instance: ZonesRepository, created_instance: Zone
     ) -> None:
-        query = QuerySpec(where=ZonesClauseFactory.with_ids([1]))
+        query = QuerySpec(where=ZonesFilters.with_ids([1]))
         zones = await repository_instance.list(1, 20, query)
         assert len(zones.items) == 1
         assert zones.total == 1
         assert zones.items[0].id == 1
 
         query = QuerySpec(
-            where=ZonesClauseFactory.with_ids([1, created_instance.id])
+            where=ZonesFilters.with_ids([1, created_instance.id])
         )
         zones = await repository_instance.list(1, 20, query)
         assert len(zones.items) == 2
@@ -128,6 +106,26 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
         assert zones.items[0].machines_count == 2
         assert zones.items[0].devices_count == 1
         assert zones.items[0].controllers_count == 3
+
+    async def test_list_with_statistics_filters_by_zone(
+        self, repository_instance: ZonesRepository, fixture: Fixture
+    ) -> None:
+        selected = await create_test_zone(fixture, name="selected")
+        other = await create_test_zone(fixture, name="other")
+        await create_test_machine_entry(fixture, zone_id=selected.id)
+        await create_test_device_entry(fixture, zone_id=other.id)
+
+        result = await repository_instance.list_with_statistics(
+            page=1,
+            size=20,
+            query=QuerySpec(where=ZonesFilters.with_ids([selected.id])),
+        )
+        assert result.total == 1
+        assert len(result.items) == 1
+        assert result.items[0].id == selected.id
+        assert result.items[0].machines_count == 1
+        assert result.items[0].devices_count == 0
+        assert result.items[0].controllers_count == 0
 
     async def test_list_with_statistics_pagination(
         self, repository_instance: ZonesRepository, fixture: Fixture

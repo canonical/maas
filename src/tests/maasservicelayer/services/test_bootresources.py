@@ -12,14 +12,12 @@ from maascommon.enums.boot_resources import (
 )
 from maascommon.osystem import BOOT_IMAGE_PURPOSE
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
     BootResourcesRepository,
 )
-from maasservicelayer.db.repositories.bootresourcesets import (
-    BootResourceSetClauseFactory,
-)
+from maasservicelayer.filters.bootresources import BootResourceFilters
+from maasservicelayer.filters.bootresourcesets import BootResourceSetFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootresourcesets import BootResourceSet
 from maasservicelayer.models.configurations import (
@@ -179,7 +177,7 @@ class TestBootResourceService:
         await service.delete_by_id(TEST_BOOT_RESOURCE.id)
         mock_boot_resource_sets_service.delete_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceSetClauseFactory.with_resource_id(
+                where=BootResourceSetFilters.with_resource_id(
                     TEST_BOOT_RESOURCE.id
                 )
             )
@@ -195,7 +193,7 @@ class TestBootResourceService:
         await service.delete_many(query=QuerySpec())
         mock_boot_resource_sets_service.delete_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceSetClauseFactory.with_resource_ids(
+                where=BootResourceSetFilters.with_resource_ids(
                     [TEST_BOOT_RESOURCE.id]
                 )
             )
@@ -221,7 +219,7 @@ class TestBootResourceService:
         await service.delete_all_without_sets(query=QuerySpec())
 
         mock_repository.delete_many.assert_awaited_once_with(
-            query=QuerySpec(where=BootResourceClauseFactory.with_ids(set()))
+            query=QuerySpec(where=BootResourceFilters.with_ids(set()))
         )
 
     async def test_delete_all_without_sets_delete_all_boot_resources(
@@ -237,9 +235,7 @@ class TestBootResourceService:
 
         mock_repository.delete_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceClauseFactory.with_ids(
-                    {TEST_BOOT_RESOURCE.id}
-                )
+                where=BootResourceFilters.with_ids({TEST_BOOT_RESOURCE.id})
             )
         )
 
@@ -560,20 +556,20 @@ class TestBootResourceService:
         assert resource == TEST_BOOT_RESOURCE
         mock_repository.get_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.or_clauses(
+                        BootResourceFilters.or_filters(
                             [
-                                BootResourceClauseFactory.with_rtype(
+                                BootResourceFilters.with_rtype(
                                     BootResourceType.SYNCED
                                 ),
-                                BootResourceClauseFactory.with_rtype(
+                                BootResourceFilters.with_rtype(
                                     BootResourceType.UPLOADED
                                 ),
                             ]
                         ),
-                        BootResourceClauseFactory.with_name("ubuntu/noble"),
-                        BootResourceClauseFactory.with_architecture_starting_with(
+                        BootResourceFilters.with_name("ubuntu/noble"),
+                        BootResourceFilters.with_architecture_starting_with(
                             "amd64"
                         ),
                     ]
@@ -636,22 +632,20 @@ class TestBootResourceService:
         assert await service.has_commissioning_resource("amd64/generic")
 
         query = mock_repository.get_many.call_args.kwargs["query"]
-        assert query.where == BootResourceClauseFactory.and_clauses(
+        assert query.where == BootResourceFilters.and_filters(
             [
-                BootResourceClauseFactory.or_clauses(
+                BootResourceFilters.or_filters(
                     [
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_rtype(
                             BootResourceType.SYNCED
                         ),
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
                     ]
                 ),
-                BootResourceClauseFactory.with_name("ubuntu/noble"),
-                BootResourceClauseFactory.with_architecture_starting_with(
-                    "amd64"
-                ),
+                BootResourceFilters.with_name("ubuntu/noble"),
+                BootResourceFilters.with_architecture_starting_with("amd64"),
             ]
         )
 

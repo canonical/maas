@@ -1,11 +1,11 @@
 from maascommon.enums.scriptresult import ScriptStatus
 from maasservicelayer.builders.scriptresult import ScriptResultBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.scriptresults import (
-    ScriptResultClauseFactory,
     ScriptResultsRepository,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.scriptresults import ScriptResultFilters
 from maasservicelayer.models.scriptresult import ScriptResult
 from maasservicelayer.services.base import BaseService
 
@@ -25,12 +25,12 @@ class ScriptResultsService(
     ):
         return await self.update_many(
             query=QuerySpec(
-                where=ScriptResultClauseFactory.and_clauses(
+                where=ScriptResultFilters.and_filters(
                     [
-                        ScriptResultClauseFactory.with_status_in(
+                        ScriptResultFilters.with_status_in(
                             [ScriptStatus.PENDING, ScriptStatus.RUNNING]
                         ),
-                        ScriptResultClauseFactory.with_script_set_id_in(
+                        ScriptResultFilters.with_script_set_id_in(
                             scripts_sets
                         ),
                     ]

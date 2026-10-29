@@ -8,12 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.users import (
-    UserClauseFactory,
-    UsersRepository,
-)
+from maasservicelayer.db.repositories.users import UsersRepository
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.users import UserFilters
 from maasservicelayer.utils.date import utcnow
+from tests.fixtures.factories.external_auth import create_provider
 from tests.fixtures.factories.node import (
     create_test_device_entry,
     create_test_machine_entry,
@@ -29,68 +28,6 @@ from tests.fixtures.factories.user import (
 )
 from tests.fixtures.factories.usergroups import create_test_usergroup
 from tests.maasapiserver.fixtures.db import Fixture
-
-
-class TestUserClauseFactory:
-    def test_with_id(self) -> None:
-        clause = UserClauseFactory.with_id(42)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "auth_user.id = 42"
-        )
-
-    def test_with_ids(self) -> None:
-        clause = UserClauseFactory.with_ids([1, 2])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "auth_user.id IN (1, 2)"
-        )
-
-    def test_with_username(self) -> None:
-        clause = UserClauseFactory.with_username("testuser")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "auth_user.username = 'testuser'"
-        )
-
-    def test_with_username_or_email_like(self) -> None:
-        clause = UserClauseFactory.with_username_or_email_like(
-            username_or_email_like="foo"
-        )
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == (
-            "lower(auth_user.username) LIKE lower('%foo%') OR lower(auth_user.email) LIKE lower('%foo%')"
-        )
-
-    def test_with_provider_id(self) -> None:
-        clause = UserClauseFactory.with_provider_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_userprofile.provider_id = 1"
-        )
-        assert len(clause.joins) == 1
-        join_onclause = clause.joins[0].onclause
-        assert (
-            str(join_onclause.compile(compile_kwargs={"literal_binds": True}))
-            == "auth_user.id = maasserver_userprofile.user_id"
-        )
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
@@ -409,7 +346,7 @@ class TestUsersRepository:
             page=1,
             size=1000,
             query=QuerySpec(
-                where=UserClauseFactory.with_username_or_email_like(query)
+                where=UserFilters.with_username_or_email_like(query)
             ),
         )
         assert users_list.total == num_results
@@ -441,9 +378,7 @@ class TestUsersRepository:
         users_statistics = await users_repository.list_statistics(
             page=1,
             size=1000,
-            query=QuerySpec(
-                where=UserClauseFactory.with_ids([user1.id, user3.id])
-            ),
+            query=QuerySpec(where=UserFilters.with_ids([user1.id, user3.id])),
         )
 
         assert len(users_statistics.items) == 2
@@ -455,9 +390,7 @@ class TestUsersRepository:
             page=1,
             size=1000,
             query=QuerySpec(
-                where=UserClauseFactory.with_ids(
-                    [user1.id, user2.id, user3.id]
-                )
+                where=UserFilters.with_ids([user1.id, user2.id, user3.id])
             ),
         )
 
@@ -533,3 +466,53 @@ class TestUsersRepository:
 
         has_users = await users_repository.has_users()
         assert has_users is True
+
+    @pytest.mark.parametrize("search", ["MATCHED", "CONTACT"])
+    async def test_domain_search_filters_users_and_statistics(
+        self, db_connection: AsyncConnection, fixture: Fixture, search: str
+    ) -> None:
+        repository = UsersRepository(Context(connection=db_connection))
+        matching = await create_test_user(
+            fixture, username="matched-user", email="contact@example.com"
+        )
+        unrelated = await create_test_user(
+            fixture, username="unrelated", email="other@example.com"
+        )
+        inactive = await create_test_user(
+            fixture,
+            username="matched-inactive",
+            email="contact-inactive@example.com",
+            is_active=False,
+        )
+        for user in [matching, unrelated, inactive]:
+            await create_test_user_profile(fixture, user.id)
+        query = QuerySpec(
+            where=UserFilters.with_username_or_email_like(search)
+        )
+        users = await repository.list(1, 20, query)
+        assert {user.id for user in users.items} == {matching.id, inactive.id}
+        assert users.total == 2
+        statistics = await repository.list_statistics(1, 20, query)
+        assert [user.id for user in statistics.items] == [matching.id]
+        assert statistics.total == 1
+        assert statistics.items[0].machines_count == 0
+        assert statistics.items[0].sshkeys_count == 0
+
+    async def test_domain_provider_filter_applies_to_users_and_statistics(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        repository = UsersRepository(Context(connection=db_connection))
+        provider = await create_provider(fixture)
+        matching = await create_test_user(fixture)
+        local = await create_test_user(fixture)
+        await create_test_user_profile(
+            fixture, matching.id, provider_id=provider.id
+        )
+        await create_test_user_profile(fixture, local.id, is_local=True)
+        query = QuerySpec(where=UserFilters.with_provider_id(provider.id))
+        users = await repository.list(1, 20, query)
+        statistics = await repository.list_statistics(1, 20, query)
+        assert [user.id for user in users.items] == [matching.id]
+        assert users.total == 1
+        assert [user.id for user in statistics.items] == [matching.id]
+        assert statistics.total == 1

@@ -19,7 +19,6 @@ from maascommon.enums.sshkeys import (
 from maascommon.fips import is_fips_enabled, validate_fips_ssh_public_key
 from maasservicelayer.builders.sshkeys import SshKeyBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.sshkeys import SshKeysRepository
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
@@ -30,6 +29,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.filters.sshkeys import SshKeyFilters
 from maasservicelayer.logging.tls import fips_tls_trace_config
 from maasservicelayer.models.sshkeys import SshKey

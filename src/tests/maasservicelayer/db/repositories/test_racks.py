@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.racks import RackBuilder
 from maasservicelayer.context import Context
+from maasservicelayer.db.mappers.base import UnsupportedFilterError
 from maasservicelayer.db.repositories.racks import RacksRepository
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.racks import RacksFilters
 from maasservicelayer.models.racks import Rack
 from tests.fixtures.factories.agents import create_test_agents_entry
 from tests.fixtures.factories.node import create_test_rack_controller_entry
@@ -16,6 +20,25 @@ from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
 class TestRacksRepository(RepositoryCommonTests[Rack]):
+    async def test_get_many_with_rack_filter(
+        self,
+        repository_instance: RacksRepository,
+        created_instance: Rack,
+        fixture: Fixture,
+    ) -> None:
+        await create_test_rack_entry(fixture, name="other")
+        assert await repository_instance.get_many(
+            QuerySpec(where=RacksFilters.with_rack_id(created_instance.id))
+        ) == [created_instance]
+
+    async def test_rejects_node_filter(
+        self, repository_instance: RacksRepository
+    ) -> None:
+        with pytest.raises(UnsupportedFilterError):
+            await repository_instance.get_many(
+                QuerySpec(where=NodeFilters.with_id(1))
+            )
+
     @pytest.fixture
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int

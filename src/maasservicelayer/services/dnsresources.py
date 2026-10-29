@@ -7,12 +7,10 @@ from maascommon.enums.ipaddress import IpAddressType
 from maascommon.utils.network import coerce_to_valid_hostname
 from maasservicelayer.builders.dnsresources import DNSResourceBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dnsresources import (
-    DNSResourceClauseFactory,
-    DNSResourceRepository,
-)
-from maasservicelayer.db.repositories.domains import DomainsClauseFactory
+from maasservicelayer.db.repositories.dnsresources import DNSResourceRepository
+from maasservicelayer.filters.dnsresources import DNSResourceFilters
+from maasservicelayer.filters.domains import DomainsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.dnsdata import DNSData
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
@@ -53,7 +51,7 @@ class DNSResourcesService(
 
     async def post_create_hook(self, resource: DNSResource) -> None:
         domain = await self.domains_service.get_one(
-            QuerySpec(where=DomainsClauseFactory.with_id(resource.domain_id))
+            QuerySpec(where=DomainsFilters.with_id(resource.domain_id))
         )
         assert domain is not None
         await self.dnspublications_service.create_for_config_update(
@@ -71,13 +69,13 @@ class DNSResourcesService(
     ) -> None:
         old_domain = await self.domains_service.get_one(
             query=QuerySpec(
-                where=DomainsClauseFactory.with_id(old_resource.domain_id)
+                where=DomainsFilters.with_id(old_resource.domain_id)
             )
         )
 
         domain = await self.domains_service.get_one(
             query=QuerySpec(
-                where=DomainsClauseFactory.with_id(updated_resource.domain_id)
+                where=DomainsFilters.with_id(updated_resource.domain_id)
             )
         )
 
@@ -118,9 +116,7 @@ class DNSResourcesService(
 
     async def post_delete_hook(self, resource: DNSResource) -> None:
         domain = await self.domains_service.get_one(
-            query=QuerySpec(
-                where=DomainsClauseFactory.with_id(resource.domain_id)
-            )
+            query=QuerySpec(where=DomainsFilters.with_id(resource.domain_id))
         )
         assert domain is not None
 
@@ -197,7 +193,7 @@ class DNSResourcesService(
         domain = await self.domains_service.get_default_domain()
 
         dnsrr = await self.get_one(
-            query=QuerySpec(where=DNSResourceClauseFactory.with_name(hostname))
+            query=QuerySpec(where=DNSResourceFilters.with_name(hostname))
         )
 
         assert ip.ip is not None
@@ -297,10 +293,10 @@ class DNSResourcesService(
         else:
             dnsrr = await self.repository.get_one(
                 query=QuerySpec(
-                    where=DNSResourceClauseFactory.and_clauses(
+                    where=DNSResourceFilters.and_filters(
                         [
-                            DNSResourceClauseFactory.with_name(label),
-                            DNSResourceClauseFactory.with_domain_id(domain.id),
+                            DNSResourceFilters.with_name(label),
+                            DNSResourceFilters.with_domain_id(domain.id),
                         ]
                     ),
                 )
@@ -324,10 +320,10 @@ class DNSResourcesService(
 
         dnsrr = await self.repository.get_one(
             query=QuerySpec(
-                where=DNSResourceClauseFactory.and_clauses(
+                where=DNSResourceFilters.and_filters(
                     [
-                        DNSResourceClauseFactory.with_name(label),
-                        DNSResourceClauseFactory.with_domain_id(domain.id),
+                        DNSResourceFilters.with_name(label),
+                        DNSResourceFilters.with_domain_id(domain.id),
                     ]
                 ),
             )

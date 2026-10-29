@@ -24,32 +24,24 @@ from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.builders.tokens import TokenBuilder
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.consumers import ConsumerClauseFactory
-from maasservicelayer.db.repositories.filestorage import (
-    FileStorageClauseFactory,
-)
-from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
-from maasservicelayer.db.repositories.notifications import (
-    NotificationsClauseFactory,
-)
-from maasservicelayer.db.repositories.sslkeys import SSLKeyClauseFactory
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
-from maasservicelayer.db.repositories.tokens import TokenClauseFactory
-from maasservicelayer.db.repositories.users import (
-    UserClauseFactory,
-    UsersRepository,
-)
+from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.tables import OpenFGATupleTable
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     NotFoundException,
     PreconditionFailedException,
 )
+from maasservicelayer.filters.consumers import ConsumerFilters
+from maasservicelayer.filters.filestorage import FileStorageFilters
+from maasservicelayer.filters.ipranges import IPRangeFilters
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.notifications import NotificationsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.filters.sshkeys import SshKeyFilters
+from maasservicelayer.filters.sslkeys import SSLKeyFilters
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
+from maasservicelayer.filters.tokens import TokenFilters
+from maasservicelayer.filters.users import UserFilters
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.consumers import Consumer
 from maasservicelayer.models.tokens import Token
@@ -114,19 +106,19 @@ class TestIntegrationUserService:
         token = await services.users.get_MAAS_user_apikey()
 
         user_created = await services.users.repository.get_one(
-            query=QuerySpec(where=UserClauseFactory.with_username("MAAS"))
+            query=QuerySpec(where=UserFilters.with_username("MAAS"))
         )
         assert user_created is not None
 
         consumer_created = await services.consumers.get_one(
             query=QuerySpec(
-                where=ConsumerClauseFactory.with_user_id(user_created.id)
+                where=ConsumerFilters.with_user_id(user_created.id)
             )
         )
         assert consumer_created is not None
         token_created = await services.tokens.get_one(
             query=QuerySpec(
-                where=TokenClauseFactory.with_consumer_id(consumer_created.id)
+                where=TokenFilters.with_consumer_id(consumer_created.id)
             )
         )
         assert token_created is not None
@@ -479,26 +471,22 @@ class TestUsersService:
             user_id=TEST_USER.id
         )
         users_service.consumers_service.delete_many.assert_called_once_with(
-            query=QuerySpec(
-                where=ConsumerClauseFactory.with_user_id(TEST_USER.id)
-            )
+            query=QuerySpec(where=ConsumerFilters.with_user_id(TEST_USER.id))
         )
         users_service.sshkey_service.delete_many.assert_called_once_with(
             query=QuerySpec(where=SshKeyFilters.with_user_id(TEST_USER.id))
         )
         users_service.sslkey_service.delete_many.assert_called_once_with(
-            query=QuerySpec(
-                where=SSLKeyClauseFactory.with_user_id(TEST_USER.id)
-            )
+            query=QuerySpec(where=SSLKeyFilters.with_user_id(TEST_USER.id))
         )
         users_service.notification_service.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=NotificationsClauseFactory.with_user_id(TEST_USER.id)
+                where=NotificationsFilters.with_user_id(TEST_USER.id)
             )
         )
         users_service.filestorage_service.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=FileStorageClauseFactory.with_owner_id(TEST_USER.id)
+                where=FileStorageFilters.with_owner_id(TEST_USER.id)
             )
         )
         users_service.openfga_tuple_service.delete_user.assert_called_once_with(
@@ -585,20 +573,16 @@ class TestUsersService:
         await users_service.transfer_resources(TEST_USER.id, user2.id)
         users_service.staticipaddress_service.update_many.assert_called_once_with(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_user_id(TEST_USER.id)
+                where=StaticIPAddressFilters.with_user_id(TEST_USER.id)
             ),
             builder=StaticIPAddressBuilder(user_id=user2.id),
         )
         users_service.ipranges_service.update_many.assert_called_once_with(
-            query=QuerySpec(
-                where=IPRangeClauseFactory.with_user_id(TEST_USER.id)
-            ),
+            query=QuerySpec(where=IPRangeFilters.with_user_id(TEST_USER.id)),
             builder=IPRangeBuilder(user_id=user2.id),
         )
         users_service.nodes_service.update_many.assert_called_once_with(
-            query=QuerySpec(
-                where=NodeClauseFactory.with_owner_id(TEST_USER.id)
-            ),
+            query=QuerySpec(where=NodeFilters.with_owner_id(TEST_USER.id)),
             builder=NodeBuilder(owner_id=user2.id),
         )
 
@@ -637,7 +621,7 @@ class TestUsersService:
         await users_service.get_by_username(username="user@example.com")
         users_repository.get_one.assert_called_once_with(
             query=QuerySpec(
-                where=UserClauseFactory.with_username("user@example.com")
+                where=UserFilters.with_username("user@example.com")
             )
         )
 

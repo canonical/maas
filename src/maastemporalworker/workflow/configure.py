@@ -19,13 +19,11 @@ from maascommon.workflows.configure import (
     ConfigureAgentParam,
     ConfigureDHCPServiceParam,
 )
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
-from maasservicelayer.db.repositories.vlans import VlansClauseFactory
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
+from maasservicelayer.filters.subnets import SubnetFilters
+from maasservicelayer.filters.vlans import VlansFilters
 from maastemporalworker.workflow.activity import ActivityBase
 from maastemporalworker.workflow.utils import (
     activity_defn_with_context,
@@ -84,15 +82,15 @@ class ConfigureAgentActivity(ActivityBase):
         async with self.start_transaction() as services:
             result = await services.vlans.get_node_vlans(
                 query=QuerySpec(
-                    where=VlansClauseFactory.and_clauses(
+                    where=VlansFilters.and_filters(
                         [
-                            VlansClauseFactory.with_system_id(input.system_id),
-                            VlansClauseFactory.or_clauses(
+                            VlansFilters.with_system_id(input.system_id),
+                            VlansFilters.or_filters(
                                 [
-                                    VlansClauseFactory.with_node_type(
+                                    VlansFilters.with_node_type(
                                         NodeTypeEnum.RACK_CONTROLLER
                                     ),
-                                    VlansClauseFactory.with_node_type(
+                                    VlansFilters.with_node_type(
                                         NodeTypeEnum.REGION_AND_RACK_CONTROLLER
                                     ),
                                 ]
@@ -116,20 +114,20 @@ class ConfigureAgentActivity(ActivityBase):
         async with self.start_transaction() as services:
             result = await services.staticipaddress.get_for_nodes(
                 query=QuerySpec(
-                    where=StaticIPAddressClauseFactory.and_clauses(
+                    where=StaticIPAddressFilters.and_filters(
                         [
-                            StaticIPAddressClauseFactory.or_clauses(
+                            StaticIPAddressFilters.or_filters(
                                 [
-                                    StaticIPAddressClauseFactory.with_node_type(
+                                    StaticIPAddressFilters.with_node_type(
                                         NodeTypeEnum.REGION_CONTROLLER
                                     ),
-                                    StaticIPAddressClauseFactory.with_node_type(
+                                    StaticIPAddressFilters.with_node_type(
                                         NodeTypeEnum.REGION_AND_RACK_CONTROLLER
                                     ),
                                 ]
                             ),
-                            StaticIPAddressClauseFactory.not_clause(
-                                StaticIPAddressClauseFactory.with_ip(None)
+                            StaticIPAddressFilters.not_filter(
+                                StaticIPAddressFilters.with_ip(None)
                             ),
                         ]
                     )
@@ -146,7 +144,7 @@ class ConfigureAgentActivity(ActivityBase):
         async with self.start_transaction() as services:
             agent_node = await services.nodes.get_one(
                 query=QuerySpec(
-                    where=NodeClauseFactory.with_system_id(param.system_id),
+                    where=NodeFilters.with_system_id(param.system_id),
                 )
             )
 
@@ -164,7 +162,7 @@ class ConfigureAgentActivity(ActivityBase):
 
             dns_enabled_subnets = await services.subnets.get_many(
                 query=QuerySpec(
-                    where=SubnetClauseFactory.with_allow_dns(True),
+                    where=SubnetFilters.with_allow_dns(True),
                 )
             )
 
@@ -174,12 +172,12 @@ class ConfigureAgentActivity(ActivityBase):
 
             agent_ips = await services.staticipaddress.get_for_nodes(
                 query=QuerySpec(
-                    where=StaticIPAddressClauseFactory.and_clauses(
+                    where=StaticIPAddressFilters.and_filters(
                         [
-                            StaticIPAddressClauseFactory.with_node_system_id(
+                            StaticIPAddressFilters.with_node_system_id(
                                 param.system_id
                             ),
-                            StaticIPAddressClauseFactory.with_subnet_id_in(
+                            StaticIPAddressFilters.with_subnet_id_in(
                                 dns_enabled_subnet_ids
                             ),
                         ]
@@ -189,19 +187,19 @@ class ConfigureAgentActivity(ActivityBase):
 
             region_ips = await services.staticipaddress.get_for_nodes(
                 query=QuerySpec(
-                    where=StaticIPAddressClauseFactory.and_clauses(
+                    where=StaticIPAddressFilters.and_filters(
                         [
-                            StaticIPAddressClauseFactory.or_clauses(
+                            StaticIPAddressFilters.or_filters(
                                 [
-                                    StaticIPAddressClauseFactory.with_node_type(
+                                    StaticIPAddressFilters.with_node_type(
                                         NodeTypeEnum.REGION_CONTROLLER
                                     ),
-                                    StaticIPAddressClauseFactory.with_node_type(
+                                    StaticIPAddressFilters.with_node_type(
                                         NodeTypeEnum.REGION_AND_RACK_CONTROLLER
                                     ),
                                 ]
                             ),
-                            StaticIPAddressClauseFactory.with_subnet_id_in(
+                            StaticIPAddressFilters.with_subnet_id_in(
                                 dns_enabled_subnet_ids
                             ),
                         ]

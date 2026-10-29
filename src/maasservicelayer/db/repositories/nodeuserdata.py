@@ -2,35 +2,20 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64decode
-from operator import eq
 from typing import Any, List
 
 from sqlalchemy import delete, Table
 from sqlalchemy.dialects.postgresql import insert
 
 from maasservicelayer.builders.nodeuserdata import NodeUserDataBuilder
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.mappers.base import BaseDomainDataMapper
 from maasservicelayer.db.mappers.nodeuserdata import (
     NodeUserDataDomainDataMapper,
 )
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import NodeUserDataTable
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.nodeuserdata import NodeUserData
-
-
-class NodeUserDataClauseFactory(ClauseFactory):
-    @classmethod
-    def with_node_id(cls, node_id: int) -> Clause:
-        return Clause(condition=eq(NodeUserDataTable.c.node_id, node_id))
-
-    @classmethod
-    def with_for_ephemeral_environment(cls, for_ephemeral: bool) -> Clause:
-        return Clause(
-            condition=eq(
-                NodeUserDataTable.c.for_ephemeral_environment, for_ephemeral
-            )
-        )
 
 
 class NodeUserDataRepository(BaseRepository[NodeUserData]):
@@ -68,7 +53,7 @@ class NodeUserDataRepository(BaseRepository[NodeUserData]):
         This is called by `get_one`, `get_by_id`, and `get_many`.
         """
         stmt = self.select_all_statement()
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return [self._to_model(row._asdict()) for row in result]
@@ -79,7 +64,7 @@ class NodeUserDataRepository(BaseRepository[NodeUserData]):
         This is called by `delete_one`, `delete_by_id`, and `delete_many`.
         """
         stmt = delete(NodeUserDataTable).returning(NodeUserDataTable)
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return [self._to_model(row._asdict()) for row in result]

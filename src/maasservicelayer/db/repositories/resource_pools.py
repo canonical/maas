@@ -1,4 +1,4 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from typing import Type
@@ -8,20 +8,15 @@ from sqlalchemy.sql.functions import func
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import SQLQuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import NodeTable, ResourcePoolTable
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import (
     ResourcePool,
     ResourcePoolStatistics,
 )
-
-
-class ResourcePoolClauseFactory(ClauseFactory):
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=ResourcePoolTable.c.id.in_(ids))
 
 
 class ResourcePoolRepository(BaseRepository[ResourcePool]):
@@ -39,11 +34,14 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
     async def list_with_statistics(
         self, page: int, size: int, query: QuerySpec | None
     ) -> ListResult[ResourcePoolStatistics]:
+        translated = self._translate(query) if query is not None else None
         total_stmt = select(func.count()).select_from(
             self.get_repository_table()
         )
-        if query:
-            total_stmt = query.enrich_stmt(total_stmt)
+        if translated is not None:
+            total_stmt = SQLQuerySpec(where=translated.where).enrich_stmt(
+                total_stmt
+            )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
@@ -75,8 +73,8 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
             .group_by(ResourcePoolTable.c.id)
             .order_by(desc(ResourcePoolTable.c.id))
         )
-        if query:
-            stmt = query.enrich_stmt(stmt)
+        if translated is not None:
+            stmt = translated.enrich_stmt(stmt)
 
         result = await self.execute_stmt(stmt)
         return ListResult[ResourcePoolStatistics](

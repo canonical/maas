@@ -8,11 +8,13 @@ from maascommon.enums.boot_resources import BootResourceType
 from maasservicelayer.builders.bootresourcesets import BootResourceSetBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.bootresourcesets import (
-    BootResourceSetClauseFactory,
-    BootResourceSetsOrderByClauses,
     BootResourceSetsRepository,
 )
-from maasservicelayer.db.tables import BootResourceSetTable
+from maasservicelayer.filters.bootresourcesets import (
+    BootResourceSetFilters,
+    BootResourceSetsOrdering,
+)
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootresourcesets import BootResourceSet
 from tests.fixtures.factories.bootresources import (
     create_test_bootresource_entry,
@@ -22,69 +24,6 @@ from tests.fixtures.factories.bootresourcesets import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestBootResourceSetClauseFactory:
-    def with_resource_id(self) -> None:
-        clause = BootResourceSetClauseFactory.with_resource_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootresourceset.resource_id = 1"
-        )
-
-    def with_resource_ids(self) -> None:
-        clause = BootResourceSetClauseFactory.with_resource_ids([1, 2])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootresourceset.resource_id IN (1, 2)"
-        )
-
-    def with_version(self) -> None:
-        clause = BootResourceSetClauseFactory.with_version("20250618")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootresourceset.version = '20250618'"
-        )
-
-    def with_version_prefix(self) -> None:
-        clause = BootResourceSetClauseFactory.with_version_prefix("20250618")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootresourceset.version LIKE '20250618%'"
-        )
-
-    def with_label(self) -> None:
-        clause = BootResourceSetClauseFactory.with_label("stable")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootresourceset.label = 'stable'"
-        )
-
-
-class TestBootResourceSetsOrderByClauses:
-    def test_by_id(self) -> None:
-        clause = BootResourceSetsOrderByClauses.by_id()
-        assert clause.column == BootResourceSetTable.c.id
 
 
 class TestCommonBootResourceSetRepository(
@@ -140,6 +79,31 @@ class TestBootResourceSetRepository:
         self, db_connection: AsyncConnection
     ) -> BootResourceSetsRepository:
         return BootResourceSetsRepository(Context(connection=db_connection))
+
+    async def test_domain_version_prefix_and_ordering(
+        self, fixture, repository
+    ):
+        sets = []
+        for version in ["20261029.1", "20261029.2", "20261030.1"]:
+            sets.append(
+                await create_test_bootresourceset_entry(
+                    fixture,
+                    version=version,
+                    label="stable",
+                    resource_id=1,
+                )
+            )
+        result = await repository.get_many(
+            QuerySpec(
+                where=BootResourceSetFilters.with_version_prefix("20261029"),
+                order_by=(
+                    BootResourceSetsOrdering.desc(
+                        BootResourceSetsOrdering.by_id()
+                    ),
+                ),
+            )
+        )
+        assert result == list(reversed(sets[:2]))
 
     async def test_get_latest_for_boot_resource(
         self,

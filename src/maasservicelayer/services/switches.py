@@ -6,8 +6,6 @@ from pathlib import Path
 from maascommon.utils.images import get_bootresource_store_path
 from maasservicelayer.builders.switches import SwitchBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
 from maasservicelayer.db.repositories.switches import SwitchesRepository
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
@@ -15,6 +13,8 @@ from maasservicelayer.exceptions.catalog import (
     NotFoundException,
 )
 from maasservicelayer.exceptions.constants import CONFLICT_VIOLATION_TYPE
+from maasservicelayer.filters.interfaces import InterfaceFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.switches import Switch, SwitchWithTargetImage
 from maasservicelayer.services.base import BaseService
@@ -116,7 +116,7 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         """
         interface = await self.interfaces_service.get_one(
             query=QuerySpec(
-                where=InterfaceClauseFactory.with_mac_address(mac_address)
+                where=InterfaceFilters.with_mac_address(mac_address)
             )
         )
 
@@ -221,7 +221,7 @@ class SwitchesService(BaseService[Switch, SwitchesRepository, SwitchBuilder]):
         """
         interfaces = await self.interfaces_service.get_many(
             query=QuerySpec(
-                where=InterfaceClauseFactory.with_switch_id(
+                where=InterfaceFilters.with_switch_id(
                     resource_to_be_deleted.id
                 )
             )

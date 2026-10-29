@@ -30,8 +30,8 @@ from maasapiserver.v3.api.public.models.responses.zones import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -68,7 +68,7 @@ class ZonesHandler(Handler):
         zones = await services.zones.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=filters.to_clause()),
+            query=QuerySpec(where=filters.to_filter()),
         )
         next_link = None
         if zones.has_next(pagination_params.page, pagination_params.size):
@@ -118,7 +118,7 @@ class ZonesHandler(Handler):
         zones_with_statistics = await services.zones.list_with_statistics(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=filters.to_clause()),
+            query=QuerySpec(where=filters.to_filter()),
         )
         query_filters = filters.to_href_format()
         return ZonesWithStatisticsListResponse(

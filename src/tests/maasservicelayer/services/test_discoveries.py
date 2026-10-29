@@ -9,11 +9,11 @@ import pytest
 
 from maascommon.logging.security import AUTHZ_ADMIN, SECURITY
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.discoveries import DiscoveriesRepository
-from maasservicelayer.db.repositories.mdns import MDNSClauseFactory
-from maasservicelayer.db.repositories.neighbours import NeighbourClauseFactory
-from maasservicelayer.db.repositories.rdns import RDNSClauseFactory
+from maasservicelayer.filters.mdns import MDNSFilters
+from maasservicelayer.filters.neighbours import NeighbourFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.rdns import RDNSFilters
 from maasservicelayer.models.discoveries import Discovery
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.services.discoveries import DiscoveriesService
@@ -104,17 +104,17 @@ class TestDiscoveriesClear:
         ) as mock_logger:
             await discoveries_service.clear_by_ip_and_mac(ip=ip, mac=mac)
         mdns_service_mock.delete_many.assert_called_once_with(
-            query=QuerySpec(where=MDNSClauseFactory.with_ip(ip))
+            query=QuerySpec(where=MDNSFilters.with_ip(ip))
         )
         rdns_service_mock.delete_many.assert_called_once_with(
-            query=QuerySpec(where=RDNSClauseFactory.with_ip(ip))
+            query=QuerySpec(where=RDNSFilters.with_ip(ip))
         )
         neighbours_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=NeighbourClauseFactory.and_clauses(
+                where=NeighbourFilters.and_filters(
                     [
-                        NeighbourClauseFactory.with_ip(ip),
-                        NeighbourClauseFactory.with_mac(mac),
+                        NeighbourFilters.with_ip(ip),
+                        NeighbourFilters.with_mac(mac),
                     ]
                 )
             )

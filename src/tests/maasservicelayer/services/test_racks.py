@@ -6,12 +6,10 @@ from unittest.mock import AsyncMock, call, MagicMock, Mock, patch
 import pytest
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.agents import AgentsClauseFactory
-from maasservicelayer.db.repositories.bootstraptokens import (
-    BootstrapTokensClauseFactory,
-)
 from maasservicelayer.db.repositories.racks import RacksRepository
+from maasservicelayer.filters.agents import AgentsFilters
+from maasservicelayer.filters.bootstraptokens import BootstrapTokensFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.racks import Rack
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.bootstraptoken import BootstrapTokensService
@@ -67,12 +65,10 @@ class TestRacksService(ServiceCommonTests):
         repository_mock.delete_by_id.assert_called_once_with(id=rack.id)
 
         bootstraptokens_service_mock.delete_many.assert_called_once_with(
-            query=QuerySpec(
-                where=BootstrapTokensClauseFactory.with_rack_id(rack.id)
-            )
+            query=QuerySpec(where=BootstrapTokensFilters.with_rack_id(rack.id))
         )
         agents_service_mock.delete_many.assert_called_once_with(
-            query=QuerySpec(where=AgentsClauseFactory.with_rack_id(rack.id))
+            query=QuerySpec(where=AgentsFilters.with_rack_id(rack.id))
         )
 
     @patch("maasservicelayer.services.racks.get_maas_cluster_cert_paths")

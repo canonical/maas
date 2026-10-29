@@ -19,13 +19,15 @@ from maasservicelayer.builders.tokens import (
     TokenBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.tokens import (
-    OIDCRevokedTokenClauseFactory,
     OIDCRevokedTokenRepository,
-    RefreshTokenClauseFactory,
     RefreshTokenRepository,
     TokensRepository,
+)
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.tokens import (
+    OIDCRevokedTokenFilters,
+    RefreshTokenFilters,
 )
 from maasservicelayer.models.configurations import RefreshTokenDurationConfig
 from maasservicelayer.models.tokens import (
@@ -91,9 +93,7 @@ class RefreshTokenService(
     async def revoke_refresh_token(self, token: str) -> None:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         await super().delete_one(
-            query=QuerySpec(
-                where=RefreshTokenClauseFactory.with_token(token_hash)
-            )
+            query=QuerySpec(where=RefreshTokenFilters.with_token(token_hash))
         )
         logger.info(
             f"{AUTHN_TOKEN_DELETED}:JWT:{REFRESH_TOKEN}",
@@ -141,6 +141,6 @@ class OIDCRevokedTokenService(
         token_hash = self._hash_token(token)
         return await self.exists(
             query=QuerySpec(
-                where=OIDCRevokedTokenClauseFactory.with_token_hash(token_hash)
+                where=OIDCRevokedTokenFilters.with_token_hash(token_hash)
             )
         )
