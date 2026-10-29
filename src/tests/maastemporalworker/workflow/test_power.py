@@ -146,7 +146,7 @@ class TestGetTemporalQueueForMachine:
         mocked_get_all_clients.return_value = [client]
 
         queue = get_temporal_task_queue_for_bmc(machine)
-        assert queue == f"agent:power@vlan-{vlan.id}"
+        assert queue == f"rack-controller:power@vlan-{vlan.id}"
 
     def test_get_temporal_task_queue_for_bmc_machine_with_rackd_offline_on_vlan(
         self, factory, mocker
@@ -191,7 +191,7 @@ class TestGetTemporalQueueForMachine:
         mocked_bmc_get_all_clients.return_value = [client]
 
         queue = get_temporal_task_queue_for_bmc(machine)
-        assert queue == f"{rack2.system_id}@agent:power"
+        assert queue == f"{rack2.system_id}@rack-controller:power"
 
     def test_get_temporal_task_queue_for_bmc_machine_with_rackd_online_on_vlan(
         self, factory, mocker
@@ -230,7 +230,7 @@ class TestGetTemporalQueueForMachine:
         mocked_get_all_clients.return_value = [client]
 
         queue = get_temporal_task_queue_for_bmc(machine)
-        assert queue == f"agent:power@vlan-{vlan1.id}"
+        assert queue == f"rack-controller:power@vlan-{vlan1.id}"
 
     def test_get_temporal_task_queue_for_bmc_machine_with_bmc_without_vlan(
         self, factory, mocker
@@ -261,7 +261,7 @@ class TestGetTemporalQueueForMachine:
         mocked_get_all_clients.return_value = [client]
 
         queue = get_temporal_task_queue_for_bmc(machine)
-        assert queue == f"{rack.system_id}@agent:power"
+        assert queue == f"{rack.system_id}@rack-controller:power"
 
     def test_convert_power_action_to_power_workflow(self, factory, mocker):
         power_actions = {
@@ -280,7 +280,7 @@ class TestGetTemporalQueueForMachine:
             power_workflow, "get_temporal_task_queue_for_bmc"
         )
         mocked_get_temporal_task_queue_for_bmc.return_value = (
-            "agent:power@vlan-1"
+            "rack-controller:power@vlan-1"
         )
 
         mocker.patch.object(
@@ -298,7 +298,7 @@ class TestGetTemporalQueueForMachine:
             assert workfow_type == power_action.replace("_", "-")
             assert workflow_param == power_actions[power_action](
                 system_id=machine.system_id,
-                task_queue="agent:power@vlan-1",
+                task_queue="rack-controller:power@vlan-1",
                 driver_type=params.power_type,
                 driver_opts=params.power_parameters,
                 is_dpu=False,
@@ -317,7 +317,7 @@ class TestGetTemporalQueueForMachine:
             power_workflow, "get_temporal_task_queue_for_bmc"
         )
         mocked_get_temporal_task_queue_for_bmc.return_value = (
-            "agent:power@vlan-1"
+            "rack-controller:power@vlan-1"
         )
 
         trusted_keys = [
@@ -351,7 +351,7 @@ class TestGetTemporalQueueForMachine:
             power_workflow, "get_temporal_task_queue_for_bmc"
         )
         mocked_get_temporal_task_queue_for_bmc.return_value = (
-            "agent:power@vlan-1"
+            "rack-controller:power@vlan-1"
         )
         with pytest.raises(UnknownPowerActionException):
             convert_power_action_to_power_workflow(
@@ -368,7 +368,7 @@ class TestGetTemporalQueueForMachine:
         mocker.patch.object(
             power_workflow,
             "get_temporal_task_queue_for_bmc",
-            return_value="agent:power@vlan-1",
+            return_value="rack-controller:power@vlan-1",
         )
         order = [{"id": 1, "mac_address": "00:11:22:33:44:55"}]
 
@@ -432,9 +432,9 @@ class TestPowerResetWorkflow:
         # the PowerResetParam for this unit testing configuration to work.
         # In actual MAAS, the workflow is submitted to the "region" task queue
         # whilst the `task_queue` in the PowerResetParam specifies the specific
-        # power task queue on the controller (e.g. {controller_id}@agent:power)
+        # power task queue on the controller (e.g. {controller_id}@rack-controller:power)
         # that manages the system_id you want to restart.
-        power_task_queue = "def456@agent:power"
+        power_task_queue = "def456@rack-controller:power"
 
         calls = {}
         param = PowerResetParam(
@@ -454,7 +454,7 @@ class TestPowerResetWorkflow:
         # task_queue: str,
         # driver_type: str,
         # driver_opts: dict[str,str]
-        # but the activity in go maas-agent (src/maasagent/internal/power/service.go)
+        # but the activity in go maas-rack-controller (src/maasrackcontroller/internal/power/service.go)
         # only uses the driver information, so we change the receiving param here
         @activity.defn(name=POWER_RESET_ACTIVITY_NAME)
         async def mock_power_reset_activity(
@@ -481,7 +481,7 @@ class TestPowerResetWorkflow:
 
         # Check that the passed-in parameters to the activity match those of
         # the workflow's parameter.
-        # NOTE: If the power parameters in the maas-agent change, these
+        # NOTE: If the power parameters in the maas-rack-controller change, these
         #       assertions will need to be updated.
         assert (
             calls[POWER_RESET_ACTIVITY_NAME]["driver_opts"]
@@ -496,7 +496,7 @@ class TestPowerResetWorkflow:
 @pytest.mark.asyncio
 class TestPowerOnWorkflowBootOrder:
     async def _run_power_on(self, boot_order):
-        power_task_queue = "def456@agent:power"
+        power_task_queue = "def456@rack-controller:power"
         calls = defaultdict(list)
 
         param = PowerOnParam(

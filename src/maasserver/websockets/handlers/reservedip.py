@@ -6,7 +6,7 @@
 from django.db.models.query import QuerySet
 
 from maasserver.authorization import can_edit_global_entities
-from maasserver.dhcp import configure_dhcp_on_agents
+from maasserver.dhcp import configure_dhcp_on_rack_controllers
 from maasserver.forms.reservedip import ReservedIPForm
 from maasserver.models import Interface
 from maasserver.models.reservedip import ReservedIP
@@ -71,7 +71,8 @@ class ReservedIPHandler(TimestampedModelHandler):
 
         reserved_ip = super().create(params)
         post_commit_do(
-            configure_dhcp_on_agents, reserved_ip_ids=[reserved_ip["id"]]
+            configure_dhcp_on_rack_controllers,
+            reserved_ip_ids=[reserved_ip["id"]],
         )
         return reserved_ip
 
@@ -95,6 +96,7 @@ class ReservedIPHandler(TimestampedModelHandler):
 
         reserved_ip = self.get_object(params)
         post_commit_do(
-            configure_dhcp_on_agents, subnet_ids=[reserved_ip.subnet.id]
+            configure_dhcp_on_rack_controllers,
+            subnet_ids=[reserved_ip.subnet.id],
         )
         reserved_ip.delete()

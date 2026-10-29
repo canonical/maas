@@ -134,7 +134,7 @@ swagger-css: $(swagger-dist)
 	wget -O $(file) $(url)
 .PHONY: swagger-css
 
-go-bins: build-host-info build-agent build-openfga
+go-bins: build-host-info build-rack-controller build-openfga
 .PHONY: go-bins
 
 generate-go:
@@ -148,9 +148,9 @@ build-host-info:
 	$(MAKE) --no-print-directory -j -C src/host-info build
 .PHONY: build-host-info
 
-build-agent:
-	$(MAKE) --no-print-directory -j -C src/maasagent build
-.PHONY: build-agent
+build-rack-controller:
+	$(MAKE) --no-print-directory -j -C src/maasrackcontroller build
+.PHONY: build-rack-controller
 
 build-openfga:
 	$(MAKE) --no-print-directory -j -C src/maasopenfga build
@@ -223,7 +223,7 @@ lint-oapi: openapi.yaml
 
 # Go fmt
 lint-go: $(BIN_DIR)/golangci-lint
-	$(MAKE) -C src/maasagent/ vendor
+	$(MAKE) -C src/maasrackcontroller/ vendor
 	@find src -maxdepth 3 -type f -name go.mod -execdir \
 		sh -c "go mod tidy \
 		&& git diff --exit-code -- go.mod go.sum \
@@ -288,7 +288,7 @@ fix-py:
 
 format-go:
 	@$(MAKE) -C src/host-info format
-	@$(MAKE) -C src/maasagent format
+	@$(MAKE) -C src/maasrackcontroller format
 	@$(MAKE) -C src/maasopenfga format
 .PHONY: format-go
 
@@ -323,16 +323,16 @@ clean-ui-build:
 	$(MAKE) --no-print-directory -C src/maasui clean-build
 .PHONY: clean-build
 
-clean-go-bins: clean-host-info clean-agent clean-openfga
+clean-go-bins: clean-host-info clean-rack-controller clean-openfga
 .PHONY: clean-go-bins
 
 clean-host-info:
 	$(MAKE) --no-print-directory -C src/host-info clean
 .PHONY: clean-host-info
 
-clean-agent:
-	$(MAKE) --no-print-directory -C src/maasagent clean
-.PHONY: clean-agent
+clean-rack-controller:
+	$(MAKE) --no-print-directory -C src/maasrackcontroller clean
+.PHONY: clean-rack-controller
 
 clean-openfga:
 	$(MAKE) --no-print-directory -C src/maasopenfga clean
@@ -340,7 +340,7 @@ clean-openfga:
 
 
 clean: clean-ui clean-go-bins
-	@$(MAKE) -C src/maasagent clean
+	@$(MAKE) -C src/maasrackcontroller clean
 	@$(MAKE) -C src/maasopenfga clean
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
@@ -425,9 +425,9 @@ $(SNAP_FILE):
 	$(snapcraft) pack -o $(SNAP_FILE)
 
 snap-tree-sync: RSYNC := rsync -v -r -u -l -t -W -L
-snap-tree-sync: $(UI_BUILD) clean-agent clean-openfga go-bins $(SNAP_UNPACKED_DIR_MARKER)
+snap-tree-sync: $(UI_BUILD) clean-rack-controller clean-openfga go-bins $(SNAP_UNPACKED_DIR_MARKER)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
-		--exclude 'maasui' --exclude 'maasagent' --exclude 'maasopenfga' --exclude 'machine-resources' \
+		--exclude 'maasui' --exclude 'maasrackcontroller' --exclude 'maasopenfga' --exclude 'machine-resources' \
 		--exclude 'host-info' --exclude '*.pyc' --exclude '__pycache__' \
 		src/ \
 		$(SNAP_UNPACKED_DIR)/usr/lib/python3.*/dist-packages/
@@ -441,7 +441,7 @@ snap-tree-sync: $(UI_BUILD) clean-agent clean-openfga go-bins $(SNAP_UNPACKED_DI
 		src/host-info/bin/ \
 		$(SNAP_UNPACKED_DIR)/usr/share/maas/machine-resources/
 	$(RSYNC) \
-		src/maasagent/build/ \
+		src/maasrackcontroller/build/ \
 		$(SNAP_UNPACKED_DIR)/usr/sbin/
 	$(RSYNC) \
 		src/maasopenfga/build/ \

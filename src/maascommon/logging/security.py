@@ -33,7 +33,7 @@ UPDATED = "updated"
 DELETED = "deleted"
 
 # Tokens
-# Notes the creation of a new JWT access or freshtoken, a Rack Controller V2 (Agent) Bootstrap token, or a MSM JWT enrollment token
+# Notes the creation of a new JWT access or freshtoken, a rack controller bootstrap token, or a MSM JWT enrollment token
 AUTHN_TOKEN_CREATED = "AUTHN_token_created"
 # Notes the deletion of any of the above mention tokens
 AUTHN_TOKEN_DELETED = "AUTHN_token_deleted"

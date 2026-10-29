@@ -26,13 +26,13 @@ from twisted.internet.defer import (
 from twisted.internet.threads import deferToThread
 
 from maascommon.hardening import is_hardening_enabled
-from provisioningserver.agent import config as agent_config
-from provisioningserver.certificates import get_maas_agent_cert_paths
+from provisioningserver.certificates import get_maas_rack_controller_cert_paths
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.ntp.config import configure_rack
 from provisioningserver.path import get_maas_cache_path
 from provisioningserver.proxy import config as proxy_config
+from provisioningserver.rackcontroller import config as rack_controller_config
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.clusterservice import ClusterClientService
 from provisioningserver.rpc.region import (
@@ -346,17 +346,17 @@ class RackSyslog(RackOnlyExternalService):
         )
 
 
-class RackAgent(RackOnlyExternalService):
-    """External maas-agent service"""
+class RackControllerExternalService(RackOnlyExternalService):
+    """External maas-rack-controller service"""
 
-    service_name = "agent"
+    service_name = "rack-controller"
 
     def _tryUpdate(self, config: _Configuration) -> Deferred:
         d = succeed(self._getConfiguration())
         d.addCallback(self._maybeApplyConfiguration)
         return d
 
-    def _getConfiguration(self) -> agent_config.AgentConfig:
+    def _getConfiguration(self) -> rack_controller_config.RackControllerConfig:
         controllers = []
         with ClusterConfiguration.open() as config:
             controllers = [
@@ -373,50 +373,54 @@ class RackAgent(RackOnlyExternalService):
 
         cert_file, key_file, ca_file = ("", "", "")
 
-        paths = get_maas_agent_cert_paths()
+        paths = get_maas_rack_controller_cert_paths()
         if paths is not None:
             cert_file, key_file, ca_file = paths
 
-        return agent_config.AgentConfig(
+        return rack_controller_config.RackControllerConfig(
             maas_uuid=MAAS_UUID.get(),
             system_id=MAAS_ID.get(),
             controller=controllers[0],
-            temporal=agent_config.AgentTemporalConfig(
+            temporal=rack_controller_config.RackControllerTemporalConfig(
                 host=temporal_server,
                 port=5271,
                 encryption_key=MAAS_SHARED_SECRET.get(),
             ),
-            services=agent_config.AgentServicesConfig(
-                http_proxy=agent_config.AgentHTTPProxyConfig(
-                    cache=agent_config.AgentHTTPProxyCacheConfig(
+            services=rack_controller_config.RackControllerServicesConfig(
+                http_proxy=rack_controller_config.RackControllerHTTPProxyConfig(
+                    cache=rack_controller_config.RackControllerHTTPProxyCacheConfig(
                         size=httpproxy_cache_size,
                         dir=get_maas_cache_path("httpproxy"),
                     ),
                 ),
             ),
-            observability=agent_config.AgentObservabilityConfig(
-                logging=agent_config.AgentLogConfig(
+            observability=rack_controller_config.RackControllerObservabilityConfig(
+                logging=rack_controller_config.RackControllerLogConfig(
                     "debug" if debug_enabled else "info",
                 ),
-                metrics=agent_config.AgentMetricsConfig(enabled=True),
+                metrics=rack_controller_config.RackControllerMetricsConfig(
+                    enabled=True
+                ),
             ),
-            tls=agent_config.AgentTLSConfig(
+            tls=rack_controller_config.RackControllerTLSConfig(
                 key_file=key_file, cert_file=cert_file, ca_file=ca_file
             ),
         )
 
     def _applyConfiguration(
-        self, configuration: agent_config.AgentConfig
+        self, configuration: rack_controller_config.RackControllerConfig
     ) -> Deferred:
-        """Configure the maas agent"""
+        """Configure the rack controller"""
         d = deferToThread(self._configure, configuration)
         d.addCallback(
             callOut, service_monitor.restartService, self.service_name
         )
         return d
 
-    def _configure(self, configuration: agent_config.AgentConfig) -> None:
-        agent_config.write_config(configuration)
+    def _configure(
+        self, configuration: rack_controller_config.RackControllerConfig
+    ) -> None:
+        rack_controller_config.write_config(configuration)
 
 
 class RackExternalService(TimerService):
@@ -448,7 +452,7 @@ class RackExternalService(TimerService):
                 ("NTP", RackNTP()),
                 ("proxy", RackProxy()),
                 ("syslog", RackSyslog()),
-                ("agent", RackAgent()),
+                ("rack-controller", RackControllerExternalService()),
             ]
 
     def _update_interval(self, config):

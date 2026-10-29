@@ -25,7 +25,7 @@ from maasservicelayer.exceptions.catalog import (
     ValidationException,
 )
 from maasservicelayer.models.dhcp import (
-    DHCPDataForAgent,
+    DHCPDataForRackController,
     HostReservationData,
     InterfaceData,
     IPRangeData,
@@ -211,7 +211,7 @@ class TestDHCPService:
             ),
         ],
     )
-    async def test_get_kea_dhcp_data_for_agent(
+    async def test_get_kea_dhcp_data_for_rack_controller(
         self,
         dhcp,
         subnet,
@@ -248,9 +248,9 @@ class TestDHCPService:
         )
         pool = IPRangeData(1, 1, True, start, end)
 
-        result = await dhcp.get_kea_dhcp_data_for_agent("rack-1")
+        result = await dhcp.get_kea_dhcp_data_for_rack_controller("rack-1")
 
-        assert result == DHCPDataForAgent(
+        assert result == DHCPDataForRackController(
             vlans=[VlanData(1, 10, None, 1500)],
             subnets=[
                 SubnetData(
@@ -284,7 +284,7 @@ class TestDHCPService:
     async def test_only_includes_owned_dhcp_vlans_and_managed_subnets(
         self, dhcp, rack
     ):
-        await dhcp.get_kea_dhcp_data_for_agent(rack.system_id)
+        await dhcp.get_kea_dhcp_data_for_rack_controller(rack.system_id)
 
         vlan_query = dhcp.vlans_service.get_many.call_args_list[0].args[0]
         assert vlan_query.where == VlansClauseFactory.and_clauses(
@@ -336,7 +336,7 @@ class TestDHCPService:
             dynamic_range,
         ]
 
-        result = await dhcp.get_kea_dhcp_data_for_agent("rack-1")
+        result = await dhcp.get_kea_dhcp_data_for_rack_controller("rack-1")
 
         assert [subnet.cidr for subnet in result.subnets] == [
             "10.0.0.0/24",
@@ -352,7 +352,7 @@ class TestDHCPService:
     ):
         subnet.cidr = ip_network("2001:db8::/64")
 
-        result = await dhcp.get_kea_dhcp_data_for_agent("rack-1")
+        result = await dhcp.get_kea_dhcp_data_for_rack_controller("rack-1")
 
         assert result.subnets == []
         assert result.ipranges == []
@@ -364,7 +364,7 @@ class TestDHCPService:
         ]
         dhcp.subnets_service.get_many.return_value = []
 
-        result = await dhcp.get_kea_dhcp_data_for_agent("rack-1")
+        result = await dhcp.get_kea_dhcp_data_for_rack_controller("rack-1")
 
         assert result.vlans == []
         assert result.subnets == []
@@ -380,7 +380,7 @@ class TestDHCPService:
             make_ip(ip="2001:db8::1")
         ]
 
-        result = await dhcp.get_kea_dhcp_data_for_agent("rack-1")
+        result = await dhcp.get_kea_dhcp_data_for_rack_controller("rack-1")
 
         assert result.subnets[0].ip_version == 6
 
@@ -398,12 +398,12 @@ class TestDHCPService:
         rack.node_type = node_type
         rack.current_config_id = current_config_id
         with pytest.raises(error):
-            await dhcp.get_kea_dhcp_data_for_agent(rack.system_id)
+            await dhcp.get_kea_dhcp_data_for_rack_controller(rack.system_id)
 
     async def test_missing_rack(self, dhcp):
         dhcp.nodes_service.get_one.return_value = None
         with pytest.raises(NotFoundException):
-            await dhcp.get_kea_dhcp_data_for_agent("missing")
+            await dhcp.get_kea_dhcp_data_for_rack_controller("missing")
 
     async def test_external_ntp_and_rack_url(self, dhcp, monkeypatch):
         dhcp.nodes_service.get_url.return_value = (
@@ -418,7 +418,7 @@ class TestDHCPService:
         monkeypatch.setattr(
             "maasservicelayer.services.dhcp.resolve_hostname", resolver
         )
-        result = await dhcp.get_kea_dhcp_data_for_agent("rack-1")
+        result = await dhcp.get_kea_dhcp_data_for_rack_controller("rack-1")
         assert result.ntp_servers == ["ntp.example.com", "ntp2.example.com"]
         assert result.subnets[0].ntp_servers == result.ntp_servers
         resolver.assert_called_once_with("rack-region", 4)
@@ -444,7 +444,7 @@ class TestDHCPService:
         dhcp.subnets_service.get_by_id.return_value = serving_subnet
         dhcp._get_default_dns_servers_for_subnet = AsyncMock(return_value=[])
 
-        result = await dhcp.get_kea_dhcp_data_for_agent("rack-1")
+        result = await dhcp.get_kea_dhcp_data_for_rack_controller("rack-1")
 
         assert [v.id for v in result.vlans] == [1, 2]
         assert result.subnets[0].vlan_id == 2
@@ -473,7 +473,7 @@ class TestDHCPService:
         dhcp._get_ntp_servers_for_rack = AsyncMock(return_value={})
         dhcp._get_default_dns_servers_for_subnet = AsyncMock(return_value=[])
 
-        result = await dhcp.get_kea_dhcp_data_for_agent("rack-1")
+        result = await dhcp.get_kea_dhcp_data_for_rack_controller("rack-1")
 
         assert result.ha_data == [ha]
         assert result.subnets[0].secondary_rack_system_id == "rack-2"
@@ -538,7 +538,7 @@ class TestDHCPService:
                 {(1, 4): "10.0.0.2"},
             ]
         )
-        result = await dhcp.get_kea_dhcp_data_for_agent(system_id)
+        result = await dhcp.get_kea_dhcp_data_for_rack_controller(system_id)
         assert result.ha_data == [
             KeaHAConfig("rack-1", "rack-2", "10.0.0.1", "10.0.0.2")
         ]

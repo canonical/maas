@@ -6,7 +6,7 @@ from piston3.utils import rc
 
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasserver.api.support import check_permission, OperationsHandler
-from maasserver.dhcp import configure_dhcp_on_agents
+from maasserver.dhcp import configure_dhcp_on_rack_controllers
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.reservedip import ReservedIPForm
 from maasserver.models import ReservedIP
@@ -77,9 +77,10 @@ class ReservedIpsHandler(OperationsHandler):
         if form.is_valid():
             reserved_ip = form.save()
 
-            # Trigger the update on the agents after the transaction is committed.
+            # Trigger the update on the rack controllers after the transaction is committed.
             post_commit_do(
-                configure_dhcp_on_agents, reserved_ip_ids=[reserved_ip.id]
+                configure_dhcp_on_rack_controllers,
+                reserved_ip_ids=[reserved_ip.id],
             )
             return reserved_ip
         else:
@@ -170,9 +171,10 @@ class ReservedIpHandler(OperationsHandler):
         reserved_ip = ReservedIP.objects.get_reserved_ip_or_404(id)
         reserved_ip.delete()
 
-        # Trigger the update on the agents after the transaction is committed.
+        # Trigger the update on the rack controllers after the transaction is committed.
         post_commit_do(
-            configure_dhcp_on_agents, subnet_ids=[reserved_ip.subnet.id]
+            configure_dhcp_on_rack_controllers,
+            subnet_ids=[reserved_ip.subnet.id],
         )
 
         return rc.DELETED

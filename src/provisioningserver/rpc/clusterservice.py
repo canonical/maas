@@ -26,9 +26,9 @@ from zope.interface import implementer
 from apiclient.utils import ascii_url
 from provisioningserver.certificates import (
     Certificate,
-    get_maas_agent_cert_paths,
-    store_maas_agent_cert_tuple,
+    get_maas_rack_controller_cert_paths,
     store_maas_cluster_cert_tuple,
+    store_maas_rack_controller_cert_tuple,
 )
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers.hardware.seamicro import (
@@ -57,8 +57,8 @@ from provisioningserver.rpc.interfaces import IConnectionToRegion
 from provisioningserver.rpc.power import get_power_state
 from provisioningserver.security import calculate_digest, fernet_decrypt_psk
 from provisioningserver.utils.env import (
-    MAAS_AGENT_UUID,
     MAAS_ID,
+    MAAS_RACK_CONTROLLER_UUID,
     MAAS_SECRET,
     MAAS_SHARED_SECRET,
     MAAS_UUID,
@@ -589,7 +589,7 @@ class ClusterClient(Cluster):
     def registerRackWithRegion(self):
         # Grab the set system_id if already set for this controller.
         system_id = MAAS_ID.get() or ""
-        agent_uuid = MAAS_AGENT_UUID.get() or None
+        rack_controller_uuid = MAAS_RACK_CONTROLLER_UUID.get() or None
 
         # Gather the required information for registration.
         interfaces = get_all_interfaces_definition()
@@ -609,7 +609,7 @@ class ClusterClient(Cluster):
                 url=parsed_url,
                 beacon_support=True,
                 version=version,
-                agent_uuid=agent_uuid,
+                rack_controller_uuid=rack_controller_uuid,
             )
             self.localIdent = data["system_id"]
             MAAS_ID.set(self.localIdent)
@@ -642,7 +642,7 @@ class ClusterClient(Cluster):
                     "on such certificate are degraded."
                 )
             if (
-                not get_maas_agent_cert_paths()
+                not get_maas_rack_controller_cert_paths()
                 and encrypted_cluster_certificate
             ):
                 decoded_secret = json.loads(
@@ -660,7 +660,7 @@ class ClusterClient(Cluster):
                 )
 
                 # XXX: for the future distinction between server and client certificates.
-                store_maas_agent_cert_tuple(
+                store_maas_rack_controller_cert_tuple(
                     private_key=certificate.private_key_pem().encode(),
                     certificate=certificate.certificate_pem().encode(),
                     cacerts=certificate.ca_certificates_pem().encode(),

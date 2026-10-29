@@ -26,9 +26,9 @@ class RequireClientCertMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ):
-        # skip client cert check for agent enrollment endpoint
+        # skip client cert check for rack controller enrollment endpoint
         if (
-            request.scope["path"].endswith("/agents:enroll")
+            request.scope["path"].endswith("/rack_controllers:enroll")
             and request.scope["method"] == "POST"
         ):
             return await call_next(request)

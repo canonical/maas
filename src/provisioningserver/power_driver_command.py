@@ -98,7 +98,7 @@ def add_arguments(parser):
         if driver.can_set_boot_order:
             # Registered on the driver subparser (not the top-level parser)
             # because the subparser consumes all trailing arguments, and the
-            # agent appends --order after the driver options.
+            # The rack controller appends --order after the driver options.
             sub.add_argument(
                 "--order",
                 dest="order",

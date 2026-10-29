@@ -36,7 +36,7 @@ RACK_SERVICES = frozenset(
         "ntp_rack",
         "proxy_rack",
         "syslog_rack",
-        "agent",
+        "rack-controller",
     }
 )
 
@@ -58,7 +58,7 @@ DEAD_STATUSES = {
     "syslog_rack": SERVICE_STATUS.UNKNOWN,
     "reverse_proxy": SERVICE_STATUS.UNKNOWN,
     "temporal": SERVICE_STATUS.UNKNOWN,
-    "agent": SERVICE_STATUS.UNKNOWN,
+    "rack-controller": SERVICE_STATUS.UNKNOWN,
     "temporal-worker": SERVICE_STATUS.UNKNOWN,
 }
 

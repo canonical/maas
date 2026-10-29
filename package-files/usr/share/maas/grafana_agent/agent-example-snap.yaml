@@ -123,12 +123,12 @@ logs:
               maas_region: ${MAAS_IS_REGION:False}
               maas_rack: ${MAAS_IS_RACK:False}
               job: "maas-apiserver"
-        - job_name: maas-agent
+        - job_name: maas-rack-controller
           journal:
-            matches: SYSLOG_IDENTIFIER=maas-agent
+            matches: SYSLOG_IDENTIFIER=maas-rack-controller
             labels:
               host: ${HOSTNAME}
               maas_az: ${MAAS_AZ:default}
               maas_region: ${MAAS_IS_REGION:False}
               maas_rack: ${MAAS_IS_RACK:False}
-              job: "maas-agent"
+              job: "maas-rack-controller"

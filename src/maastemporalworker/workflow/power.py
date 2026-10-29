@@ -123,7 +123,7 @@ class PowerActivity(ActivityBase):
 
 
 async def _apply_boot_order(param: PowerParam) -> None:
-    """Apply a boot order via the agent 'set-boot-order' activity, if supplied.
+    """Apply a boot order via the rack controller 'set-boot-order' activity, if supplied.
 
     Lets the non-deploy power workflows (on/off/cycle) configure boot order on
     the same Temporal path as the power action, replacing the legacy region RPC
@@ -330,7 +330,7 @@ def get_temporal_task_queue_for_bmc(machine: Any) -> str:
     except AttributeError:
         pass
 
-    # TODO: check that picked rack/agent has connection to Temporal
+    # TODO: check that picked rack controller has connection to Temporal
     # as of now, we exclude all the racks without RPC connection.
     conn_rack_ids = [client.ident for client in getAllClients()]
 
@@ -348,17 +348,17 @@ def get_temporal_task_queue_for_bmc(machine: Any) -> str:
     if bmc_vlan and bmc_vlan.connected_rack_controllers(
         exclude_racks=disconn_racks
     ):
-        return f"agent:power@vlan-{bmc_vlan.id}"
+        return f"rack-controller:power@vlan-{bmc_vlan.id}"
 
-    # Check if there are any rack controllers/agents that have access to
+    # Check if there are any rack controllers that have access to
     # the BMC by routing instead of having direct layer 2 access.
-    # TODO: check that picked rack/agent has connection to Temporal
+    # TODO: check that picked rack controller has connection to Temporal
     # with_connection=True is a temporary solution that relies on RPC
     racks = machine.bmc.get_routable_usable_rack_controllers(
         with_connection=True
     )
     if racks:
-        return f"{racks[0].system_id}@agent:power"
+        return f"{racks[0].system_id}@rack-controller:power"
 
     raise UnroutablePowerWorkflowException(
         f"Error determining BMC task queue for machine {machine.system_id}"
@@ -414,7 +414,7 @@ def convert_power_action_to_power_workflow(
     commands at once.
 
     ``boot_order`` (when the driver supports ordering) is attached to the
-    on/off/cycle params so the workflow applies it via the agent set-boot-order
+    on/off/cycle params so the workflow applies it via the rack controller set-boot-order
     activity, replacing the legacy region RPC SetBootOrder call.
     """
     assert extra_params is not None

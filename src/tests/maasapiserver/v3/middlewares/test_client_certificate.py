@@ -58,7 +58,7 @@ class TestRequireClientCertMiddleware:
         assert response.status_code == 200
         assert response.body == b"OK"
 
-    async def test_missing_client_cert_for_agent_enroll_allows_request(
+    async def test_missing_client_cert_for_rack_controller_enroll_allows_request(
         self, middleware
     ):
         mock_request = type(
@@ -67,7 +67,7 @@ class TestRequireClientCertMiddleware:
             {
                 "scope": {
                     "headers": [],
-                    "path": "/v3/agents:enroll",
+                    "path": "/v3/rack_controllers:enroll",
                     "method": "POST",
                 }
             },

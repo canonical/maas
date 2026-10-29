@@ -49,8 +49,8 @@ from maastemporalworker.workflow.bootresource import (
 )
 from maastemporalworker.workflow.commission import CommissionNWorkflow
 from maastemporalworker.workflow.configure import (
-    ConfigureAgentActivity,
-    ConfigureAgentWorkflow,
+    ConfigureRackControllerActivity,
+    ConfigureRackControllerWorkflow,
 )
 from maastemporalworker.workflow.deploy import (
     DeployActivity,
@@ -58,7 +58,7 @@ from maastemporalworker.workflow.deploy import (
     DeployWorkflow,
 )
 from maastemporalworker.workflow.dhcp import (
-    ConfigureDHCPForAgentWorkflow,
+    ConfigureDHCPForRackControllerWorkflow,
     ConfigureDHCPWorkflow,
     DHCPConfigActivity,
 )
@@ -189,7 +189,7 @@ async def main() -> None:
         db, services_cache, temporal_client
     )
     await boot_res_activity.init(region_id=maas_id)
-    configure_activity = ConfigureAgentActivity(
+    configure_activity = ConfigureRackControllerActivity(
         db, services_cache, temporal_client
     )
     msm_activity = MSMConnectorActivity(db, services_cache, temporal_client)
@@ -222,9 +222,9 @@ async def main() -> None:
                 # TODO: MAASENG-6418 remove this
                 PostUpdateBootSourceUrlWorkflow,
                 # Configuration workflows
-                ConfigureAgentWorkflow,
+                ConfigureRackControllerWorkflow,
                 ConfigureDHCPWorkflow,
-                ConfigureDHCPForAgentWorkflow,
+                ConfigureDHCPForRackControllerWorkflow,
                 # Lifecycle workflows
                 DeployManyWorkflow,
                 DeployWorkflow,
@@ -271,10 +271,10 @@ async def main() -> None:
                 deploy_activity.get_boot_order,
                 deploy_activity.set_node_failed,
                 # DHCP activities
-                dhcp_activity.find_agents_for_updates,
+                dhcp_activity.find_rack_controllers_for_updates,
                 dhcp_activity.fetch_hosts_for_update,
                 dhcp_activity.get_omapi_key,
-                dhcp_activity.get_dhcp_data_for_agent,
+                dhcp_activity.get_dhcp_data_for_rack_controller,
                 # MSM connector activities,
                 msm_activity.check_enrol,
                 msm_activity.get_config_hash,

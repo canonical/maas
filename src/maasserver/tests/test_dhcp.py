@@ -3123,14 +3123,14 @@ class TestGetDHCPRackcontroller(MAASTransactionServerTestCase):
         )
 
 
-class TestConfigureDhcpOnAgents(MAASServerTestCase):
+class TestConfigureDhcpOnRackControllers(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
-    def test_configure_dhcp_on_agents(self):
+    def test_configure_dhcp_on_rack_controllers(self):
         d = defer.succeed(None)
         self.patch(dhcp_module, "start_workflow").return_value = d
 
-        yield dhcp.configure_dhcp_on_agents(
+        yield dhcp.configure_dhcp_on_rack_controllers(
             system_ids=["test"],
             vlan_ids=[0],
             subnet_ids=[1],

@@ -13,7 +13,7 @@ from tests.fixtures.factories.neighbours import create_test_neighbour_entry
 from tests.fixtures.factories.vlan import create_test_vlan_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.test_subnet_utilization import (
-    create_test_rack_controller_entry,
+    create_test_rack_controller_node_entry,
 )
 
 
@@ -23,7 +23,7 @@ async def create_test_discovery(
     rack_controller: dict[str, Any] | None = None,
 ) -> Discovery:
     if rack_controller is None:
-        rack_controller = await create_test_rack_controller_entry(fixture)
+        rack_controller = await create_test_rack_controller_node_entry(fixture)
     vlan = await create_test_vlan_entry(fixture)
     interface = await create_test_interface_entry(
         fixture, node=rack_controller, vlan=vlan

@@ -71,7 +71,7 @@ Essential TCP ports for MAAS communication:
 | `5241` - `5247` | Allocated for MAAS internal services.                                                    |
 | `5248`          | Designated for rack HTTP communication.                                                  |
 | `5250` - `5270` | Reserved for region workers (RPC).                                                       |
-| `5271` - `5274` | Required for communication between Rack Controller (specifically maas-agent) and Region Controller |
+| `5271` - `5274` | Required for communication between Rack Controller (specifically maas-rack-controller) and Region Controller |
 | `5281` - `5284` | Region Controller Temporal cluster membership gossip communication         |
 
 ## Interface parameters

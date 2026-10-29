@@ -21,8 +21,8 @@ def _render(extra: dict | None = None) -> str:
     base = {
         "upstream_http": [],
         "machine_resources": "/usr/share/maas",
-        "maas_agent_httpproxy_socket_path": "/run/maas/httpproxy.sock",
-        "maas_agent_http_socket_path": "/run/maas/agent-http.sock",
+        "maas_rack_controller_httpproxy_socket_path": "/run/maas/httpproxy.sock",
+        "maas_rack_controller_http_socket_path": "/run/maas/rack-controller-http.sock",
         "boot_resources_dir": "/var/lib/maas/image-storage",
         "hardening": False,
         "api_upstream_port": 5240,

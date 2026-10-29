@@ -200,10 +200,10 @@ class TestSyncHardeningNotificationsWithControllerId(MAASServerTestCase):
     def test_multiple_bind_violations_all_scoped(self):
         violations = [
             _make_bind_violation(config_key="api_bind"),
-            _make_bind_violation(config_key="agent_api_bind"),
+            _make_bind_violation(config_key="rack_ctrl_api_bind"),
         ]
         sync_hardening_notifications(violations, controller_id=self.CTRL_A)
-        for config_key in ("api_bind", "agent_api_bind"):
+        for config_key in ("api_bind", "rack_ctrl_api_bind"):
             ident = _ctrl_ident(self.CTRL_A, config_key)
             self.assertTrue(
                 Notification.objects.filter(ident=ident).exists(),
@@ -223,7 +223,7 @@ class TestHardeningIdentLength(MAASServerTestCase):
         "prometheus_bind",
         "temporal_bind",
         "rpc_bind",
-        "agent_api_bind",
+        "rack_ctrl_api_bind",
         "syslog_bind",
         "http_proxy_bind",
         "dns_bind",

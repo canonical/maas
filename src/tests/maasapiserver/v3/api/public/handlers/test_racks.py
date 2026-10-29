@@ -11,9 +11,9 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.public.models.responses.agents import (
-    AgentListResponse,
-    AgentResponse,
+from maasapiserver.v3.api.public.models.responses.rackcontrollers import (
+    RackControllerListResponse,
+    RackControllerResponse,
 )
 from maasapiserver.v3.api.public.models.responses.racks import (
     RackBootstrapTokenResponse,
@@ -24,7 +24,9 @@ from maasapiserver.v3.api.public.models.responses.racks import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.agents import AgentsClauseFactory
+from maasservicelayer.db.repositories.rackcontrollers import (
+    RackControllersClauseFactory,
+)
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -34,8 +36,8 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
-from maasservicelayer.models.agents import Agent
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.rackcontrollers import RackController
 from maasservicelayer.models.racks import Rack, RackWithSummary
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -56,22 +58,22 @@ TEST_RACK_2 = Rack(
     name="rack-002",
 )
 
-TEST_AGENT_1 = Agent(
+TEST_RACK_CONTROLLER_1 = RackController(
     id=1,
     created=utcnow(),
     updated=utcnow(),
     uuid="mock-uuid-1",
     rack_id=1,
-    rackcontroller_id=1,
+    node_id=1,
 )
 
-TEST_AGENT_2 = Agent(
+TEST_RACK_CONTROLLER_2 = RackController(
     id=2,
     created=utcnow(),
     updated=utcnow(),
     uuid="mock-uuid-2",
     rack_id=2,
-    rackcontroller_id=2,
+    node_id=2,
 )
 
 
@@ -162,7 +164,7 @@ class TestRacksApi(ApiCommonTests):
                 RackWithSummary(
                     id=1,
                     name=TEST_RACK_1.name,
-                    registered_agents_system_ids=["abc123"],
+                    registered_rack_controllers_system_ids=["abc123"],
                 )
             ],
             total=1,
@@ -177,7 +179,14 @@ class TestRacksApi(ApiCommonTests):
         assert summary_response.next is None
         assert summary_response.kind == "RackWithSummaryList"
         assert summary_response.total == 1
-        assert len(summary_response.items[0].registered_agents_system_ids) == 1
+        assert (
+            len(
+                summary_response.items[
+                    0
+                ].registered_rack_controllers_system_ids
+            )
+            == 1
+        )
 
     async def test_list_with_summary_other_page(
         self,
@@ -192,12 +201,12 @@ class TestRacksApi(ApiCommonTests):
                 RackWithSummary(
                     id=1,
                     name=TEST_RACK_1.name,
-                    registered_agents_system_ids=["abc123"],
+                    registered_rack_controllers_system_ids=["abc123"],
                 ),
                 RackWithSummary(
                     id=2,
                     name=TEST_RACK_2.name,
-                    registered_agents_system_ids=["def123"],
+                    registered_rack_controllers_system_ids=["def123"],
                 ),
             ],
             total=2,
@@ -215,7 +224,14 @@ class TestRacksApi(ApiCommonTests):
         )
         assert summary_response.kind == "RackWithSummaryList"
         assert summary_response.total == 2
-        assert len(summary_response.items[0].registered_agents_system_ids) == 1
+        assert (
+            len(
+                summary_response.items[
+                    0
+                ].registered_rack_controllers_system_ids
+            )
+            == 1
+        )
 
     async def test_get_200(
         self,
@@ -396,7 +412,7 @@ class TestRacksApi(ApiCommonTests):
         )
 
 
-class TestRackAgentApi(ApiCommonTests):
+class TestRackRackControllerApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/racks"
 
     @pytest.fixture
@@ -404,17 +420,17 @@ class TestRackAgentApi(ApiCommonTests):
         return [
             Endpoint(
                 method="GET",
-                path=f"{self.BASE_PATH}/1/agents",
+                path=f"{self.BASE_PATH}/1/rack_controllers",
                 permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
             ),
             Endpoint(
                 method="GET",
-                path=f"{self.BASE_PATH}/1/agents/10",
+                path=f"{self.BASE_PATH}/1/rack_controllers/10",
                 permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
             ),
             Endpoint(
                 method="DELETE",
-                path=f"{self.BASE_PATH}/1/agents/10",
+                path=f"{self.BASE_PATH}/1/rack_controllers/10",
                 permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
             ),
         ]
@@ -427,17 +443,19 @@ class TestRackAgentApi(ApiCommonTests):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
         )
-        services_mock.agents.list.return_value = ListResult[Agent](
-            items=[TEST_AGENT_1], total=1
-        )
+        services_mock.rack_controllers.list.return_value = ListResult[
+            RackController
+        ](items=[TEST_RACK_CONTROLLER_1], total=1)
         response = await client.get(
-            f"{self.BASE_PATH}/{TEST_AGENT_1.rack_id}/agents?page=1&size=1"
+            f"{self.BASE_PATH}/{TEST_RACK_CONTROLLER_1.rack_id}/rack_controllers?page=1&size=1"
         )
         assert response.status_code == 200
-        agents_response = AgentListResponse(**response.json())
-        assert len(agents_response.items) == 1
-        assert agents_response.total == 1
-        assert agents_response.next is None
+        rack_controllers_response = RackControllerListResponse(
+            **response.json()
+        )
+        assert len(rack_controllers_response.items) == 1
+        assert rack_controllers_response.total == 1
+        assert rack_controllers_response.next is None
 
     async def test_list_other_page(
         self,
@@ -447,23 +465,25 @@ class TestRackAgentApi(ApiCommonTests):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
         )
-        services_mock.agents.list.return_value = ListResult[Agent](
-            items=[TEST_AGENT_1, TEST_AGENT_2], total=2
-        )
+        services_mock.rack_controllers.list.return_value = ListResult[
+            RackController
+        ](items=[TEST_RACK_CONTROLLER_1, TEST_RACK_CONTROLLER_2], total=2)
 
         services_mock.racks.list.return_value = ListResult[Rack](
             items=[TEST_RACK_1, TEST_RACK_2], total=2
         )
         response = await client.get(
-            f"{self.BASE_PATH}/{TEST_AGENT_1.rack_id}/agents?page=1&size=1"
+            f"{self.BASE_PATH}/{TEST_RACK_CONTROLLER_1.rack_id}/rack_controllers?page=1&size=1"
         )
         assert response.status_code == 200
-        agents_response = AgentListResponse(**response.json())
-        assert len(agents_response.items) == 2
-        assert agents_response.total == 2
+        rack_controllers_response = RackControllerListResponse(
+            **response.json()
+        )
+        assert len(rack_controllers_response.items) == 2
+        assert rack_controllers_response.total == 2
         assert (
-            agents_response.next
-            == f"{self.BASE_PATH}/{TEST_AGENT_1.rack_id}/agents?page=2&size=1"
+            rack_controllers_response.next
+            == f"{self.BASE_PATH}/{TEST_RACK_CONTROLLER_1.rack_id}/rack_controllers?page=2&size=1"
         )
 
     async def test_get_200(
@@ -474,17 +494,19 @@ class TestRackAgentApi(ApiCommonTests):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
         )
-        services_mock.agents.get_one.return_value = TEST_AGENT_1
+        services_mock.rack_controllers.get_one.return_value = (
+            TEST_RACK_CONTROLLER_1
+        )
 
         response = await client.get(
-            f"{self.BASE_PATH}/{TEST_AGENT_1.rack_id}/agents/{TEST_AGENT_1.id}"
+            f"{self.BASE_PATH}/{TEST_RACK_CONTROLLER_1.rack_id}/rack_controllers/{TEST_RACK_CONTROLLER_1.id}"
         )
         assert response.status_code == 200
         assert response.headers["ETag"]
-        agent_response = AgentResponse(**response.json())
-        assert agent_response.id == TEST_RACK_1.id
-        assert agent_response.rack_id == 1
-        assert agent_response.rackcontroller_id == 1
+        rack_controller_response = RackControllerResponse(**response.json())
+        assert rack_controller_response.id == TEST_RACK_1.id
+        assert rack_controller_response.rack_id == 1
+        assert rack_controller_response.node_id == 1
 
     async def test_get_404(
         self,
@@ -494,10 +516,10 @@ class TestRackAgentApi(ApiCommonTests):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
         )
-        services_mock.agents.get_one.return_value = None
+        services_mock.rack_controllers.get_one.return_value = None
 
         response = await client.get(
-            f"{self.BASE_PATH}/{TEST_AGENT_1.rack_id}/agents/{TEST_AGENT_1.id}"
+            f"{self.BASE_PATH}/{TEST_RACK_CONTROLLER_1.rack_id}/rack_controllers/{TEST_RACK_CONTROLLER_1.id}"
         )
         assert response.status_code == 404
         assert "ETag" not in response.headers
@@ -514,10 +536,12 @@ class TestRackAgentApi(ApiCommonTests):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
         )
-        services_mock.agents.delete_one.return_value = TEST_AGENT_1
+        services_mock.rack_controllers.delete_one.return_value = (
+            TEST_RACK_CONTROLLER_1
+        )
 
         response = await client.delete(
-            f"{self.BASE_PATH}/{TEST_AGENT_1.rack_id}/agents/{TEST_AGENT_1.id}",
+            f"{self.BASE_PATH}/{TEST_RACK_CONTROLLER_1.rack_id}/rack_controllers/{TEST_RACK_CONTROLLER_1.id}",
         )
         assert response.status_code == 204
 
@@ -530,12 +554,14 @@ class TestRackAgentApi(ApiCommonTests):
             MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
         )
         rack_id = 196
-        agent_id = 10
+        rack_controller_id = 10
 
-        services_mock.agents.delete_one.side_effect = NotFoundException()
+        services_mock.rack_controllers.delete_one.side_effect = (
+            NotFoundException()
+        )
 
         response = await client.delete(
-            f"{self.BASE_PATH}/{rack_id}/agents/{agent_id}",
+            f"{self.BASE_PATH}/{rack_id}/rack_controllers/{rack_controller_id}",
         )
         assert response.status_code == 404
         assert "ETag" not in response.headers
@@ -545,12 +571,14 @@ class TestRackAgentApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == 404
 
-        services_mock.agents.delete_one.assert_called_once_with(
+        services_mock.rack_controllers.delete_one.assert_called_once_with(
             query=QuerySpec(
-                where=AgentsClauseFactory.and_clauses(
+                where=RackControllersClauseFactory.and_clauses(
                     [
-                        AgentsClauseFactory.with_id(agent_id),
-                        AgentsClauseFactory.with_rack_id(rack_id),
+                        RackControllersClauseFactory.with_id(
+                            rack_controller_id
+                        ),
+                        RackControllersClauseFactory.with_rack_id(rack_id),
                     ]
                 )
             ),

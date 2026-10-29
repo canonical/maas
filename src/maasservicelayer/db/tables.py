@@ -43,37 +43,6 @@ OPENFGA_SCHEMA = "openfga"
 
 # Keep them in alphabetical order!
 
-AgentTable = Table(
-    "maasserver_agent",
-    METADATA,
-    Column("id", BigInteger, Identity(), primary_key=True),
-    Column("created", DateTime(timezone=True), nullable=False),
-    Column("updated", DateTime(timezone=True), nullable=False),
-    Column("uuid", String(36), unique=True, nullable=False),
-    Column(
-        "rack_id",
-        BigInteger,
-        ForeignKey(
-            "maasserver_rack.id",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        nullable=False,
-    ),
-    Column(
-        "rackcontroller_id",
-        BigInteger,
-        ForeignKey(
-            "maasserver_node.id",
-            ondelete="CASCADE",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        nullable=True,  # WIP: change to False once MAE is complete
-    ),
-    UniqueConstraint("rack_id", "rackcontroller_id"),
-)
-
 BlockDeviceTable = Table(
     "maasserver_blockdevice",
     METADATA,
@@ -1816,6 +1785,37 @@ PhysicalBlockDeviceTable = Table(
     Index(
         "maasserver_physicalblockdevice_numa_node_id_8bd61f48", "numa_node_id"
     ),
+)
+
+RackControllerTable = Table(
+    "maasserver_rackcontroller",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("uuid", String(36), unique=True, nullable=False),
+    Column(
+        "rack_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_rack.id",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=False,
+    ),
+    Column(
+        "node_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id",
+            ondelete="CASCADE",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=True,  # WIP: change to False once MAE is complete
+    ),
+    UniqueConstraint("rack_id", "node_id"),
 )
 
 RackTable = Table(

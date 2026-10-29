@@ -14,7 +14,7 @@ POWER_MANY_WORKFLOW_NAME = "power-many"
 POWER_RESET_WORKFLOW_NAME = "power-reset"
 
 # Activity names
-# The set-boot-order activity is executed on the agent (same as the power
+# The set-boot-order activity is executed on the rack controller (same as the power
 # activities); the power workflows dispatch it when a boot order is supplied.
 SET_BOOT_ORDER_ACTIVITY_NAME = "set-boot-order"
 
@@ -51,7 +51,7 @@ class PowerParam:
     trusted_ssh_host_keys: list[TrustedSshHostKeyEntry] | None = None
 
     # Optional serialized boot order (list of device dicts). When present, the
-    # power workflow applies it via the agent 'set-boot-order' activity before
+    # power workflow applies it via the rack controller 'set-boot-order' activity before
     # the power action, so boot ordering rides the Temporal path instead of the
     # legacy region RPC. Defaults to None so existing callers are unaffected.
     boot_order: Optional[list[dict[str, Any]]] = None
@@ -116,7 +116,7 @@ class PowerResetParam(PowerParam):
 @dataclass
 class SetBootOrderParam:
     """
-    Parameters required by the set-boot-order activity (run on the agent).
+    Parameters required by the set-boot-order activity (run on the rack controller).
     """
 
     system_id: str
