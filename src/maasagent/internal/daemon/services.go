@@ -21,7 +21,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -110,16 +109,8 @@ func newDHCPService(c dhcpSvcConfig, logger *slog.Logger) (*dhcp.DHCPService, er
 }
 
 func newExternalDHCPService(c dhcpSvcConfig) (*dhcp.DHCPService, error) {
-	serviceName := func() string {
-		if _, ok := os.LookupEnv("SNAP"); ok {
-			return "dhcpd"
-		}
-
-		return "maas-dhcpd"
-	}
-
-	v4 := serviceName()
-	v6 := v4 + "6"
+	v4 := servicecontroller.GetServiceName(servicecontroller.DHCPv4)
+	v6 := servicecontroller.GetServiceName(servicecontroller.DHCPv6)
 
 	controllerV4, err := servicecontroller.NewController(v4)
 	if err != nil {
