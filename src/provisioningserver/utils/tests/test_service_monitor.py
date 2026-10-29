@@ -8,19 +8,12 @@ from json import JSONDecodeError
 import logging
 import os
 import random
-from textwrap import dedent
 from unittest.mock import MagicMock, Mock, sentinel
 
 from fixtures import FakeLogger
 from testscenarios import multiply_scenarios
 from twisted.internet import reactor
-from twisted.internet.defer import (
-    CancelledError,
-    DeferredLock,
-    fail,
-    inlineCallbacks,
-    succeed,
-)
+from twisted.internet.defer import DeferredLock, fail, inlineCallbacks, succeed
 from twisted.internet.interfaces import IConsumer
 from twisted.internet.task import deferLater
 from twisted.web._newclient import Response
@@ -32,7 +25,6 @@ from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
-from maastesting.twisted import always_fail_with
 from provisioningserver.utils import service_monitor as service_monitor_module
 from provisioningserver.utils import snap
 from provisioningserver.utils.service_monitor import (
@@ -46,9 +38,7 @@ from provisioningserver.utils.service_monitor import (
     ServiceUnknownError,
     ToggleableService,
 )
-from provisioningserver.utils.shell import get_env_with_bytes_locale
 from provisioningserver.utils.snap import SnapPaths
-from provisioningserver.utils.twisted import pause
 
 TIMEOUT = get_testing_timeout()
 
@@ -177,13 +167,6 @@ class TestServiceMonitor(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
-    def run_under_snap(self):
-        # Snap always uses pebble
-        self.patch(
-            service_monitor_module, "_running_under_pebble"
-        ).return_value = True
-        self.patch(os, "environ", {"PEBBLE": "/snap/data/pebble"})
-
     def make_service_monitor(self, fake_services=None, pebble_agent=None):
         if fake_services is None:
             fake_services = [make_fake_service() for _ in range(3)]
@@ -246,10 +229,10 @@ class TestServiceMonitor(MAASTestCase):
         service_monitor = self.make_service_monitor([fake_service])
         active_state = pick_observed_state()
         process_state = random.choice(["running", "dead"])
-        mock_loadSystemDServiceState = self.patch(
-            service_monitor, "_loadSystemDServiceState"
+        mock_loadServiceState = self.patch(
+            service_monitor, "_loadServiceState"
         )
-        mock_loadSystemDServiceState.return_value = succeed(
+        mock_loadServiceState.return_value = succeed(
             (active_state, process_state)
         )
         observed_state = yield service_monitor.getServiceState(
@@ -262,14 +245,14 @@ class TestServiceMonitor(MAASTestCase):
         )
         self.assertEqual(state, observed_state)
 
-        mock_loadSystemDServiceState.assert_called_once_with(fake_service)
+        mock_loadServiceState.assert_called_once_with(fake_service)
 
     @inlineCallbacks
     def test_getServiceState_with_now_False(self):
         fake_service = make_fake_service()
         service_monitor = self.make_service_monitor([fake_service])
-        mock_loadSystemDServiceState = self.patch(
-            service_monitor, "_loadSystemDServiceState"
+        mock_loadServiceState = self.patch(
+            service_monitor, "_loadServiceState"
         )
         observed_state = yield service_monitor.getServiceState(
             fake_service.name, now=False
@@ -280,7 +263,7 @@ class TestServiceMonitor(MAASTestCase):
             (state.active_state, state.process_state),
         )
         self.assertEqual(state, observed_state)
-        mock_loadSystemDServiceState.assert_not_called()
+        mock_loadServiceState.assert_not_called()
 
     @inlineCallbacks
     def test_ensureServices_returns_dict_for_states(self):
@@ -520,101 +503,6 @@ class TestServiceMonitor(MAASTestCase):
         yield service_monitor.killService(fake_service.name)
         mock_ensureService.assert_called_once_with(fake_service.name)
         mock_performServiceAction.assert_called_once_with(fake_service, "kill")
-
-    @inlineCallbacks
-    def test_execCmd_times_out(self):
-        monitor = ServiceMonitor(make_fake_service())
-        with self.assertRaisesRegex(
-            ServiceActionError, "^Service monitor timed out after"
-        ):
-            yield monitor._execCmd(
-                ["sleep", "0.01"], {}, timeout=0.001, retries=1
-            )
-        # Pause long enough for the reactor to cleanup the process.
-        yield pause(0.03)
-
-    @inlineCallbacks
-    def test_execCmd_retries(self):
-        monitor = ServiceMonitor(make_fake_service())
-        mock_deferWithTimeout = self.patch(
-            service_monitor_module, "deferWithTimeout"
-        )
-        mock_deferWithTimeout.side_effect = always_fail_with(CancelledError())
-        with self.assertRaisesRegex(
-            ServiceActionError, "^Service monitor timed out after"
-        ):
-            yield monitor._execCmd(["echo", "Hello"], {}, retries=3)
-        self.assertEqual(3, mock_deferWithTimeout.call_count)
-
-    @inlineCallbacks
-    def test_execSystemDServiceAction_calls_systemctl(self):
-        service_monitor = self.make_service_monitor()
-        service_name = factory.make_name("service")
-        action = factory.make_name("action")
-        mock_getProcessOutputAndValue = self.patch(
-            service_monitor_module, "getProcessOutputAndValue"
-        )
-        mock_getProcessOutputAndValue.return_value = succeed((b"", b"", 0))
-        yield service_monitor._execSystemDServiceAction(service_name, action)
-        cmd = ["sudo", "--non-interactive", "systemctl", action, service_name]
-        mock_getProcessOutputAndValue.assert_called_once_with(
-            # The environment contains LC_ALL and LANG too.
-            cmd[0],
-            cmd[1:],
-            env=get_env_with_bytes_locale(),
-        )
-
-    @inlineCallbacks
-    def test_execSystemDServiceAction_calls_systemctl_with_options(self):
-        service_monitor = self.make_service_monitor()
-        service_name = factory.make_name("service")
-        mock_getProcessOutputAndValue = self.patch(
-            service_monitor_module, "getProcessOutputAndValue"
-        )
-        mock_getProcessOutputAndValue.return_value = succeed((b"", b"", 0))
-        yield service_monitor._execSystemDServiceAction(
-            service_name, "kill", extra_opts=["-s", "SIGKILL"]
-        )
-        cmd = [
-            "sudo",
-            "--non-interactive",
-            "systemctl",
-            "kill",
-            "-s",
-            "SIGKILL",
-            service_name,
-        ]
-        mock_getProcessOutputAndValue.assert_called_once_with(
-            # The environment contains LC_ALL and LANG too.
-            cmd[0],
-            cmd[1:],
-            env=get_env_with_bytes_locale(),
-        )
-
-    @inlineCallbacks
-    def test_execSystemDServiceAction_decodes_stdout_and_stderr(self):
-        # From https://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-demo.txt.
-        example_text = (
-            "\u16bb\u16d6 \u16b3\u16b9\u16ab\u16a6 \u16a6\u16ab\u16cf "
-            "\u16bb\u16d6 \u16d2\u16a2\u16de\u16d6 \u16a9\u16be \u16a6"
-            "\u16ab\u16d7 \u16da\u16aa\u16be\u16de\u16d6 \u16be\u16a9"
-            "\u16b1\u16a6\u16b9\u16d6\u16aa\u16b1\u16de\u16a2\u16d7 "
-            "\u16b9\u16c1\u16a6 \u16a6\u16aa \u16b9\u16d6\u16e5\u16ab"
-        )
-        example_stdout = example_text[: len(example_text) // 2]
-        example_stderr = example_text[len(example_text) // 2 :]
-        service_monitor = self.make_service_monitor()
-        mock_getProcessOutputAndValue = self.patch(
-            service_monitor_module, "getProcessOutputAndValue"
-        )
-        mock_getProcessOutputAndValue.return_value = succeed(
-            (example_stdout.encode("utf-8"), example_stderr.encode("utf-8"), 0)
-        )
-        _, stdout, stderr = yield service_monitor._execSystemDServiceAction(
-            factory.make_name("service"), factory.make_name("action")
-        )
-        self.assertEqual(stdout, example_stdout)
-        self.assertEqual(stderr, example_stderr)
 
     @inlineCallbacks
     def test_execPebbleServiceAction_calls_pebble_api(self):
@@ -950,7 +838,7 @@ class TestServiceMonitor(MAASTestCase):
 
     def test_pebble_create_agent_creates_correct_snap_agent(self):
         """Checks whether snap paths are used by _pebble_create_agents in snap env"""
-        self.run_under_snap()
+        self.patch(os, "environ", {"PEBBLE": "/snap/data/pebble"})
         paths = SnapPaths(
             snap="/snap/base", data="/snap/data", common="/snap/common"
         )
@@ -1096,33 +984,7 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor._pebble_wait_on_change(change_id, backoff=0)
 
     @inlineCallbacks
-    def test_performServiceAction_holds_lock_performs_systemd_action(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor()
-        service_locks = service_monitor._serviceLocks
-        service_lock = service_locks[service.name]
-        service_lock = service_locks[service.name] = Mock(wraps=service_lock)
-        mock_execSystemDServiceAction = self.patch(
-            service_monitor, "_execSystemDServiceAction"
-        )
-        mock_execSystemDServiceAction.return_value = (0, "", "")
-        action = factory.make_name("action")
-        extra_opts = ("--option", factory.make_name("option"))
-        setattr(service, "%s_extra_opts" % action, extra_opts)
-        yield service_monitor._performServiceAction(service, action)
-        service_lock.run.assert_called_once_with(
-            service_monitor._execSystemDServiceAction,
-            service.service_name,
-            action,
-            extra_opts=extra_opts,
-        )
-        mock_execSystemDServiceAction.assert_called_once_with(
-            service.service_name, action, extra_opts=extra_opts
-        )
-
-    @inlineCallbacks
     def test_performServiceAction_holds_lock_perform_pebble_action(self):
-        self.run_under_snap()
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         service_locks = service_monitor._serviceLocks
@@ -1150,10 +1012,10 @@ class TestServiceMonitor(MAASTestCase):
     def test_performServiceAction_raises_ServiceActionError_if_fails(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
-        mock_execSystemDServiceAction = self.patch(
-            service_monitor, "_execSystemDServiceAction"
+        mock_execPebbleServiceAction = self.patch(
+            service_monitor, "_execPebbleServiceAction"
         )
-        mock_execSystemDServiceAction.return_value = (1, "", "")
+        mock_execPebbleServiceAction.return_value = (1, "", "")
         action = factory.make_name("action")
         with self.assertRaisesRegex(
             ServiceActionError,
@@ -1165,11 +1027,11 @@ class TestServiceMonitor(MAASTestCase):
     def test_performServiceAction_logs_error_if_action_fails(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
-        mock_execSystemDServiceAction = self.patch(
-            service_monitor, "_execSystemDServiceAction"
+        mock_execPebbleServiceAction = self.patch(
+            service_monitor, "_execPebbleServiceAction"
         )
         error_output = factory.make_name("error")
-        mock_execSystemDServiceAction.return_value = (1, "", error_output)
+        mock_execPebbleServiceAction.return_value = (1, "", error_output)
         action = factory.make_name("action")
         with FakeLogger(
             "maas.service_monitor", level=logging.ERROR
@@ -1185,242 +1047,19 @@ class TestServiceMonitor(MAASTestCase):
             maaslog.output,
         )
 
-    def test_loadServiceState_uses_systemd(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor([service])
-        mock_loadSystemDServiceState = self.patch(
-            service_monitor, "_loadSystemDServiceState"
-        )
-        mock_loadSystemDServiceState.return_value = sentinel.result
-        self.assertEqual(
-            sentinel.result, service_monitor._loadServiceState(service)
-        )
-
     @inlineCallbacks
     def test_loadServiceState_uses_pebble(self):
-        self.patch(
-            service_monitor_module, "_running_under_pebble"
-        ).return_value = True
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        mock_loadPebbleServiceState = self.patch(
-            service_monitor, "_loadPebbleServiceState"
+        mock_loadServiceState = self.patch(
+            service_monitor, "_loadServiceState"
         )
-        mock_loadPebbleServiceState.return_value = sentinel.result
+        mock_loadServiceState.return_value = sentinel.result
         result = yield service_monitor._loadServiceState(service)
         self.assertEqual(sentinel.result, result)
 
     @inlineCallbacks
-    def test_loadSystemDServiceState_status_calls_systemctl(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor([service])
-        mock_execSystemDServiceAction = self.patch(
-            service_monitor, "_execSystemDServiceAction"
-        )
-        mock_execSystemDServiceAction.side_effect = factory.make_exception()
-        try:
-            yield service_monitor._loadSystemDServiceState(service)
-        except Exception:
-            pass
-        mock_execSystemDServiceAction.assert_called_once_with(
-            service.service_name, "status"
-        )
-
-    @inlineCallbacks
-    def test_loadSystemDServiceState_status_raises_ServiceUnknownError(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor()
-        systemd_status_output = (
-            dedent(
-                """\
-            %s.service
-                Loaded: not-found (Reason: No such file or directory)
-                Active: inactive (dead)
-            """
-            )
-            % service.service_name
-        )
-
-        mock_execSystemDServiceAction = self.patch(
-            service_monitor, "_execSystemDServiceAction"
-        )
-        mock_execSystemDServiceAction.return_value = (
-            3,
-            systemd_status_output,
-            "",
-        )
-        with self.assertRaisesRegex(
-            ServiceUnknownError,
-            rf"^'{service.service_name}' is unknown to systemd\.$",
-        ):
-            yield service_monitor._loadSystemDServiceState(service)
-
-    @inlineCallbacks
-    def test_loadSystemDServiceState_status_returns_off_and_dead(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor([service])
-        systemd_status_output = dedent(
-            """\
-            %s.service - LSB: iscsi target daemon
-                Loaded: loaded (/lib/systemd/system/%s.service)
-                Active: %s (dead)
-                Docs: man:systemd-sysv-generator(8)
-            """
-        ) % (
-            service.service_name,
-            service.service_name,
-            random.choice(["inactive", "deactivating"]),
-        )
-
-        mock_execSystemDServiceAction = self.patch(
-            service_monitor, "_execSystemDServiceAction"
-        )
-        mock_execSystemDServiceAction.return_value = (
-            3,
-            systemd_status_output,
-            "",
-        )
-        active_state, process_state = yield (
-            service_monitor._loadSystemDServiceState(service)
-        )
-        self.assertEqual(SERVICE_STATE.OFF, active_state)
-        self.assertEqual("dead", process_state)
-
-    @inlineCallbacks
-    def test_loadSystemDServiceState_status_returns_dead_for_failed(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor([service])
-        systemd_status_output = dedent(
-            """\
-            %s.service - Fake service
-                Loaded: loaded (/lib/systemd/system/%s.service; ...
-                Active: %s (Result: exit-code) since Wed 2016-01-20...
-                Docs: man:dhcpd(8)
-            """
-        ) % (
-            service.service_name,
-            service.service_name,
-            random.choice(["reloading", "failed", "activating"]),
-        )
-
-        mock_execSystemDServiceAction = self.patch(
-            service_monitor, "_execSystemDServiceAction"
-        )
-        mock_execSystemDServiceAction.return_value = (
-            3,
-            systemd_status_output,
-            "",
-        )
-        active_state, process_state = yield (
-            service_monitor._loadSystemDServiceState(service)
-        )
-        self.assertEqual(SERVICE_STATE.DEAD, active_state)
-
-    @inlineCallbacks
-    def test_loadSystemDServiceState_status_returns_on_and_running(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor([service])
-        systemd_status_output = dedent(
-            """\
-            %s.service - Fake Service
-                Loaded: loaded (/lib/systemd/system/%s.service)
-                Active: active (running) since Fri 2015-05-15 15:08:26 UTC;
-                Docs: man:systemd-sysv-generator(8)
-            """
-        ) % (service.service_name, service.service_name)
-
-        mock_execSystemDServiceAction = self.patch(
-            service_monitor, "_execSystemDServiceAction"
-        )
-        mock_execSystemDServiceAction.return_value = (
-            0,
-            systemd_status_output,
-            "",
-        )
-        active_state, process_state = yield (
-            service_monitor._loadSystemDServiceState(service)
-        )
-        self.assertEqual(SERVICE_STATE.ON, active_state)
-        self.assertEqual("running", process_state)
-
-    @inlineCallbacks
-    def test_loadSystemDServiceState_status_ignores_sudo_output(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor([service])
-        systemd_status_output = dedent(
-            """\
-            sudo: unable to resolve host sub-etha-sens-o-matic
-            %s.service - Fake service
-                Loaded: loaded (/lib/systemd/system/%s.service)
-                Active: active (running) since Fri 2015-05-15 15:08:26 UTC;
-                Docs: man:systemd-sysv-generator(8)
-            """
-        ) % (service.service_name, service.service_name)
-
-        mock_execSystemDServiceAction = self.patch(
-            service_monitor, "_execSystemDServiceAction"
-        )
-        mock_execSystemDServiceAction.return_value = (
-            0,
-            systemd_status_output,
-            "",
-        )
-        active_state, process_state = yield (
-            service_monitor._loadSystemDServiceState(service)
-        )
-        self.assertEqual(SERVICE_STATE.ON, active_state)
-        self.assertEqual("running", process_state)
-
-    @inlineCallbacks
-    def test_loadSystemDServiceState_status_raise_error_for_bad_active(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor([service])
-        systemd_status_output = dedent(
-            """\
-            %s.service - Fake service
-                Loaded: loaded (/lib/systemd/system/%s.service)
-                Active: unknown (running) since Fri 2015-05-15 15:08:26 UTC;
-                Docs: man:systemd-sysv-generator(8)
-            """
-        ) % (service.service_name, service.service_name)
-
-        service_monitor = self.make_service_monitor()
-        mock_execSystemDServiceAction = self.patch(
-            service_monitor, "_execSystemDServiceAction"
-        )
-        mock_execSystemDServiceAction.return_value = (
-            0,
-            systemd_status_output,
-            "",
-        )
-
-        with self.assertRaisesRegex(
-            ServiceParsingError,
-            rf"^Unable to parse the active state from systemd for service '{service.service_name}', active state reported as 'unknown'\.$",
-        ):
-            yield service_monitor._loadSystemDServiceState(service)
-
-    @inlineCallbacks
-    def test_loadSystemDServiceState_status_raise_error_for_bad_output(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor([service])
-        mock_execSystemDServiceAction = self.patch(
-            service_monitor, "_execSystemDServiceAction"
-        )
-        mock_execSystemDServiceAction.return_value = (
-            3,
-            factory.make_name("invalid"),
-            "",
-        )
-
-        with self.assertRaisesRegex(
-            ServiceParsingError,
-            rf"^Unable to parse the output from systemd for service '{service.service_name}'\.$",
-        ):
-            yield service_monitor._loadSystemDServiceState(service)
-
-    @inlineCallbacks
-    def test_loadPebbleServiceState_status_calls_pebble_socket(self):
+    def test_loadServiceState_status_calls_pebble_socket(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         mock_execPebbleServiceAction = self.patch(
@@ -1428,7 +1067,7 @@ class TestServiceMonitor(MAASTestCase):
         )
         mock_execPebbleServiceAction.side_effect = factory.make_exception()
         try:
-            yield service_monitor._loadPebbleServiceState(service)
+            yield service_monitor._loadServiceState(service)
         except Exception:
             pass
         mock_execPebbleServiceAction.assert_called_once_with(
@@ -1436,7 +1075,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_service_name_doesnt_match(self):
+    def test_loadServiceState_service_name_doesnt_match(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         mock_execPebbleServiceAction = self.patch(
@@ -1451,10 +1090,10 @@ class TestServiceMonitor(MAASTestCase):
             ServiceParsingError,
             f"Pebble returned status for 'any_service' instead of '{service.service_name}'$",
         ):
-            yield service_monitor._loadPebbleServiceState(service)
+            yield service_monitor._loadServiceState(service)
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_unknown_status(self):
+    def test_loadServiceState_unknown_status(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         mock_execPebbleServiceAction = self.patch(
@@ -1469,10 +1108,10 @@ class TestServiceMonitor(MAASTestCase):
             ServiceParsingError,
             "Pebble returned status as 'unknown_status_for_maas'",
         ):
-            yield service_monitor._loadPebbleServiceState(service)
+            yield service_monitor._loadServiceState(service)
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_active_returns_on(self):
+    def test_loadServiceState_active_returns_on(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
 
@@ -1485,13 +1124,13 @@ class TestServiceMonitor(MAASTestCase):
             "",
         )
         active_state, process_state = yield (
-            service_monitor._loadPebbleServiceState(service)
+            service_monitor._loadServiceState(service)
         )
         self.assertEqual(SERVICE_STATE.ON, active_state)
         self.assertEqual("running", process_state)
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_inactive_returns_off(self):
+    def test_loadServiceState_inactive_returns_off(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
 
@@ -1504,13 +1143,13 @@ class TestServiceMonitor(MAASTestCase):
             "",
         )
         active_state, process_state = yield (
-            service_monitor._loadPebbleServiceState(service)
+            service_monitor._loadServiceState(service)
         )
         self.assertEqual(SERVICE_STATE.OFF, active_state)
         self.assertEqual("dead", process_state)
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_backoff_returns_dead(self):
+    def test_loadServiceState_backoff_returns_dead(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
 
@@ -1523,13 +1162,13 @@ class TestServiceMonitor(MAASTestCase):
             "",
         )
         active_state, process_state = yield (
-            service_monitor._loadPebbleServiceState(service)
+            service_monitor._loadServiceState(service)
         )
         self.assertEqual(SERVICE_STATE.DEAD, active_state)
         self.assertEqual("Result: exit-code", process_state)
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_error_returns_dead(self):
+    def test_loadServiceState_error_returns_dead(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
 
@@ -1542,7 +1181,7 @@ class TestServiceMonitor(MAASTestCase):
             "",
         )
         active_state, process_state = yield (
-            service_monitor._loadPebbleServiceState(service)
+            service_monitor._loadServiceState(service)
         )
         self.assertEqual(SERVICE_STATE.DEAD, active_state)
         self.assertEqual("Result: exit-code", process_state)

@@ -247,7 +247,7 @@ def get_error_message_for_exception(exception):
 
     if len(error_message) == 0:
         error_message = (
-            "Unexpected exception: %s. See /var/log/maas/regiond.log "
+            "Unexpected exception: %s. See /var/snap/maas/common/log/regiond.log "
             "on the region server for more information."
             % exception.__class__.__name__
         )

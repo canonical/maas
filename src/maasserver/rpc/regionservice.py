@@ -733,8 +733,9 @@ class RegionServer(Region):
         else:
             log.msg(
                 "Rack controller '%s' could not be authenticated; dropping "
-                "connection. Check that /var/lib/maas/secret on the "
-                "controller contains the correct shared key." % self.ident
+                "connection. Check that /var/snap/maas/common/maas/secret "
+                "on the controller contains the correct shared key."
+                % self.ident
             )
             if self.transport is not None:
                 return self.transport.loseConnection()

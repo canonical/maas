@@ -1,4 +1,4 @@
-# WARNING: Do not edit /var/lib/maas/dhcpd6.conf yourself.  MAAS will
+# WARNING: Do not edit dhcpd6.conf yourself.  MAAS will
 # overwrite any changes made there.  Instead, you can modify dhcpd6.conf by
 # using DHCP snippets over the API or through the web interface.
 

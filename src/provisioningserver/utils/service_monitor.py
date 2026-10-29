@@ -6,7 +6,6 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import defaultdict, namedtuple
 import enum
-from functools import cache
 from io import BytesIO
 import json
 import os
@@ -15,7 +14,6 @@ import urllib.parse
 
 from twisted.internet import reactor
 from twisted.internet.defer import (
-    CancelledError,
     DeferredList,
     DeferredLock,
     inlineCallbacks,
@@ -29,12 +27,7 @@ from twisted.web.iweb import IAgentEndpointFactory
 from zope.interface import implementer
 
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.utils.shell import get_env_with_bytes_locale
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    deferWithTimeout,
-    getProcessOutputAndValue,
-)
+from provisioningserver.utils.twisted import asynchronous
 
 log = LegacyLogger()
 maaslog = get_maas_logger("service_monitor")
@@ -95,11 +88,6 @@ def _check_service_state_expected(state):
         SERVICE_STATE.OBSERVE,
     }:
         raise AssertionError(f"Expected state should not be {state!r}.")
-
-
-@cache
-def _running_under_pebble():
-    return os.environ.get("PEBBLE") is not None
 
 
 ServiceStateBase = namedtuple(
@@ -168,11 +156,11 @@ class Service(metaclass=ABCMeta):
 
     @abstractproperty
     def service_name(self):
-        """Name of the service for systemd."""
+        """Name of the service as shown in log messages."""
 
     @abstractproperty
     def snap_service_name(self):
-        """Name of the service when inside snap."""
+        """Name of the service in the snap's pebble layers."""
 
     @abstractmethod
     def getExpectedState(self):
@@ -257,16 +245,6 @@ class ServiceMonitor:
     remain in their expected state. Actions are performed on the services to
     keep the services in their desired state."""
 
-    # Used to convert the systemd state to the `SERVICE_STATE` enum.
-    SYSTEMD_TO_STATE = {
-        "active": SERVICE_STATE.ON,
-        "reloading": SERVICE_STATE.DEAD,
-        "inactive": SERVICE_STATE.OFF,
-        "failed": SERVICE_STATE.DEAD,
-        "activating": SERVICE_STATE.DEAD,
-        "deactivating": SERVICE_STATE.OFF,
-    }
-
     # Used to convert the pebble state to the `SERVICE_STATE` enum.
     PEBBLE_TO_STATE = {
         "active": SERVICE_STATE.ON,
@@ -313,7 +291,7 @@ class ServiceMonitor:
     def getServiceState(self, name, now=False):
         """Get the current service state.
 
-        :param now: True will query systemd before returning the result.
+        :param now: True will query pebble before returning the result.
         """
         service = self.getServiceByName(name)
         if now:
@@ -466,66 +444,6 @@ class ServiceMonitor:
             pass
         state = yield self.ensureService(name)
         return state
-
-    @inlineCallbacks
-    def _execCmd(self, cmd, env, timeout=120, retries=3):
-        """Execute the `cmd` with the `env`."""
-
-        def decode(result):
-            out, err, code = result
-            return code, out.decode("utf-8"), err.decode("utf-8")
-
-        def log_code(result, cmd, try_num):
-            _, _, code = result
-            log.debug(
-                "[try:{try_num}] Service monitor got exit "
-                "code '{code}' from cmd: {cmd()}",
-                try_num=try_num,
-                code=code,
-                cmd=lambda: " ".join(cmd),
-            )
-            return result
-
-        def call_proc(cmd, env, try_num, timeout):
-            log.debug(
-                "[try:{try_num}] Service monitor executing cmd: {cmd()}",
-                try_num=try_num,
-                cmd=lambda: " ".join(cmd),
-            )
-
-            d = deferWithTimeout(
-                timeout, getProcessOutputAndValue, cmd[0], cmd[1:], env=env
-            )
-            d.addCallback(log_code, cmd, try_num)
-            return d.addCallback(decode)
-
-        for try_num in range(retries):
-            try:
-                result = yield call_proc(cmd, env, try_num + 1, timeout)
-            except CancelledError:
-                if try_num == retries - 1:
-                    # Failed on final retry.
-                    raise ServiceActionError(  # noqa: B904
-                        f"Service monitor timed out after '{timeout}' "
-                        f"seconds and '{retries}' retries running cmd: {' '.join(cmd)}"
-                    )
-                else:
-                    # Try again.
-                    continue
-            return result
-
-    @asynchronous
-    def _execSystemDServiceAction(self, service_name, action, extra_opts=None):
-        """Perform the action with the systemctl command.
-
-        :return: tuple (exit code, std-output, std-error)
-        """
-        env = get_env_with_bytes_locale()
-        cmd = ["sudo", "--non-interactive", "systemctl", action]
-        if extra_opts is not None:
-            cmd.extend(extra_opts)
-        cmd.append(service_name)
-        return self._execCmd(cmd, env)
 
     def _pebble_wait_on_change(self, change_id, backoff=1):
         """Monitors /v1/changes pebble endpoint, waiting for its final
@@ -691,15 +609,12 @@ class ServiceMonitor:
     def _performServiceAction(self, service, action):
         """Start or stop the service."""
         lock = self._getServiceLock(service.name)
-        if _running_under_pebble():
-            exec_action = self._execPebbleServiceAction
-            service_name = service.snap_service_name
-        else:
-            exec_action = self._execSystemDServiceAction
-            service_name = service.service_name
         extra_opts = getattr(service, f"{action}_extra_opts", None)
         exit_code, _, error = yield lock.run(
-            exec_action, service_name, action, extra_opts=extra_opts
+            self._execPebbleServiceAction,
+            service.snap_service_name,
+            action,
+            extra_opts=extra_opts,
         )
         if exit_code != 0:
             error_msg = "Service '{}' failed to {}: {}".format(
@@ -710,76 +625,8 @@ class ServiceMonitor:
             maaslog.error(error_msg)
             raise ServiceActionError(error_msg)
 
+    @inlineCallbacks
     def _loadServiceState(self, service):
-        """Return service status."""
-        if _running_under_pebble():
-            return self._loadPebbleServiceState(service)
-        else:
-            return self._loadSystemDServiceState(service)
-
-    @inlineCallbacks
-    def _loadSystemDServiceState(self, service):
-        """Return service status from systemd."""
-        # Ignore the exit_code because systemd will return 0 for anything
-        # other than a active service.
-        exit_code, output, error = yield self._execSystemDServiceAction(
-            service.service_name, "status"
-        )
-
-        # Parse the output of the command to determine the active status and
-        # the current state of the service.
-        #
-        # output for running service looks like:
-        #   tgt.service - LSB: iscsi target daemon
-        #    Loaded: loaded (/etc/init.d/tgt)
-        #    Active: active (running) since Fri 2015-05-15 15:08:26 UTC; 7s ago
-        #    Docs: man:systemd-sysv-generator(8)
-        #
-        # output for stopped service looks like:
-        #   tgt.service - LSB: iscsi target daemon
-        #    Loaded: loaded (/etc/init.d/tgt)
-        #    Active: inactive (dead)
-        #    Docs: man:systemd-sysv-generator(8)
-        #
-        # output for failed service looks like:
-        #   maas-dhcpd.service - MAAS instance of ISC DHCP server for IPv4
-        #    Loaded: loaded (/lib/systemd/system/maas-dhcpd.service; enabled;
-        # ... vendor preset: enabled)
-        #    Active: failed (Result: exit-code) since Wed 2016-01-20 10:35:43
-        # ... EST; 26min ago
-        #    Docs: man:dhcpd(8)
-        #
-        # output for unknown service looks like:
-        #   missing.service
-        #    Loaded: not-found (Reason: No such file or directory)
-        #    Active: inactive (dead)
-        for line in output.splitlines():
-            line = line.strip()
-            if line.startswith("Loaded"):
-                load_status = line.split()[1]
-                if load_status != "loaded":
-                    raise ServiceUnknownError(
-                        f"'{service.service_name}' is unknown to systemd."
-                    )
-            if line.startswith("Active"):
-                active_split = line.split(" ", 2)
-                active_state, process_state = (
-                    active_split[1],
-                    active_split[2].lstrip("(").split(")")[0],
-                )
-                active_state_enum = self.SYSTEMD_TO_STATE.get(active_state)
-                if active_state_enum is None:
-                    raise ServiceParsingError(
-                        "Unable to parse the active state from systemd for "
-                        f"service '{service.service_name}', active state reported as '{active_state}'."
-                    )
-                return (active_state_enum, process_state)
-        raise ServiceParsingError(
-            f"Unable to parse the output from systemd for service '{service.service_name}'."
-        )
-
-    @inlineCallbacks
-    def _loadPebbleServiceState(self, service):
         """Return service status from pebble."""
         exit_code, output, error = yield self._execPebbleServiceAction(
             service.snap_service_name, "services"
