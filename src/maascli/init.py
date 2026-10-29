@@ -4,8 +4,6 @@
 """Methods related to initializing a MAAS deployment."""
 
 import argparse
-import os
-import subprocess
 import sys
 
 
@@ -92,32 +90,6 @@ def add_create_admin_options(parser, suppress_help=False):
     )
 
 
-def create_admin_account(options):
-    """Create the first admin account."""
-    print_create_header = not all(
-        [options.admin_username, options.admin_password, options.admin_email]
-    )
-    if print_create_header:
-        print_msg("Create first admin account")
-    cmd = [get_maas_region_bin_path(), "createadmin"]
-    if options.admin_username:
-        cmd.extend(["--username", options.admin_username])
-    if options.admin_password:
-        cmd.extend(["--password", options.admin_password])
-    if options.admin_email:
-        cmd.extend(["--email", options.admin_email])
-    if options.admin_ssh_import:
-        cmd.extend(["--ssh-import", options.admin_ssh_import])
-    subprocess.call(cmd)
-
-
-def get_maas_region_bin_path():
-    maas_region = "maas-region"
-    if "SNAP" in os.environ:
-        maas_region = os.path.join(os.environ["SNAP"], "bin", maas_region)
-    return maas_region
-
-
 def print_msg(msg="", newline=True, stderr=False):
     """Print a message to stdout.
 
@@ -125,11 +97,6 @@ def print_msg(msg="", newline=True, stderr=False):
     """
     stream = sys.stderr if stderr else sys.stdout
     print(msg, end=("\n" if newline else ""), flush=True, file=stream)
-
-
-def init_maas(options):
-    if not options.skip_admin:
-        create_admin_account(options)
 
 
 def read_input(prompt):
