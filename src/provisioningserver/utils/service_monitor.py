@@ -625,12 +625,8 @@ class ServiceMonitor:
             maaslog.error(error_msg)
             raise ServiceActionError(error_msg)
 
-    def _loadServiceState(self, service):
-        """Return service status."""
-        return self._loadPebbleServiceState(service)
-
     @inlineCallbacks
-    def _loadPebbleServiceState(self, service):
+    def _loadServiceState(self, service):
         """Return service status from pebble."""
         exit_code, output, error = yield self._execPebbleServiceAction(
             service.snap_service_name, "services"

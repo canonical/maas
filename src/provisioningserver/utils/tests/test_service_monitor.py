@@ -229,10 +229,10 @@ class TestServiceMonitor(MAASTestCase):
         service_monitor = self.make_service_monitor([fake_service])
         active_state = pick_observed_state()
         process_state = random.choice(["running", "dead"])
-        mock_loadPebbleServiceState = self.patch(
-            service_monitor, "_loadPebbleServiceState"
+        mock_loadServiceState = self.patch(
+            service_monitor, "_loadServiceState"
         )
-        mock_loadPebbleServiceState.return_value = succeed(
+        mock_loadServiceState.return_value = succeed(
             (active_state, process_state)
         )
         observed_state = yield service_monitor.getServiceState(
@@ -245,14 +245,14 @@ class TestServiceMonitor(MAASTestCase):
         )
         self.assertEqual(state, observed_state)
 
-        mock_loadPebbleServiceState.assert_called_once_with(fake_service)
+        mock_loadServiceState.assert_called_once_with(fake_service)
 
     @inlineCallbacks
     def test_getServiceState_with_now_False(self):
         fake_service = make_fake_service()
         service_monitor = self.make_service_monitor([fake_service])
-        mock_loadPebbleServiceState = self.patch(
-            service_monitor, "_loadPebbleServiceState"
+        mock_loadServiceState = self.patch(
+            service_monitor, "_loadServiceState"
         )
         observed_state = yield service_monitor.getServiceState(
             fake_service.name, now=False
@@ -263,7 +263,7 @@ class TestServiceMonitor(MAASTestCase):
             (state.active_state, state.process_state),
         )
         self.assertEqual(state, observed_state)
-        mock_loadPebbleServiceState.assert_not_called()
+        mock_loadServiceState.assert_not_called()
 
     @inlineCallbacks
     def test_ensureServices_returns_dict_for_states(self):
@@ -1051,15 +1051,15 @@ class TestServiceMonitor(MAASTestCase):
     def test_loadServiceState_uses_pebble(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        mock_loadPebbleServiceState = self.patch(
-            service_monitor, "_loadPebbleServiceState"
+        mock_loadServiceState = self.patch(
+            service_monitor, "_loadServiceState"
         )
-        mock_loadPebbleServiceState.return_value = sentinel.result
+        mock_loadServiceState.return_value = sentinel.result
         result = yield service_monitor._loadServiceState(service)
         self.assertEqual(sentinel.result, result)
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_status_calls_pebble_socket(self):
+    def test_loadServiceState_status_calls_pebble_socket(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         mock_execPebbleServiceAction = self.patch(
@@ -1067,7 +1067,7 @@ class TestServiceMonitor(MAASTestCase):
         )
         mock_execPebbleServiceAction.side_effect = factory.make_exception()
         try:
-            yield service_monitor._loadPebbleServiceState(service)
+            yield service_monitor._loadServiceState(service)
         except Exception:
             pass
         mock_execPebbleServiceAction.assert_called_once_with(
@@ -1075,7 +1075,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_service_name_doesnt_match(self):
+    def test_loadServiceState_service_name_doesnt_match(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         mock_execPebbleServiceAction = self.patch(
@@ -1090,10 +1090,10 @@ class TestServiceMonitor(MAASTestCase):
             ServiceParsingError,
             f"Pebble returned status for 'any_service' instead of '{service.service_name}'$",
         ):
-            yield service_monitor._loadPebbleServiceState(service)
+            yield service_monitor._loadServiceState(service)
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_unknown_status(self):
+    def test_loadServiceState_unknown_status(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         mock_execPebbleServiceAction = self.patch(
@@ -1108,10 +1108,10 @@ class TestServiceMonitor(MAASTestCase):
             ServiceParsingError,
             "Pebble returned status as 'unknown_status_for_maas'",
         ):
-            yield service_monitor._loadPebbleServiceState(service)
+            yield service_monitor._loadServiceState(service)
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_active_returns_on(self):
+    def test_loadServiceState_active_returns_on(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
 
@@ -1124,13 +1124,13 @@ class TestServiceMonitor(MAASTestCase):
             "",
         )
         active_state, process_state = yield (
-            service_monitor._loadPebbleServiceState(service)
+            service_monitor._loadServiceState(service)
         )
         self.assertEqual(SERVICE_STATE.ON, active_state)
         self.assertEqual("running", process_state)
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_inactive_returns_off(self):
+    def test_loadServiceState_inactive_returns_off(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
 
@@ -1143,13 +1143,13 @@ class TestServiceMonitor(MAASTestCase):
             "",
         )
         active_state, process_state = yield (
-            service_monitor._loadPebbleServiceState(service)
+            service_monitor._loadServiceState(service)
         )
         self.assertEqual(SERVICE_STATE.OFF, active_state)
         self.assertEqual("dead", process_state)
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_backoff_returns_dead(self):
+    def test_loadServiceState_backoff_returns_dead(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
 
@@ -1162,13 +1162,13 @@ class TestServiceMonitor(MAASTestCase):
             "",
         )
         active_state, process_state = yield (
-            service_monitor._loadPebbleServiceState(service)
+            service_monitor._loadServiceState(service)
         )
         self.assertEqual(SERVICE_STATE.DEAD, active_state)
         self.assertEqual("Result: exit-code", process_state)
 
     @inlineCallbacks
-    def test_loadPebbleServiceState_error_returns_dead(self):
+    def test_loadServiceState_error_returns_dead(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
 
@@ -1181,7 +1181,7 @@ class TestServiceMonitor(MAASTestCase):
             "",
         )
         active_state, process_state = yield (
-            service_monitor._loadPebbleServiceState(service)
+            service_monitor._loadServiceState(service)
         )
         self.assertEqual(SERVICE_STATE.DEAD, active_state)
         self.assertEqual("Result: exit-code", process_state)
