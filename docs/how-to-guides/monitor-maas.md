@@ -444,7 +444,7 @@ unzip /tmp/agent.zip -d /opt/agent
 chmod a+x /opt/agent/agent-linux-amd64
 ```
 
-Copy the agent example configuration from MAAS and start the agent. Adapt the environment variable values to your setup. For example, if you're using a snap, the `MAAS_LOGS` variable would be as shown (`/var/snap/maas/common/log`):
+Copy the agent example configuration from MAAS and start the agent. Adapt the environment variable values to your setup. `MAAS_LOGS` must point to the MAAS log directory, `/var/snap/maas/common/log`:
 
 ```text
 mkdir -p /var/lib/grafana-agent/positions \
@@ -464,14 +464,6 @@ systemd-run -u telemetry \
     /opt/agent/agent-linux-amd64 \
         -config.expand-env \
         -config.file=/opt/agent/agent.yml
-```
-
-On the other hand, if you're using packages, the `MAAS_LOGS` would be `/var/log/maas`, as shown below:
-
-```text
-    ...
-    -E MAAS_LOGS="/var/log/maas" \
-    ...
 ```
 
 Be sure to adjust the values of the other environment variables to suit your situation, where applicable.

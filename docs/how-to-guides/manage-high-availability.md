@@ -53,7 +53,7 @@ Moving between MAAS instances or versions is not supported and risks data loss. 
 2. Register a new one.
 
    ```shell
-   sudo maas-rack register --url $NEW_MAAS_URL --secret $NEW_SECRET
+   sudo maas init rack --maas-url $NEW_MAAS_URL --secret $NEW_SECRET
    ```
 
 ### Common pitfalls
@@ -65,7 +65,7 @@ Moving between MAAS instances or versions is not supported and risks data loss. 
 
 Region controllers coordinate racks and present the API/UI.
 
-To add a region controller using snaps, follow the [installation guide](/how-to-guides/get-started/install-maas.md) on a secondary host. Then configure it to use the primary PostgreSQL database.
+To add a region controller, follow the [installation guide](/how-to-guides/get-started/install-maas.md) on a secondary host. Then configure it to use the primary PostgreSQL database.
 
 ### Enable HA PostgreSQL
 
@@ -82,7 +82,7 @@ All region controllers share the same PostgreSQL DB.
 
 ### Boost region performance
 
-Increase workers in `/etc/maas/regiond.conf`:
+Increase workers in `/var/snap/maas/current/regiond.conf`:
 
 ```yaml
 num_workers: 8

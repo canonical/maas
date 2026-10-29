@@ -48,10 +48,7 @@ Use a log analysis tool, or inspect raw logs stored in paths like `/var/log/http
 
 ## MAAS logs
 
-| Pkg Fmt  | Look for failed logins in...           |
-|----------|-----------------------------------------|
-| Snap     | `/var/snap/maas/common/log/regiond.log` |
-| Packages | `/var/log/maas/regiond.log`             |
+Look for failed logins in `/var/snap/maas/common/log/regiond.log`.
 
 For example, a legitimate login request might resemble:
 

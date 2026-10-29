@@ -48,7 +48,7 @@ Deployment of a JUJU controller or an OS directly on a node fails with the error
    - Restart MAAS services:
 
    ```bash
-   sudo systemctl restart maas-rackd maas-regiond
+   sudo snap restart maas
    ```
 
 5. **BIOS configuration:**
@@ -76,7 +76,7 @@ Deployment of a JUJU controller or an OS directly on a node fails with the error
 maas admin subnet update $subnet_id dns_servers="[$MAAS_IP]"
 
 # Restart MAAS services
-sudo systemctl restart maas-rackd maas-regiond
+sudo snap restart maas
 
 # Check MAAS logs
 # insert relevant commands here
@@ -149,7 +149,7 @@ maas admin subnets read
 maas admin subnet delete $subnet_id
 
 # Restart MAAS services to apply changes
-sudo systemctl restart maas-regiond maas-rackd
+sudo snap restart maas
 
 # Disable MAAS-managed DNS
 sudo maas admin dns update 1 enabled=false
@@ -256,7 +256,7 @@ The user ultimately resolved the issue by disabling the router's DHCP and using 
    ```
 
 4. **Check MAAS DHCP configuration:**
-   - If you need to reference the configuration MAAS would generate, you can find it in `/var/snap/maas/common/maas/dhcpd.conf` for a snap installation.
+   - If you need to reference the configuration MAAS would generate, you can find it in `/var/snap/maas/common/maas/dhcpd.conf`.
 
 5. **Test PXE boot:**
    - Ensure that the client machines are set to PXE boot from the network.
@@ -419,8 +419,7 @@ MAAS 2.9.2 (snap) DHCP services stopped working after memory and disk issues wer
    - After correcting the subnet assignment, restart the MAAS services.
 
    ```bash
-   sudo systemctl restart maas-rackd
-   sudo systemctl restart maas-regiond
+   sudo snap restart maas
    ```
 
 5. **Cleaning up proxy cache (if applicable):**
@@ -431,7 +430,7 @@ MAAS 2.9.2 (snap) DHCP services stopped working after memory and disk issues wer
    sudo mkdir -p /var/snap/maas/common/proxy
    sudo chown -R proxy:proxy /var/snap/maas/common/proxy
    sudo chmod -R 0750 /var/snap/maas/common/proxy
-   sudo systemctl restart maas-proxy
+   sudo snap restart maas
    ```
 
 6. **Verify DHCP settings:**
@@ -441,8 +440,10 @@ MAAS 2.9.2 (snap) DHCP services stopped working after memory and disk issues wer
 7. **Check and repair database:**
    - Sometimes issues may be related to the MAAS database. Verify the database integrity and repair if necessary.
 
+   Connect to the MAAS database with `psql`, using the `database_host`, `database_name` and `database_user` values from `/var/snap/maas/current/regiond.conf`:
+
    ```bash
-   sudo maas-region dbshell
+   psql -h <database_host> -U <database_user> <database_name>
    # Inside the database shell
    VACUUM FULL;
    ```
@@ -631,9 +632,9 @@ When the network connection between the MAAS region controller and rack controll
    - Create a DHCP snippet to extend the lease time.
 
    ```bash
-   echo 'dhcp-lease-time 86400; # 1 day' | sudo tee /etc/maas/dhcpd.conf.d/lease-time.conf
-   sudo systemctl restart maas-rackd
-   sudo systemctl restart maas-regiond
+   maas $PROFILE dhcpsnippets create name=lease-time \
+       value='default-lease-time 86400; max-lease-time 86400;' \
+       global_snippet=true
    ```
 
 4. **Use external DHCP servers:**
@@ -722,26 +723,14 @@ Switching to an external proxy (standard HTTP proxy) resolves the issue, indicat
 
    **Steps to clean squid cache:**
    - Move the existing proxy cache directory to a backup location.
-   - Create a new proxy cache directory.
-   - Set appropriate ownership and permissions.
-   - Restart the MAAS proxy service.
+   - Restart MAAS. The proxy service recreates an empty cache directory with the correct ownership when it starts.
 
    **Commands:**
 
    ```bash
-   sudo mv /var/spool/maas-proxy /var/spool/maas-proxy.old
-   sudo mkdir -p /var/spool/maas-proxy
-   sudo chown -R proxy:proxy /var/spool/maas-proxy
-   sudo chmod -R 0750 /var/spool/maas-proxy
-   sudo systemctl restart maas-proxy
+   sudo mv /var/snap/maas/common/proxy/cache /var/snap/maas/common/proxy/cache.old
+   sudo snap restart maas
    ```
-
-   **Explanation:**
-   - `sudo mv /var/spool/maas-proxy /var/spool/maas-proxy.old`: Moves the existing cache directory to a backup location.
-   - `sudo mkdir -p /var/spool/maas-proxy`: Creates a new cache directory.
-   - `sudo chown -R proxy:proxy /var/spool/maas-proxy`: Sets the ownership of the new cache directory to the proxy user.
-   - `sudo chmod -R 0750 /var/spool/maas-proxy`: Sets the permissions for the cache directory.
-   - `sudo systemctl restart maas-proxy`: Restarts the MAAS proxy service to apply changes.
 
 3. **Confirmation:**
    After performing the above steps, verify if the commissioning process completes successfully without encountering the APT proxy errors.
@@ -854,7 +843,7 @@ The MAAS UI was accessible until the network configuration was changed, putting 
    - Restart the MAAS services to apply the new configurations:
 
      ```sh
-     sudo systemctl restart maas-regiond maas-rackd
+     sudo snap restart maas
      ```
 
 7. **Validate networking configuration:**
@@ -904,7 +893,7 @@ MAAS is sending out DHCP leases to both a BMC and a machine set to PXE boot, but
 - View the `dhcpd.leases` file to ensure that leases are being given out:
 
      ```sh
-     cat /var/lib/dhcp/dhcpd.leases
+     cat /var/snap/maas/common/maas/dhcp/dhcpd.leases
      ```
 
 **Next steps:**
@@ -1156,21 +1145,20 @@ Encountering SNMP errors when attempting to query a device’s BMC. The errors i
      ```
 
 6. **Configure SNMP on MAAS:**
-   - Edit the MAAS configuration to include the correct SNMP settings. Typically, this is done in the `/etc/maas/maas.cfg` file or through the MAAS web interface.
+   - Set the correct SNMP settings in the machine's power configuration, through the MAAS web interface or CLI.
 
 7. **Check SNMP logs:**
    - Review the SNMP logs for detailed error messages:
 
      ```bash
-     sudo journalctl -u maas
+     sudo journalctl -u snap.maas.pebble
      ```
 
 8. **Restart services:**
    - Restart the MAAS and SNMP services to apply the changes:
 
      ```bash
-     sudo systemctl restart maas-regiond
-     sudo systemctl restart maas-rackd
+     sudo snap restart maas
      ```
 
 9. **SNMP timeout troubleshooting:**
@@ -1184,75 +1172,6 @@ Encountering SNMP errors when attempting to query a device’s BMC. The errors i
     - If issues persist, consider reaching out to the community or consulting MAAS documentation and forums for specific guidance related to your hardware and MAAS version.
 
 By following these steps, you should be able to resolve the SNMP errors and successfully query your device’s BMC using MAAS.
-
-## Disabling BIND (named) on IPv6 in MAAS
-
-**Scenario:**
-You need to disable BIND (named) from listening on IPv6 addresses in a MAAS setup. The solution involves editing the BIND configuration to disable IPv6.
-
-**For Snap installation:**
-Snap installations of MAAS do not allow direct editing of the named configuration files because they are contained within the snap. However, you can manage named options indirectly.
-
-**For Apt Installation:**
-If MAAS is installed using apt, you can directly edit the BIND configuration files.
-
-### Steps for apt-installed MAAS
-
-1. **Open the named configuration options file:**
-
-   ```bash
-   sudo nano /etc/bind/named.conf.options
-   ```
-
-2. **Edit the file to disable IPv6:**
-   Find the line that specifies the IPv6 listening options and change it to disable IPv6. The line typically looks like:
-
-   ```bash
-   listen-on-v6 { any; };
-   ```
-
-   Change it to:
-
-   ```bash
-   listen-on-v6 { none; };
-   ```
-
-3. **Save and exit the file:**
-
-   - Press `Ctrl+O` to write the changes.
-   - Press `Enter` to confirm.
-   - Press `Ctrl+X` to exit the editor.
-
-4. **Restart BIND to apply the changes:**
-
-   ```bash
-   sudo systemctl restart bind9
-   ```
-
-### Verification
-
-1. **Check the BIND status:**
-
-   ```bash
-   sudo systemctl status bind9
-   ```
-
-   Ensure there are no errors.
-
-2. **Verify that BIND is not listening on IPv6:**
-
-   ```bash
-   sudo netstat -plnt | grep named
-   ```
-
-   This should show that named is not listening on any IPv6 addresses.
-
-### Notes
-
-- **MAAS Snap installation:**
-  For the snap version of MAAS, this process is not directly applicable as snaps are isolated and do not allow direct modification of their internal configuration files. In such cases, consult the snap documentation or consider using an apt-based installation if you need more flexibility in configuration.
-
-By following these steps, you should be able to disable BIND from listening on IPv6 in a MAAS environment installed via apt.
 
 ## Creating and managing DNS SRV records in MAAS
 
@@ -1286,7 +1205,7 @@ Ensure that DNS SRV records are created correctly and troubleshoot potential iss
    - Verify that the SRV record appears correctly in the zone file.
 
      ```bash
-     cat /var/lib/bind/maas/zone.test
+     cat /var/snap/maas/current/bind/zone.test
      ```
 
    - Example:
@@ -1340,12 +1259,12 @@ Ensure that DNS SRV records are created correctly and troubleshoot potential iss
 
 4. **Troubleshoot GUI issues:**
 
-   - If records do not appear or resolve correctly, manually edit the zone file and named configuration.
+   - If records do not appear or resolve correctly, check the zone file and named configuration.
    - Ensure there are no stale or incorrectly formatted entries.
-   - Restart the DNS service to apply changes:
+   - Restart MAAS to regenerate the DNS configuration:
 
      ```bash
-     sudo systemctl restart bind9
+     sudo snap restart maas
      ```
 
 5. **Check named configuration:**
@@ -1353,7 +1272,7 @@ Ensure that DNS SRV records are created correctly and troubleshoot potential iss
    - Ensure that the named configuration includes the correct zone settings and paths to the zone files.
 
      ```bash
-     cat /etc/bind/named.conf
+     cat /var/snap/maas/current/bind/named.conf
      ```
 
 **Example:**
@@ -1365,7 +1284,7 @@ Ensure that DNS SRV records are created correctly and troubleshoot potential iss
    - Confirm the zone file has the correct entries.
 
      ```bash
-     cat /var/lib/bind/maas/zone.test
+     cat /var/snap/maas/current/bind/zone.test
      ```
 
 3. **Test resolution:**
@@ -1375,12 +1294,11 @@ Ensure that DNS SRV records are created correctly and troubleshoot potential iss
      dig @localhost SRV _myservice._tcp.test
      ```
 
-4. **Manual edit and restart (if needed):**
-   - Edit zone file if the GUI fails and restart DNS service.
+4. **Restart (if needed):**
+   - If the record still does not resolve, restart MAAS to regenerate the zone files. MAAS overwrites manual edits to its zone files, so make changes through the web interface or CLI.
 
      ```bash
-     sudo nano /var/lib/bind/maas/zone.test
-     sudo systemctl restart bind9
+     sudo snap restart maas
      ```
 
 By following these steps, you can create and manage DNS SRV records in MAAS, ensuring they are correctly configured and resolvable.
@@ -2185,8 +2103,7 @@ To address these issues and better manage network interfaces and subnets in MAAS
    **Restart MAAS services:**
 
    ```bash
-   sudo systemctl restart maas-regiond
-   sudo systemctl restart maas-rackd
+   sudo snap restart maas
    ```
 
 By following these steps, users can better control which network interfaces and subnets are managed by MAAS, addressing issues related to unwanted interface usage and persistent subnets. This approach ensures that MAAS operates within the desired network configuration parameters.
@@ -2650,7 +2567,8 @@ Replace `$PROFILE` with the username.
 
 The default MAAS web UI is at `http://<hostname>:5240/MAAS/`. If it's unreachable:
 
-- Verify Apache is running: `sudo /etc/init.d/apache2 status`.
+- Verify MAAS is running: `sudo snap services maas`.
+- Check the HTTP service logs: `journalctl -u snap.maas.pebble -t maas-http`.
 - Validate the hostname or try `http://127.0.0.1:5240/MAAS/`.
 
 ## Backdoor image login

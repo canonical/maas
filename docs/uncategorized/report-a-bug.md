@@ -47,9 +47,7 @@ Logs are stored on disk. Collect:
 * `regiond.log`
 * `rackd.log`
 
-Default locations:
-
-* Snap: `/var/snap/maas/common/log/`
+Default location: `/var/snap/maas/common/log/`
 
 ### Using `sosreport`
 

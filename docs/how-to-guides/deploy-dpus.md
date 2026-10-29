@@ -382,7 +382,7 @@ maas $PROFILE machine release $SYSTEM_ID
 - Check BMC connectivity and credentials  
 - Ensure PXE boot is configured on OOB interface  
 - Confirm Noble ARM64 images are synced  
-- Review logs: `/var/log/maas/rackd.log` and `/var/log/maas/regiond.log`
+- Review logs: `/var/snap/maas/common/log/rackd.log` and `/var/snap/maas/common/log/regiond.log`
 
 ### Deployment Hangs or Fails
 

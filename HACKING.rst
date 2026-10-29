@@ -155,56 +155,6 @@ results to a different file descriptor, to ensure a clean stream.
 .. _subunit: https://launchpad.net/subunit/
 
 
-Production MAAS server debugging
-================================
-
-When MAAS is installed from packaging it can help to enable debugging features
-to triage issues.
-
-Log all API and UI exceptions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-By default MAAS only logs HTTP 500 - INTERNAL_SERVER_ERROR into the
-regiond.log. To enable logging of all exceptions even exceptions where MAAS
-will return the correct HTTP status code.::
-
-  $ sudo sed -i 's/DEBUG = False/DEBUG = True/g' \
-  >   /usr/lib/python3/dist-packages/maasserver/djangosettings/settings.py
-  $ sudo service maas-regiond restart
-
-Run regiond in foreground
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-It can help when debugging to run regiond a foreground process so you can
-interact with the regiond by placing a breakpoint in the code. Once you have
-placed a breakpoint into the code you want to inspect you can start the regiond
-process in the foreground.::
-
-  $ sudo service maas-regiond stop
-  $ sudo -u maas -H \
-  >   DJANGO_SETTINGS_MODULE=maasserver.djangosettings.settings \
-  >   twistd3 --nodaemon --pidfile= maas-regiond
-
-
-.. Note::
-
-   By default a MAAS installation runs 4 regiond processes at the same time.
-   This will change it to only run 1 process in the foreground. This should
-   only be used for debugging. Once finished the breakpoint should be removed
-   and maas-regiond service should be started.
-
-Run rackd in foreground
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-It can help when debugging to run rackd a foreground process so you can
-interact with the rackd by placing a breakpoint in the code. Once you have
-placed a breakpoint into the code you want to inspect you can start the rackd
-process in the foreground.::
-
-   $ sudo service maas-rackd stop
-   $ sudo -u maas -H /usr/bin/authbind --deep /usr/bin/twistd3 --nodaemon --pidfile= maas-rackd
-
-
 Development MAAS server setup
 =============================
 
@@ -364,23 +314,6 @@ using other tools like `pgcli`_::
     $ sudo pgcli -h /var/snap/maas-test-db/common/postgres/sockets -U postgres
 
 .. _pgcli: https://www.pgcli.com/install
-
-
-Configuring DHCP
-^^^^^^^^^^^^^^^^
-
-MAAS requires a properly configured DHCP server so it can boot machines using
-PXE. MAAS can work with its own instance of the ISC DHCP server, if you
-install the maas-dhcp package::
-
-    $ sudo apt install maas-dhcp
-
-Note that maas-dhcpd service definition referencese the maas-rackd
-service, which won't be present if you run a development service. To
-workaround edit /lib/systemd/system/maas-dhcp.service and comment out
-this line:
-
-    BindsTo=maas-rackd.service
 
 
 Database information

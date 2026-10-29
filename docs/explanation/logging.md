@@ -273,7 +273,7 @@ maas $PROFILE maas set-config name="remote_syslog" value="
 
 ## Direct log access
 
-Logs can be found at the following paths for snap installations:
+Logs can be found at the following paths:
 
 - /var/snap/maas/common/log/maas.log
 - /var/snap/maas/common/log/regiond.log
