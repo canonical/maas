@@ -256,6 +256,79 @@ GatewayDefinition = namedtuple(
 )
 
 
+def get_gateways_by_priority_for_nodes(node_ids):
+    """Return all possible default gateways for each node, by priority.
+
+    See `Node.get_gateways_by_priority` for the selection criteria.
+
+    :return: Dict mapping node ID to a list of `GatewayDefinition`.
+    """
+    gateways = defaultdict(list)
+    node_ids = list(node_ids)
+    if not node_ids:
+        return gateways
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                node.id, interface.id, subnet.id, subnet.gateway_ip
+            FROM maasserver_node AS node
+            JOIN maasserver_nodeconfig AS nodeconfig ON
+                nodeconfig.node_id = node.id
+            JOIN maasserver_interface AS interface ON
+                interface.node_config_id = nodeconfig.id
+            JOIN maasserver_interface_ip_addresses AS link ON
+                link.interface_id = interface.id
+            JOIN maasserver_staticipaddress AS staticip ON
+                staticip.id = link.staticipaddress_id
+            JOIN maasserver_subnet AS subnet ON
+                subnet.id = staticip.subnet_id
+            JOIN maasserver_vlan AS vlan ON
+                vlan.id = subnet.vlan_id
+            WHERE
+                node.id = ANY(%s) AND
+                subnet.gateway_ip IS NOT NULL AND
+                host(subnet.gateway_ip) != '' AND
+                staticip.alloc_type != 5 AND /* Ignore DHCP */
+                staticip.alloc_type != 6 AND /* Ignore DISCOVERED */
+                /* Ignore LINK_UP / Unconfigured (STICKY with no IP), but keep
+                   AUTO links that have no IP assigned yet (pre-deployment) */
+                NOT (staticip.alloc_type = 1 AND staticip.ip IS NULL)
+            ORDER BY
+                node.id,
+                family(subnet.gateway_ip),
+                vlan.dhcp_on DESC,
+                CASE
+                    WHEN interface.type = 'bond' THEN 1
+                    WHEN interface.type = 'bridge' THEN 1
+                    WHEN interface.type = 'physical' AND
+                        interface.id = node.boot_interface_id THEN 2
+                    WHEN interface.type = 'physical' THEN 3
+                    WHEN interface.type = 'vlan' THEN 4
+                    WHEN interface.type = 'alias' THEN 5
+                    ELSE 6
+                END,
+                CASE
+                    WHEN staticip.alloc_type = 1 /* STICKY */
+                        THEN 1
+                    WHEN staticip.alloc_type = 4 /* USER_RESERVED */
+                        THEN 2
+                    WHEN staticip.alloc_type = 0 /* AUTO */
+                        THEN 3
+                    ELSE staticip.alloc_type
+                END,
+                interface.id,
+                staticip.id
+            """,
+            (node_ids,),
+        )
+        for node_id, interface_id, subnet_id, gateway_ip in cursor:
+            gateways[node_id].append(
+                GatewayDefinition(interface_id, subnet_id, gateway_ip)
+            )
+    return gateways
+
+
 # Timeout before marking a node as failing to exit rescue mode.
 # This is a temporary fix until we write a workflow for exiting
 # rescue mode. The timeout is to prevent race conditions, where
@@ -5137,69 +5210,16 @@ class Node(CleanSave, TimestampedModel):
         :return: List of (interface ID, subnet ID, gateway IP) tuples.
         :rtype: list
         """
-        cursor = connection.cursor()
-
-        # DISTINCT ON returns the first matching row for any given
-        # IP family. Using the query's ordering.
-        cursor.execute(
-            """
-            SELECT
-                interface.id, subnet.id, subnet.gateway_ip
-            FROM maasserver_node AS node
-            JOIN maasserver_nodeconfig AS nodeconfig ON
-                nodeconfig.node_id = node.id
-            JOIN maasserver_interface AS interface ON
-                interface.node_config_id = nodeconfig.id
-            JOIN maasserver_interface_ip_addresses AS link ON
-                link.interface_id = interface.id
-            JOIN maasserver_staticipaddress AS staticip ON
-                staticip.id = link.staticipaddress_id
-            JOIN maasserver_subnet AS subnet ON
-                subnet.id = staticip.subnet_id
-            JOIN maasserver_vlan AS vlan ON
-                vlan.id = subnet.vlan_id
-            WHERE
-                node.id = %s AND
-                subnet.gateway_ip IS NOT NULL AND
-                host(subnet.gateway_ip) != '' AND
-                staticip.alloc_type != 5 AND /* Ignore DHCP */
-                staticip.alloc_type != 6 AND /* Ignore DISCOVERED */
-                /* Ignore LINK_UP / Unconfigured (STICKY with no IP), but keep
-                   AUTO links that have no IP assigned yet (pre-deployment) */
-                NOT (staticip.alloc_type = 1 AND staticip.ip IS NULL)
-            ORDER BY
-                family(subnet.gateway_ip),
-                vlan.dhcp_on DESC,
-                CASE
-                    WHEN interface.type = 'bond' THEN 1
-                    WHEN interface.type = 'bridge' THEN 1
-                    WHEN interface.type = 'physical' AND
-                        interface.id = node.boot_interface_id THEN 2
-                    WHEN interface.type = 'physical' THEN 3
-                    WHEN interface.type = 'vlan' THEN 4
-                    WHEN interface.type = 'alias' THEN 5
-                    ELSE 6
-                END,
-                CASE
-                    WHEN staticip.alloc_type = 1 /* STICKY */
-                        THEN 1
-                    WHEN staticip.alloc_type = 4 /* USER_RESERVED */
-                        THEN 2
-                    WHEN staticip.alloc_type = 0 /* AUTO */
-                        THEN 3
-                    ELSE staticip.alloc_type
-                END,
-                interface.id
-            """,
-            (self.id,),
-        )
-        return [
-            GatewayDefinition(found[0], found[1], found[2])
-            for found in cursor.fetchall()
-        ]
+        gateways = getattr(self, "_gateways_by_priority", None)
+        if gateways is None:
+            gateways = get_gateways_by_priority_for_nodes([self.id])[self.id]
+        return list(gateways)
 
     def _get_best_interface_from_gateway_link(self, gateway_link):
         """Return the best interface for the `gateway_link` and this node."""
+        interface_ids = getattr(self, "_gateway_link_interface_ids", {})
+        if gateway_link.id in interface_ids:
+            return interface_ids[gateway_link.id]
         return (
             gateway_link.interface_set.filter(
                 node_config_id=self.current_config_id

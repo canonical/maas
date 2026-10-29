@@ -680,10 +680,11 @@ class Interface(CleanSave, TimestampedModel):
         self._updated = False
 
     def __setattr__(self, name, value):
-        if hasattr(self, f"_previous_{name}") and (
-            getattr(self, f"_previous_{name}") is None
-        ):
-            setattr(self, f"_previous_{name}", getattr(self, name))
+        # Looked up in __dict__ rather than with hasattr(), as this runs for
+        # every field when loading interfaces and the lookup mostly fails.
+        previous = f"_previous_{name}"
+        if previous in self.__dict__ and self.__dict__[previous] is None:
+            setattr(self, previous, getattr(self, name))
             self._updated = True
         super().__setattr__(name, value)
 

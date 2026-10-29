@@ -7,10 +7,18 @@ __all__ = [
     "NodesHandler",
 ]
 
-from itertools import chain
+from bisect import bisect_left
+from collections import defaultdict, namedtuple
+import logging
+from operator import attrgetter
 
 import bson
-from django.db.models import Prefetch
+from django.db.models import (
+    OuterRef,
+    Prefetch,
+    prefetch_related_objects,
+    Subquery,
+)
 from django.http import HttpResponse
 from piston3.utils import rc
 
@@ -28,7 +36,12 @@ from maasserver.api.utils import (
     get_optional_list,
     get_optional_param,
 )
-from maasserver.enum import NODE_STATUS, NODE_TYPE, NODE_TYPE_CHOICES
+from maasserver.enum import (
+    IPADDRESS_TYPE,
+    NODE_STATUS,
+    NODE_TYPE,
+    NODE_TYPE_CHOICES,
+)
 from maasserver.exceptions import (
     MAASAPIValidationError,
     NodeStateViolation,
@@ -37,12 +50,24 @@ from maasserver.exceptions import (
 )
 from maasserver.forms import BulkNodeSetZoneForm
 from maasserver.forms.ephemeral import TestForm
-from maasserver.models import Domain, Filesystem, Interface, Node, OwnerData
+from maasserver.models import (
+    Domain,
+    Event,
+    Filesystem,
+    Interface,
+    Node,
+    OwnerData,
+    PhysicalBlockDevice,
+    ScriptResult,
+    VLAN,
+)
+from maasserver.models.node import get_gateways_by_priority_for_nodes
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.models.scriptset import get_status_from_qs
 from maasserver.node_constraint_filter_forms import ReadNodesForm
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import prefetch_queryset
+from maasserver.utils.storage import get_effective_filesystem
 from metadataserver.enum import (
     HARDWARE_TYPE,
     RESULT_TYPE,
@@ -55,80 +80,312 @@ NODES_SELECT_RELATED = (
     "controllerinfo",
     "owner",
     "zone",
-    "boot_disk__node_config__node",
     "pool",
     "current_config",
-    "boot_interface__node_config__node",
 )
 
 
 def blockdev_prefetch(expression):
-    for device in (
-        expression,
-        f"{expression}__physicalblockdevice",
-        f"{expression}__virtualblockdevice",
+    for filesystem_set in (
+        "filesystem_set",
+        "partitiontable_set__partitions__filesystem_set",
     ):
-        for filesystem_set in (
-            "filesystem_set",
-            "partitiontable_set__partitions__filesystem_set",
-        ):
-            yield Prefetch(
-                f"{device}__{filesystem_set}",
-                queryset=Filesystem.objects.select_related(
-                    "cache_set",
-                    "filesystem_group",
-                ),
-            )
-
+        yield Prefetch(
+            f"{expression}__{filesystem_set}",
+            queryset=Filesystem.objects.select_related(
+                "cache_set",
+                "filesystem_group",
+            ),
+        )
     yield f"{expression}__physicalblockdevice__numa_node"
+    yield f"{expression}__virtualblockdevice__filesystem_group"
 
 
+# The prefetched objects are linked together by `prepare_nodes_for_listing`.
 NODES_PREFETCH = [
     "ownerdata_set",
+    "parent",
     "gateway_link_ipv4__subnet",
     "gateway_link_ipv6__subnet",
     # storage prefetches
     *blockdev_prefetch("current_config__blockdevice_set"),
-    *blockdev_prefetch(
-        "current_config__blockdevice_set__partitiontable_set__partitions__"
-        "partition_table__block_device__node_config__node__"
-        "current_config__blockdevice_set"
-    ),
-    *blockdev_prefetch("boot_disk"),
     "current_config__filesystem_set",
     # interface prefetches
-    "boot_interface__vlan__primary_rack",
-    "boot_interface__vlan__secondary_rack",
-    "boot_interface__vlan__fabric__vlan_set",
-    "boot_interface__vlan__space",
-    "boot_interface__ip_addresses__subnet",
-    "boot_interface__parents",
-    (
-        "boot_interface__children_relationships__child__"
-        "children_relationships__child"
-    ),
-    "current_config__interface_set__vlan__primary_rack",
-    "current_config__interface_set__vlan__secondary_rack",
-    "current_config__interface_set__vlan__fabric__vlan_set",
-    "current_config__interface_set__vlan__space",
-    "current_config__interface_set__parents",
-    "current_config__interface_set__ip_addresses__subnet",
     "current_config__interface_set__numa_node",
-    # Prefetch 3 levels deep, anything more will require extra queries.
-    "current_config__interface_set__children_relationships__child__vlan",
-    (
-        "current_config__interface_set__children_relationships__child__"
-        "children_relationships__child__vlan"
-    ),
-    (
-        "current_config__interface_set__children_relationships__child__"
-        "children_relationships__child__"
-        "children_relationships__child__vlan"
-    ),
+    "current_config__interface_set__parents",
+    "current_config__interface_set__children_relationships",
+    "current_config__interface_set__ip_addresses__subnet",
     "tags",
     "nodemetadata_set",
     "numanode_set__hugepages_set",
 ]
+
+
+def _prepare_interfaces(nodes):
+    """Link the prefetched interfaces of `nodes` to each other.
+
+    :return: Dict of the interfaces by ID.
+    """
+    interfaces = {
+        interface.id: interface
+        for node in nodes
+        if node.current_config is not None
+        for interface in node.current_config.interface_set.all()
+    }
+    for interface in interfaces.values():
+        for relationship in interface.children_relationships.all():
+            child = interfaces.get(relationship.child_id)
+            if child is not None:
+                relationship.child = child
+    for node in nodes:
+        boot_interface = interfaces.get(node.boot_interface_id)
+        if boot_interface is not None:
+            node.boot_interface = boot_interface
+    return interfaces
+
+
+def _prepare_block_devices(nodes):
+    """Link the prefetched storage of `nodes` to the specific block devices.
+
+    Block devices are rendered as `PhysicalBlockDevice` or
+    `VirtualBlockDevice`, so they share the relations prefetched on the base
+    `BlockDevice` and their partition tables and filesystems refer to them.
+    """
+    for node in nodes:
+        if node.current_config is None:
+            continue
+        cache_sets = []
+        for block_device in node.current_config.blockdevice_set.all():
+            device = block_device.actual_instance
+            if device is not block_device:
+                device._prefetched_objects_cache = (
+                    block_device._prefetched_objects_cache
+                )
+            if device.id == node.boot_disk_id and isinstance(
+                device, PhysicalBlockDevice
+            ):
+                node.boot_disk = device
+            filesystems = list(block_device.filesystem_set.all())
+            for filesystem in filesystems:
+                filesystem.block_device = device
+            partition_tables = list(block_device.partitiontable_set.all())
+            for partition_table in partition_tables:
+                partition_table.block_device = device
+                for partition in partition_table.partitions.all():
+                    filesystems.extend(partition.filesystem_set.all())
+                    partition._effective_filesystem = get_effective_filesystem(
+                        partition
+                    )
+            # The storage fields are rendered from these many times for each
+            # block device, see `get_effective_filesystem`.
+            effective_filesystem = get_effective_filesystem(device)
+            partition_table = partition_tables[0] if partition_tables else None
+            for instance in (block_device, device):
+                instance._effective_filesystem = effective_filesystem
+                instance._partitiontable = partition_table
+            cache_sets.extend(
+                filesystem.cache_set
+                for filesystem in filesystems
+                if filesystem.cache_set_id is not None
+            )
+        # A cache set is named after the number of cache set filesystems with
+        # a lower cache set ID on the node, as in
+        # `CacheSetManager.get_cache_set_idx`.
+        cache_set_ids = sorted(cache_set.id for cache_set in cache_sets)
+        for cache_set in cache_sets:
+            cache_set._cache_set_idx = bisect_left(cache_set_ids, cache_set.id)
+
+
+def _prepare_vlans(interfaces):
+    """Load the VLANs of `interfaces` and of the subnets they're linked to.
+
+    The relay VLANs are loaded as well, as they are rendered with the VLANs.
+    """
+    subnets = []
+    vlan_ids = set()
+    for interface in interfaces:
+        if interface.vlan_id is not None:
+            vlan_ids.add(interface.vlan_id)
+        for ip_address in interface.ip_addresses.all():
+            if ip_address.subnet is not None:
+                subnets.append(ip_address.subnet)
+                vlan_ids.add(ip_address.subnet.vlan_id)
+    vlans = {}
+    while vlan_ids:
+        fetched = list(VLAN.objects.filter(id__in=vlan_ids))
+        vlans.update((vlan.id, vlan) for vlan in fetched)
+        vlan_ids = {
+            vlan.relay_vlan_id
+            for vlan in fetched
+            if vlan.relay_vlan_id is not None
+        }.difference(vlans)
+    prefetch_related_objects(
+        list(vlans.values()),
+        "fabric__vlan_set",
+        "space",
+        "primary_rack",
+        "secondary_rack",
+    )
+    for vlan in vlans.values():
+        if vlan.relay_vlan_id in vlans:
+            vlan.relay_vlan = vlans[vlan.relay_vlan_id]
+        vlan.fabric._default_vlan = vlan.fabric.get_default_vlan()
+    for interface in interfaces:
+        if interface.vlan_id in vlans:
+            interface.vlan = vlans[interface.vlan_id]
+    for subnet in subnets:
+        if subnet.vlan_id in vlans:
+            subnet.vlan = vlans[subnet.vlan_id]
+
+
+def _prepare_dhcp_ip_addresses(interfaces):
+    """Cache the DISCOVERED IP address related to each DHCP IP address."""
+    dhcp_ip_addresses = [
+        ip_address
+        for interface in interfaces.values()
+        for ip_address in interface.ip_addresses.all()
+        if ip_address.alloc_type == IPADDRESS_TYPE.DHCP
+    ]
+    if not dhcp_ip_addresses:
+        return
+    linked_interface_ids = defaultdict(set)
+    links = Interface.ip_addresses.through.objects.filter(
+        staticipaddress_id__in={ip.id for ip in dhcp_ip_addresses}
+    ).values_list("staticipaddress_id", "interface_id")
+    for ip_address_id, interface_id in links:
+        linked_interface_ids[ip_address_id].add(interface_id)
+    for ip_address in dhcp_ip_addresses:
+        interface_ids = linked_interface_ids[ip_address.id]
+        if not interface_ids.issubset(interfaces):
+            # Some linked interfaces weren't loaded, query it when needed.
+            continue
+        discovered_ip_addresses = [
+            other
+            for interface_id in interface_ids
+            for other in interfaces[interface_id].ip_addresses.all()
+            if other.alloc_type == IPADDRESS_TYPE.DISCOVERED
+            and other.ip is not None
+        ]
+        ip_address._related_discovered_ip = max(
+            discovered_ip_addresses, key=attrgetter("id"), default=None
+        )
+
+
+def _prepare_gateways(nodes):
+    """Cache the gateways of `nodes` and the interfaces of their links."""
+    gateways = get_gateways_by_priority_for_nodes(node.id for node in nodes)
+    for node in nodes:
+        node._gateways_by_priority = gateways[node.id]
+        link_ids = {node.gateway_link_ipv4_id, node.gateway_link_ipv6_id}
+        link_ids.discard(None)
+        if not link_ids or node.current_config is None:
+            continue
+        # Same as `Node._get_best_interface_from_gateway_link`.
+        best_interfaces = {}
+        for interface in node.current_config.interface_set.all():
+            for ip_address in interface.ip_addresses.all():
+                if ip_address.id in link_ids:
+                    key = (interface.type, interface.id)
+                    best_interfaces[ip_address.id] = min(
+                        key, best_interfaces.get(ip_address.id, key)
+                    )
+        node._gateway_link_interface_ids = {
+            link_id: interface_id
+            for link_id, (_, interface_id) in best_interfaces.items()
+        }
+
+
+# The latest script results only need these fields to compute statuses.
+LatestScriptResult = namedtuple(
+    "LatestScriptResult",
+    ("result_type", "status", "suppressed", "hardware_type"),
+)
+LATEST_SCRIPT_RESULT_FIELDS = (
+    "script_set__result_type",
+    "status",
+    "suppressed",
+    "script__hardware_type",
+)
+
+
+def _prepare_script_results(nodes):
+    """Cache the latest script results of `nodes`.
+
+    Same as `Node.get_latest_script_results`, for all `nodes` at once.
+    """
+    script_results = defaultdict(list)
+    rows = (
+        ScriptResult.objects.filter(
+            script_set__node_id__in=[node.id for node in nodes]
+        )
+        .order_by(
+            "script_set__node_id",
+            "script_name",
+            "physical_blockdevice_id",
+            "interface_id",
+            "-id",
+        )
+        .distinct(
+            "script_set__node_id",
+            "script_name",
+            "physical_blockdevice_id",
+            "interface_id",
+        )
+        .values_list("script_set__node_id", *LATEST_SCRIPT_RESULT_FIELDS)
+    )
+    for node_id, *fields in rows:
+        script_results[node_id].append(LatestScriptResult(*fields))
+    for node in nodes:
+        _cache_script_results(node, script_results[node.id])
+
+
+def _prepare_status_events(nodes):
+    """Cache the latest status event of `nodes`, see `Node.status_event`."""
+    latest_event = (
+        Event.objects.filter(
+            node_id=OuterRef("id"), type__level__gte=logging.INFO
+        )
+        .order_by("-created", "-id")
+        .values("id")[:1]
+    )
+    latest_event_ids = (
+        Node.objects.filter(id__in=[node.id for node in nodes])
+        .annotate(event_id=Subquery(latest_event))
+        .values("event_id")
+    )
+    events = {
+        event.node_id: event
+        for event in Event.objects.filter(
+            id__in=latest_event_ids
+        ).select_related("type")
+    }
+    for node in nodes:
+        node._status_event = events.get(node.id)
+
+
+def prepare_nodes_for_listing(nodes):
+    """Load in bulk the data rendered for each of `nodes`.
+
+    `nodes` must have been fetched with `NODES_SELECT_RELATED` and
+    `NODES_PREFETCH`. The prefetched objects are linked together and the
+    values otherwise queried for each node when rendering it are cached, so
+    that the number of queries doesn't depend on the number of nodes.
+    """
+    if not nodes:
+        return
+    for node in nodes:
+        if node.current_config is not None:
+            node.current_config.node = node
+    interfaces = _prepare_interfaces(nodes)
+    _prepare_block_devices(nodes)
+    _prepare_vlans(interfaces.values())
+    _prepare_dhcp_ip_addresses(interfaces)
+    _prepare_gateways(nodes)
+    _prepare_script_results(nodes)
+    _prepare_status_events(nodes)
+    prefetch_related_objects(
+        [node for node in nodes if node.is_controller], "service_set"
+    )
 
 
 def filtered_nodes_list_from_request(request, model=None):
@@ -212,35 +469,36 @@ def is_registered(request, ignore_statuses=None):
     return interfaces.exists()
 
 
+def _cache_script_results(node, script_results):
+    node._cached_script_results = script_results
+    node._cached_commissioning_script_results = []
+    node._cached_testing_script_results = []
+    for script_result in script_results:
+        if script_result.result_type == RESULT_TYPE.INSTALLATION:
+            # Don't include installation results in the health
+            # status.
+            continue
+        elif script_result.status == SCRIPT_STATUS.ABORTED:
+            # LP: #1724235 - Ignore aborted scripts.
+            continue
+        elif script_result.result_type == RESULT_TYPE.COMMISSIONING:
+            node._cached_commissioning_script_results.append(script_result)
+        elif script_result.result_type == RESULT_TYPE.TESTING:
+            node._cached_testing_script_results.append(script_result)
+
+
 def get_cached_script_results(node):
     """Load script results into cache and return the cached list."""
     if not hasattr(node, "_cached_script_results"):
-        node._cached_script_results = list(
-            node.get_latest_script_results.only(
-                "status", "script_set", "script", "suppressed"
-            )
+        _cache_script_results(
+            node,
+            [
+                LatestScriptResult(*fields)
+                for fields in node.get_latest_script_results.values_list(
+                    *LATEST_SCRIPT_RESULT_FIELDS
+                )
+            ],
         )
-        node._cached_commissioning_script_results = []
-        node._cached_testing_script_results = []
-        for script_result in node._cached_script_results:
-            if (
-                script_result.script_set.result_type
-                == RESULT_TYPE.INSTALLATION
-            ):
-                # Don't include installation results in the health
-                # status.
-                continue
-            elif script_result.status == SCRIPT_STATUS.ABORTED:
-                # LP: #1724235 - Ignore aborted scripts.
-                continue
-            elif (
-                script_result.script_set.result_type
-                == RESULT_TYPE.COMMISSIONING
-            ):
-                node._cached_commissioning_script_results.append(script_result)
-            elif script_result.script_set.result_type == RESULT_TYPE.TESTING:
-                node._cached_testing_script_results.append(script_result)
-
     return node._cached_script_results
 
 
@@ -317,7 +575,7 @@ class NodeHandler(OperationsHandler):
             [
                 script_result
                 for script_result in node._cached_testing_script_results
-                if script_result.script.hardware_type == HARDWARE_TYPE.CPU
+                if script_result.hardware_type == HARDWARE_TYPE.CPU
             ]
         )
 
@@ -332,7 +590,7 @@ class NodeHandler(OperationsHandler):
             [
                 script_result
                 for script_result in node._cached_testing_script_results
-                if script_result.script.hardware_type == HARDWARE_TYPE.MEMORY
+                if script_result.hardware_type == HARDWARE_TYPE.MEMORY
             ]
         )
 
@@ -347,7 +605,7 @@ class NodeHandler(OperationsHandler):
             [
                 script_result
                 for script_result in node._cached_testing_script_results
-                if script_result.script.hardware_type == HARDWARE_TYPE.NETWORK
+                if script_result.hardware_type == HARDWARE_TYPE.NETWORK
             ]
         )
 
@@ -362,7 +620,7 @@ class NodeHandler(OperationsHandler):
             [
                 script_result
                 for script_result in node._cached_testing_script_results
-                if script_result.script.hardware_type == HARDWARE_TYPE.STORAGE
+                if script_result.hardware_type == HARDWARE_TYPE.STORAGE
             ]
         )
 
@@ -377,7 +635,7 @@ class NodeHandler(OperationsHandler):
             [
                 script_result
                 for script_result in node._cached_testing_script_results
-                if script_result.script.hardware_type == HARDWARE_TYPE.NODE
+                if script_result.hardware_type == HARDWARE_TYPE.NODE
             ]
         )
 
@@ -392,7 +650,7 @@ class NodeHandler(OperationsHandler):
             [
                 script_result
                 for script_result in node._cached_testing_script_results
-                if script_result.script.hardware_type == HARDWARE_TYPE.NETWORK
+                if script_result.hardware_type == HARDWARE_TYPE.NETWORK
             ]
         )
 
@@ -842,34 +1100,39 @@ class NodesHandler(OperationsHandler):
                 RegionControllersHandler,
             )
 
-            racks = RackControllersHandler().read(request).order_by("id")
-            nodes = list(
-                chain(
-                    DevicesHandler().read(request).order_by("id"),
-                    MachinesHandler().read(request).order_by("id"),
-                    racks,
-                    RegionControllersHandler()
-                    .read(request)
-                    .exclude(id__in=racks)
-                    .order_by("id"),
-                )
-            )
-
+            racks = list(RackControllersHandler()._get_nodes(request))
+            nodes = [
+                *DevicesHandler()._get_nodes(request),
+                *MachinesHandler()._get_nodes(request),
+                *racks,
+                *RegionControllersHandler()
+                ._get_nodes(request)
+                .exclude(id__in=[rack.id for rack in racks]),
+            ]
         else:
-            form = ReadNodesForm(data=request.GET)
-            if not form.is_valid():
-                raise MAASAPIValidationError(form.errors)
-            nodes = self.base_model.objects.get_nodes(
-                request.user, NodePermission.view
-            )
-            nodes, _, _ = form.filter_nodes(nodes)
-            nodes = nodes.select_related(*NODES_SELECT_RELATED)
-            nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by("id")
+            nodes = list(self._get_nodes(request))
+        prepare_nodes_for_listing(nodes)
         # Assign the correct domain to each node. Manually setting the domain
         # object avoids extra work by Piston when serializing the nodes.
         for node in nodes:
             node.domain = domain_map.get(node.domain_id)
         return nodes
+
+    def _get_nodes(self, request):
+        """Return the nodes visible to the user, filtered by the request.
+
+        The nodes are fetched with the related data to render them, see
+        `prepare_nodes_for_listing`.
+        """
+        form = ReadNodesForm(data=request.GET)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+        nodes = self.base_model.objects.get_nodes(
+            request.user, NodePermission.view
+        )
+        nodes, _, _ = form.filter_nodes(nodes)
+        nodes = nodes.select_related(*NODES_SELECT_RELATED)
+        return prefetch_queryset(nodes, NODES_PREFETCH).order_by("id")
 
     @operation(idempotent=True)
     def is_registered(self, request):

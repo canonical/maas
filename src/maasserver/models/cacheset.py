@@ -171,7 +171,9 @@ class CacheSet(CleanSave, TimestampedModel):
 
     def get_name(self):
         """Return the name of the node."""
-        cache_idx = CacheSet.objects.get_cache_set_idx(self)
+        cache_idx = getattr(self, "_cache_set_idx", None)
+        if cache_idx is None:
+            cache_idx = CacheSet.objects.get_cache_set_idx(self)
         return "cache%d" % cache_idx
 
     def get_filesystem(self):

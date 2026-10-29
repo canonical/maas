@@ -11,9 +11,10 @@ from django.urls import reverse
 
 from apiclient.creds import convert_tuple_to_string
 from maascommon.events import AUDIT
+from maasserver.api.tests.test_nodes import RenderedNodesMixin
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import NODE_STATUS
-from maasserver.models import Event, Tag
+from maasserver.models import Event, Node, Tag
 from maasserver.models.node import generate_node_system_id
 from maasserver.models.user import (
     create_auth_token,
@@ -216,13 +217,7 @@ class TestTagAPI(APITestCase.ForUser):
         node_counts.append(len(response.json()))
 
         self.assertEqual(node_counts, [1, 2, 3])
-        # Because of fields `status_action`, `status_message`,
-        # `default_gateways`, `health_status` and 'resource_pool', the number
-        # of queries is not the same but it is proportional to the number of
-        # machines.
-        base_count = 80
-        for idx, node_count in enumerate(node_counts):
-            self.assertEqual(query_counts[idx], base_count + (node_count * 6))
+        self.assertEqual(query_counts, [45, 45, 45])
 
     def test_GET_machines_returns_machines(self):
         tag = factory.make_Tag()
@@ -275,15 +270,7 @@ class TestTagAPI(APITestCase.ForUser):
         machine_counts.append(len(response.json()))
 
         self.assertEqual(machine_counts, [1, 2, 3])
-        # Because of fields `status_action`, `status_message`,
-        # `default_gateways`, `health_status` and 'resource_pool', the number
-        # of queries is not the same but it is proportional to the number of
-        # machines.
-        base_count = 92
-        for idx, machine_count in enumerate(machine_counts):
-            self.assertLessEqual(
-                query_counts[idx], base_count + (machine_count * 6)
-            )
+        self.assertEqual(query_counts, [44, 44, 44])
 
     def test_GET_devices_returns_devices(self):
         tag = factory.make_Tag()
@@ -491,9 +478,7 @@ class TestTagAPI(APITestCase.ForUser):
                 len(extract_system_ids(parsed_result_2)),
             ],
         )
-        # XXX The number for queries should be the same, but they are
-        # not. Ensure that at least it's not pure linear.
-        self.assertGreater(num_queries1 * 2, num_queries2)
+        self.assertEqual(num_queries1, num_queries2)
 
     def test_GET_region_controllers_returns_no_controllers_nonadmin(self):
         tag = factory.make_Tag()
@@ -982,3 +967,35 @@ class TestTagOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
         self.openfga_client.can_edit_global_entities.assert_called_once_with(
             self.user
         )
+
+
+class TestTagNodesListingsMatchDetails(
+    RenderedNodesMixin, APITestCase.ForAdmin
+):
+    def setUp(self):
+        super().setUp()
+        self.make_nodes()
+        self.tag = factory.make_Tag()
+        for node in Node.objects.all():
+            node.tags.add(self.tag)
+
+    def assertTaggedListedLikeDetails(self, op):
+        listing = self.get_json(
+            reverse("tag_handler", args=[self.tag.name]), {"op": op}
+        )
+        self.assertListedLikeDetails(listing, "node_handler")
+
+    def test_GET_nodes(self):
+        self.assertTaggedListedLikeDetails("nodes")
+
+    def test_GET_machines(self):
+        self.assertTaggedListedLikeDetails("machines")
+
+    def test_GET_devices(self):
+        self.assertTaggedListedLikeDetails("devices")
+
+    def test_GET_rack_controllers(self):
+        self.assertTaggedListedLikeDetails("rack_controllers")
+
+    def test_GET_region_controllers(self):
+        self.assertTaggedListedLikeDetails("region_controllers")
