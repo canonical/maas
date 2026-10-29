@@ -3913,8 +3913,8 @@ class TestNode(MAASServerTestCase):
         factory.make_default_ubuntu_release_bootable(arch=arch)
         node_start = self.patch(node, "start")
         # Return a post-commit hook from Node.start().
-        node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit()
+        node_start.side_effect = lambda user, user_data, old_status: (
+            post_commit()
         )
         admin = factory.make_admin()
         node.start_commissioning(admin)
@@ -3929,8 +3929,8 @@ class TestNode(MAASServerTestCase):
         )
         node_start = self.patch(node, "start")
         # Return a post-commit hook from Node.start().
-        node_start.side_effect = (
-            lambda user, user_data, old_status: post_commit()
+        node_start.side_effect = lambda user, user_data, old_status: (
+            post_commit()
         )
         admin = factory.make_admin()
         self.assertRaises(ValidationError, node.start_commissioning, admin)
@@ -8656,6 +8656,306 @@ class TestGetDefaultGateways(MAASServerTestCase):
             (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
             (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
         )
+
+
+class TestGatewayPreloadingSnapshots(MAASServerTestCase):
+    def test_only_prepared_instances_keep_empty_automatic_snapshot(self):
+        prepared = factory.make_Node()
+        live = reload_object(prepared)
+        self.assertEqual([], live.get_gateways_by_priority())
+        node_module.preload_node_gateways([prepared])
+        interface = factory.make_Interface(node=prepared)
+        subnet = factory.make_Subnet(cidr="10.6.0.0/24")
+        factory.make_StaticIPAddress(
+            interface=interface,
+            subnet=subnet,
+            ip="10.6.0.2",
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+
+        self.assertEqual([], prepared.get_gateways_by_priority())
+        self.assertEqual(
+            [GatewayDefinition(interface.id, subnet.id, subnet.gateway_ip)],
+            live.get_gateways_by_priority(),
+        )
+
+    def test_missing_explicit_interface_is_snapshotted_without_raising_early(
+        self,
+    ):
+        prepared = factory.make_Node()
+        subnet = factory.make_Subnet(cidr="10.7.0.0/24")
+        link = factory.make_StaticIPAddress(
+            subnet=subnet, ip="10.7.0.2", alloc_type=IPADDRESS_TYPE.STICKY
+        )
+        prepared.gateway_link_ipv4 = link
+        prepared.save()
+        live = reload_object(prepared)
+        node_module.preload_node_gateways([prepared])
+        interface = factory.make_Interface(node=prepared)
+        interface.ip_addresses.add(link)
+
+        with self.assertRaises(AttributeError):
+            prepared.get_default_gateways()
+        self.assertEqual(
+            GatewayDefinition(interface.id, subnet.id, subnet.gateway_ip),
+            live.get_default_gateways().ipv4,
+        )
+
+
+class TestGatewaySelectionBoundaries(MAASServerTestCase):
+    scenarios = [
+        ("live", {"preload": False}),
+        ("preloaded", {"preload": True}),
+    ]
+
+    def prepare(self, nodes):
+        if self.preload:
+            node_module.preload_node_gateways(nodes)
+
+    def make_gateway_link(
+        self,
+        interface,
+        cidr,
+        alloc_type=IPADDRESS_TYPE.STICKY,
+        dhcp_on=False,
+        ip=RANDOM,
+        gateway_ip=RANDOM,
+    ):
+        subnet = factory.make_Subnet(
+            cidr=cidr,
+            gateway_ip=gateway_ip,
+            dhcp_on=dhcp_on,
+            dns_servers=[],
+            disabled_boot_architectures=[],
+        )
+        if ip is RANDOM:
+            ip = str(IPNetwork(cidr).network + 2)
+        return factory.make_StaticIPAddress(
+            interface=interface,
+            subnet=subnet,
+            alloc_type=alloc_type,
+            ip=ip,
+            user=(
+                factory.make_User()
+                if alloc_type == IPADDRESS_TYPE.USER_RESERVED
+                else None
+            ),
+        )
+
+    def gateway_definition(self, interface, link):
+        return GatewayDefinition(
+            interface.id, link.subnet_id, link.subnet.gateway_ip
+        )
+
+    def test_complete_priority_order_preserves_duplicate_candidates(self):
+        node = factory.make_Node()
+        physical = factory.make_Interface(node=node)
+        boot = factory.make_Interface(node=node)
+        later_physical = factory.make_Interface(node=node)
+        vlan = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, node=node, parents=[physical]
+        )
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            node=node,
+            parents=[factory.make_Interface(node=node)],
+        )
+        bridge = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            node=node,
+            parents=[factory.make_Interface(node=node)],
+        )
+        node.boot_interface = boot
+        node.save()
+        specifications = [
+            (physical, "10.0.0.0/24", IPADDRESS_TYPE.STICKY, True),
+            (boot, "10.0.1.0/24", IPADDRESS_TYPE.AUTO, True),
+            (boot, "10.0.2.0/24", IPADDRESS_TYPE.USER_RESERVED, True),
+            (boot, "10.0.3.0/24", IPADDRESS_TYPE.STICKY, True),
+            (vlan, "10.0.4.0/24", IPADDRESS_TYPE.STICKY, True),
+            (bond, "10.0.5.0/24", IPADDRESS_TYPE.STICKY, True),
+            (bridge, "10.0.6.0/24", IPADDRESS_TYPE.STICKY, True),
+            (bond, "10.0.7.0/24", IPADDRESS_TYPE.STICKY, False),
+            (bond, "2001:db8::/64", IPADDRESS_TYPE.STICKY, True),
+            (later_physical, "10.0.8.0/24", IPADDRESS_TYPE.STICKY, True),
+        ]
+        links = [
+            self.make_gateway_link(interface, cidr, alloc_type, dhcp_on)
+            for interface, cidr, alloc_type, dhcp_on in specifications
+        ]
+        # Identical candidate tuples must not be collapsed by batching.
+        factory.make_StaticIPAddress(
+            interface=physical,
+            subnet=links[0].subnet,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip="10.0.0.3",
+        )
+        candidates = [
+            self.gateway_definition(specification[0], link)
+            for specification, link in zip(specifications, links, strict=True)
+        ]
+        expected = [
+            candidates[index] for index in (5, 6, 3, 2, 1, 0, 0, 9, 4, 7, 8)
+        ]
+
+        self.prepare([node])
+
+        self.assertEqual(expected, node.get_gateways_by_priority())
+        self.assertEqual(
+            DefaultGateways(expected[0], expected[-1], expected),
+            node.get_default_gateways(),
+        )
+
+    def test_candidates_include_non_current_configs_without_node_leakage(self):
+        node = factory.make_Node()
+        other = factory.make_Node()
+        empty = factory.make_Node()
+        previous_config = factory.make_NodeConfig(
+            node=node, name=NODE_CONFIG_TYPE.DEPLOYMENT
+        )
+        previous = factory.make_Interface(node_config=previous_config)
+        current = factory.make_Interface(node=node)
+        other_interface = factory.make_Interface(node=other)
+        previous_link = self.make_gateway_link(previous, "10.1.0.0/24")
+        current_link = self.make_gateway_link(current, "10.1.1.0/24")
+        other_interface.ip_addresses.add(current_link)
+        expected = [
+            self.gateway_definition(previous, previous_link),
+            self.gateway_definition(current, current_link),
+        ]
+
+        self.prepare([other, empty, node])
+
+        self.assertEqual(expected, node.get_gateways_by_priority())
+        self.assertEqual(
+            [self.gateway_definition(other_interface, current_link)],
+            other.get_gateways_by_priority(),
+        )
+        self.assertEqual(
+            DefaultGateways(None, None, []), empty.get_default_gateways()
+        )
+
+    def test_auto_without_ip_survives_but_unconfigured_and_dynamic_do_not(
+        self,
+    ):
+        node = factory.make_Node()
+        interface = factory.make_Interface(node=node)
+        automatic = self.make_gateway_link(
+            interface, "10.2.0.0/24", IPADDRESS_TYPE.AUTO, ip=None
+        )
+        self.make_gateway_link(
+            interface, "10.2.1.0/24", IPADDRESS_TYPE.STICKY, ip=None
+        )
+        self.make_gateway_link(
+            interface, "10.2.2.0/24", IPADDRESS_TYPE.DHCP, ip=None
+        )
+        self.make_gateway_link(
+            interface, "10.2.3.0/24", IPADDRESS_TYPE.DISCOVERED
+        )
+        self.make_gateway_link(interface, "10.2.4.0/24", gateway_ip=None)
+        self.make_gateway_link(interface, "10.2.5.0/24", gateway_ip="")
+
+        self.prepare([node])
+
+        expected = self.gateway_definition(interface, automatic)
+        self.assertEqual([expected], node.get_gateways_by_priority())
+        self.assertEqual(
+            DefaultGateways(expected, None, [expected]),
+            node.get_default_gateways(),
+        )
+
+    def test_explicit_links_use_current_config_then_lexical_type_and_id(self):
+        node = factory.make_Node()
+        other = factory.make_Node()
+        previous_config = factory.make_NodeConfig(
+            node=node, name=NODE_CONFIG_TYPE.DEPLOYMENT
+        )
+        previous_bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            node_config=previous_config,
+            parents=[factory.make_Interface(node_config=previous_config)],
+        )
+        other_physical = factory.make_Interface(node=other)
+        physical = factory.make_Interface(node=node)
+        later_physical = factory.make_Interface(node=node)
+        bridge = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            node=node,
+            parents=[factory.make_Interface(node=node)],
+        )
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            node=node,
+            parents=[factory.make_Interface(node=node)],
+        )
+        later_bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            node=node,
+            parents=[factory.make_Interface(node=node)],
+        )
+        link_v4 = self.make_gateway_link(later_physical, "10.3.0.0/24")
+        physical.ip_addresses.add(link_v4)
+        other_physical.ip_addresses.add(link_v4)
+        link_v6 = self.make_gateway_link(bridge, "2001:db8:3::/64")
+        for interface in (previous_bond, later_bond, bond):
+            interface.ip_addresses.add(link_v6)
+        node.gateway_link_ipv4 = link_v4
+        node.gateway_link_ipv6 = link_v6
+        node.save()
+        other.gateway_link_ipv4 = link_v4
+        other.save()
+
+        self.prepare([node, other])
+
+        selected = node.get_default_gateways()
+        self.assertEqual(
+            self.gateway_definition(physical, link_v4), selected.ipv4
+        )
+        self.assertEqual(self.gateway_definition(bond, link_v6), selected.ipv6)
+        self.assertEqual(
+            self.gateway_definition(other_physical, link_v4),
+            other.get_default_gateways().ipv4,
+        )
+
+    def test_unconfigured_explicit_link_without_interface_is_ignored(self):
+        node = factory.make_Node()
+        interface = factory.make_Interface(node=node)
+        automatic = self.make_gateway_link(interface, "10.4.0.0/24")
+        node.gateway_link_ipv4 = self.make_gateway_link(
+            None, "10.4.1.0/24", ip=None
+        )
+        node.save()
+
+        self.prepare([node])
+
+        expected = self.gateway_definition(interface, automatic)
+        self.assertEqual(
+            DefaultGateways(expected, None, [expected]),
+            node.get_default_gateways(),
+        )
+
+    def test_configured_explicit_link_without_interface_fails_on_selection(
+        self,
+    ):
+        node = factory.make_Node()
+        node.gateway_link_ipv4 = self.make_gateway_link(None, "10.5.0.0/24")
+        node.save()
+
+        self.prepare([node])
+
+        with self.assertRaises(AttributeError):
+            node.get_default_gateways()
+
+    def test_empty_nodes_have_no_gateway_in_either_family(self):
+        nodes = [factory.make_Node(), factory.make_Node()]
+
+        self.prepare([])
+        self.prepare(nodes)
+
+        for node in nodes:
+            self.assertEqual(
+                DefaultGateways(None, None, []), node.get_default_gateways()
+            )
 
 
 class TestGetDefaultDNSServers(MAASServerTestCase):

@@ -524,6 +524,8 @@ class InterfaceHandler(OperationsHandler):
 
     @classmethod
     def effective_mtu(cls, interface):
+        if hasattr(interface, "_api_effective_mtu"):
+            return interface._api_effective_mtu
         return interface.get_effective_mtu()
 
     @classmethod

@@ -34,6 +34,35 @@ Some recent highlights:
 
 These efforts are part of a broader programme of optimisation across the product.
 
+### Machine listing
+
+The REST machine list keeps its full response structure while loading latest
+script results and status events in batches. These caches live on the objects
+loaded for each request; they are not shared across requests. Boot-device NUMA
+relations and parent machines are loaded with the machine query.
+
+Status selection retains the detail endpoint's rules: script results are selected
+across all runs, separately for each machine, script name, disk, and interface.
+Aborted and installation results are excluded only after selecting the latest
+result. Status events use creation time, then event ID, and include only events
+at INFO level or higher.
+
+Default-gateway candidates and explicit-link interfaces are also batch-loaded.
+Automatic selection still considers all node configurations; explicit links use
+only the current configuration and retain their existing interface ordering.
+DHCP resolution selects the newest discovered address across every interface
+linked to the DHCP address, including interfaces outside the filtered machine
+list. Missing discoveries retain the original DHCP address and subnet.
+
+Effective interface MTUs are computed once per request over the interface graph,
+including descendants beyond the old fixed-depth prefetches. Virtual-disk groups
+and the subnet/VLAN relations emitted with interface addresses are eager-loaded.
+These optimizations do not change live model lookups outside prepared list
+responses, and prepared objects must not be reused after configuration changes.
+
+Performance measurements must include Piston JSON rendering, not just the
+machine queryset, and use representative network and storage topologies.
+
 ## How you can help
 
 Your metrics and feedback are essential. Here’s how you can contribute:

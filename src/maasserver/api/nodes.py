@@ -8,9 +8,10 @@ __all__ = [
 ]
 
 from itertools import chain
+import logging
 
 import bson
-from django.db.models import Prefetch
+from django.db.models import OuterRef, Prefetch, Subquery
 from django.http import HttpResponse
 from piston3.utils import rc
 
@@ -37,9 +38,20 @@ from maasserver.exceptions import (
 )
 from maasserver.forms import BulkNodeSetZoneForm
 from maasserver.forms.ephemeral import TestForm
-from maasserver.models import Domain, Filesystem, Interface, Node, OwnerData
+from maasserver.models import (
+    Domain,
+    Event,
+    Filesystem,
+    Interface,
+    Node,
+    OwnerData,
+    ScriptResult,
+    StaticIPAddress,
+)
+from maasserver.models.node import preload_node_gateways
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.models.scriptset import get_status_from_qs
+from maasserver.models.staticipaddress import cache_related_discovered_ips
 from maasserver.node_constraint_filter_forms import ReadNodesForm
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import prefetch_queryset
@@ -56,9 +68,12 @@ NODES_SELECT_RELATED = (
     "owner",
     "zone",
     "boot_disk__node_config__node",
+    "boot_disk__numa_node",
     "pool",
     "current_config",
     "boot_interface__node_config__node",
+    "boot_interface__numa_node",
+    "parent",
 )
 
 
@@ -81,6 +96,20 @@ def blockdev_prefetch(expression):
             )
 
     yield f"{expression}__physicalblockdevice__numa_node"
+    yield f"{expression}__virtualblockdevice__filesystem_group"
+
+
+def _ip_addresses_prefetch(expression):
+    return Prefetch(
+        expression,
+        queryset=StaticIPAddress.objects.select_related(
+            "subnet__vlan__fabric",
+            "subnet__vlan__space",
+            "subnet__vlan__primary_rack",
+            "subnet__vlan__secondary_rack",
+            "subnet__vlan__relay_vlan",
+        ).prefetch_related("subnet__vlan__fabric__vlan_set"),
+    )
 
 
 NODES_PREFETCH = [
@@ -101,30 +130,17 @@ NODES_PREFETCH = [
     "boot_interface__vlan__secondary_rack",
     "boot_interface__vlan__fabric__vlan_set",
     "boot_interface__vlan__space",
-    "boot_interface__ip_addresses__subnet",
+    _ip_addresses_prefetch("boot_interface__ip_addresses"),
     "boot_interface__parents",
-    (
-        "boot_interface__children_relationships__child__"
-        "children_relationships__child"
-    ),
+    "boot_interface__children_relationships__child",
     "current_config__interface_set__vlan__primary_rack",
     "current_config__interface_set__vlan__secondary_rack",
     "current_config__interface_set__vlan__fabric__vlan_set",
     "current_config__interface_set__vlan__space",
     "current_config__interface_set__parents",
-    "current_config__interface_set__ip_addresses__subnet",
+    _ip_addresses_prefetch("current_config__interface_set__ip_addresses"),
     "current_config__interface_set__numa_node",
-    # Prefetch 3 levels deep, anything more will require extra queries.
-    "current_config__interface_set__children_relationships__child__vlan",
-    (
-        "current_config__interface_set__children_relationships__child__"
-        "children_relationships__child__vlan"
-    ),
-    (
-        "current_config__interface_set__children_relationships__child__"
-        "children_relationships__child__"
-        "children_relationships__child__vlan"
-    ),
+    "current_config__interface_set__children_relationships__child",
     "tags",
     "nodemetadata_set",
     "numanode_set__hugepages_set",
@@ -212,6 +228,71 @@ def is_registered(request, ignore_statuses=None):
     return interfaces.exists()
 
 
+def _cache_interface_mtus(interfaces):
+    by_id = {}
+    for interface in interfaces:
+        by_id.setdefault(interface.id, interface)
+    mtus = {}
+
+    def effective_mtu(interface):
+        interface = by_id.get(interface.id, interface)
+        if interface.id not in mtus:
+            mtu = interface._get_configured_mtu()
+            for relationship in interface.children_relationships.all():
+                child = by_id.get(relationship.child_id)
+                if child is None:
+                    child = relationship.child
+                mtu = max(mtu, effective_mtu(child))
+            mtus[interface.id] = mtu
+        return mtus[interface.id]
+
+    for interface in interfaces:
+        interface._api_effective_mtu = effective_mtu(interface)
+
+
+def _cache_node_statuses(nodes):
+    nodes_by_id = {node.id: node for node in nodes}
+    if not nodes_by_id:
+        return
+
+    events = Event.objects.filter(
+        id__in=[node._status_event_id for node in nodes]
+    ).select_related("type")
+    events_by_id = {event.id: event for event in events}
+    results_by_node = {node_id: [] for node_id in nodes_by_id}
+    # Latest results span all runs. Select before excluding aborted,
+    # installation, or suppressed results, just as on the detail endpoint.
+    results = (
+        ScriptResult.objects.filter(script_set__node_id__in=nodes_by_id)
+        .select_related("script_set", "script")
+        .only(
+            "status",
+            "suppressed",
+            "script_set__node_id",
+            "script_set__result_type",
+            "script__hardware_type",
+        )
+        .order_by(
+            "script_set__node_id",
+            "script_name",
+            "physical_blockdevice_id",
+            "interface_id",
+            "-id",
+        )
+        .distinct(
+            "script_set__node_id",
+            "script_name",
+            "physical_blockdevice_id",
+            "interface_id",
+        )
+    )
+    for result in results:
+        results_by_node[result.script_set.node_id].append(result)
+    for node in nodes:
+        node._status_event = events_by_id.get(node._status_event_id)
+        node._cached_script_results = results_by_node[node.id]
+
+
 def get_cached_script_results(node):
     """Load script results into cache and return the cached list."""
     if not hasattr(node, "_cached_script_results"):
@@ -220,6 +301,7 @@ def get_cached_script_results(node):
                 "status", "script_set", "script", "suppressed"
             )
         )
+    if not hasattr(node, "_cached_commissioning_script_results"):
         node._cached_commissioning_script_results = []
         node._cached_testing_script_results = []
         for script_result in node._cached_script_results:
@@ -863,8 +945,33 @@ class NodesHandler(OperationsHandler):
                 request.user, NodePermission.view
             )
             nodes, _, _ = form.filter_nodes(nodes)
+            latest_event = Event.objects.filter(
+                node_id=OuterRef("id"), type__level__gte=logging.INFO
+            ).order_by("-created", "-id")
+            nodes = nodes.annotate(
+                _status_event_id=Subquery(latest_event.values("id")[:1])
+            )
             nodes = nodes.select_related(*NODES_SELECT_RELATED)
             nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by("id")
+            _cache_node_statuses(nodes)
+            if "default_gateways" in self.fields:
+                preload_node_gateways(nodes)
+            interfaces = [
+                interface
+                for node in nodes
+                for interface in node.current_config.interface_set.all()
+            ]
+            interfaces.extend(
+                node.boot_interface
+                for node in nodes
+                if node.boot_interface is not None
+            )
+            _cache_interface_mtus(interfaces)
+            cache_related_discovered_ips(
+                address
+                for interface in interfaces
+                for address in interface.ip_addresses.all()
+            )
         # Assign the correct domain to each node. Manually setting the domain
         # object avoids extra work by Piston when serializing the nodes.
         for node in nodes:

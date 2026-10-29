@@ -14,7 +14,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from queue import Empty, Queue
 import threading
-from typing import Dict, Iterable, Optional, Set, TypeVar
+from typing import Dict, Iterable, Optional, Set
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -26,8 +26,10 @@ from django.db.models import (
     GenericIPAddressField,
     IntegerField,
     Manager,
+    OuterRef,
     PROTECT,
     Q,
+    Subquery,
     UniqueConstraint,
 )
 from netaddr import IPAddress
@@ -54,8 +56,6 @@ from maasserver.utils import orm
 from maasserver.utils.orm import post_commit_do
 from maasserver.workflow import start_workflow
 from provisioningserver.utils.enum import map_enum_reverse
-
-StaticIPAddress = TypeVar("StaticIPAddress")
 
 
 def convert_leases_to_dict(leases):
@@ -186,7 +186,7 @@ class StaticIPAddressManager(Manager):
 
     def _attempt_allocation(
         self, requested_address, alloc_type, user=None, subnet=None
-    ) -> StaticIPAddress:
+    ) -> "StaticIPAddress":
         """Attempt to allocate `requested_address`.
 
         All parameters must have been checked first.  This method relies on
@@ -228,7 +228,7 @@ class StaticIPAddressManager(Manager):
 
     def _attempt_allocation_of_free_address(
         self, requested_address, alloc_type, user=None, subnet=None
-    ) -> StaticIPAddress:
+    ) -> "StaticIPAddress":
         """Attempt to allocate `requested_address`, which is known to be free.
 
         It is known to be free *in this transaction*, so this could still
@@ -288,7 +288,7 @@ class StaticIPAddressManager(Manager):
         requested_address=None,
         exclude_addresses=None,
         restrict_ip_to_unreserved_ranges: bool = True,
-    ) -> StaticIPAddress:
+    ) -> "StaticIPAddress":
         """Return a new StaticIPAddress.
 
         :param subnet: The subnet from which to allocate the address.
@@ -689,15 +689,11 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         This comes from looking at the DISCOVERED IP addresses assigned to the
         related interfaces.
         """
-        return (
-            StaticIPAddress.objects.filter(
-                interface__in=self.interface_set.all(),
-                alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                ip__isnull=False,
-            )
-            .order_by("-id")
-            .first()
-        )
+        if hasattr(self, "_cached_related_discovered_ip"):
+            return self._cached_related_discovered_ip
+        return _related_discovered_ips(
+            interface__in=self.interface_set.all()
+        ).first()
 
     def save(self, *args, **kwargs):
         configure_dhcp = self.alloc_type != IPADDRESS_TYPE.DISCOVERED and (
@@ -752,3 +748,58 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                 param=ConfigureDHCPParam(subnet_ids=[subnet_id]),
                 task_queue="region",
             )
+
+
+def _related_discovered_ips(**filters):
+    """Select related discovered addresses in newest-first order."""
+    return StaticIPAddress.objects.filter(
+        alloc_type=IPADDRESS_TYPE.DISCOVERED,
+        ip__isnull=False,
+        **filters,
+    ).order_by("-id")
+
+
+def cache_related_discovered_ips(ip_addresses):
+    """Batch DHCP discovery lookups for request-local address instances.
+
+    Every supplied DHCP instance receives a cache, including separate Python
+    instances of the same row and addresses without a discovered counterpart.
+    Lookups include all linked interfaces, not only those loaded by the caller.
+    Callers must discard these instances after serializing the request.
+    """
+    dhcp_addresses = defaultdict(list)
+    for ip_address in ip_addresses:
+        if ip_address.alloc_type == IPADDRESS_TYPE.DHCP:
+            dhcp_addresses[ip_address.pk].append(ip_address)
+    if not dhcp_addresses:
+        return
+
+    discovered_ids = dict(
+        StaticIPAddress.objects.filter(pk__in=dhcp_addresses)
+        .annotate(
+            discovered_ip_id=Subquery(
+                _related_discovered_ips(
+                    interface__ip_addresses=OuterRef("pk")
+                ).values("id")[:1]
+            )
+        )
+        .values_list("pk", "discovered_ip_id")
+    )
+    discovered_ips = (
+        StaticIPAddress.objects.filter(
+            pk__in={pk for pk in discovered_ids.values() if pk is not None}
+        )
+        .select_related(
+            "subnet__vlan__fabric",
+            "subnet__vlan__space",
+            "subnet__vlan__primary_rack",
+            "subnet__vlan__secondary_rack",
+            "subnet__vlan__relay_vlan",
+        )
+        .prefetch_related("subnet__vlan__fabric__vlan_set")
+        .in_bulk()
+    )
+    for pk, addresses in dhcp_addresses.items():
+        discovered_ip = discovered_ips.get(discovered_ids.get(pk))
+        for ip_address in addresses:
+            ip_address._cached_related_discovered_ip = discovered_ip
