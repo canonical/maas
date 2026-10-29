@@ -426,7 +426,10 @@ MAAS 2.9.2 (snap) DHCP services stopped working after memory and disk issues wer
    - If using a proxy, sometimes cleaning the proxy cache can resolve issues.
 
    ```bash
-   sudo mv /var/snap/maas/common/proxy/cache /var/snap/maas/common/proxy/cache.old
+   sudo mv /var/snap/maas/common/proxy /var/snap/maas/common/proxy.old
+   sudo mkdir -p /var/snap/maas/common/proxy
+   sudo chown -R proxy:proxy /var/snap/maas/common/proxy
+   sudo chmod -R 0750 /var/snap/maas/common/proxy
    sudo snap restart maas
    ```
 
