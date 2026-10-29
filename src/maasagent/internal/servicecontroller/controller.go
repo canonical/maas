@@ -17,7 +17,6 @@ package servicecontroller
 
 import (
 	"context"
-	"os"
 )
 
 type DHCPVersion int
@@ -27,17 +26,10 @@ const (
 	DHCPv6
 )
 
-var (
-	systemdServiceName = map[DHCPVersion]string{DHCPv4: "maas-dhcpd", DHCPv6: "maas-dhcpd6"}
-	pebbleServiceName  = map[DHCPVersion]string{DHCPv4: "dhcpd", DHCPv6: "dhcpd6"}
-)
+var pebbleServiceName = map[DHCPVersion]string{DHCPv4: "dhcpd", DHCPv6: "dhcpd6"}
 
 func GetServiceName(v DHCPVersion) string {
-	if _, ok := os.LookupEnv("SNAP"); ok {
-		return pebbleServiceName[v]
-	}
-
-	return systemdServiceName[v]
+	return pebbleServiceName[v]
 }
 
 type Controller interface {
@@ -59,9 +51,5 @@ const (
 )
 
 func NewController(service string) (Controller, error) {
-	if _, ok := os.LookupEnv("SNAP"); ok {
-		return NewPebbleController(service)
-	}
-
-	return NewSystemdController(service), nil
+	return NewPebbleController(service)
 }

@@ -26,7 +26,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"sync/atomic"
 	"time"
 
@@ -58,52 +57,7 @@ var (
 	ErrFailedToPostNotifications = errors.New("error processing lease notifications")
 )
 
-var writeConfigFile func(path string, data []byte, mode os.FileMode) error
-
-var writeConfigFileSnap = atomicfile.WriteFile
-
-var writeConfigFileDeb = func(path string, data []byte, mode os.FileMode) error {
-	scriptPath := "/usr/lib/maas/maas-write-file"
-	fileName := path
-	modeStr := fmt.Sprintf("%o", mode)
-
-	// create the command that runs maas-write-file
-	// #nosec G204: the inputs are sanitized and validated by `maas-write-file`
-	cmd := exec.Command("sudo", scriptPath, fileName, modeStr)
-
-	// feed the script by piping the data to stdin
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return err
-	}
-
-	// start script
-	if err = cmd.Start(); err != nil {
-		return err
-	}
-
-	// write to stdin
-	if err = func() error {
-		defer func() {
-			if closeErr := stdin.Close(); closeErr != nil {
-				err = closeErr
-			}
-		}()
-
-		_, err = stdin.Write(data)
-
-		return err
-	}(); err != nil {
-		return err
-	}
-
-	// wait for the script to finish
-	if err = cmd.Wait(); err != nil {
-		return err
-	}
-
-	return nil
-}
+var writeConfigFile = atomicfile.WriteFile
 
 // DHCPService is a service that is responsible for setting up DHCP on MAAS Agent.
 type DHCPService struct {
@@ -132,15 +86,6 @@ type omapiClientFactory func(net.Conn, omapi.Authenticator) (omapi.OMAPI, error)
 type dataPathFactory func(string) string
 
 type DHCPServiceOption func(*DHCPService)
-
-// Initialize the writeConfigFile based on the MAAS installation method
-func init() {
-	if _, isSnap := os.LookupEnv("SNAP"); isSnap {
-		writeConfigFile = writeConfigFileSnap
-	} else {
-		writeConfigFile = writeConfigFileDeb
-	}
-}
 
 func NewDHCPService(
 	systemID string,
