@@ -198,6 +198,9 @@ class BlockDevice(CleanSave, TimestampedModel):
         """Returns this device's partition table (or None, if none exists."""
         if self.pk is None:
             return None
+        # Cached when preparing nodes to be listed.
+        if hasattr(self, "_partitiontable"):
+            return self._partitiontable
         try:
             return list(self.partitiontable_set.all())[0]
         except IndexError:

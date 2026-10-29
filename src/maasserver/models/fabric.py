@@ -165,6 +165,10 @@ class Fabric(CleanSave, TimestampedModel):
         return self.id == 0
 
     def get_default_vlan(self):
+        # Cached when preparing nodes to be listed.
+        default_vlan = getattr(self, "_default_vlan", None)
+        if default_vlan is not None:
+            return default_vlan
         # Fabrics always have at least one vlan. See `.save`.
         return min(self.vlan_set.all(), key=attrgetter("id"))
 
