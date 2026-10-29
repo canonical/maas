@@ -114,7 +114,7 @@ Renew a certificate the same way you enable TLS:
 ​​sudo maas config-tls enable new-server-key.pem new-server.pem --port 5443
 ```
 
-Place the certificate and key in an accessible directory, such as `/var/snap/maas/common` if you're using the MAAS snap.
+Place the certificate and key in an accessible directory, such as `/var/snap/maas/common`.
 
 ### Set up a local cert authority
 

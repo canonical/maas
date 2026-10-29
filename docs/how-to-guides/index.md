@@ -9,7 +9,7 @@ Before installing anything, make sure MAAS is the right fit. Confirm that your i
 <!-- * *Confirm intended use matches reference architecture* -->
 
 * [Examine and confirm requirements](/reference/configuration-guides/installation-requirements.md)
-* [Choose the installation type](/how-to-guides/get-started/install-maas.md)
+* [Install MAAS](/how-to-guides/get-started/install-maas.md)
 
 ## Install and set up
 

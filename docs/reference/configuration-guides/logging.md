@@ -48,10 +48,7 @@ Use a log analysis tool, or inspect raw logs stored in paths like `/var/log/http
 
 ## MAAS logs
 
-| Pkg Fmt  | Look for failed logins in...           |
-|----------|-----------------------------------------|
-| Snap     | `/var/snap/maas/common/log/regiond.log` |
-| Packages | `/var/log/maas/regiond.log`             |
+Look for failed logins in the region controller log in the system journal (`journalctl -u snap.maas.pebble -t maas-regiond`).
 
 For example, a legitimate login request might resemble:
 

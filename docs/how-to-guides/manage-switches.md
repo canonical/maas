@@ -688,7 +688,7 @@ curl -X GET "http://<maas-server>:5240/MAAS/a/v3/custom_images" \
 **Ensure the image file was downloaded:**
 
 ```bash
-ls -lh /var/lib/maas/boot-resources/current/
+ls -lh /var/snap/maas/common/maas/image-storage/
 ```
 
 ### Switch may be using a different MAC address than expected
