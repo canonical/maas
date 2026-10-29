@@ -48,12 +48,10 @@ Use a log analysis tool, or inspect raw logs stored in paths like `/var/log/http
 
 ## MAAS logs
 
-Look for failed logins in `/var/snap/maas/common/log/regiond.log`.
-
-For example, a legitimate login request might resemble:
+The region controller and the API server log failed logins as `AUTHN_login_unsuccessful` security events in the system journal:
 
 ```text
-    2020-03-31 21:17:56 regiond: [info] 10.132.172.1 GET /MAAS/accounts/login/ HTTP/1.1 --> 200 OK
+journalctl -u snap.maas.pebble -t maas-regiond -t maas-apiserver | grep AUTHN_login_unsuccessful
 ```
 
 ## System logs
