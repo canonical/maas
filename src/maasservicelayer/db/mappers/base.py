@@ -2,11 +2,23 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
-from sqlalchemy import ColumnElement, false, Join, or_, Table, true
+from sqlalchemy import (
+    Column,
+    ColumnElement,
+    false,
+    Join,
+    or_,
+    Select,
+    select,
+    Table,
+    true,
+)
+from sqlalchemy.engine import RowMapping
 
 from maasservicelayer.db.filters import (
     Clause,
@@ -31,6 +43,9 @@ from maasservicelayer.filters.query import (
 )
 from maasservicelayer.models.base import ResourceBuilder
 
+ModelT = TypeVar("ModelT", bound=BaseModel)
+type StorageRow = Mapping[str, Any] | RowMapping
+
 
 class CreateOrUpdateResource(dict):
     def get_values(self) -> dict[str, Any]:
@@ -46,22 +61,62 @@ class UnsupportedFilterError(Exception):
 
 @dataclass(frozen=True)
 class ColumnMapping:
-    """The SQL expression that stores a domain field, and the joins it needs."""
+    """Domain query expression, required joins, and optional writable column."""
 
     column: ColumnElement
     joins: tuple[Join, ...] = ()
+    storage_column: Column[Any] | None = None
 
 
-class BaseDomainDataMapper(ABC):
+class BaseDomainDataMapper(ABC, Generic[ModelT]):
     """
     How the domain model should map to the data model.
     """
 
-    def __init__(self, model: type[BaseModel], table: Table):
+    def __init__(
+        self,
+        model: type[ModelT],
+        table: Table,
+        *,
+        query_model: type[BaseModel] | None = None,
+    ):
         self.model = model
+        self.query_model = model if query_model is None else query_model
+        self.table = table
         self.table_columns = {
             column_name: column for column_name, column in table.c.items()
         }
+
+    def to_domain(self, row: StorageRow) -> ModelT:
+        """Hydrate a domain model without mutating its storage row."""
+        values = None
+        for field in self.field_mappings():
+            if field in row:
+                continue
+            column = self._writable_column(field)
+            if column is None or column.name not in row:
+                continue
+            if values is None:
+                values = dict(row)
+            values[field] = row[column.name]
+            if column.name not in self.model.model_fields:
+                values.pop(column.name, None)
+        return self.model(**(row if values is None else values))
+
+    def select_statement(self) -> Select[Any]:
+        """Select the storage representation consumed by this mapper."""
+        return select(self.table).select_from(self.table)
+
+    def _writable_column(self, field: str) -> Column[Any] | None:
+        mapping = self.field_mappings().get(field)
+        if mapping is None:
+            return self.table_columns.get(field)
+        column = mapping.storage_column
+        if column is None and isinstance(mapping.column, Column):
+            column = mapping.column
+        if column is not None and column.table is self.table:
+            return column
+        return None
 
     @abstractmethod
     def build_resource(
@@ -143,10 +198,10 @@ class BaseDomainDataMapper(ABC):
     def _ensure_same_model(self, model: type[BaseModel]) -> None:
         # A filter for another model may share field names with this one and
         # silently select the wrong rows.
-        if not issubclass(self.model, model):
+        if not issubclass(self.query_model, model):
             raise UnsupportedFilterError(
                 f"A query on {model.__name__} can't be applied to "
-                f"{self.model.__name__}."
+                f"{self.query_model.__name__}."
             )
 
     def _column_mapping(self, field: str) -> ColumnMapping:
@@ -155,7 +210,7 @@ class BaseDomainDataMapper(ABC):
         if (column := self.table_columns.get(field)) is not None:
             return ColumnMapping(column)
         raise UnsupportedFilterError(
-            f"{self.model.__name__}.{field} is not mapped to a column."
+            f"{self.query_model.__name__}.{field} is not mapped to a column."
         )
 
     def _field_clause(self, filter: FieldFilter) -> Clause:

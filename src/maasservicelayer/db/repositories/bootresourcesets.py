@@ -37,7 +37,7 @@ class BootResourceSetsRepository(BaseRepository[BootResourceSet]):
         )
         result = (await self.execute_stmt(stmt)).all()
         if result:
-            return BootResourceSet(**result[0]._asdict())
+            return self.mapper.to_domain(result[0]._mapping)
         return None
 
     async def get_many_newest_to_oldest_for_boot_resource(
@@ -49,4 +49,4 @@ class BootResourceSetsRepository(BaseRepository[BootResourceSet]):
             .order_by(desc(BootResourceSetTable.c.id))
         )
         result = (await self.execute_stmt(stmt)).all()
-        return [BootResourceSet(**row._asdict()) for row in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]

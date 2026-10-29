@@ -12,6 +12,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.machines_v2 import MachinesV2Repository
 from maasservicelayer.filters.nodes import NodeFilters
 from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.models.machine_details import MachineRecord
 from maasservicelayer.services.base import Service
 
 
@@ -180,116 +181,125 @@ class MachinesV2Service(Service):
         )
         return response
 
-    def _patch_machine(self, machine, actions, permissions):
+    def _patch_machine(
+        self, machine: Machine, actions: list[str], permissions: list[str]
+    ) -> Machine:
         machine.actions = actions
         machine.permissions = permissions
         return machine
 
-    def _build_node(self, record: dict):
+    def _build_node(self, record: MachineRecord) -> Machine:
         vlan = None
         if (
-            record["boot_vlan_id"]
-            or record["boot_vlan_name"]
-            or record["boot_fabric_id"]
-            or record["boot_fabric_name"]
+            record.boot_vlan_id
+            or record.boot_vlan_name
+            or record.boot_fabric_id
+            or record.boot_fabric_name
         ):
             vlan = Vlan(
-                id=record["boot_vlan_id"],
-                name=record["boot_vlan_name"],
-                fabric_id=record["boot_fabric_id"],
-                fabric_name=record["boot_fabric_name"],
+                id=record.boot_vlan_id,
+                name=record.boot_vlan_name,
+                fabric_id=record.boot_fabric_id,
+                fabric_name=record.boot_fabric_name,
             )
 
-        ip_addresses = []
-        if record["ips"] and record["is_boot_ips"]:
-            for i in range(len(record["ips"])):
+        ip_addresses: list[IPAddress] | None = []
+        if record.ips and record.is_boot_ips:
+            for i in range(len(record.ips)):
                 ip_addresses.append(
                     IPAddress(
-                        ip=str(record["ips"][i]),
-                        is_boot=record["is_boot_ips"][i],
+                        ip=record.ips[i],
+                        is_boot=record.is_boot_ips[i],
                     )
                 )
-        if not record["pxe_mac"]:
+        power_type = record.power_type
+        if not record.pxe_mac:
             ip_addresses = None
-            record["power_type"] = None
+            power_type = None
 
-        machine = Machine(
-            id=record["id"],
-            system_id=record["system_id"],
-            hostname=record["hostname"],
-            description=record["description"],
-            pool=ModelRef(id=record["pool_id"], name=record["pool_name"]),
-            domain=ModelRef(
-                id=record["domain_id"], name=record["domain_name"]
-            ),
-            owner=record["owner"],
-            parent=record["parent"],
-            error_description=record["error_description"],
-            zone=ModelRef(id=record["zone_id"], name=record["zone_name"]),
-            cpu_count=record["cpu_count"],
-            memory=int(record["memory"]),
-            power_state=record["power_state"],
-            locked=record["locked"],
-            permissions=[],
-            fqdn=record["fqdn"],
-            actions=[],
-            # maasserver/websockets/handlers/node.py:103
-            link_type="machine",
-            tags=record["tags"],
-            physical_disk_count=record["physical_disk_count"],
-            storage=record["storage"],
-            testing_status=TestStatus(
-                status=record["testing_status_combined"],
-                pending=-1,
-                running=-1,
-                passed=-1,
-                failed=-1,
-            ),
-            architecture=record["architecture"],
-            osystem=record["osystem"],
-            distro_series=record["distro_series"],
-            status=NODE_STATUS_CHOICES_DICT[record["status_code"]],
-            status_code=record["status_code"],
-            simple_status=SIMPLIFIED_NODE_STATUSES_MAP_REVERSED.get(
-                record["status_code"], SimplifiedNodeStatusEnum.OTHER.value
-            ),
-            ephemeral_deploy=record["ephemeral_deploy"],
-            fabrics=record["fabrics"],
-            spaces=record["spaces"],
-            extra_macs=record["extra_macs"],
-            status_message=record["status_message"],
-            pxe_mac=record["pxe_mac"],
-            vlan=vlan,
-            power_type=record["power_type"],
-            ip_addresses=ip_addresses,
-            cpu_test_status=TestStatus(
-                status=record["cpu_test_status_combined"],
-                pending=-1,
-                running=-1,
-                passed=-1,
-                failed=-1,
-            ),
-            memory_test_status=TestStatus(
-                status=record["memory_test_status_combined"],
-                pending=-1,
-                running=-1,
-                passed=-1,
-                failed=-1,
-            ),
-            network_test_status=TestStatus(
-                status=record["network_test_status_combined"],
-                pending=-1,
-                running=-1,
-                passed=-1,
-                failed=-1,
-            ),
-            storage_test_status=TestStatus(
-                status=record["storage_test_status_combined"],
-                pending=-1,
-                running=-1,
-                passed=-1,
-                failed=-1,
-            ),
-            is_dpu=record["is_dpu"],
+        machine = Machine.model_validate(
+            {
+                "id": record.id,
+                "system_id": record.system_id,
+                "hostname": record.hostname,
+                "description": record.description,
+                "pool": ModelRef.model_validate(
+                    {"id": record.pool_id, "name": record.pool_name}
+                ),
+                "domain": ModelRef.model_validate(
+                    {"id": record.domain_id, "name": record.domain_name}
+                ),
+                "owner": record.owner,
+                "parent": record.parent,
+                "error_description": record.error_description,
+                "zone": ModelRef.model_validate(
+                    {"id": record.zone_id, "name": record.zone_name}
+                ),
+                "cpu_count": record.cpu_count,
+                "memory": int(record.memory),
+                "power_state": record.power_state,
+                "locked": record.locked,
+                "permissions": [],
+                "fqdn": record.fqdn,
+                "actions": [],
+                # maasserver/websockets/handlers/node.py:103
+                "link_type": "machine",
+                "tags": record.tags,
+                "physical_disk_count": record.physical_disk_count,
+                "storage": record.storage,
+                "testing_status": TestStatus(
+                    status=record.testing_status_combined,
+                    pending=-1,
+                    running=-1,
+                    passed=-1,
+                    failed=-1,
+                ),
+                "architecture": record.architecture,
+                "osystem": record.osystem,
+                "distro_series": record.distro_series,
+                "status": NODE_STATUS_CHOICES_DICT[record.status_code],
+                "status_code": record.status_code,
+                "simple_status": SIMPLIFIED_NODE_STATUSES_MAP_REVERSED.get(
+                    record.status_code, SimplifiedNodeStatusEnum.OTHER.value
+                ),
+                "ephemeral_deploy": record.ephemeral_deploy,
+                "fabrics": record.fabrics,
+                "spaces": record.spaces,
+                "extra_macs": record.extra_macs,
+                "status_message": record.status_message,
+                "pxe_mac": record.pxe_mac,
+                "vlan": vlan,
+                "power_type": power_type,
+                "ip_addresses": ip_addresses,
+                "cpu_test_status": TestStatus(
+                    status=record.cpu_test_status_combined,
+                    pending=-1,
+                    running=-1,
+                    passed=-1,
+                    failed=-1,
+                ),
+                "memory_test_status": TestStatus(
+                    status=record.memory_test_status_combined,
+                    pending=-1,
+                    running=-1,
+                    passed=-1,
+                    failed=-1,
+                ),
+                "network_test_status": TestStatus(
+                    status=record.network_test_status_combined,
+                    pending=-1,
+                    running=-1,
+                    passed=-1,
+                    failed=-1,
+                ),
+                "storage_test_status": TestStatus(
+                    status=record.storage_test_status_combined,
+                    pending=-1,
+                    running=-1,
+                    passed=-1,
+                    failed=-1,
+                ),
+                "is_dpu": record.is_dpu,
+            }
         )
         return machine

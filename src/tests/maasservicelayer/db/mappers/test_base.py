@@ -10,6 +10,7 @@ from sqlalchemy import (
     Column,
     create_engine,
     delete,
+    func,
     Integer,
     MetaData,
     select,
@@ -38,6 +39,7 @@ from maasservicelayer.filters.query import (
     QuerySpec,
 )
 from maasservicelayer.filters.sshkeys import SshKeyFilters
+from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.events import Event
 from maasservicelayer.models.sshkeys import SshKey
 
@@ -256,3 +258,104 @@ class TestBaseDomainDataMapperToQuery:
                 ) == (["c", "a", "b"] if descending else ["b", "a", "c"])
         finally:
             engine.dispose()
+
+
+class TestDomainDataMapperHydration:
+    @pytest.mark.parametrize("projected", [False, True])
+    def test_storage_rename_round_trips_without_mutating_rows(self, projected):
+        class Record(BaseModel):
+            id: int
+            name: str
+
+        class Builder(ResourceBuilder):
+            name: str
+
+        table = Table(
+            "records",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column("stored_name", String),
+        )
+
+        class Mapper(DefaultDomainDataMapper[Record]):
+            def field_mappings(self):
+                return {"name": ColumnMapping(table.c.stored_name)}
+
+        mapper = Mapper(Record, table)
+        resource = mapper.build_resource(Builder(name="alpha"))
+        engine = create_engine("sqlite://")
+        try:
+            with engine.begin() as connection:
+                table.create(connection)
+                connection.execute(table.insert(), {"id": 1, **resource})
+                statement = (
+                    select(table.c.id, table.c.stored_name.label("name"))
+                    if projected
+                    else mapper.select_statement()
+                )
+                query = mapper.to_query(
+                    QuerySpec(
+                        where=FieldFilter(Record, "name", Operator.EQ, "alpha")
+                    )
+                )
+                row = connection.execute(query.enrich_stmt(statement)).one()
+                values = dict(row._mapping)
+                assert mapper.to_domain(values) == Record(id=1, name="alpha")
+                assert values == dict(row._mapping)
+        finally:
+            engine.dispose()
+
+    @pytest.mark.parametrize("related", [False, True])
+    def test_computed_and_related_fields_are_not_implicitly_writable(
+        self, related
+    ):
+        class Record(BaseModel):
+            name: str
+
+        class Builder(ResourceBuilder):
+            name: str
+
+        metadata = MetaData()
+        table = Table("records", metadata, Column("name", String))
+        other = Table("other", metadata, Column("name", String))
+
+        class Mapper(DefaultDomainDataMapper[Record]):
+            def field_mappings(self):
+                return {
+                    "name": ColumnMapping(
+                        other.c.name if related else func.upper(table.c.name)
+                    )
+                }
+
+        with pytest.raises(ValueError):
+            Mapper(Record, table).build_resource(Builder(name="alpha"))
+
+    def test_query_model_is_distinct_from_hydrated_projection(self):
+        class Source(BaseModel):
+            id: int
+
+        class Projection(BaseModel):
+            id: int
+
+        table = Table("records", MetaData(), Column("id", Integer))
+        mapper = DefaultDomainDataMapper(Projection, table, query_model=Source)
+        query = mapper.to_query(
+            QuerySpec(where=FieldFilter(Source, "id", Operator.EQ, 1))
+        )
+        engine = create_engine("sqlite://")
+        try:
+            with engine.begin() as connection:
+                table.create(connection)
+                connection.execute(table.insert(), [{"id": 1}, {"id": 2}])
+                rows = connection.execute(
+                    query.enrich_stmt(mapper.select_statement())
+                ).all()
+                assert [mapper.to_domain(row._mapping) for row in rows] == [
+                    Projection(id=1)
+                ]
+        finally:
+            engine.dispose()
+        with pytest.raises(UnsupportedFilterError):
+            mapper.to_query(
+                QuerySpec(where=FieldFilter(Projection, "id", Operator.EQ, 1))
+            )

@@ -8,7 +8,9 @@ from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeTypeEnum
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import SQLQuerySpec
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     DefaultResourceTable,
@@ -21,6 +23,12 @@ from maasservicelayer.models.zones import Zone, ZoneWithStatistics
 
 
 class ZonesRepository(BaseRepository[Zone]):
+    def __init__(self, context: Context):
+        super().__init__(context)
+        self.statistics_mapper = DefaultDomainDataMapper[ZoneWithStatistics](
+            ZoneWithStatistics, ZoneTable
+        )
+
     def get_repository_table(self) -> Table:
         return ZoneTable
 
@@ -39,7 +47,7 @@ class ZonesRepository(BaseRepository[Zone]):
         result = await self.execute_stmt(stmt)
         # By design the default zone is always present.
         zone = result.one()
-        return Zone(**zone._asdict())
+        return self.mapper.to_domain(zone._mapping)
 
     async def list_with_statistics(
         self, page: int, size: int, query: QuerySpec | None = None
@@ -93,7 +101,8 @@ class ZonesRepository(BaseRepository[Zone]):
         result = await self.execute_stmt(stmt)
         return ListResult[ZoneWithStatistics](
             items=[
-                ZoneWithStatistics(**row._asdict()) for row in result.all()
+                self.statistics_mapper.to_domain(row._mapping)
+                for row in result.all()
             ],
             total=total,
         )

@@ -25,7 +25,7 @@ from sqlalchemy.sql.functions import count
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import SQLQuerySpec
-from maasservicelayer.db.mappers.base import BaseDomainDataMapper
+from maasservicelayer.db.mappers.base import BaseDomainDataMapper, ModelT
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
@@ -66,8 +66,8 @@ class MultipleResultsException(Exception):
 T = TypeVar("T", bound=MaasBaseModel)
 
 
-class Repository(ABC):  # noqa: B024
-    mapper: BaseDomainDataMapper
+class Repository(ABC, Generic[ModelT]):  # noqa: B024
+    mapper: BaseDomainDataMapper[ModelT]
 
     def __init__(self, context: Context):
         self.context = context
@@ -156,7 +156,7 @@ class Repository(ABC):  # noqa: B024
             return await connection.execute(stmt)
 
 
-class ReadOnlyRepository(Repository, Generic[T]):
+class ReadOnlyRepository(Repository[T], Generic[T]):
     def __init__(self, context: Context):
         super().__init__(context)
         self.mapper = self.get_mapper()
@@ -172,7 +172,7 @@ class ReadOnlyRepository(Repository, Generic[T]):
     def get_model_factory(self) -> type[T]:
         pass
 
-    def get_mapper(self) -> BaseDomainDataMapper:
+    def get_mapper(self) -> BaseDomainDataMapper[T]:
         """
         How this repository should convert the domain model into the data model.
         """
@@ -186,9 +186,7 @@ class ReadOnlyRepository(Repository, Generic[T]):
         )
 
     def select_all_statement(self) -> Select[Any]:
-        return select(self.get_repository_table()).select_from(
-            self.get_repository_table()
-        )
+        return self.mapper.select_statement()
 
     async def exists(self, query: QuerySpec) -> bool:
         exists_stmt = select(self.get_repository_table().c.id).select_from(
@@ -220,7 +218,7 @@ class ReadOnlyRepository(Repository, Generic[T]):
         stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
-        return [self.get_model_factory()(**row._asdict()) for row in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
     async def list(
         self, page: int, size: int, query: QuerySpec | None = None
@@ -244,9 +242,7 @@ class ReadOnlyRepository(Repository, Generic[T]):
 
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[T](
-            items=[
-                self.get_model_factory()(**row._asdict()) for row in result
-            ],
+            items=[self.mapper.to_domain(row._mapping) for row in result],
             total=total,
         )
 
@@ -259,7 +255,7 @@ class ReadOnlyRepository(Repository, Generic[T]):
             stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
-        return [self.get_model_factory()(**row._asdict()) for row in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
 
 class BaseRepository(ReadOnlyRepository[T], Generic[T]):
@@ -280,7 +276,7 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
         )
         try:
             result = (await self.execute_stmt(stmt)).one()
-            return self.get_model_factory()(**result._asdict())
+            return self.mapper.to_domain(result._mapping)
         except IntegrityError:
             self._raise_already_existing_exception()
 
@@ -307,9 +303,7 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
 
         try:
             result = (await self.execute_stmt(stmt)).all()
-            return [
-                self.get_model_factory()(**row._asdict()) for row in result
-            ]
+            return [self.mapper.to_domain(row._mapping) for row in result]
         except IntegrityError:
             self._raise_already_existing_exception()
 
@@ -318,8 +312,7 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
     ) -> List[T]:
         updated_resources = await self._update(query, builder)
         return [
-            self.get_model_factory()(**row._asdict())
-            for row in updated_resources
+            self.mapper.to_domain(row._mapping) for row in updated_resources
         ]
 
     async def update_by_id(self, id: int, builder: ResourceBuilder) -> T:
@@ -336,7 +329,7 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
             self._raise_not_found_exception()
         if len(updated_resources) > 1:
             raise MultipleResultsException()
-        return self.get_model_factory()(**updated_resources[0]._asdict())
+        return self.mapper.to_domain(updated_resources[0]._mapping)
 
     async def _update(
         self, query: QuerySpec, builder: ResourceBuilder
@@ -384,7 +377,7 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
         )
         stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
-        return [self.get_model_factory()(**row._asdict()) for row in results]
+        return [self.mapper.to_domain(row._mapping) for row in results]
 
     def _raise_already_existing_exception(self):
         raise AlreadyExistsException(

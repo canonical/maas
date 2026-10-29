@@ -24,7 +24,7 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.image_manifests import ImageManifest
 
 
-class ImageManifestsRepository(Repository):
+class ImageManifestsRepository(Repository[ImageManifest]):
     def __init__(self, context: Context):
         super().__init__(context)
         self.mapper = DefaultDomainDataMapper(
@@ -40,7 +40,7 @@ class ImageManifestsRepository(Repository):
 
         result = (await self.execute_stmt(stmt)).one_or_none()
         if result:
-            return ImageManifest.model_validate(result._asdict())
+            return self.mapper.to_domain(result._mapping)
         return None
 
     async def create(self, builder: ImageManifestBuilder) -> ImageManifest:
@@ -52,7 +52,7 @@ class ImageManifestsRepository(Repository):
         )
         try:
             result = (await self.execute_stmt(stmt)).one()
-            return ImageManifest.model_validate(result._asdict())
+            return self.mapper.to_domain(result._mapping)
         except IntegrityError as e:
             raise AlreadyExistsException(
                 details=[
@@ -83,7 +83,7 @@ class ImageManifestsRepository(Repository):
                     )
                 ]
             )
-        return ImageManifest.model_validate(result._asdict())
+        return self.mapper.to_domain(result._mapping)
 
     async def delete_many_by_boot_source_ids(
         self, boot_source_ids: Iterable[int]

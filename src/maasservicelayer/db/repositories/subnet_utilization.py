@@ -18,6 +18,9 @@ from maascommon.utils.network import (
     MAASIPSet,
     make_iprange,
 )
+from maasservicelayer.db.mappers.subnet_utilization import (
+    SubnetUtilizationRangeMapper,
+)
 from maasservicelayer.db.repositories.base import Repository
 from maasservicelayer.db.tables import (
     DiscoveryView,
@@ -245,7 +248,10 @@ class SubnetUtilizationRepository(Repository):
         stmt = query_builder.build_stmt()
         result = (await self.execute_stmt(stmt)).all()
         ip_set |= MAASIPSet(
-            [MAASIPRange.from_db(**row._asdict()) for row in result]
+            [
+                SubnetUtilizationRangeMapper.to_domain(row._mapping)
+                for row in result
+            ]
         )
         return ip_set.get_unused_ranges_for_network(
             IPNetwork(str(subnet.cidr))
@@ -267,7 +273,10 @@ class SubnetUtilizationRepository(Repository):
         stmt = query_builder.build_stmt()
         result = (await self.execute_stmt(stmt)).all()
         ip_set |= MAASIPSet(
-            [MAASIPRange.from_db(**row._asdict()) for row in result]
+            [
+                SubnetUtilizationRangeMapper.to_domain(row._mapping)
+                for row in result
+            ]
         )
         return ip_set.get_unused_ranges_for_network(
             IPNetwork(str(subnet.cidr))
@@ -322,7 +331,10 @@ class SubnetUtilizationRepository(Repository):
         stmt = query_builder.build_stmt()
         result = (await self.execute_stmt(stmt)).all()
         ip_set |= MAASIPSet(
-            [MAASIPRange.from_db(**row._asdict()) for row in result]
+            [
+                SubnetUtilizationRangeMapper.to_domain(row._mapping)
+                for row in result
+            ]
         )
         return ip_set.get_unused_ranges_for_network(
             IPNetwork(str(subnet.cidr))
@@ -348,7 +360,10 @@ class SubnetUtilizationRepository(Repository):
         stmt = query_builder.build_stmt()
         result = (await self.execute_stmt(stmt)).all()
         ip_set |= MAASIPSet(
-            [MAASIPRange.from_db(**row._asdict()) for row in result]
+            [
+                SubnetUtilizationRangeMapper.to_domain(row._mapping)
+                for row in result
+            ]
         )
 
         reserved_ranges = await self._get_reserved_range_unmanaged(subnet)
@@ -414,7 +429,10 @@ class SubnetUtilizationRepository(Repository):
         stmt = query_builder.build_stmt()
         result = (await self.execute_stmt(stmt)).all()
         ip_set |= MAASIPSet(
-            [MAASIPRange.from_db(**row._asdict()) for row in result]
+            [
+                SubnetUtilizationRangeMapper.to_domain(row._mapping)
+                for row in result
+            ]
         )
         unused_ip_set = ip_set.get_unused_ranges_for_network(
             IPNetwork(str(subnet.cidr))
@@ -452,7 +470,10 @@ class SubnetUtilizationRepository(Repository):
         stmt = query_builder.build_stmt()
         result = (await self.execute_stmt(stmt)).all()
         ip_set |= MAASIPSet(
-            [MAASIPRange.from_db(**row._asdict()) for row in result]
+            [
+                SubnetUtilizationRangeMapper.to_domain(row._mapping)
+                for row in result
+            ]
         )
 
         reserved_ranges = await self._get_reserved_range_unmanaged(subnet)
@@ -521,7 +542,10 @@ class SubnetUtilizationRepository(Repository):
         stmt = query_builder.build_stmt()
         result = (await self.execute_stmt(stmt)).all()
         ip_set |= MAASIPSet(
-            [MAASIPRange.from_db(**row._asdict()) for row in result]
+            [
+                SubnetUtilizationRangeMapper.to_domain(row._mapping)
+                for row in result
+            ]
         )
         return ip_set
 
@@ -541,7 +565,10 @@ class SubnetUtilizationRepository(Repository):
         stmt = query_builder.build_stmt()
         result = (await self.execute_stmt(stmt)).all()
         ip_set |= MAASIPSet(
-            [MAASIPRange.from_db(**row._asdict()) for row in result]
+            [
+                SubnetUtilizationRangeMapper.to_domain(row._mapping)
+                for row in result
+            ]
         )
         return ip_set
 
@@ -555,6 +582,7 @@ class SubnetUtilizationRepository(Repository):
         )
         result = (await self.execute_stmt(reserved_range_stmt)).all()
         reserved_ranges = [
-            MAASIPRange.from_db(**row._asdict()) for row in result
+            SubnetUtilizationRangeMapper.to_domain(row._mapping)
+            for row in result
         ]
         return reserved_ranges

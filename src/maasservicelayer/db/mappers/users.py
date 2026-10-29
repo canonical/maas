@@ -11,7 +11,7 @@ from maasservicelayer.filters.users import UsernameOrEmailLike, UserProviderId
 from maasservicelayer.models.users import User
 
 
-class UsersDataMapper(DefaultDomainDataMapper):
+class UsersDataMapper(DefaultDomainDataMapper[User]):
     def __init__(self):
         super().__init__(User, UserTable)
 

@@ -49,7 +49,7 @@ class DNSPublicationRepository(BaseRepository[DNSPublication]):
 
         result = (await self.execute_stmt(stmt)).all()
 
-        return [DNSPublication(**row._asdict()) for row in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
     async def get_latest(self) -> DNSPublication:
         stmt = (
@@ -60,4 +60,4 @@ class DNSPublicationRepository(BaseRepository[DNSPublication]):
 
         result = (await self.execute_stmt(stmt)).first()
         assert result is not None
-        return DNSPublication(**result._asdict())
+        return self.mapper.to_domain(result._mapping)

@@ -1,7 +1,6 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv4Address, IPv6Address
 import re
 from typing import Iterable, List, Optional
 
@@ -138,20 +137,6 @@ class MAASIPRange(IPRange):
         if include_purpose:
             json["purpose"] = sorted(list(self.purpose))
         return json
-
-    @classmethod
-    def from_db(
-        cls,
-        start_ip: IPv4Address | IPv6Address,
-        end_ip: IPv4Address | IPv6Address,
-        purpose: list[str],
-    ):
-        # we receive an ipaddress address but we have to translate it to a netaddr one.
-        return cls(
-            start=IPAddress(str(start_ip)),
-            end=IPAddress(str(end_ip)),
-            purpose=set(purpose),
-        )
 
 
 def _combine_overlapping_maasipranges(

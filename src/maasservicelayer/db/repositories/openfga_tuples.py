@@ -19,7 +19,7 @@ from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.utils.date import utcnow
 
 
-class OpenFGATuplesRepository(Repository):
+class OpenFGATuplesRepository(Repository[OpenFGATuple]):
     def __init__(self, context: Context):
         super().__init__(context)
         self.mapper = self.get_mapper()
@@ -28,15 +28,10 @@ class OpenFGATuplesRepository(Repository):
         return OpenFGATuplesDataMapper()
 
     async def get_many(self, query: QuerySpec) -> list[OpenFGATuple]:
-        stmt = select(OpenFGATupleTable).select_from(OpenFGATupleTable)
+        stmt = self.mapper.select_statement()
         stmt = self._translate(query).enrich_stmt(stmt)
         result = await self.execute_stmt(stmt)
-        items = []
-        for row in result:
-            row_asdict = row._asdict()
-            row_asdict["user"] = row_asdict.pop("_user")
-            items.append(OpenFGATuple(**row_asdict))
-        return items
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
     async def upsert(self, builder: OpenFGATupleBuilder) -> OpenFGATuple:
         resource = self.mapper.build_resource(builder)
@@ -68,10 +63,7 @@ class OpenFGATuplesRepository(Repository):
         ).returning(OpenFGATupleTable)
 
         result = (await self.execute_stmt(stmt)).one()
-        result_dict = result._asdict()
-
-        result_dict["user"] = result_dict.pop("_user")
-        return OpenFGATuple(**result_dict)
+        return self.mapper.to_domain(result._mapping)
 
     async def bulk_upsert(self, builders: list[OpenFGATupleBuilder]) -> None:
         if not builders:
@@ -115,17 +107,12 @@ class OpenFGATuplesRepository(Repository):
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
-            select(OpenFGATupleTable)
-            .select_from(OpenFGATupleTable)
+            self.mapper.select_statement()
             .order_by(desc(OpenFGATupleTable.c.inserted_at))
             .offset((page - 1) * size)
             .limit(size)
         )
         stmt = sql_query.enrich_stmt(stmt)
         result = await self.execute_stmt(stmt)
-        items = []
-        for row in result:
-            row_asdict = row._asdict()
-            row_asdict["user"] = row_asdict.pop("_user")
-            items.append(OpenFGATuple(**row_asdict))
+        items = [self.mapper.to_domain(row._mapping) for row in result]
         return ListResult(items=items, total=total)

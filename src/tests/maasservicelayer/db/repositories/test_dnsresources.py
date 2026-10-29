@@ -180,7 +180,7 @@ class TestDNSResourceRepository(RepositoryCommonTests[DNSResource]):
             dnsresource.id
         )
 
-        assert {ip.id for ip in sips} == {ip.id for ip in result}
+        assert {ip.id: ip for ip in sips} == {ip.id: ip for ip in result}
 
     async def test_remove_ip_relation(
         self, repository_instance: DNSResourceRepository, fixture: Fixture

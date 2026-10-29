@@ -9,7 +9,7 @@ from maasservicelayer.filters.usergroups import UserGroupNameLike
 from maasservicelayer.models.usergroups import UserGroup
 
 
-class UserGroupsDataMapper(DefaultDomainDataMapper):
+class UserGroupsDataMapper(DefaultDomainDataMapper[UserGroup]):
     def __init__(self):
         super().__init__(UserGroup, UserGroupTable)
 

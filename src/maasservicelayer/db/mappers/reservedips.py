@@ -8,9 +8,10 @@ from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.tables import ReservedIPTable, SubnetTable, VlanTable
 from maasservicelayer.filters.base import CustomFilter
 from maasservicelayer.filters.reservedips import WithFabricId, WithVlanId
+from maasservicelayer.models.reservedips import ReservedIP
 
 
-class ReservedIPDataMapper(DefaultDomainDataMapper):
+class ReservedIPDataMapper(DefaultDomainDataMapper[ReservedIP]):
     def custom_filter_clause(self, filter: CustomFilter) -> Clause:
         match filter:
             case WithVlanId(vlan_id):

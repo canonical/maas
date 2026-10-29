@@ -83,22 +83,21 @@ Field mappings may translate names or storage representations. For example, file
 
 ## Builders and Domain Data Mappers
 
-When creating or updating an entity, we heavily use builders.
-Builders are Pydantic models generated starting from our entity models through the `make generate-builders` command (see `utilities/generate_builders.py`).
-These models are a 1:1 representation of our standard models but with all the fields being `UNSET` (`UNSET` is just a sentinel and it just means that the field.. is not set!).
-So when we have to create a model, we pass the builder to the repository method.
-What happens next is that the builder will be processed by a `DomainDataMapper`:
+Mappers own the translation between storage rows, domain models, and write values. Repositories retain query orchestration, pagination, aggregate queries, and grouping of already-hydrated models.
 
-- It will iterate over the fields that aren't `UNSET`
-- It will return a `CreateOrUpdateResource` (basically a `dict`) which will map every field to the corresponding column in the db
+- `BaseDomainDataMapper[Model].to_domain(row)` hydrates the domain model without mutating its input. Generic repository reads and supported write-returning paths all use it.
+- `select_statement()` owns representation-specific SELECTs, aliases, and joins. Repositories add filtering, ordering, and pagination to that statement; count-query behavior remains separate.
+- `build_resource(builder)` maps the builder's populated fields to writable storage columns. Builders are generated from domain models by `make generate-builders`; omitted `UNSET` fields remain omitted for partial writes.
 
-If the domain model doesn't differ from the data model, it will use the `DefaultDomainDataMapper` which maps the builder to the table in a 1:1 representation.
-Otherwise, you can specify your own custom mapper which fits your needs.
-See `src/maasservicelayer/db/mappers/event.py` for an example of a custom mapper.
+`field_mappings()` is shared by filtering, ordering, simple read renames, and write-column selection. A direct column on the mapper's table is writable by default. Computed expressions and related-table columns are not writable unless their `ColumnMapping` explicitly names an own-table `storage_column`.
+For example, OpenFGA declares `user -> _user` once; both reads and writes use that metadata.
 
-Having all the fields that default to `UNSET`, enable us to use the same builders both for updating and creating entities in the db.
+Custom codecs preprocess populated write values before calling `DefaultDomainDataMapper._build_resource()`, and override `to_domain()` for the inverse conversion. File content and node user data declare decoded SQL query expressions plus raw writable text columns; returned storage values are decoded before model construction, exactly once across get/list/upsert/delete paths.
 
-Plus, having it auto-generated makes it possible to have them defined as Pydantic models with correct types and validation.
+The mapper's hydrated model and query model normally coincide. A read projection can set `query_model` explicitly: the machine-v2 mapper returns a typed `MachineRecord` while accepting filters and ordering on `Node`. Model-identity checks use the query model, not the projection's coincidentally named fields.
+
+Aggregate and related-model results use named typed projection mappers. Existing non-Pydantic dataclasses and network ranges use dedicated typed mapping helpers rather than weakening the Pydantic mapper contract. Internal SQL-only DTOs may stay beside their queries.
+Application grouping, permissions, status presentation, and discovered-address enrichment remain outside representation conversion.
 
 ## Testing
 
@@ -114,8 +113,8 @@ If for some reason a test doesn't apply to your repository, mark it with `@pytes
 
 ### Testing Domain Queries
 
-Test filters and ordering through repository results, including joins, nullable values, storage conversions, and write scoping.
-Custom predicates should cover their consumer-visible boundaries; avoid pinning generated SQL text or repeating simple factory construction.
+Test filters, ordering, and hydration through repository results, including joins, nullable values, storage conversions, and write scoping.
+Mapper edge tests should cover immutable input rows, renamed/projected fields, codecs, and explicit writable-column boundaries. Avoid pinning generated SQL text or repeating simple factory construction.
 
 # Service layer
 

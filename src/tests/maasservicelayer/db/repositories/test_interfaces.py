@@ -1,4 +1,4 @@
-#  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import copy
@@ -78,6 +78,18 @@ class TestInterfaceRepository:
             QuerySpec(where=InterfaceFilters.with_mac_address(mac))
         )
         assert [item.id for item in result] == [interface.id]
+
+    async def test_plain_get_and_delete_preserve_raw_interface_fields(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        interface = await create_test_interface(
+            fixture, ip_count=2, enabled=False, link_speed=100
+        )
+        repository = InterfaceRepository(Context(connection=db_connection))
+        expected = interface.model_copy(update={"links": []})
+
+        assert await repository.get_by_id(interface.id) == expected
+        assert await repository.delete_by_id(interface.id) == expected
 
     async def test_get_parents(
         self, db_connection: AsyncConnection, fixture: Fixture
@@ -167,6 +179,12 @@ class TestInterfaceRepository:
                 ((page - 1) * page_size) : (page * page_size)
             ]:
                 _assert_interface_in_list(interface, interfaces_result)
+                retrieved = next(
+                    item
+                    for item in interfaces_result.items
+                    if item.id == interface.id
+                )
+                assert retrieved.links == interface.links
         assert total_retrieved == interface_count
 
     async def test_lists_only_on_selected_node(
@@ -646,14 +664,21 @@ class TestInterfaceRepository:
         )
         await interfaces_repository.add_ip(first_interface, first_ip.id)
         await interfaces_repository.add_ip(second_interface, second_ip.id)
+        await interfaces_repository.add_ip(first_interface, second_ip.id)
 
         result = await interfaces_repository.get_for_ips(
             [first_ip.id, second_ip.id]
         )
 
         assert set(result) == {first_ip.id, second_ip.id}
-        assert result[first_ip.id][0].id == first_interface.id
-        assert result[second_ip.id][0].id == second_interface.id
+        assert result[first_ip.id] == [
+            first_interface.model_copy(update={"links": []})
+        ]
+        assert {item.id for item in result[second_ip.id]} == {
+            first_interface.id,
+            second_interface.id,
+        }
+        assert all(item.links == [] for item in result[second_ip.id])
 
     async def test_get_for_ips_empty(
         self, db_connection: AsyncConnection, fixture: Fixture

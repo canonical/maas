@@ -1,9 +1,11 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+
 from sqlalchemy import join
 
 from maasservicelayer.db.filters import Clause
+from maasservicelayer.db.mappers.base import StorageRow
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
@@ -22,9 +24,19 @@ from maasservicelayer.filters.staticipaddress import (
     StaticIPAddressNodeTypeFilter,
     StaticIPAddressNotNullFilter,
 )
+from maasservicelayer.models.fields import MacAddress
+from maasservicelayer.models.staticipaddress import StaticIPAddress
 
 
-class StaticIPAddressDomainDataMapper(DefaultDomainDataMapper):
+class MacAddressDataMapper:
+    @staticmethod
+    def to_domain(row: StorageRow) -> MacAddress:
+        return MacAddress(row["mac_address"])
+
+
+class StaticIPAddressDomainDataMapper(
+    DefaultDomainDataMapper[StaticIPAddress]
+):
     @staticmethod
     def _interface_link_join():
         return join(

@@ -137,6 +137,10 @@ class TestUsersRepository:
         )
         assert user_profile.is_local is True
         assert user_profile.completed_intro is True
+        assert user_profile.user_id == user.id
+        assert (
+            await users_repository.get_user_profile(user.username)
+        ) == user_profile
 
     async def test_update(
         self, db_connection: AsyncConnection, fixture: Fixture
@@ -158,6 +162,9 @@ class TestUsersRepository:
             user.id, builder
         )
         assert updated_profile.completed_intro is True
+        assert (
+            await users_repository.get_user_profile(user.username)
+        ) == updated_profile
 
     async def test_delete_profile(
         self, db_connection: AsyncConnection, fixture: Fixture
@@ -203,8 +210,12 @@ class TestUsersRepository:
         user2 = await create_test_user(fixture, username="user2")
         user3 = await create_test_user(fixture, username="user3")
 
-        group_alpha = await create_test_usergroup(fixture, name="alpha")
-        group_beta = await create_test_usergroup(fixture, name="beta")
+        group_alpha = await create_test_usergroup(
+            fixture, name="alpha", description="Alpha description"
+        )
+        group_beta = await create_test_usergroup(
+            fixture, name="beta", description="Beta description"
+        )
 
         # user1 belongs to both groups, user2 to one, user3 to none.
         await create_openfga_tuple(
@@ -243,14 +254,12 @@ class TestUsersRepository:
             user3.id,
         }
         # Groups are ordered by name.
-        assert [group.name for group in groups_by_user.for_user(user1.id)] == [
-            "alpha",
-            "beta",
-        ]
-        assert [group.id for group in groups_by_user.for_user(user2.id)] == [
-            group_alpha.id
-        ]
+        assert groups_by_user.for_user(user1.id) == [group_alpha, group_beta]
+        assert groups_by_user.for_user(user2.id) == [group_alpha]
         assert groups_by_user.for_user(user3.id) == []
+
+        scoped_groups = await users_repository.get_groups_for_users([user2.id])
+        assert scoped_groups.groups_by_user == {user2.id: [group_alpha]}
 
     async def test_list_statistics(
         self, db_connection: AsyncConnection, fixture: Fixture

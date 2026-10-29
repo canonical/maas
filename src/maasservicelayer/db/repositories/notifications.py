@@ -85,7 +85,7 @@ class NotificationsRepository(BaseRepository[Notification]):
 
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[Notification](
-            items=[Notification(**row._asdict()) for row in result],
+            items=[self.mapper.to_domain(row._mapping) for row in result],
             total=total,
         )
 
@@ -115,7 +115,7 @@ class NotificationsRepository(BaseRepository[Notification]):
         )
         result = (await self.execute_stmt(stmt)).one_or_none()
         if result:
-            return Notification(**result._asdict())
+            return self.mapper.to_domain(result._mapping)
         else:
             return None
 
@@ -157,7 +157,7 @@ class NotificationsRepository(BaseRepository[Notification]):
         stmt = delete(NotificationTable).returning(self.get_repository_table())
         stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
-        deleted = [Notification(**row._asdict()) for row in results]
+        deleted = [self.mapper.to_domain(row._mapping) for row in results]
         cascade_stmt = delete(NotificationDismissalTable).where(
             NotificationDismissalTable.c.notification_id.in_(
                 [n.id for n in deleted]

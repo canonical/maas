@@ -14,9 +14,10 @@ from maasservicelayer.filters.notifications import (
     NotificationsForUserFilter,
     NotificationsNotDismissedByUserFilter,
 )
+from maasservicelayer.models.notifications import Notification
 
 
-class NotificationsDomainDataMapper(DefaultDomainDataMapper):
+class NotificationsDomainDataMapper(DefaultDomainDataMapper[Notification]):
     def custom_filter_clause(self, filter: CustomFilter) -> Clause:
         match filter:
             case NotificationsForUserFilter(user_id, is_admin):

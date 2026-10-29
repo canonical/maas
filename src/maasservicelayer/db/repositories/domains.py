@@ -17,10 +17,12 @@ from maascommon.dns import (
 )
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.node import NodeTypeEnum
+from maasservicelayer.db.mappers.domains import (
+    ForwardDNSServerProjectionDataMapper,
+)
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     DomainTable,
-    ForwardDNSServerDomainsTable,
     ForwardDNSServerTable,
     GlobalDefaultTable,
 )
@@ -73,6 +75,10 @@ class DnsDataMappingQueryResult:
 
 
 class DomainsRepository(BaseRepository[Domain]):
+    forward_dns_server_mapper = ForwardDNSServerProjectionDataMapper(
+        ForwardDNSServer, ForwardDNSServerTable
+    )
+
     def get_repository_table(self) -> Table:
         return DomainTable
 
@@ -91,7 +97,7 @@ class DomainsRepository(BaseRepository[Domain]):
 
         default_domain = (await self.execute_stmt(stmt)).one()
 
-        return Domain(**default_domain._asdict())
+        return self.mapper.to_domain(default_domain._mapping)
 
     async def _get_special_mappings(
         self,
@@ -708,62 +714,25 @@ class DomainsRepository(BaseRepository[Domain]):
     async def get_forwarded_domains(
         self,
     ) -> list[tuple[Domain, list[ForwardDNSServer]]]:
-        stmt = (
-            select(
-                DomainTable,
-                ForwardDNSServerTable.c.id.label("fdns_id"),
-                ForwardDNSServerTable.c.created.label("fdns_created"),
-                ForwardDNSServerTable.c.updated.label("fdns_updated"),
-                ForwardDNSServerTable.c.ip_address.label("fdns_ip_address"),
-                ForwardDNSServerTable.c.port.label("fdns_port"),
-            )
-            .select_from(DomainTable)
-            .join(
-                ForwardDNSServerDomainsTable,
-                ForwardDNSServerDomainsTable.c.domain_id == DomainTable.c.id,
-            )
-            .join(
-                ForwardDNSServerTable,
-                ForwardDNSServerTable.c.id
-                == ForwardDNSServerDomainsTable.c.forwarddnsserver_id,
-            )
-            .filter(
-                and_(
-                    eq(DomainTable.c.authoritative, False),
-                    ForwardDNSServerTable.c.id.is_not(None),
-                )
+        stmt = self.forward_dns_server_mapper.select_statement().filter(
+            and_(
+                eq(DomainTable.c.authoritative, False),
+                ForwardDNSServerTable.c.id.is_not(None),
             )
         )
 
         rows = (await self.execute_stmt(stmt)).all()
 
-        result = {}
+        result: dict[str, tuple[Domain, list[ForwardDNSServer]]] = {}
 
         for row in rows:
-            row_dict = row._asdict()
-            domain = Domain(**row_dict)
+            domain = self.mapper.to_domain(row._mapping)
+            forward_dns_server = self.forward_dns_server_mapper.to_domain(
+                row._mapping
+            )
             if domain.name in result:
-                result[domain.name][1].append(
-                    ForwardDNSServer(
-                        id=row_dict["fdns_id"],
-                        created=row_dict["fdns_created"],
-                        updated=row_dict["fdns_updated"],
-                        ip_address=row_dict["fdns_ip_address"],
-                        port=row_dict["fdns_port"],
-                    )
-                )
+                result[domain.name][1].append(forward_dns_server)
             else:
-                result[domain.name] = (
-                    domain,
-                    [
-                        ForwardDNSServer(
-                            id=row_dict["fdns_id"],
-                            created=row_dict["fdns_created"],
-                            updated=row_dict["fdns_updated"],
-                            ip_address=row_dict["fdns_ip_address"],
-                            port=row_dict["fdns_port"],
-                        )
-                    ],
-                )
+                result[domain.name] = (domain, [forward_dns_server])
 
         return [values for values in result.values()]
