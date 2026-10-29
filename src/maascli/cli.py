@@ -22,7 +22,6 @@ from maascli.auth import (
 )
 from maascli.command import Command, CommandError
 from maascli.config import ProfileConfig
-from maascli.init import add_create_admin_options, init_maas
 from maascli.utils import api_url, parse_docstring, safe_name
 
 CERTS_DIR = Path("~/.maascli.certs").expanduser()
@@ -225,22 +224,6 @@ class cmd_list(Command):
             return
 
 
-class cmd_init(Command):
-    """Initialize controller."""
-
-    def __init__(self, parser):
-        super().__init__(parser)
-        parser.add_argument(
-            "--skip-admin",
-            action="store_true",
-            help="Skip the admin creation.",
-        )
-        add_create_admin_options(parser)
-
-    def __call__(self, options):
-        init_maas(options)
-
-
 class cmd_config_hardening_rack(Command):
     """Manage this rack controller's hardening configuration parameters.
 
@@ -271,8 +254,7 @@ COMMANDS = {
     "refresh": cmd_refresh,
 }
 
-# Commands to expose in the maascli when installed on a machine with
-# python3-maasserver.
+# Commands to expose in the maascli when maasserver is available.
 REGIOND_COMMANDS = (
     ("apikey", "maasserver"),
     ("config-hardening", "maasserver"),
@@ -348,9 +330,6 @@ def register_cli_commands(parser):
             extra_commands.append(
                 ("config-hardening", cmd_config_hardening_rack)
             )
-    elif is_maasserver_available():
-        extra_commands = [("init", cmd_init)]
-        skip_regiond_commands = frozenset()
     else:
         extra_commands = []
         skip_regiond_commands = frozenset()
