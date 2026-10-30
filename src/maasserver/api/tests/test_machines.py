@@ -10,14 +10,22 @@ import random
 from django.conf import settings
 from django.test import RequestFactory
 from django.urls import reverse
+from piston3.emitters import JSONEmitter
+from piston3.handler import typemapper
 from twisted.internet.defer import succeed
 
 from maasserver import eventloop
 from maasserver.api import machines as machines_module
-from maasserver.api.machines import AllocationOptions, get_allocation_options
+from maasserver.api.machines import (
+    AllocationOptions,
+    get_allocation_options,
+    MachinesHandler,
+)
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.enum import (
     BRIDGE_TYPE,
+    FILESYSTEM_GROUP_TYPE,
+    FILESYSTEM_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -26,6 +34,7 @@ from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.models import Config, Domain, Machine, Node, ScriptSet
 from maasserver.models import node as node_module
 from maasserver.models.node import RELEASABLE_STATUSES
+from maasserver.models.nodeconfig import NODE_CONFIG_TYPE
 from maasserver.testing.api import APITestCase, APITransactionTestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import (
@@ -36,6 +45,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import post_commit_hooks, reload_object
+from maastesting.djangotestcase import CountQueries
 from maastesting.testcase import MAASTestCase
 from metadataserver.enum import (
     HARDWARE_TYPE,
@@ -497,6 +507,168 @@ class TestMachinesAPI(APITestCase.ForUser):
                     "page_size": hugepages.page_size,
                     "total": hugepages.total,
                 },
+            ],
+        )
+
+    def test_GET_storage_matches_detail_without_serialization_queries(self):
+        machine = factory.make_Node(interface=True, status=NODE_STATUS.READY)
+        factory.make_CacheSet(
+            node=machine,
+            block_device=factory.make_PhysicalBlockDevice(node=machine),
+        )
+        factory.make_CacheSet(
+            node=machine, partition=factory.make_Partition(node=machine)
+        )
+        raid = factory.make_FilesystemGroup(
+            node=machine, group_type=FILESYSTEM_GROUP_TYPE.RAID_1
+        )
+        partition = factory.make_Partition(
+            partition_table=factory.make_PartitionTable(
+                block_device=raid.virtual_device
+            )
+        )
+        factory.make_Filesystem(
+            partition=partition,
+            fstype=FILESYSTEM_TYPE.EXT4,
+            mount_point="/srv",
+        )
+        expected = self.client.get(
+            reverse("machine_handler", args=[machine.system_id])
+        ).json()
+
+        request = RequestFactory().get(self.machines_url)
+        request.user = self.user
+        handler = MachinesHandler()
+        nodes = handler.read(request)
+        with CountQueries() as queries:
+            result = JSONEmitter(
+                nodes, typemapper, handler, handler.fields, anonymous=False
+            ).render(request)
+        self.assertEqual([expected], json.loads(result))
+        self.assertEqual(0, queries.count)
+
+    def test_GET_preserves_old_boot_disk_and_acquired_filesystems(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.user
+        )
+        boot_disk_id = machine.boot_disk_id
+        machine.current_config = factory.make_NodeConfig(
+            node=machine, name=NODE_CONFIG_TYPE.DEPLOYMENT
+        )
+        machine.save()
+        disk = factory.make_PhysicalBlockDevice(node=machine)
+        factory.make_Filesystem(
+            block_device=disk, fstype=FILESYSTEM_TYPE.EXT4, mount_point="/old"
+        )
+        acquired = factory.make_Filesystem(
+            block_device=disk,
+            fstype=FILESYSTEM_TYPE.XFS,
+            mount_point="/srv",
+            acquired=True,
+        )
+
+        [result] = self.get_json()
+        self.assertEqual(boot_disk_id, result["boot_disk"]["id"])
+        self.assertEqual(
+            acquired.uuid, result["blockdevice_set"][0]["filesystem"]["uuid"]
+        )
+        self.assertEqual(
+            self.client.get(
+                reverse("machine_handler", args=[machine.system_id])
+            ).json(),
+            result,
+        )
+
+    def test_GET_preserves_old_boot_interface_network_details(self):
+        machine = factory.make_Node(interface=True)
+        interface = machine.current_config.interface_set.first()
+        factory.make_Interface(
+            INTERFACE_TYPE.VLAN,
+            parents=[interface],
+            vlan=factory.make_VLAN(fabric=interface.vlan.fabric),
+            params={"mtu": 9000},
+        )
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        dhcp = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            ip="",
+            subnet=subnet,
+            interface=interface,
+        )
+        discovered = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            subnet=subnet,
+            interface=interface,
+        )
+        machine.boot_interface = interface
+        machine.current_config = factory.make_NodeConfig(
+            node=machine, name=NODE_CONFIG_TYPE.DEPLOYMENT
+        )
+        machine.save()
+        current = factory.make_Interface(node=machine)
+
+        [result] = self.get_json()
+        self.assertEqual(interface.id, result["boot_interface"]["id"])
+        self.assertEqual(9000, result["boot_interface"]["effective_mtu"])
+        self.assertEqual(
+            [current.id], [nic["id"] for nic in result["interface_set"]]
+        )
+        [link] = [
+            link
+            for link in result["boot_interface"]["links"]
+            if link["id"] == dhcp.id
+        ]
+        self.assertEqual(discovered.ip, link["ip_address"])
+        self.assertEqual(
+            self.client.get(
+                reverse("machine_handler", args=[machine.system_id])
+            ).json(),
+            result,
+        )
+
+    def test_GET_preserves_shared_subnets_and_relay_vlan_chains(self):
+        relay = factory.make_VLAN(
+            fabric=factory.make_Fabric(),
+            space=factory.make_Space(),
+            primary_rack=factory.make_RackController(),
+            secondary_rack=factory.make_RackController(),
+            dhcp_on=True,
+        )
+        intermediate = factory.make_VLAN(relay_vlan=relay)
+        vlan = factory.make_VLAN(relay_vlan=intermediate)
+        subnet = factory.make_Subnet(vlan=vlan)
+        machine = factory.make_Node()
+        interfaces = [
+            factory.make_Interface(node=machine, vlan=vlan) for _ in range(2)
+        ]
+        for interface in interfaces:
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.STICKY,
+                subnet=subnet,
+                interface=interface,
+            )
+        machine.boot_interface = interfaces[0]
+        machine.save()
+        expected = self.client.get(
+            reverse("machine_handler", args=[machine.system_id])
+        ).json()
+
+        request = RequestFactory().get(
+            self.machines_url, {"id": [machine.system_id]}
+        )
+        request.user = self.user
+        handler = MachinesHandler()
+        nodes = handler.read(request)
+        with CountQueries() as queries:
+            result = JSONEmitter(
+                nodes, typemapper, handler, handler.fields, anonymous=False
+            ).render(request)
+        self.assertEqual([expected], json.loads(result))
+        self.assertEqual(0, queries.count)
+        self.assertEqual(
+            relay.id,
+            expected["boot_interface"]["vlan"]["relay_vlan"]["relay_vlan"][
+                "id"
             ],
         )
 

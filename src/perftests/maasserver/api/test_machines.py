@@ -12,11 +12,6 @@ from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maastesting.http import make_HttpRequest
 
 
-class DummyEmitter(Emitter):
-    def render(self, request):
-        self.construct()
-
-
 def test_perf_list_machines_MachineHandler_api_endpoint(
     perf, maasdb, mock_maas_env, openfga_server
 ):
@@ -44,16 +39,17 @@ def test_perf_list_machines_MachinesHander_direct_call(
     handler = MachinesHandler()
     request = make_HttpRequest()
     request.user = admin
+    emitter_class, _ = Emitter.get("json")
 
     with perf.record("test_perf_list_machines_MachinesHander_direct_call"):
-        emitter = DummyEmitter(
+        emitter = emitter_class(
             handler.read(request),
             typemapper,
             handler,
             handler.fields,
             anonymous=False,
         )
-        emitter.render(request)
+        emitter.construct()
 
 
 def test_perf_list_machines_MachinesHander_only_objects(

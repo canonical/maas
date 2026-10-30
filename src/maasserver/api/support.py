@@ -29,6 +29,7 @@ from piston3.utils import HttpStatusCode, rc
 from maascommon.constants import MAAS_USER_USERNAME
 from maasserver import openfga
 from maasserver.api.doc import get_api_description
+from maasserver.api.emitters import ModelCachingJSONEmitter
 from maasserver.authorization import can_edit_global_entities
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -458,6 +459,7 @@ for name in list(Emitter.EMITTERS):
     if name == "json":
         continue
     Emitter.unregister(name)
+#Emitter.register("json", ModelCachingJSONEmitter, Emitter.get("json")[1])
 
 
 class ModelOperationsHandlerType(OperationsHandlerType, ABCMeta):

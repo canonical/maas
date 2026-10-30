@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model definition for StaticIPAddress.
@@ -789,14 +789,7 @@ def cache_related_discovered_ips(ip_addresses):
         StaticIPAddress.objects.filter(
             pk__in={pk for pk in discovered_ids.values() if pk is not None}
         )
-        .select_related(
-            "subnet__vlan__fabric",
-            "subnet__vlan__space",
-            "subnet__vlan__primary_rack",
-            "subnet__vlan__secondary_rack",
-            "subnet__vlan__relay_vlan",
-        )
-        .prefetch_related("subnet__vlan__fabric__vlan_set")
+        .prefetch_related("subnet")
         .in_bulk()
     )
     for pk, addresses in dhcp_addresses.items():
