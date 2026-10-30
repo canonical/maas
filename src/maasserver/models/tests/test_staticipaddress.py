@@ -39,7 +39,11 @@ from maasserver.exceptions import (
 from maasserver.models import staticipaddress as static_ip_address_module
 from maasserver.models.config import Config
 from maasserver.models.domain import Domain
-from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.nodeconfig import NODE_CONFIG_TYPE
+from maasserver.models.staticipaddress import (
+    cache_related_discovered_ips,
+    StaticIPAddress,
+)
 from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -53,6 +57,7 @@ from maasserver.utils.orm import (
     transactional,
 )
 from maasserver.websockets.base import dehydrate_datetime
+from maastesting.djangotestcase import count_queries
 
 
 class TestStaticIPAddressManager(MAASServerTestCase):
@@ -1566,6 +1571,179 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             ),
         }
         self.assertEqual(expected, mapping)
+
+
+class TestCacheRelatedDiscoveredIPs(MAASServerTestCase):
+    def test_keeps_unrelated_dhcp_resolutions_separate(self):
+        dhcp_addresses = []
+        expected = []
+        for _ in range(2):
+            interface = factory.make_Interface()
+            dhcp_addresses.append(
+                factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.DHCP,
+                    ip=None,
+                    interface=interface,
+                )
+            )
+            discovered = factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface
+            )
+            expected.append((discovered.ip, discovered.subnet))
+
+        cache_related_discovered_ips(dhcp_addresses)
+        queries, actual = count_queries(
+            lambda: [ip.get_ip_and_subnet() for ip in dhcp_addresses]
+        )
+        self.assertEqual(0, queries)
+        self.assertEqual(expected, actual)
+
+    def test_selects_latest_discovery_across_all_linked_interfaces(self):
+        node = factory.make_Node()
+        selected_interface = factory.make_Interface(node=node)
+        historical_interface = factory.make_Interface(
+            node_config=factory.make_NodeConfig(
+                node=node, name=NODE_CONFIG_TYPE.DEPLOYMENT
+            )
+        )
+        other_interface = factory.make_Interface()
+        dhcp = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            ip=None,
+            interface=selected_interface,
+        )
+        historical_interface.ip_addresses.add(dhcp)
+        other_interface.ip_addresses.add(dhcp)
+        for interface in (selected_interface, historical_interface):
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                interface=interface,
+            )
+        latest = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            interface=other_interface,
+        )
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=selected_interface
+        )
+        expected = dhcp.get_ip_and_subnet()
+        self.assertEqual((latest.ip, latest.subnet), expected)
+
+        cache_related_discovered_ips([dhcp])
+        queries, actual = count_queries(dhcp.get_ip_and_subnet)
+        self.assertEqual(0, queries)
+        self.assertEqual(expected, actual)
+
+    def test_caches_every_instance_and_batches_multiple_dhcp_rows(self):
+        interface = factory.make_Interface()
+        dhcp_addresses = [
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DHCP,
+                ip=None,
+                interface=interface,
+            )
+            for _ in range(2)
+        ]
+        duplicate = reload_object(dhcp_addresses[0])
+        self.assertIsNot(duplicate, dhcp_addresses[0])
+        dhcp_addresses.extend([duplicate, dhcp_addresses[0]])
+        discovered = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface
+        )
+
+        cache_related_discovered_ips(iter(dhcp_addresses))
+        queries, actual = count_queries(
+            lambda: [ip.get_ip_and_subnet() for ip in dhcp_addresses]
+        )
+        self.assertEqual(0, queries)
+        self.assertEqual(
+            [(discovered.ip, discovered.subnet)] * len(dhcp_addresses), actual
+        )
+
+    def test_missing_discovery_caches_none_and_preserves_original_values(self):
+        interface = factory.make_Interface()
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        dhcp = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            ip=None,
+            subnet=subnet,
+            interface=interface,
+        )
+        # A blank address is valid in memory, but the inet column stores NULL.
+        dhcp.ip = ""
+        dhcp.subnet = subnet
+
+        cache_related_discovered_ips([dhcp])
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface
+        )
+        queries, actual = count_queries(dhcp.get_ip_and_subnet)
+        self.assertEqual(0, queries)
+        self.assertEqual(("", subnet), actual)
+        self.assertIsNone(dhcp._get_related_discovered_ip())
+
+    def test_ignores_null_and_normalized_blank_discoveries(self):
+        interface = factory.make_Interface()
+        dhcp = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            ip=None,
+            interface=interface,
+        )
+        discovered = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface
+        )
+        for ip in (None, ""):
+            empty = factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                ip=ip,
+                interface=interface,
+            )
+            self.assertIsNone(empty.ip)
+        self.assertEqual(discovered, dhcp._get_related_discovered_ip())
+
+        cache_related_discovered_ips([dhcp])
+
+        self.assertEqual(discovered, dhcp._get_related_discovered_ip())
+        self.assertEqual(
+            (discovered.ip, discovered.subnet), dhcp.get_ip_and_subnet()
+        )
+
+    def test_discovered_address_without_subnet_keeps_null_subnet(self):
+        interface = factory.make_Interface()
+        dhcp = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            ip=None,
+            subnet=factory.make_Subnet(vlan=interface.vlan),
+            interface=interface,
+        )
+        discovered = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface
+        )
+        StaticIPAddress.objects.filter(pk=discovered.pk).update(subnet=None)
+
+        cache_related_discovered_ips([dhcp])
+
+        queries, actual = count_queries(dhcp.get_ip_and_subnet)
+        self.assertEqual(0, queries)
+        self.assertEqual((discovered.ip, None), actual)
+
+    def test_uncached_instances_continue_resolving_live_discoveries(self):
+        interface = factory.make_Interface()
+        dhcp = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            ip=None,
+            interface=interface,
+        )
+        self.assertIsNone(dhcp._get_related_discovered_ip())
+        cache_related_discovered_ips([reload_object(dhcp)])
+        first = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface
+        )
+        self.assertEqual(first, dhcp._get_related_discovered_ip())
+        latest = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface
+        )
+        self.assertEqual(latest, dhcp._get_related_discovered_ip())
 
 
 class TestStaticIPAddress(MAASServerTestCase):

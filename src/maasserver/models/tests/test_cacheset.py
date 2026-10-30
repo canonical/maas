@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `CacheSet`."""
@@ -9,10 +9,13 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE
-from maasserver.models import CacheSet
+from maasserver.models import CacheSet, Filesystem
+from maasserver.models.nodeconfig import NODE_CONFIG_TYPE
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
+from maastesting.djangotestcase import CountQueries
 
 
 class TestCacheSetManager(MAASServerTestCase):
@@ -24,6 +27,79 @@ class TestCacheSetManager(MAASServerTestCase):
         cache_set_one = factory.make_CacheSet(node=node)
         self.assertEqual(0, CacheSet.objects.get_cache_set_idx(cache_set_zero))
         self.assertEqual(1, CacheSet.objects.get_cache_set_idx(cache_set_one))
+
+    def test_cache_names_counts_duplicate_and_unrequested_members(self):
+        node = factory.make_Node()
+        disk = factory.make_PhysicalBlockDevice(node=node)
+        first = factory.make_CacheSet(block_device=disk)
+        duplicate = Filesystem.objects.create(
+            node_config=node.current_config,
+            block_device=disk,
+            fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
+            cache_set=first,
+            acquired=True,
+        )
+        second = factory.make_CacheSet(
+            partition=factory.make_Partition(node=node)
+        )
+        instances = [reload_object(second), reload_object(second)]
+
+        CacheSet.objects.cache_names(iter(instances))
+        with CountQueries() as queries:
+            names = [cache_set.get_name() for cache_set in instances]
+        self.assertEqual(["cache2", "cache2"], names)
+        self.assertEqual(0, queries.count)
+
+        duplicate.delete()
+        fresh = reload_object(second)
+        self.assertEqual("cache1", fresh.get_name())
+        CacheSet.objects.cache_names([fresh])
+        self.assertEqual("cache1", fresh.get_name())
+        self.assertEqual("cache2", instances[0].get_name())
+
+    def test_cache_names_uses_first_filesystem_owners_current_config(self):
+        owner = factory.make_Node()
+        earlier = CacheSet.objects.create()
+        cache_set = factory.make_CacheSet(
+            block_device=factory.make_PhysicalBlockDevice(node=owner)
+        )
+        owner.current_config = factory.make_NodeConfig(
+            node=owner, name=NODE_CONFIG_TYPE.DEPLOYMENT
+        )
+        owner.save()
+        for member in (earlier, cache_set):
+            Filesystem.objects.create(
+                node_config=owner.current_config,
+                block_device=factory.make_PhysicalBlockDevice(node=owner),
+                fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
+                cache_set=member,
+            )
+        other = factory.make_Node()
+        Filesystem.objects.create(
+            node_config=other.current_config,
+            partition=factory.make_Partition(node=other),
+            fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
+            cache_set=cache_set,
+        )
+        self.assertEqual("cache1", cache_set.get_name())
+
+        instance = reload_object(cache_set)
+        CacheSet.objects.cache_names([instance])
+        with CountQueries() as queries:
+            name = instance.get_name()
+        self.assertEqual("cache1", name)
+        self.assertEqual(0, queries.count)
+
+    def test_cache_names_preserves_missing_current_membership_error(self):
+        node = factory.make_Node()
+        cache_set = factory.make_CacheSet(node=node)
+        node.current_config = factory.make_NodeConfig(
+            node=node, name=NODE_CONFIG_TYPE.DEPLOYMENT
+        )
+        node.save()
+
+        CacheSet.objects.cache_names([cache_set])
+        self.assertRaises(CacheSet.DoesNotExist, cache_set.get_name)
 
     def test_get_cache_sets_for_node(self):
         node = factory.make_Node()

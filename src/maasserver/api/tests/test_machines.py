@@ -1,24 +1,40 @@
 # Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import timedelta
 import http.client
 import json
+import logging
 import random
 
 from django.conf import settings
 from django.test import RequestFactory
 from django.urls import reverse
+from piston3.emitters import JSONEmitter
+from piston3.handler import typemapper
 from twisted.internet.defer import succeed
 
 from maasserver import eventloop
 from maasserver.api import machines as machines_module
-from maasserver.api.machines import AllocationOptions, get_allocation_options
+from maasserver.api.machines import (
+    AllocationOptions,
+    get_allocation_options,
+    MachinesHandler,
+)
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
-from maasserver.enum import BRIDGE_TYPE, INTERFACE_TYPE, NODE_STATUS
+from maasserver.enum import (
+    BRIDGE_TYPE,
+    FILESYSTEM_GROUP_TYPE,
+    FILESYSTEM_TYPE,
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+    NODE_STATUS,
+)
 from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.models import Config, Domain, Machine, Node, ScriptSet
 from maasserver.models import node as node_module
 from maasserver.models.node import RELEASABLE_STATUSES
+from maasserver.models.nodeconfig import NODE_CONFIG_TYPE
 from maasserver.testing.api import APITestCase, APITransactionTestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import (
@@ -31,7 +47,12 @@ from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.djangotestcase import CountQueries
 from maastesting.testcase import MAASTestCase
-from metadataserver.enum import SCRIPT_TYPE
+from metadataserver.enum import (
+    HARDWARE_TYPE,
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+    SCRIPT_TYPE,
+)
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.utils.enum import map_enum
 
@@ -489,38 +510,361 @@ class TestMachinesAPI(APITestCase.ForUser):
             ],
         )
 
-    def test_GET_machines_issues_linear_number_of_queries(self):
-        queries_count = []
-        machines_count = []
-
-        def exec_request():
-            with CountQueries(reset=True) as counter:
-                result = self.get_json()
-            queries_count.append(counter.count)
-            machines_count.append(len(result))
-
-        default_domain = Domain.objects.get_default_domain()
-        factory.make_DNSResource(domain=default_domain)
-        vlan = factory.make_VLAN(space=factory.make_Space())
-        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
-        factory.make_VirtualBlockDevice(node=node)
-        exec_request()
-
-        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
-        factory.make_VirtualBlockDevice(node=node)
-        exec_request()
-
-        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
-        factory.make_VirtualBlockDevice(node=node)
-        exec_request()
-
-        expected_counts = [1, 2, 3]
-        self.assertEqual(machines_count, expected_counts)
-        base_count = 83
-        for idx, machine_count in enumerate(machines_count):
-            self.assertEqual(
-                queries_count[idx], base_count + (machine_count * 7)
+    def test_GET_storage_matches_detail_without_serialization_queries(self):
+        machine = factory.make_Node(interface=True, status=NODE_STATUS.READY)
+        factory.make_CacheSet(
+            node=machine,
+            block_device=factory.make_PhysicalBlockDevice(node=machine),
+        )
+        factory.make_CacheSet(
+            node=machine, partition=factory.make_Partition(node=machine)
+        )
+        raid = factory.make_FilesystemGroup(
+            node=machine, group_type=FILESYSTEM_GROUP_TYPE.RAID_1
+        )
+        partition = factory.make_Partition(
+            partition_table=factory.make_PartitionTable(
+                block_device=raid.virtual_device
             )
+        )
+        factory.make_Filesystem(
+            partition=partition,
+            fstype=FILESYSTEM_TYPE.EXT4,
+            mount_point="/srv",
+        )
+        expected = self.client.get(
+            reverse("machine_handler", args=[machine.system_id])
+        ).json()
+
+        request = RequestFactory().get(self.machines_url)
+        request.user = self.user
+        handler = MachinesHandler()
+        nodes = handler.read(request)
+        with CountQueries() as queries:
+            result = JSONEmitter(
+                nodes, typemapper, handler, handler.fields, anonymous=False
+            ).render(request)
+        self.assertEqual([expected], json.loads(result))
+        self.assertEqual(0, queries.count)
+
+    def test_GET_preserves_old_boot_disk_and_acquired_filesystems(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.user
+        )
+        boot_disk_id = machine.boot_disk_id
+        machine.current_config = factory.make_NodeConfig(
+            node=machine, name=NODE_CONFIG_TYPE.DEPLOYMENT
+        )
+        machine.save()
+        disk = factory.make_PhysicalBlockDevice(node=machine)
+        factory.make_Filesystem(
+            block_device=disk, fstype=FILESYSTEM_TYPE.EXT4, mount_point="/old"
+        )
+        acquired = factory.make_Filesystem(
+            block_device=disk,
+            fstype=FILESYSTEM_TYPE.XFS,
+            mount_point="/srv",
+            acquired=True,
+        )
+
+        [result] = self.get_json()
+        self.assertEqual(boot_disk_id, result["boot_disk"]["id"])
+        self.assertEqual(
+            acquired.uuid, result["blockdevice_set"][0]["filesystem"]["uuid"]
+        )
+        self.assertEqual(
+            self.client.get(
+                reverse("machine_handler", args=[machine.system_id])
+            ).json(),
+            result,
+        )
+
+    def test_GET_preserves_old_boot_interface_network_details(self):
+        machine = factory.make_Node(interface=True)
+        interface = machine.current_config.interface_set.first()
+        factory.make_Interface(
+            INTERFACE_TYPE.VLAN,
+            parents=[interface],
+            vlan=factory.make_VLAN(fabric=interface.vlan.fabric),
+            params={"mtu": 9000},
+        )
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        dhcp = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            ip="",
+            subnet=subnet,
+            interface=interface,
+        )
+        discovered = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            subnet=subnet,
+            interface=interface,
+        )
+        machine.boot_interface = interface
+        machine.current_config = factory.make_NodeConfig(
+            node=machine, name=NODE_CONFIG_TYPE.DEPLOYMENT
+        )
+        machine.save()
+        current = factory.make_Interface(node=machine)
+
+        [result] = self.get_json()
+        self.assertEqual(interface.id, result["boot_interface"]["id"])
+        self.assertEqual(9000, result["boot_interface"]["effective_mtu"])
+        self.assertEqual(
+            [current.id], [nic["id"] for nic in result["interface_set"]]
+        )
+        [link] = [
+            link
+            for link in result["boot_interface"]["links"]
+            if link["id"] == dhcp.id
+        ]
+        self.assertEqual(discovered.ip, link["ip_address"])
+        self.assertEqual(
+            self.client.get(
+                reverse("machine_handler", args=[machine.system_id])
+            ).json(),
+            result,
+        )
+
+    def test_GET_preserves_shared_subnets_and_relay_vlan_chains(self):
+        relay = factory.make_VLAN(
+            fabric=factory.make_Fabric(),
+            space=factory.make_Space(),
+            primary_rack=factory.make_RackController(),
+            secondary_rack=factory.make_RackController(),
+            dhcp_on=True,
+        )
+        intermediate = factory.make_VLAN(relay_vlan=relay)
+        vlan = factory.make_VLAN(relay_vlan=intermediate)
+        subnet = factory.make_Subnet(vlan=vlan)
+        machine = factory.make_Node()
+        interfaces = [
+            factory.make_Interface(node=machine, vlan=vlan) for _ in range(2)
+        ]
+        for interface in interfaces:
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.STICKY,
+                subnet=subnet,
+                interface=interface,
+            )
+        machine.boot_interface = interfaces[0]
+        machine.save()
+        expected = self.client.get(
+            reverse("machine_handler", args=[machine.system_id])
+        ).json()
+
+        request = RequestFactory().get(
+            self.machines_url, {"id": [machine.system_id]}
+        )
+        request.user = self.user
+        handler = MachinesHandler()
+        nodes = handler.read(request)
+        with CountQueries() as queries:
+            result = JSONEmitter(
+                nodes, typemapper, handler, handler.fields, anonymous=False
+            ).render(request)
+        self.assertEqual([expected], json.loads(result))
+        self.assertEqual(0, queries.count)
+        self.assertEqual(
+            relay.id,
+            expected["boot_interface"]["vlan"]["relay_vlan"]["relay_vlan"][
+                "id"
+            ],
+        )
+
+    def test_GET_preserves_descendant_mtus_without_cross_request_cache(self):
+        machine = factory.make_Node(interface=True)
+        physical = machine.current_config.interface_set.first()
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[physical], vlan=physical.vlan
+        )
+        vlan = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, parents=[bond], vlan=factory.make_VLAN()
+        )
+        bridge = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            parents=[vlan],
+            vlan=vlan.vlan,
+            params={"mtu": 9000},
+        )
+        machine.boot_interface = physical
+        machine.save()
+
+        first = self.get_json()[0]
+        self.assertEqual(9000, first["boot_interface"]["effective_mtu"])
+        self.assertEqual(
+            {physical.id: 9000, bond.id: 9000, vlan.id: 9000, bridge.id: 9000},
+            {
+                nic["id"]: nic["effective_mtu"]
+                for nic in first["interface_set"]
+            },
+        )
+        bridge.params = {"mtu": 2000}
+        bridge.save()
+
+        second = self.get_json()[0]
+        self.assertEqual(2000, second["boot_interface"]["effective_mtu"])
+        self.assertEqual(
+            {physical.id: 2000, bond.id: 2000, vlan.id: 2000, bridge.id: 2000},
+            {
+                nic["id"]: nic["effective_mtu"]
+                for nic in second["interface_set"]
+            },
+        )
+
+    def test_GET_resolves_dhcp_across_interfaces_outside_filtered_machines(
+        self,
+    ):
+        machine = factory.make_Node(interface=True)
+        interface = machine.current_config.interface_set.first()
+        original_subnet = factory.make_Subnet(vlan=interface.vlan)
+        dhcp = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            ip=None,
+            subnet=original_subnet,
+            interface=interface,
+        )
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            subnet=original_subnet,
+            interface=interface,
+        )
+        other = factory.make_Interface(node=factory.make_Node())
+        other.ip_addresses.add(dhcp)
+        discovered = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=other
+        )
+        machine.boot_interface = interface
+        machine.save()
+
+        [result] = self.get_json({"id": [machine.system_id]})
+        [link] = [
+            link
+            for link in result["boot_interface"]["links"]
+            if link["id"] == dhcp.id
+        ]
+        self.assertEqual(discovered.ip, link["ip_address"])
+        self.assertEqual(discovered.subnet_id, link["subnet"]["id"])
+        self.assertEqual(
+            self.client.get(
+                reverse("machine_handler", args=[machine.system_id])
+            ).json(),
+            result,
+        )
+
+    def test_GET_preserves_latest_script_statuses_per_machine(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING,
+            hardware_type=HARDWARE_TYPE.CPU,
+        )
+        machines = [factory.make_Node() for _ in range(2)]
+        for machine, status in zip(
+            machines,
+            [SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED],
+            strict=True,
+        ):
+            old_set = factory.make_ScriptSet(
+                node=machine, result_type=RESULT_TYPE.TESTING
+            )
+            factory.make_ScriptResult(
+                script_set=old_set,
+                script=script,
+                status=SCRIPT_STATUS.RUNNING,
+            )
+            new_set = factory.make_ScriptSet(
+                node=machine, result_type=RESULT_TYPE.TESTING
+            )
+            factory.make_ScriptResult(
+                script_set=new_set, script=script, status=status
+            )
+            machine.current_testing_script_set = old_set
+            machine.save()
+
+        results = self.get_json()
+        self.assertEqual(
+            [SCRIPT_STATUS.PASSED, SCRIPT_STATUS.FAILED],
+            [result["cpu_test_status"] for result in results],
+        )
+        for machine, result in zip(machines, results, strict=True):
+            self.assertEqual(
+                self.client.get(
+                    reverse("machine_handler", args=[machine.system_id])
+                ).json(),
+                result,
+            )
+
+    def test_GET_applies_status_exclusions_after_latest_result_selection(self):
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING,
+            hardware_type=HARDWARE_TYPE.CPU,
+        )
+        for result_type, status, suppressed in (
+            (RESULT_TYPE.TESTING, SCRIPT_STATUS.FAILED, True),
+            (RESULT_TYPE.TESTING, SCRIPT_STATUS.ABORTED, False),
+            (RESULT_TYPE.INSTALLATION, SCRIPT_STATUS.PASSED, False),
+        ):
+            machine = factory.make_Node()
+            old_set = factory.make_ScriptSet(
+                node=machine, result_type=RESULT_TYPE.TESTING
+            )
+            factory.make_ScriptResult(
+                script_set=old_set,
+                script=script,
+                status=SCRIPT_STATUS.FAILED,
+            )
+            new_set = factory.make_ScriptSet(
+                node=machine, result_type=result_type
+            )
+            factory.make_ScriptResult(
+                script_set=new_set,
+                script=script,
+                status=status,
+                suppressed=suppressed,
+            )
+
+        results = self.get_json()
+        self.assertEqual(
+            [SCRIPT_STATUS.PASSED, -1, -1],
+            [result["testing_status"] for result in results],
+        )
+        self.assertEqual(
+            [SCRIPT_STATUS.PASSED, -1, -1],
+            [result["cpu_test_status"] for result in results],
+        )
+
+    def test_GET_preserves_status_event_order_and_empty_statuses(self):
+        machines = [factory.make_Node() for _ in range(2)]
+        event_type = factory.make_EventType(
+            level=logging.INFO, description="Commissioning"
+        )
+        older = factory.make_Event(
+            node=machines[0], type=event_type, action="old"
+        )
+        factory.make_Event(
+            node=machines[0],
+            type=event_type,
+            created=older.created,
+            action="new",
+            description="Finished",
+        )
+        factory.make_Event(
+            node=machines[0],
+            type=event_type,
+            created=older.created - timedelta(seconds=1),
+            action="out-of-order",
+        )
+        factory.make_Event(
+            node=machines[0],
+            type=factory.make_EventType(level=logging.DEBUG),
+            action="debug",
+        )
+
+        first, second = self.get_json()
+        self.assertEqual("new", first["status_action"])
+        self.assertEqual("Commissioning - Finished", first["status_message"])
+        self.assertIsNone(second["status_action"])
+        self.assertIsNone(second["status_message"])
+        self.assertEqual(-1, second["testing_status"])
 
     def test_GET_without_machines_returns_empty_list(self):
         # If there are no machines to list, the "read" op still works but

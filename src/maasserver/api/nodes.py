@@ -7,10 +7,12 @@ __all__ = [
     "NodesHandler",
 ]
 
-from itertools import chain
+from collections import defaultdict
+from itertools import chain, groupby
+import logging
 
 import bson
-from django.db.models import Prefetch
+from django.db.models import OuterRef, Prefetch, Subquery
 from django.http import HttpResponse
 from piston3.utils import rc
 
@@ -37,9 +39,23 @@ from maasserver.exceptions import (
 )
 from maasserver.forms import BulkNodeSetZoneForm
 from maasserver.forms.ephemeral import TestForm
-from maasserver.models import Domain, Filesystem, Interface, Node, OwnerData
+from maasserver.models import (
+    BlockDevice,
+    CacheSet,
+    Domain,
+    Event,
+    Filesystem,
+    Interface,
+    Node,
+    OwnerData,
+    ScriptResult,
+    Subnet,
+    VLAN,
+)
+from maasserver.models.node import preload_node_gateways
 from maasserver.models.nodeprobeddetails import get_single_probed_details
-from maasserver.models.scriptset import get_status_from_qs
+from maasserver.models.scriptset import get_overall_status
+from maasserver.models.staticipaddress import cache_related_discovered_ips
 from maasserver.node_constraint_filter_forms import ReadNodesForm
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import prefetch_queryset
@@ -56,31 +72,131 @@ NODES_SELECT_RELATED = (
     "owner",
     "zone",
     "boot_disk__node_config__node",
+    "boot_disk__numa_node",
     "pool",
     "current_config",
     "boot_interface__node_config__node",
+    "boot_interface__numa_node",
+    "parent",
 )
 
 
 def blockdev_prefetch(expression):
-    for device in (
-        expression,
-        f"{expression}__physicalblockdevice",
-        f"{expression}__virtualblockdevice",
+    for filesystem_set in (
+        "filesystem_set",
+        "partitiontable_set__partitions__filesystem_set",
     ):
-        for filesystem_set in (
-            "filesystem_set",
-            "partitiontable_set__partitions__filesystem_set",
-        ):
-            yield Prefetch(
-                f"{device}__{filesystem_set}",
-                queryset=Filesystem.objects.select_related(
-                    "cache_set",
-                    "filesystem_group",
+        yield Prefetch(
+            f"{expression}__{filesystem_set}",
+            queryset=Filesystem.objects.select_related(
+                "cache_set",
+                "filesystem_group",
+            ),
+        )
+
+
+def cache_node_storage(nodes):
+    """Share the loaded storage graph with its concrete device instances."""
+    cache_sets = []
+    for node in nodes:
+        config = node.current_config
+        config.node = node
+        devices = {}
+        for block_device in config.blockdevice_set.all():
+            actual = block_device.actual_instance
+            actual.node_config = config
+            actual._prefetched_objects_cache = (
+                block_device._prefetched_objects_cache
+            )
+            devices[block_device.id] = actual
+        if node.boot_disk_id in devices:
+            node.boot_disk = devices[node.boot_disk_id]
+        elif node.boot_disk is not None:
+            config = node.boot_disk.node_config
+            if config.node_id == node.id:
+                config.node = node
+            devices[node.boot_disk_id] = node.boot_disk
+        for block_device in devices.values():
+            filesystems = chain(
+                block_device.filesystem_set.all(),
+                (
+                    filesystem
+                    for table in block_device.partitiontable_set.all()
+                    for partition in table.partitions.all()
+                    for filesystem in partition.filesystem_set.all()
                 ),
             )
+            cache_sets.extend(
+                filesystem.cache_set
+                for filesystem in filesystems
+                if filesystem.cache_set_id is not None
+            )
+    CacheSet.objects.cache_names(cache_sets)
 
-    yield f"{expression}__physicalblockdevice__numa_node"
+
+def cache_node_network(nodes):
+    """Load shared network records once for a read-only node response."""
+    interfaces = []
+    for node in nodes:
+        current = list(node.current_config.interface_set.all())
+        interfaces.extend(current)
+        if node.boot_interface_id is not None:
+            boot = next(
+                (nic for nic in current if nic.id == node.boot_interface_id),
+                None,
+            )
+            if boot is not None:
+                node.boot_interface = boot
+            else:
+                interfaces.append(node.boot_interface)
+
+    addresses = [
+        address
+        for interface in interfaces
+        for address in interface.ip_addresses.all()
+    ]
+    cache_related_discovered_ips(addresses)
+    discovered = {
+        discovery.id: discovery
+        for address in addresses
+        if (
+            discovery := getattr(
+                address, "_cached_related_discovered_ip", None
+            )
+        )
+        is not None
+    }
+    addresses.extend(discovered.values())
+    subnets = Subnet.objects.in_bulk(
+        {address.subnet_id for address in addresses} - {None}
+    )
+    for address in addresses:
+        address.subnet = subnets.get(address.subnet_id)
+
+    pending = (
+        {interface.vlan_id for interface in interfaces}
+        | {subnet.vlan_id for subnet in subnets.values()}
+    ) - {None}
+    vlans = {}
+    while pending:
+        batch = list(
+            VLAN.objects.filter(id__in=pending)
+            .select_related(
+                "fabric", "space", "primary_rack", "secondary_rack"
+            )
+            .prefetch_related("fabric__vlan_set")
+        )
+        vlans.update((vlan.id, vlan) for vlan in batch)
+        pending = (
+            {vlan.relay_vlan_id for vlan in batch} - {None} - vlans.keys()
+        )
+    for vlan in vlans.values():
+        vlan.relay_vlan = vlans.get(vlan.relay_vlan_id)
+    for interface in interfaces:
+        interface.vlan = vlans.get(interface.vlan_id)
+    for subnet in subnets.values():
+        subnet.vlan = vlans[subnet.vlan_id]
+    _cache_interface_mtus(interfaces)
 
 
 NODES_PREFETCH = [
@@ -88,43 +204,24 @@ NODES_PREFETCH = [
     "gateway_link_ipv4__subnet",
     "gateway_link_ipv6__subnet",
     # storage prefetches
-    *blockdev_prefetch("current_config__blockdevice_set"),
-    *blockdev_prefetch(
-        "current_config__blockdevice_set__partitiontable_set__partitions__"
-        "partition_table__block_device__node_config__node__"
-        "current_config__blockdevice_set"
+    Prefetch(
+        "current_config__blockdevice_set",
+        queryset=BlockDevice.objects.select_related(
+            "physicalblockdevice__numa_node",
+            "virtualblockdevice__filesystem_group",
+        ),
     ),
+    *blockdev_prefetch("current_config__blockdevice_set"),
     *blockdev_prefetch("boot_disk"),
     "current_config__filesystem_set",
     # interface prefetches
-    "boot_interface__vlan__primary_rack",
-    "boot_interface__vlan__secondary_rack",
-    "boot_interface__vlan__fabric__vlan_set",
-    "boot_interface__vlan__space",
-    "boot_interface__ip_addresses__subnet",
+    "boot_interface__ip_addresses",
     "boot_interface__parents",
-    (
-        "boot_interface__children_relationships__child__"
-        "children_relationships__child"
-    ),
-    "current_config__interface_set__vlan__primary_rack",
-    "current_config__interface_set__vlan__secondary_rack",
-    "current_config__interface_set__vlan__fabric__vlan_set",
-    "current_config__interface_set__vlan__space",
+    "boot_interface__children_relationships__child",
     "current_config__interface_set__parents",
-    "current_config__interface_set__ip_addresses__subnet",
+    "current_config__interface_set__ip_addresses",
     "current_config__interface_set__numa_node",
-    # Prefetch 3 levels deep, anything more will require extra queries.
-    "current_config__interface_set__children_relationships__child__vlan",
-    (
-        "current_config__interface_set__children_relationships__child__"
-        "children_relationships__child__vlan"
-    ),
-    (
-        "current_config__interface_set__children_relationships__child__"
-        "children_relationships__child__"
-        "children_relationships__child__vlan"
-    ),
+    "current_config__interface_set__children_relationships__child",
     "tags",
     "nodemetadata_set",
     "numanode_set__hugepages_set",
@@ -212,36 +309,102 @@ def is_registered(request, ignore_statuses=None):
     return interfaces.exists()
 
 
-def get_cached_script_results(node):
-    """Load script results into cache and return the cached list."""
-    if not hasattr(node, "_cached_script_results"):
-        node._cached_script_results = list(
-            node.get_latest_script_results.only(
-                "status", "script_set", "script", "suppressed"
-            )
-        )
-        node._cached_commissioning_script_results = []
-        node._cached_testing_script_results = []
-        for script_result in node._cached_script_results:
-            if (
-                script_result.script_set.result_type
-                == RESULT_TYPE.INSTALLATION
-            ):
-                # Don't include installation results in the health
-                # status.
-                continue
-            elif script_result.status == SCRIPT_STATUS.ABORTED:
-                # LP: #1724235 - Ignore aborted scripts.
-                continue
-            elif (
-                script_result.script_set.result_type
-                == RESULT_TYPE.COMMISSIONING
-            ):
-                node._cached_commissioning_script_results.append(script_result)
-            elif script_result.script_set.result_type == RESULT_TYPE.TESTING:
-                node._cached_testing_script_results.append(script_result)
+def _cache_interface_mtus(interfaces):
+    by_id = {}
+    for interface in interfaces:
+        by_id.setdefault(interface.id, interface)
+    mtus = {}
 
-    return node._cached_script_results
+    def effective_mtu(interface):
+        interface = by_id.get(interface.id, interface)
+        if interface.id not in mtus:
+            mtu = interface._get_configured_mtu()
+            for relationship in interface.children_relationships.all():
+                child = by_id.get(relationship.child_id)
+                if child is None:
+                    child = relationship.child
+                mtu = max(mtu, effective_mtu(child))
+            mtus[interface.id] = mtu
+        return mtus[interface.id]
+
+    for interface in interfaces:
+        interface._api_effective_mtu = effective_mtu(interface)
+
+
+_SCRIPT_STATUS_FIELDS = (
+    "script_set__node_id",
+    "script_set__result_type",
+    "script__hardware_type",
+    "status",
+    "suppressed",
+)
+
+
+def _summarize_script_results(rows):
+    statuses = defaultdict(list)
+    for _, result_type, hardware_type, status, suppressed in rows:
+        if status == SCRIPT_STATUS.ABORTED or result_type not in (
+            RESULT_TYPE.COMMISSIONING,
+            RESULT_TYPE.TESTING,
+        ):
+            continue
+        groups = [(result_type, None)]
+        if result_type == RESULT_TYPE.TESTING and hardware_type is not None:
+            groups.append((result_type, hardware_type))
+        for group in groups:
+            # An entirely suppressed group is PASSED, not an absent group.
+            values = statuses[group]
+            if not suppressed:
+                values.append(status)
+    return {
+        group: get_overall_status(values) for group, values in statuses.items()
+    }
+
+
+def _cache_node_statuses(nodes):
+    nodes_by_id = {node.id: node for node in nodes}
+    if not nodes_by_id:
+        return
+
+    events = Event.objects.filter(
+        id__in=[node._status_event_id for node in nodes]
+    ).select_related("type")
+    events_by_id = {event.id: event for event in events}
+    # Latest results span all runs. Select before excluding aborted,
+    # installation, or suppressed results, just as on the detail endpoint.
+    results = (
+        ScriptResult.objects.filter(script_set__node_id__in=nodes_by_id)
+        .order_by(
+            "script_set__node_id",
+            "script_name",
+            "physical_blockdevice_id",
+            "interface_id",
+            "-id",
+        )
+        .distinct(
+            "script_set__node_id",
+            "script_name",
+            "physical_blockdevice_id",
+            "interface_id",
+        )
+        .values_list(*_SCRIPT_STATUS_FIELDS)
+    )
+    for node in nodes:
+        node._api_script_statuses = {}
+    for node_id, rows in groupby(results, key=lambda row: row[0]):
+        nodes_by_id[node_id]._api_script_statuses = _summarize_script_results(
+            rows
+        )
+    for node in nodes:
+        node._status_event = events_by_id.get(node._status_event_id)
+
+
+def _script_status(node, result_type, hardware_type=None):
+    if not hasattr(node, "_api_script_statuses"):
+        node._api_script_statuses = _summarize_script_results(
+            node.get_latest_script_results.values_list(*_SCRIPT_STATUS_FIELDS)
+        )
+    return node._api_script_statuses.get((result_type, hardware_type), -1)
 
 
 def get_script_status_name(script_status):
@@ -294,8 +457,7 @@ class NodeHandler(OperationsHandler):
 
     @classmethod
     def commissioning_status(handler, node):
-        get_cached_script_results(node)
-        return get_status_from_qs(node._cached_commissioning_script_results)
+        return _script_status(node, RESULT_TYPE.COMMISSIONING)
 
     @classmethod
     def commissioning_status_name(handler, node):
@@ -303,8 +465,7 @@ class NodeHandler(OperationsHandler):
 
     @classmethod
     def testing_status(handler, node):
-        get_cached_script_results(node)
-        return get_status_from_qs(node._cached_testing_script_results)
+        return _script_status(node, RESULT_TYPE.TESTING)
 
     @classmethod
     def testing_status_name(handler, node):
@@ -312,14 +473,7 @@ class NodeHandler(OperationsHandler):
 
     @classmethod
     def cpu_test_status(handler, node):
-        get_cached_script_results(node)
-        return get_status_from_qs(
-            [
-                script_result
-                for script_result in node._cached_testing_script_results
-                if script_result.script.hardware_type == HARDWARE_TYPE.CPU
-            ]
-        )
+        return _script_status(node, RESULT_TYPE.TESTING, HARDWARE_TYPE.CPU)
 
     @classmethod
     def cpu_test_status_name(handler, node):
@@ -327,14 +481,7 @@ class NodeHandler(OperationsHandler):
 
     @classmethod
     def memory_test_status(handler, node):
-        get_cached_script_results(node)
-        return get_status_from_qs(
-            [
-                script_result
-                for script_result in node._cached_testing_script_results
-                if script_result.script.hardware_type == HARDWARE_TYPE.MEMORY
-            ]
-        )
+        return _script_status(node, RESULT_TYPE.TESTING, HARDWARE_TYPE.MEMORY)
 
     @classmethod
     def memory_test_status_name(handler, node):
@@ -342,14 +489,7 @@ class NodeHandler(OperationsHandler):
 
     @classmethod
     def network_test_status(handler, node):
-        get_cached_script_results(node)
-        return get_status_from_qs(
-            [
-                script_result
-                for script_result in node._cached_testing_script_results
-                if script_result.script.hardware_type == HARDWARE_TYPE.NETWORK
-            ]
-        )
+        return _script_status(node, RESULT_TYPE.TESTING, HARDWARE_TYPE.NETWORK)
 
     @classmethod
     def network_test_status_name(handler, node):
@@ -357,14 +497,7 @@ class NodeHandler(OperationsHandler):
 
     @classmethod
     def storage_test_status(handler, node):
-        get_cached_script_results(node)
-        return get_status_from_qs(
-            [
-                script_result
-                for script_result in node._cached_testing_script_results
-                if script_result.script.hardware_type == HARDWARE_TYPE.STORAGE
-            ]
-        )
+        return _script_status(node, RESULT_TYPE.TESTING, HARDWARE_TYPE.STORAGE)
 
     @classmethod
     def storage_test_status_name(handler, node):
@@ -372,14 +505,7 @@ class NodeHandler(OperationsHandler):
 
     @classmethod
     def other_test_status(handler, node):
-        get_cached_script_results(node)
-        return get_status_from_qs(
-            [
-                script_result
-                for script_result in node._cached_testing_script_results
-                if script_result.script.hardware_type == HARDWARE_TYPE.NODE
-            ]
-        )
+        return _script_status(node, RESULT_TYPE.TESTING, HARDWARE_TYPE.NODE)
 
     @classmethod
     def other_test_status_name(handler, node):
@@ -387,14 +513,7 @@ class NodeHandler(OperationsHandler):
 
     @classmethod
     def interface_test_status(handler, node):
-        get_cached_script_results(node)
-        return get_status_from_qs(
-            [
-                script_result
-                for script_result in node._cached_testing_script_results
-                if script_result.script.hardware_type == HARDWARE_TYPE.NETWORK
-            ]
-        )
+        return _script_status(node, RESULT_TYPE.TESTING, HARDWARE_TYPE.NETWORK)
 
     @classmethod
     def interface_test_status_name(handler, node):
@@ -863,8 +982,19 @@ class NodesHandler(OperationsHandler):
                 request.user, NodePermission.view
             )
             nodes, _, _ = form.filter_nodes(nodes)
+            latest_event = Event.objects.filter(
+                node_id=OuterRef("id"), type__level__gte=logging.INFO
+            ).order_by("-created", "-id")
+            nodes = nodes.annotate(
+                _status_event_id=Subquery(latest_event.values("id")[:1])
+            )
             nodes = nodes.select_related(*NODES_SELECT_RELATED)
             nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by("id")
+            _cache_node_statuses(nodes)
+            cache_node_storage(nodes)
+            if "default_gateways" in self.fields:
+                preload_node_gateways(nodes)
+            cache_node_network(nodes)
         # Assign the correct domain to each node. Manually setting the domain
         # object avoids extra work by Piston when serializing the nodes.
         for node in nodes:

@@ -1,12 +1,14 @@
-# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for a Bcache cache set."""
 
+from collections import defaultdict
 from itertools import chain
 
 from django.core.exceptions import PermissionDenied
 from django.db.models import Manager, Q
+from django.db.models.functions import Coalesce
 from django.http import Http404
 
 from maasserver.enum import FILESYSTEM_TYPE
@@ -29,6 +31,63 @@ class CacheSetManager(Manager):
             if cset == cache_set:
                 return idx
         raise self.model.DoesNotExist()
+
+    def cache_names(self, cache_sets):
+        """Prepare names on cache sets loaded for a read-only API response."""
+        from maasserver.models.filesystem import Filesystem
+
+        by_id = defaultdict(list)
+        for cache_set in cache_sets:
+            by_id[cache_set.id].append(cache_set)
+        if not by_id:
+            return
+
+        # The first filesystem determines the owner, even when it belongs to
+        # an older configuration or a machine outside the requested list.
+        owner_configs = dict(
+            Filesystem.objects.filter(cache_set_id__in=by_id)
+            .order_by("cache_set_id", "id")
+            .distinct("cache_set_id")
+            .values_list(
+                "cache_set_id",
+                Coalesce(
+                    "partition__partition_table__block_device__"
+                    "node_config__node__current_config_id",
+                    "block_device__node_config__node__current_config_id",
+                ),
+            )
+        )
+        config_ids = set(owner_configs.values()) - {None}
+        rows = (
+            Filesystem.objects.filter(cache_set_id__isnull=False)
+            .filter(
+                Q(block_device__node_config_id__in=config_ids)
+                | Q(
+                    partition__partition_table__block_device__node_config_id__in=config_ids
+                )
+            )
+            .order_by("cache_set_id")
+            .values_list(
+                "cache_set_id",
+                "block_device__node_config_id",
+                "partition__partition_table__block_device__node_config_id",
+            )
+        )
+        counts = defaultdict(int)
+        names = {}
+        for cache_id, block_config, partition_config in rows:
+            for config_id in {block_config, partition_config} & config_ids:
+                # Match get_cache_set_idx: duplicate filesystem rows count,
+                # but a cache set takes the index of its first occurrence.
+                names.setdefault(
+                    (config_id, cache_id), f"cache{counts[config_id]}"
+                )
+                counts[config_id] += 1
+        for cache_id, instances in by_id.items():
+            name = names.get((owner_configs.get(cache_id), cache_id))
+            if name is not None:
+                for cache_set in instances:
+                    cache_set._api_name = name
 
     def get_cache_sets_for_node(self, node):
         """Return the cache sets for the `node`."""
@@ -171,6 +230,8 @@ class CacheSet(CleanSave, TimestampedModel):
 
     def get_name(self):
         """Return the name of the node."""
+        if hasattr(self, "_api_name"):
+            return self._api_name
         cache_idx = CacheSet.objects.get_cache_set_idx(self)
         return "cache%d" % cache_idx
 

@@ -155,7 +155,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             # CIDR.
             try:
                 ip_cidr = IPNetwork(item)
-            except (AddrFormatError, ValueError):
+            except AddrFormatError, ValueError:
                 pass
             else:
                 cidr = str(ip_cidr.cidr)
@@ -168,7 +168,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             # Check if the user passed in an IP address.
             try:
                 ip = IPAddress(item)
-            except (AddrFormatError, ValueError):
+            except AddrFormatError, ValueError:
                 pass
             else:
                 return op(current_q, Q(ip_addresses__ip=str(ip)))
@@ -737,8 +737,7 @@ class Interface(CleanSave, TimestampedModel):
                     return True
         return False
 
-    def get_effective_mtu(self):
-        """Return the effective MTU value for this interface."""
+    def _get_configured_mtu(self):
         mtu = None
         if self.params:
             mtu = self.params.get("mtu", None)
@@ -750,6 +749,11 @@ class Interface(CleanSave, TimestampedModel):
             from maasserver.models.vlan import DEFAULT_MTU
 
             mtu = DEFAULT_MTU
+        return mtu
+
+    def get_effective_mtu(self):
+        """Return the effective MTU value for this interface."""
+        mtu = self._get_configured_mtu()
         children = self.get_successors()
         # Check if any child interface has a greater MTU. It is an invalid
         # configuration for the parent MTU to be smaller. (LP: #1662948)

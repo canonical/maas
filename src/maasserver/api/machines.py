@@ -1894,6 +1894,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
     anonymous = AnonMachinesHandler
     base_model = Machine
     fields = DISPLAYED_MACHINE_FIELDS
+    cache_model_serialization = True
 
     def create(self, request):
         # Note: this docstring is duplicated above. Be sure to update both.

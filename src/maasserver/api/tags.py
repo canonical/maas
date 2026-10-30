@@ -14,7 +14,12 @@ from piston3.utils import rc
 
 from maascommon.logging.security import CREATED, DELETED, UPDATED
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasserver.api.nodes import NODES_PREFETCH, NODES_SELECT_RELATED
+from maasserver.api.nodes import (
+    cache_node_network,
+    cache_node_storage,
+    NODES_PREFETCH,
+    NODES_SELECT_RELATED,
+)
 from maasserver.api.support import (
     check_permission,
     operation,
@@ -196,11 +201,10 @@ class TagHandler(OperationsHandler):
         # Fetch all the domains in a single query
         domains = list(Domain.objects.get_all_with_resource_record_count())
         domain_map = {d.id: d for d in domains}
+        cache_node_storage(nodes)
+        cache_node_network(nodes)
 
-        # Set related node parents so no extra queries are needed.
         for node in nodes:
-            for block_device in node.current_config.blockdevice_set.all():
-                block_device.node = node
             node.domain = domain_map.get(node.domain_id)
         return [node.as_self() for node in nodes]
 

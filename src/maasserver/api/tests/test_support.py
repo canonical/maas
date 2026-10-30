@@ -8,8 +8,12 @@ from unittest.mock import call, Mock, sentinel
 from django.core.exceptions import PermissionDenied
 from django.urls import reverse
 from piston3.authentication import NoAuthentication
+from piston3.emitters import JSONEmitter
+from piston3.handler import typemapper
 
 from maasserver.api.doc import get_api_description
+from maasserver.api.emitters import ModelCachingJSONEmitter
+from maasserver.api.machines import MachinesHandler
 from maasserver.api.support import (
     AdminRestrictedResource,
     check_permission,
@@ -30,6 +34,96 @@ from maastesting.testcase import MAASTestCase
 class TestEmitterOnlyJSON(MAASTestCase):
     def test_emitters(self):
         self.assertEqual(Emitter.EMITTERS.keys(), {"json"})
+
+
+class TestModelCachingJSONEmitter(MAASServerTestCase):
+    def test_allows_finite_related_back_references(self):
+        machine = factory.make_Node().as_machine()
+        reverse("machines_handler")
+        fields = (
+            "system_id",
+            ("numanode_set", ("index", ("node", ("system_id",)))),
+        )
+        expected = JSONEmitter(
+            [machine], typemapper, MachinesHandler(), fields, anonymous=False
+        ).construct()
+        actual = ModelCachingJSONEmitter(
+            [machine], typemapper, MachinesHandler(), fields, anonymous=False
+        ).construct()
+        self.assertEqual(expected, actual)
+        self.assertEqual(
+            machine.system_id,
+            actual[0]["numanode_set"][0]["node"]["system_id"],
+        )
+
+    def test_keeps_distinct_fieldsets_for_shared_models(self):
+        machine = factory.make_Node().as_machine()
+        machine.brief_zone = machine.zone
+        zone_uri = reverse("zone_handler", args=[machine.zone.name])
+        fields = ("zone", ("brief_zone", ("name",)))
+        handler = MachinesHandler()
+        expected = JSONEmitter(
+            [machine], typemapper, handler, fields, anonymous=False
+        ).construct()
+        actual = ModelCachingJSONEmitter(
+            [machine], typemapper, handler, fields, anonymous=False
+        ).construct()
+
+        self.assertEqual(expected, actual)
+        self.assertEqual(
+            {"name": machine.zone.name, "resource_uri": zone_uri},
+            actual[0]["brief_zone"],
+        )
+        self.assertEqual(
+            machine.zone.description, actual[0]["zone"]["description"]
+        )
+
+    def test_keeps_equal_instances_with_different_values_separate(self):
+        first = factory.make_Node().as_machine()
+        second = type(first).objects.get(id=first.id)
+        first.hostname = "first-view"
+        second.hostname = "second-view"
+        emitter = ModelCachingJSONEmitter(
+            [first, second],
+            typemapper,
+            MachinesHandler(),
+            ("hostname",),
+            anonymous=False,
+        )
+        self.assertEqual(
+            ["first-view", "second-view"],
+            [result["hostname"] for result in emitter.construct()],
+        )
+
+    def test_construct_does_not_retain_previous_model_values(self):
+        machine = factory.make_Node().as_machine()
+        machine.hostname = "before"
+        emitter = ModelCachingJSONEmitter(
+            [machine],
+            typemapper,
+            MachinesHandler(),
+            ("hostname",),
+            anonymous=False,
+        )
+        first = emitter.construct()
+        machine.hostname = "after"
+        second = emitter.construct()
+        self.assertEqual("before", first[0]["hostname"])
+        self.assertEqual("after", second[0]["hostname"])
+
+    def test_rejects_recursive_model_fields(self):
+        machine = factory.make_Node().as_machine()
+        machine.recursive = machine
+        reverse("machines_handler")
+        for emitter_class in (JSONEmitter, ModelCachingJSONEmitter):
+            emitter = emitter_class(
+                [machine],
+                typemapper,
+                MachinesHandler(),
+                ("recursive",),
+                anonymous=False,
+            )
+            self.assertRaises(RuntimeError, emitter.construct)
 
 
 class StubHandler:

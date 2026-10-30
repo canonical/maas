@@ -188,41 +188,27 @@ class TestTagAPI(APITestCase.ForUser):
 
     def test_GET_nodes_query_count(self):
         tag = factory.make_Tag()
-
-        query_counts = []
-        node_counts = []
-
+        system_ids = []
         vlan = factory.make_VLAN(space=factory.make_Space())
-        machine = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
-        machine.tags.add(tag)
-        num_queries, response = count_queries(
-            self.client.get, get_tag_uri(tag), {"op": "nodes"}
-        )
-        query_counts.append(num_queries)
-        node_counts.append(len(response.json()))
-        machine = factory.make_Node_with_Interface_on_Subnet()
-        machine.tags.add(tag)
-        num_queries, response = count_queries(
-            self.client.get, get_tag_uri(tag), {"op": "nodes"}
-        )
-        query_counts.append(num_queries)
-        node_counts.append(len(response.json()))
-        machine = factory.make_Node_with_Interface_on_Subnet()
-        machine.tags.add(tag)
-        num_queries, response = count_queries(
-            self.client.get, get_tag_uri(tag), {"op": "nodes"}
-        )
-        query_counts.append(num_queries)
-        node_counts.append(len(response.json()))
+        base_count = 43
+        queries_per_node = 4
 
-        self.assertEqual(node_counts, [1, 2, 3])
-        # Because of fields `status_action`, `status_message`,
-        # `default_gateways`, `health_status` and 'resource_pool', the number
-        # of queries is not the same but it is proportional to the number of
-        # machines.
-        base_count = 80
-        for idx, node_count in enumerate(node_counts):
-            self.assertEqual(query_counts[idx], base_count + (node_count * 6))
+        for node_count, node_vlan in enumerate((vlan, None, None), start=1):
+            machine = factory.make_Node_with_Interface_on_Subnet(
+                vlan=node_vlan
+            )
+            machine.tags.add(tag)
+            system_ids.append(machine.system_id)
+            num_queries, response = count_queries(
+                self.client.get, get_tag_uri(tag), {"op": "nodes"}
+            )
+            self.assertEqual(http.client.OK, response.status_code)
+            self.assertCountEqual(
+                system_ids, extract_system_ids(response.json())
+            )
+            self.assertLessEqual(
+                num_queries, base_count + node_count * queries_per_node
+            )
 
     def test_GET_machines_returns_machines(self):
         tag = factory.make_Tag()
