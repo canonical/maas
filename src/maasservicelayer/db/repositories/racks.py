@@ -2,22 +2,19 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from sqlalchemy import func, select, Table
-from sqlalchemy.sql.operators import eq
 
-from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import AgentTable, NodeTable, RackTable
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.racks import Rack, RackWithSummary
 
 
-class RacksClauseFactory(ClauseFactory):
-    @classmethod
-    def with_rack_id(cls, rack_id: int) -> Clause:
-        return Clause(condition=eq(RackTable.c.id, rack_id))
-
-
 class RacksRepository(BaseRepository[Rack]):
+    summary_mapper = DefaultDomainDataMapper[RackWithSummary](
+        RackWithSummary, RackTable
+    )
+
     def get_repository_table(self) -> Table:
         return RackTable
 
@@ -50,6 +47,9 @@ class RacksRepository(BaseRepository[Rack]):
         result = await self.execute_stmt(stmt)
         total = (await self.execute_stmt(count_stmt)).scalar_one()
         return ListResult[RackWithSummary](
-            items=[RackWithSummary(**row._asdict()) for row in result.all()],
+            items=[
+                self.summary_mapper.to_domain(row._mapping)
+                for row in result.all()
+            ],
             total=total,
         )

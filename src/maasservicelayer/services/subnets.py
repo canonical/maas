@@ -14,27 +14,7 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.subnets import SubnetBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dhcpsnippets import (
-    DhcpSnippetsClauseFactory,
-)
-from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
-from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
-    NodeGroupToRackControllersClauseFactory,
-)
-from maasservicelayer.db.repositories.reservedips import (
-    ReservedIPsClauseFactory,
-)
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
-from maasservicelayer.db.repositories.staticroutes import (
-    StaticRoutesClauseFactory,
-)
-from maasservicelayer.db.repositories.subnets import (
-    SubnetClauseFactory,
-    SubnetsRepository,
-)
+from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     PreconditionFailedException,
@@ -43,6 +23,17 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_SUBNET_WITH_IPS_IN_USE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.dhcpsnippets import DhcpSnippetsFilters
+from maasservicelayer.filters.ipranges import IPRangeFilters
+from maasservicelayer.filters.nodegrouptorackcontrollers import (
+    NodeGroupToRackControllersFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.reservedips import ReservedIPsFilters
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
+from maasservicelayer.filters.staticroutes import StaticRoutesFilters
+from maasservicelayer.filters.subnets import SubnetFilters
 from maasservicelayer.models.base import Unset
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService
@@ -93,17 +84,17 @@ class SubnetsService(BaseService[Subnet, SubnetsRepository, SubnetBuilder]):
         self, existing_resource: Subnet | None, builder: SubnetBuilder
     ):
         if not isinstance(builder.cidr, Unset):
-            conditions = [SubnetClauseFactory.with_cidr_overlap(builder.cidr)]
+            conditions: list[Filter] = [
+                SubnetFilters.with_cidr_overlap(builder.cidr)
+            ]
             if existing_resource is not None:
                 conditions.append(
-                    SubnetClauseFactory.not_clause(
-                        SubnetClauseFactory.with_id(existing_resource.id)
+                    SubnetFilters.not_filter(
+                        SubnetFilters.with_id(existing_resource.id)
                     )
                 )
             exists = await self.exists(
-                query=QuerySpec(
-                    where=SubnetClauseFactory.and_clauses(conditions)
-                )
+                query=QuerySpec(where=SubnetFilters.and_filters(conditions))
             )
             if exists:
                 raise ValidationException.build_for_field(
@@ -186,16 +177,16 @@ class SubnetsService(BaseService[Subnet, SubnetsRepository, SubnetBuilder]):
     async def pre_delete_hook(self, resource_to_be_deleted: Subnet) -> None:
         has_ips_in_use = await self.staticipaddress_service.exists(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.and_clauses(
+                where=StaticIPAddressFilters.and_filters(
                     [
-                        StaticIPAddressClauseFactory.with_subnet_id(
+                        StaticIPAddressFilters.with_subnet_id(
                             resource_to_be_deleted.id
                         ),
-                        StaticIPAddressClauseFactory.with_linked_to_interface(),
-                        StaticIPAddressClauseFactory.with_alloc_type_not_in(
+                        StaticIPAddressFilters.with_linked_to_interface(),
+                        StaticIPAddressFilters.with_alloc_type_not_in(
                             [IpAddressType.DISCOVERED, IpAddressType.DHCP]
                         ),
-                        StaticIPAddressClauseFactory.with_ip_not_null(),
+                        StaticIPAddressFilters.with_ip_not_null(),
                     ]
                 )
             )
@@ -215,39 +206,35 @@ class SubnetsService(BaseService[Subnet, SubnetsRepository, SubnetBuilder]):
         # cascade delete
         await self.staticipaddress_service.delete_many(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_subnet_id(resource.id)
+                where=StaticIPAddressFilters.with_subnet_id(resource.id)
             )
         )
         await self.ipranges_service.delete_many(
-            query=QuerySpec(
-                where=IPRangeClauseFactory.with_subnet_id(resource.id)
-            )
+            query=QuerySpec(where=IPRangeFilters.with_subnet_id(resource.id))
         )
         await self.staticroutes_service.delete_many(
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.or_clauses(
+                where=StaticRoutesFilters.or_filters(
                     [
-                        StaticRoutesClauseFactory.with_source_id(resource.id),
-                        StaticRoutesClauseFactory.with_destination_id(
-                            resource.id
-                        ),
+                        StaticRoutesFilters.with_source_id(resource.id),
+                        StaticRoutesFilters.with_destination_id(resource.id),
                     ]
                 )
             )
         )
         await self.reservedips_service.delete_many(
             query=QuerySpec(
-                where=ReservedIPsClauseFactory.with_subnet_id(resource.id)
+                where=ReservedIPsFilters.with_subnet_id(resource.id)
             )
         )
         await self.dhcpsnippets_service.delete_many(
             query=QuerySpec(
-                where=DhcpSnippetsClauseFactory.with_subnet_id(resource.id)
+                where=DhcpSnippetsFilters.with_subnet_id(resource.id)
             )
         )
         await self.nodegrouptorackcontrollers.delete_many(
             query=QuerySpec(
-                where=NodeGroupToRackControllersClauseFactory.with_subnet_id(
+                where=NodeGroupToRackControllersFilters.with_subnet_id(
                     resource.id
                 )
             )

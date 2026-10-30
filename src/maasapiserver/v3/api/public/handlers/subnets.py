@@ -32,9 +32,6 @@ from maasapiserver.v3.api.public.models.responses.ui_subnets import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX, V3_API_UI_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
-from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -42,6 +39,10 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.base import FilterFactory
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.subnets import SubnetFilters
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -76,10 +77,10 @@ class SubnetsHandler(Handler):
     ) -> SubnetsListResponse:
         vlan_exists = await services.vlans.exists(
             QuerySpec(
-                where=VlansClauseFactory.and_clauses(
+                where=VlansFilters.and_filters(
                     [
-                        VlansClauseFactory.with_id(vlan_id),
-                        VlansClauseFactory.with_fabric_id(fabric_id),
+                        VlansFilters.with_id(vlan_id),
+                        VlansFilters.with_fabric_id(fabric_id),
                     ]
                 )
             )
@@ -94,10 +95,10 @@ class SubnetsHandler(Handler):
                 ]
             )
         query = QuerySpec(
-            where=SubnetClauseFactory.and_clauses(
+            where=SubnetFilters.and_filters(
                 [
-                    SubnetClauseFactory.with_fabric_id(fabric_id),
-                    SubnetClauseFactory.with_vlan_id(vlan_id),
+                    SubnetFilters.with_fabric_id(fabric_id),
+                    SubnetFilters.with_vlan_id(vlan_id),
                 ]
             )
         )
@@ -156,11 +157,11 @@ class SubnetsHandler(Handler):
     ) -> SubnetResponse:
         subnet = await services.subnets.get_one(
             query=QuerySpec(
-                where=SubnetClauseFactory.and_clauses(
+                where=SubnetFilters.and_filters(
                     [
-                        SubnetClauseFactory.with_id(subnet_id),
-                        SubnetClauseFactory.with_vlan_id(vlan_id),
-                        SubnetClauseFactory.with_fabric_id(fabric_id),
+                        SubnetFilters.with_id(subnet_id),
+                        SubnetFilters.with_vlan_id(vlan_id),
+                        SubnetFilters.with_fabric_id(fabric_id),
                     ]
                 )
             )
@@ -205,10 +206,10 @@ class SubnetsHandler(Handler):
     ) -> SubnetResponse:
         vlan_exists = await services.vlans.exists(
             QuerySpec(
-                where=VlansClauseFactory.and_clauses(
+                where=VlansFilters.and_filters(
                     [
-                        VlansClauseFactory.with_id(vlan_id),
-                        VlansClauseFactory.with_fabric_id(fabric_id),
+                        VlansFilters.with_id(vlan_id),
+                        VlansFilters.with_fabric_id(fabric_id),
                     ]
                 )
             )
@@ -261,11 +262,11 @@ class SubnetsHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> SubnetResponse:
         query = QuerySpec(
-            where=SubnetClauseFactory.and_clauses(
+            where=SubnetFilters.and_filters(
                 [
-                    SubnetClauseFactory.with_id(id),
-                    SubnetClauseFactory.with_vlan_id(vlan_id),
-                    SubnetClauseFactory.with_fabric_id(fabric_id),
+                    SubnetFilters.with_id(id),
+                    SubnetFilters.with_vlan_id(vlan_id),
+                    SubnetFilters.with_fabric_id(fabric_id),
                 ]
             )
         )
@@ -313,11 +314,11 @@ class SubnetsHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         query = QuerySpec(
-            where=SubnetClauseFactory.and_clauses(
+            where=SubnetFilters.and_filters(
                 [
-                    SubnetClauseFactory.with_id(id),
-                    SubnetClauseFactory.with_vlan_id(vlan_id),
-                    SubnetClauseFactory.with_fabric_id(fabric_id),
+                    SubnetFilters.with_id(id),
+                    SubnetFilters.with_vlan_id(vlan_id),
+                    SubnetFilters.with_fabric_id(fabric_id),
                 ]
             )
         )
@@ -357,19 +358,19 @@ class UISubnetsHandler(Handler):
         free_text_search: UISubnetsFreeTextSearchQueryParam = Depends(),  # noqa: B008
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> UISubnetsListResponse:
-        filters_clause = filters.to_clause()
-        free_text_search_clause = free_text_search.to_clause()
-        where_clause = None
-        if filters_clause and free_text_search_clause:
-            where_clause = ClauseFactory.and_clauses(
-                [filters_clause, free_text_search_clause]
+        structured_filter = filters.to_filter()
+        search_filter = free_text_search.to_filter()
+        where_filter = None
+        if structured_filter and search_filter:
+            where_filter = FilterFactory.and_filters(
+                [structured_filter, search_filter]
             )
-        elif filters_clause:
-            where_clause = filters_clause
-        elif free_text_search_clause:
-            where_clause = free_text_search_clause
+        elif structured_filter:
+            where_filter = structured_filter
+        elif search_filter:
+            where_filter = search_filter
 
-        query = QuerySpec(where=where_clause, order_by=order_by.to_clauses())
+        query = QuerySpec(where=where_filter, order_by=order_by.to_order_by())
         subnets = await services.ui_subnets.list(
             page=pagination_params.page,
             size=pagination_params.size,

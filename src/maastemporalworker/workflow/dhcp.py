@@ -22,19 +22,6 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPForAgentParam,
     ConfigureDHCPParam,
 )
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.domains import DomainsClauseFactory
-from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
-from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
-from maasservicelayer.db.repositories.reservedips import (
-    ReservedIPsClauseFactory,
-)
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
-from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
@@ -45,6 +32,15 @@ from maasservicelayer.db.tables import (
     SubnetTable,
     VlanTable,
 )
+from maasservicelayer.filters.domains import DomainsFilters
+from maasservicelayer.filters.interfaces import InterfaceFilters
+from maasservicelayer.filters.ipranges import IPRangeFilters
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.reservedips import ReservedIPsFilters
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
+from maasservicelayer.filters.subnets import SubnetFilters
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.models.secrets import OMAPIKeySecret
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.models.vlans import Vlan
@@ -499,10 +495,10 @@ class DHCPConfigActivity(ActivityBase):
     ) -> list[Vlan]:
         return await svc.vlans.get_node_vlans(
             QuerySpec(
-                where=VlansClauseFactory.and_clauses(
-                    clauses=[
-                        VlansClauseFactory.with_system_id(system_id),
-                        VlansClauseFactory.with_dhcp_on(True),
+                where=VlansFilters.and_filters(
+                    filters=[
+                        VlansFilters.with_system_id(system_id),
+                        VlansFilters.with_dhcp_on(True),
                     ],
                 ),
             ),
@@ -518,19 +514,19 @@ class DHCPConfigActivity(ActivityBase):
             )
             node = await svc.nodes.get_one(
                 query=QuerySpec(
-                    where=NodeClauseFactory.with_system_id(param.system_id)
+                    where=NodeFilters.with_system_id(param.system_id)
                 )
             )
             assert node is not None
             assert node.current_config_id is not None
             ifaces = await svc.interfaces.get_many(
                 query=QuerySpec(
-                    where=InterfaceClauseFactory.and_clauses(
-                        clauses=[
-                            InterfaceClauseFactory.with_node_config_id(
+                    where=InterfaceFilters.and_filters(
+                        filters=[
+                            InterfaceFilters.with_node_config_id(
                                 node.current_config_id
                             ),
-                            InterfaceClauseFactory.with_vlan_id_in(
+                            InterfaceFilters.with_vlan_id_in(
                                 [vlan.id for vlan in vlans]
                             ),
                         ]
@@ -554,20 +550,18 @@ class DHCPConfigActivity(ActivityBase):
         for subnet in subnets:
             sips += await svc.staticipaddress.get_many(
                 query=QuerySpec(
-                    where=StaticIPAddressClauseFactory.and_clauses(
+                    where=StaticIPAddressFilters.and_filters(
                         [
-                            StaticIPAddressClauseFactory.with_subnet_id(
-                                subnet.id
-                            ),
-                            StaticIPAddressClauseFactory.or_clauses(
+                            StaticIPAddressFilters.with_subnet_id(subnet.id),
+                            StaticIPAddressFilters.or_filters(
                                 [
-                                    StaticIPAddressClauseFactory.with_alloc_type(
+                                    StaticIPAddressFilters.with_alloc_type(
                                         IpAddressType.AUTO
                                     ),
-                                    StaticIPAddressClauseFactory.with_alloc_type(
+                                    StaticIPAddressFilters.with_alloc_type(
                                         IpAddressType.USER_RESERVED
                                     ),
-                                    StaticIPAddressClauseFactory.with_alloc_type(
+                                    StaticIPAddressFilters.with_alloc_type(
                                         IpAddressType.STICKY
                                     ),
                                 ]
@@ -578,14 +572,12 @@ class DHCPConfigActivity(ActivityBase):
             )
             reserved_ips += await svc.reservedips.get_many(
                 query=QuerySpec(
-                    where=ReservedIPsClauseFactory.with_subnet_id(subnet.id)
+                    where=ReservedIPsFilters.with_subnet_id(subnet.id)
                 )
             )
 
         domains = await svc.domains.get_many(
-            query=QuerySpec(
-                where=DomainsClauseFactory.with_authoritative(True)
-            )
+            query=QuerySpec(where=DomainsFilters.with_authoritative(True))
         )
         domain_search_list = [domain.name for domain in domains]
 
@@ -609,7 +601,7 @@ class DHCPConfigActivity(ActivityBase):
                 else:
                     node = await svc.nodes.get_one(
                         query=QuerySpec(
-                            where=NodeClauseFactory.with_node_config_id(
+                            where=NodeFilters.with_node_config_id(
                                 interface.node_config_id
                             )
                         )
@@ -666,19 +658,19 @@ class DHCPConfigActivity(ActivityBase):
             )
             node = await svc.nodes.get_one(
                 query=QuerySpec(
-                    where=NodeClauseFactory.with_system_id(param.system_id)
+                    where=NodeFilters.with_system_id(param.system_id)
                 )
             )
             assert node is not None
             assert node.current_config_id is not None
             ifaces = await svc.interfaces.get_many(
                 query=QuerySpec(
-                    where=InterfaceClauseFactory.and_clauses(
-                        clauses=[
-                            InterfaceClauseFactory.with_node_config_id(
+                    where=InterfaceFilters.and_filters(
+                        filters=[
+                            InterfaceFilters.with_node_config_id(
                                 node.current_config_id
                             ),
-                            InterfaceClauseFactory.with_vlan_id_in(
+                            InterfaceFilters.with_vlan_id_in(
                                 [vlan.id for vlan in vlans]
                             ),
                         ]
@@ -687,14 +679,14 @@ class DHCPConfigActivity(ActivityBase):
             )
             subnets = await svc.subnets.get_many(
                 query=QuerySpec(
-                    where=SubnetClauseFactory.with_vlan_id_in(
+                    where=SubnetFilters.with_vlan_id_in(
                         [vlan.id for vlan in vlans]
                     )
                 )
             )
             ipranges = await svc.ipranges.get_many(
                 query=QuerySpec(
-                    where=IPRangeClauseFactory.with_subnet_ids(
+                    where=IPRangeFilters.with_subnet_ids(
                         [subnet.id for subnet in subnets]
                     )
                 )
@@ -703,17 +695,17 @@ class DHCPConfigActivity(ActivityBase):
             assert node.system_id is not None
             rack_ips = await svc.staticipaddress.get_for_nodes(
                 query=QuerySpec(
-                    where=StaticIPAddressClauseFactory.and_clauses(
+                    where=StaticIPAddressFilters.and_filters(
                         [
-                            StaticIPAddressClauseFactory.with_node_system_id(
+                            StaticIPAddressFilters.with_node_system_id(
                                 system_id=node.system_id
                             ),
-                            StaticIPAddressClauseFactory.or_clauses(
+                            StaticIPAddressFilters.or_filters(
                                 [
-                                    StaticIPAddressClauseFactory.with_alloc_type(
+                                    StaticIPAddressFilters.with_alloc_type(
                                         IpAddressType.STICKY
                                     ),
-                                    StaticIPAddressClauseFactory.with_alloc_type(
+                                    StaticIPAddressFilters.with_alloc_type(
                                         IpAddressType.USER_RESERVED
                                     ),
                                 ]

@@ -6,7 +6,6 @@ from operator import eq
 
 from sqlalchemy import func, select, Table
 
-from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     BootResourceFileSyncTable,
@@ -14,20 +13,6 @@ from maasservicelayer.db.tables import (
     NodeTable,
 )
 from maasservicelayer.models.bootresourcefilesync import BootResourceFileSync
-
-
-class BootResourceFileSyncClauseFactory(ClauseFactory):
-    @classmethod
-    def with_file_id(cls, file_id: int) -> Clause:
-        return Clause(
-            condition=eq(BootResourceFileSyncTable.c.file_id, file_id)
-        )
-
-    @classmethod
-    def with_file_ids(cls, file_ids: set[int]) -> Clause:
-        return Clause(
-            condition=BootResourceFileSyncTable.c.file_id.in_(file_ids)
-        )
 
 
 class BootResourceFileSyncRepository(BaseRepository[BootResourceFileSync]):

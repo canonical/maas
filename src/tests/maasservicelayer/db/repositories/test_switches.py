@@ -11,10 +11,7 @@ from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.bootresources import (
     BootResourcesRepository,
 )
-from maasservicelayer.db.repositories.switches import (
-    SwitchClauseFactory,
-    SwitchesRepository,
-)
+from maasservicelayer.db.repositories.switches import SwitchesRepository
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.switches import Switch
 from maasservicelayer.utils.date import utcnow
@@ -24,32 +21,6 @@ from tests.fixtures.factories.switches import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestSwitchClauseFactory:
-    """Tests for SwitchClauseFactory query builder."""
-
-    def test_with_id(self) -> None:
-        clause = SwitchClauseFactory.with_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_switch.id = 1"
-        )
-
-    def test_with_ids(self) -> None:
-        clause = SwitchClauseFactory.with_ids([1, 2, 3])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_switch.id IN (1, 2, 3)"
-        )
 
 
 class TestSwitchesRepository(RepositoryCommonTests[Switch]):

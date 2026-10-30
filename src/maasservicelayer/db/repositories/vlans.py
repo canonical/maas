@@ -6,8 +6,7 @@ from typing import List, Type
 from sqlalchemy import select, Table
 from sqlalchemy.sql.operators import eq, or_
 
-from maascommon.enums.node import NodeTypeEnum
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.mappers.vlans import VlanDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
@@ -18,61 +17,14 @@ from maasservicelayer.db.tables import (
     SubnetTable,
     VlanTable,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.vlans import Vlan
 
 
-class VlansClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(VlanTable.c.id, id))
-
-    @classmethod
-    def with_fabric_id(cls, fabric_id: int) -> Clause:
-        return Clause(condition=eq(VlanTable.c.fabric_id, fabric_id))
-
-    @classmethod
-    def with_space_id(cls, space_id: int) -> Clause:
-        return Clause(condition=eq(VlanTable.c.space_id, space_id))
-
-    @classmethod
-    def with_system_id(cls, system_id: str) -> Clause:
-        return Clause(condition=eq(NodeTable.c.system_id, system_id))
-
-    @classmethod
-    def with_node_type(cls, type: NodeTypeEnum) -> Clause:
-        return Clause(condition=eq(NodeTable.c.node_type, type))
-
-    @classmethod
-    def with_dhcp_on(cls, on: bool) -> Clause:
-        return Clause(condition=eq(VlanTable.c.dhcp_on, on))
-
-    @classmethod
-    def with_primary_or_secondary_rack_id(cls, rack_id: int) -> Clause:
-        return Clause(
-            condition=or_(
-                VlanTable.c.primary_rack_id == rack_id,
-                VlanTable.c.secondary_rack_id == rack_id,
-            )
-        )
-
-    @classmethod
-    def with_relay_vlan_id(cls, relay_vlan_id: int) -> Clause:
-        return Clause(condition=eq(VlanTable.c.relay_vlan_id, relay_vlan_id))
-
-    @classmethod
-    def with_relay_vlan_id_in(cls, relay_vlan_ids: list[int]) -> Clause:
-        return Clause(condition=VlanTable.c.relay_vlan_id.in_(relay_vlan_ids))
-
-    @classmethod
-    def with_relay_vlan_exists(cls, exists: bool) -> Clause:
-        return Clause(
-            condition=VlanTable.c.relay_vlan_id.is_not(None)
-            if exists
-            else VlanTable.c.relay_vlan_id.is_(None)
-        )
-
-
 class VlansRepository(BaseRepository[Vlan]):
+    def get_mapper(self) -> VlanDataMapper:
+        return VlanDataMapper(Vlan, VlanTable)
+
     def get_repository_table(self) -> Table:
         return VlanTable
 
@@ -88,7 +40,7 @@ class VlansRepository(BaseRepository[Vlan]):
             .limit(1)
         )
         result = (await self.execute_stmt(stmt)).one()
-        return self.get_model_factory()(**result._asdict())
+        return self.mapper.to_domain(result._mapping)
 
     async def get_node_vlans(self, query: QuerySpec) -> List[Vlan]:
         """
@@ -133,6 +85,6 @@ class VlansRepository(BaseRepository[Vlan]):
                 ),
             )
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         result = (await self.execute_stmt(stmt)).all()
-        return [Vlan(**row._asdict()) for row in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]

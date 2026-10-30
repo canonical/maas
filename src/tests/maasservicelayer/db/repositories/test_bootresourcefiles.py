@@ -8,9 +8,10 @@ from maascommon.enums.boot_resources import BootResourceFileType
 from maasservicelayer.builders.bootresourcefiles import BootResourceFileBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.bootresourcefiles import (
-    BootResourceFileClauseFactory,
     BootResourceFilesRepository,
 )
+from maasservicelayer.filters.bootresourcefiles import BootResourceFileFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from tests.fixtures.factories.bootresourcefiles import (
     create_test_bootresourcefile_entry,
@@ -20,138 +21,6 @@ from tests.fixtures.factories.bootresourcesets import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestBootResourceFileClauseFactory:
-    def test_with_id(self) -> None:
-        clause = BootResourceFileClauseFactory.with_ids([1, 2])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootresourcefile.id IN (1, 2)"
-        )
-
-    def test_with_sha256_starting_with(self) -> None:
-        clause = BootResourceFileClauseFactory.with_sha256_starting_with(
-            "abcdef"
-        )
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootresourcefile.sha256 LIKE 'abcdef' || '%'"
-        )
-
-    def test_with_sha256(self) -> None:
-        sha = "abcdef" * 8
-        clause = BootResourceFileClauseFactory.with_sha256(sha)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == f"maasserver_bootresourcefile.sha256 = '{sha}'"
-        )
-
-    def test_with_sha256_in(self) -> None:
-        sha1 = "abcdef" * 8
-        sha2 = "012345" * 8
-        shas = [sha1, sha2]
-        clause = BootResourceFileClauseFactory.with_sha256_in(shas)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == f"maasserver_bootresourcefile.sha256 IN ('{sha1}', '{sha2}')"
-        )
-
-    def test_with_resource_set_id(self) -> None:
-        clause = BootResourceFileClauseFactory.with_resource_set_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootresourcefile.resource_set_id = 1"
-        )
-
-    def test_with_resource_set_ids(self) -> None:
-        clause = BootResourceFileClauseFactory.with_resource_set_ids([1, 2])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootresourcefile.resource_set_id IN (1, 2)"
-        )
-
-    def test_with_boot_resource_id(self) -> None:
-        clause = BootResourceFileClauseFactory.with_boot_resource_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootresourceset.resource_id = 1"
-        )
-        assert (
-            str(
-                clause.joins[0].compile(compile_kwargs={"literal_binds": True})
-            )
-            == "maasserver_bootresourceset JOIN maasserver_bootresourcefile ON maasserver_bootresourceset.id = maasserver_bootresourcefile.resource_set_id"
-        )
-
-    def test_with_boot_resource_ids(self) -> None:
-        clause = BootResourceFileClauseFactory.with_boot_resource_ids([1, 2])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootresourceset.resource_id IN (1, 2)"
-        )
-        assert (
-            str(
-                clause.joins[0].compile(compile_kwargs={"literal_binds": True})
-            )
-            == "maasserver_bootresourceset JOIN maasserver_bootresourcefile ON maasserver_bootresourceset.id = maasserver_bootresourcefile.resource_set_id"
-        )
-
-    def test_with_filename(self) -> None:
-        clause = BootResourceFileClauseFactory.with_filename("filename")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootresourcefile.filename = 'filename'"
-        )
-
-    def test_with_filetype(self) -> None:
-        clause = BootResourceFileClauseFactory.with_filetype(
-            BootResourceFileType.ARCHIVE_TAR_XZ
-        )
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == f"maasserver_bootresourcefile.filetype = '{BootResourceFileType.ARCHIVE_TAR_XZ}'"
-        )
 
 
 class TestBootResourceFileRepository(RepositoryCommonTests[BootResourceFile]):
@@ -251,3 +120,37 @@ class TestBootResourceFileRepository(RepositoryCommonTests[BootResourceFile]):
 
         empty_list = await repository_instance.get_files_in_resource_set(100)
         assert empty_list == []
+
+    @pytest.mark.parametrize(
+        "filter_kind", ["prefix", "resource", "resources"]
+    )
+    async def test_domain_filters(
+        self, fixture, repository_instance, filter_kind
+    ):
+        resource_set = await create_test_bootresourceset_entry(
+            fixture,
+            version="20261029",
+            label="stable",
+            resource_id=1,
+        )
+        selected = await create_test_bootresourcefile_entry(
+            fixture,
+            filename="root",
+            filetype=BootResourceFileType.SQUASHFS_IMAGE,
+            sha256="abcdef",
+            filename_on_disk="abcdef",
+            size=100,
+            resource_set_id=resource_set.id,
+        )
+        if filter_kind == "prefix":
+            filter = BootResourceFileFilters.with_sha256_starting_with("abc")
+        elif filter_kind == "resource":
+            filter = BootResourceFileFilters.with_boot_resource_id(1)
+        else:
+            filter = BootResourceFileFilters.with_boot_resource_ids([1])
+        result = await repository_instance.get_many(QuerySpec(where=filter))
+        assert result == [selected]
+        missing = BootResourceFileFilters.with_boot_resource_ids([])
+        assert (
+            await repository_instance.get_many(QuerySpec(where=missing)) == []
+        )

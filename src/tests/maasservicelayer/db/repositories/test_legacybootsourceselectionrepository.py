@@ -11,7 +11,6 @@ from maasservicelayer.builders.legacybootsourceselections import (
 )
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.legacybootsourceselections import (
-    LegacyBootSourceSelectionClauseFactory,
     LegacyBootSourceSelectionRepository,
 )
 from maasservicelayer.db.tables import BootSourceSelectionLegacyTable
@@ -81,29 +80,3 @@ class TestLegacyBootSourceRepository(RepositoryCommonTests):
             labels=["*"],
             boot_source_id=1,
         )
-
-
-class TestLegacyBootSourceSelectionClauseFactory:
-    def test_with_ids(self) -> None:
-        clause = LegacyBootSourceSelectionClauseFactory.with_ids([1, 2])
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsourceselectionlegacy.id IN (1, 2)")
-
-    def test_with_boot_source_id(self) -> None:
-        clause = LegacyBootSourceSelectionClauseFactory.with_boot_source_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsourceselectionlegacy.boot_source_id = 1")
-
-    def test_with_os(self) -> None:
-        clause = LegacyBootSourceSelectionClauseFactory.with_os("ubuntu")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsourceselectionlegacy.os = 'ubuntu'")
-
-    def test_with_release(self) -> None:
-        clause = LegacyBootSourceSelectionClauseFactory.with_release("noble")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsourceselectionlegacy.release = 'noble'")

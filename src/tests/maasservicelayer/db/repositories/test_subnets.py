@@ -1,21 +1,20 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv4Address, IPv4Network
+from collections.abc import Callable
+from ipaddress import ip_network, IPv4Address, IPv4Network
 
 import pytest
-from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.builders.subnets import SubnetBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.subnets import (
-    SubnetClauseFactory,
-    SubnetsRepository,
-)
+from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.subnets import SubnetFilters
 from maasservicelayer.models.subnets import Subnet
 from tests.fixtures.factories.iprange import create_test_ip_range_entry
 from tests.fixtures.factories.staticipaddress import (
@@ -27,48 +26,74 @@ from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
-class TestSubnetClauseFactory:
-    def test_with_id(self) -> None:
-        clause = SubnetClauseFactory.with_id(id=1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_subnet.id = 1")
-
-    def test_with_vlan_id(self) -> None:
-        clause = SubnetClauseFactory.with_vlan_id(vlan_id=1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_subnet.vlan_id = 1")
-
-    def test_with_fabric_id(self) -> None:
-        clause = SubnetClauseFactory.with_fabric_id(fabric_id=1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_vlan.fabric_id = 1")
-        assert str(
-            clause.joins[0].compile(compile_kwargs={"literal_binds": True})
-        ) == (
-            "maasserver_subnet JOIN maasserver_vlan ON maasserver_subnet.vlan_id = maasserver_vlan.id"
-        )
-
-    def test_with_cidr_overlap(self) -> None:
-        clause = SubnetClauseFactory.with_cidr_overlap(
-            cidr=IPv4Network("10.0.0.0/24")
-        )
-        compiled = clause.condition.compile(dialect=postgresql.dialect())
-        assert str(compiled) == (
-            "(maasserver_subnet.cidr >> %(cidr_1)s) OR (maasserver_subnet.cidr << %(cidr_2)s)"
-        )
-        assert compiled.params["cidr_1"] == IPv4Network("10.0.0.0/24")
-        assert compiled.params["cidr_2"] == IPv4Network("10.0.0.0/24")
-
-
 class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
     @pytest.fixture
     def repository_instance(
         self, db_connection: AsyncConnection
     ) -> SubnetsRepository:
         return SubnetsRepository(Context(connection=db_connection))
+
+    @pytest.mark.parametrize(
+        "cidrs, query_cidr, expected_indexes",
+        [
+            (
+                [
+                    "10.0.0.0/16",
+                    "10.0.1.0/25",
+                    "10.1.0.0/24",
+                    "10.0.1.0/24",
+                ],
+                "10.0.1.0/24",
+                {0, 1},
+            ),
+            (
+                ["2001:db8::/32", "2001:db8:1::/64", "2001:db9::/64"],
+                "2001:db8:1::/48",
+                {0, 1},
+            ),
+        ],
+    )
+    async def test_cidr_overlap(
+        self, repository_instance, fixture, cidrs, query_cidr, expected_indexes
+    ):
+        subnets = [
+            await create_test_subnet_entry(fixture, cidr=cidr)
+            for cidr in cidrs
+        ]
+        result = await repository_instance.get_many(
+            QuerySpec(
+                where=SubnetFilters.with_cidr_overlap(ip_network(query_cidr))
+            )
+        )
+        assert {subnet.id for subnet in result} == {
+            subnets[index]["id"] for index in expected_indexes
+        }
+
+    @pytest.mark.parametrize(
+        "make_filter",
+        [
+            lambda subnet, vlan: SubnetFilters.with_fabric_id(
+                vlan["fabric_id"]
+            ),
+            lambda subnet, vlan: SubnetFilters.with_vlan_id_in([vlan["id"]]),
+            lambda subnet, vlan: SubnetFilters.with_not_rdns_mode(
+                RdnsMode.DISABLED
+            ),
+        ],
+    )
+    async def test_filters(
+        self,
+        repository_instance: SubnetsRepository,
+        fixture: Fixture,
+        make_filter: Callable[[dict, dict], Filter],
+    ):
+        vlan = await create_test_vlan_entry(fixture)
+        subnet = await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
+        await create_test_subnet_entry(fixture, rdns_mode=RdnsMode.DISABLED)
+        result = await repository_instance.get_many(
+            QuerySpec(where=make_filter(subnet, vlan))
+        )
+        assert [item.id for item in result] == [subnet["id"]]
 
     @pytest.fixture
     async def _setup_test_list(
@@ -144,7 +169,7 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
         await create_test_ip_range_entry(
             fixture, subnet=subnet, type="dynamic"
         )
-        query = QuerySpec(where=SubnetClauseFactory.with_id(subnet["id"]))
+        query = QuerySpec(where=SubnetFilters.with_id(subnet["id"]))
         with pytest.raises(ValidationException):
             await repository_instance.delete_one(query)
 
@@ -158,7 +183,7 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
         await create_test_ip_range_entry(
             fixture, subnet=subnet, type="reserved"
         )
-        query = QuerySpec(where=SubnetClauseFactory.with_id(subnet["id"]))
+        query = QuerySpec(where=SubnetFilters.with_id(subnet["id"]))
         await repository_instance.delete_one(query)
 
     async def test_delete_checks_vlan_dhcp_off_dynamic_range(
@@ -173,7 +198,7 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
         await create_test_ip_range_entry(
             fixture, subnet=subnet, type="dynamic"
         )
-        query = QuerySpec(where=SubnetClauseFactory.with_id(subnet["id"]))
+        query = QuerySpec(where=SubnetFilters.with_id(subnet["id"]))
         await repository_instance.delete_one(query)
 
 

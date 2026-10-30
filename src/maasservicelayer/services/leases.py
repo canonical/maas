@@ -11,11 +11,10 @@ from maascommon.enums.ipaddress import IpAddressType, LeaseAction
 from maascommon.utils.network import coerce_to_valid_hostname
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
+from maasservicelayer.filters.base import FilterFactory
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.leases import Lease
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -199,7 +198,7 @@ class LeasesService(Service):
             # MAAS automatically manages DNS for node hostnames, so we cannot allow a DHCP client to override that.
             hostname_belongs_to_a_node = await self.node_service.exists(
                 query=QuerySpec(
-                    where=NodeClauseFactory.with_hostname(
+                    where=NodeFilters.with_hostname(
                         hostname=coerce_to_valid_hostname(sip_hostname)
                     )
                 )
@@ -223,16 +222,16 @@ class LeasesService(Service):
             #      record here, but it can happen be due to bug 1817305.
             sips = await self.staticipaddress_service.get_many(
                 query=QuerySpec(
-                    where=ClauseFactory.and_clauses(
+                    where=FilterFactory.and_filters(
                         [
-                            StaticIPAddressClauseFactory.with_ip(ip=None),
-                            StaticIPAddressClauseFactory.with_subnet_id(
+                            StaticIPAddressFilters.with_ip(ip=None),
+                            StaticIPAddressFilters.with_subnet_id(
                                 subnet_id=subnet.id
                             ),
-                            StaticIPAddressClauseFactory.with_alloc_type(
+                            StaticIPAddressFilters.with_alloc_type(
                                 alloc_type=IpAddressType.DISCOVERED
                             ),
-                            StaticIPAddressClauseFactory.with_interface_ids(
+                            StaticIPAddressFilters.with_interface_ids(
                                 interface_ids=[
                                     interface.id for interface in interfaces
                                 ]

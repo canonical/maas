@@ -7,11 +7,11 @@ import structlog
 
 from maascommon.logging.security import AUTHZ_ADMIN, SECURITY
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.discoveries import DiscoveriesRepository
-from maasservicelayer.db.repositories.mdns import MDNSClauseFactory
-from maasservicelayer.db.repositories.neighbours import NeighbourClauseFactory
-from maasservicelayer.db.repositories.rdns import RDNSClauseFactory
+from maasservicelayer.filters.mdns import MDNSFilters
+from maasservicelayer.filters.neighbours import NeighbourFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.rdns import RDNSFilters
 from maasservicelayer.models.discoveries import Discovery
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.services.base import ReadOnlyService
@@ -41,19 +41,19 @@ class DiscoveriesService(ReadOnlyService[Discovery, DiscoveriesRepository]):
     ) -> None:
         await self.neighbours_service.delete_many(
             query=QuerySpec(
-                where=NeighbourClauseFactory.and_clauses(
+                where=NeighbourFilters.and_filters(
                     [
-                        NeighbourClauseFactory.with_ip(ip),
-                        NeighbourClauseFactory.with_mac(mac),
+                        NeighbourFilters.with_ip(ip),
+                        NeighbourFilters.with_mac(mac),
                     ]
                 )
             )
         )
         await self.mdns_service.delete_many(
-            query=QuerySpec(where=MDNSClauseFactory.with_ip(ip))
+            query=QuerySpec(where=MDNSFilters.with_ip(ip))
         )
         await self.rdns_service.delete_many(
-            query=QuerySpec(where=RDNSClauseFactory.with_ip(ip))
+            query=QuerySpec(where=RDNSFilters.with_ip(ip))
         )
         logger.info(
             f"{AUTHZ_ADMIN}:discovery ip and mac cleared:{ip}:{mac}",

@@ -10,13 +10,13 @@ from sqlalchemy.sql.operators import eq
 from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
 from maasservicelayer.builders.resource_pools import ResourcePoolBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
-    ResourcePoolClauseFactory,
     ResourcePoolRepository,
 )
 from maasservicelayer.db.tables import OpenFGATupleTable
 from maasservicelayer.exceptions.catalog import BadRequestException
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.resource_pools import ResourcePoolFilters
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.resource_pools import ResourcePool
 from maasservicelayer.services import (
@@ -101,7 +101,7 @@ class TestIntegrationResourcePoolsService:
         )
         await services.resource_pools.delete_many(
             QuerySpec(
-                where=ResourcePoolClauseFactory.with_ids(
+                where=ResourcePoolFilters.with_ids(
                     [resource_pool_1.id, resource_pool_2.id]
                 )
             )

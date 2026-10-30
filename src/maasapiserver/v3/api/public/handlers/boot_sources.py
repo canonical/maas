@@ -59,16 +59,6 @@ from maascommon.workflows.bootresource import (
     SYNC_SELECTION_WORKFLOW_NAME,
     SyncSelectionParam,
 )
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsources import (
-    BootSourcesClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -79,6 +69,12 @@ from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.bootresources import BootResourceFilters
+from maasservicelayer.filters.bootsources import BootSourcesFilters
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.configurations import BootImagesAutoImportConfig
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.temporal import TemporalServiceException
@@ -361,7 +357,7 @@ class BootSourcesHandler(Handler):
             page=pagination_params.page,
             size=pagination_params.size,
             query=QuerySpec(
-                where=BootSourceSelectionClauseFactory.with_boot_source_id(
+                where=BootSourceSelectionFilters.with_boot_source_id(
                     boot_source_id
                 )
             ),
@@ -418,10 +414,10 @@ class BootSourcesHandler(Handler):
     ) -> ImageResponse:
         boot_source_selection = await services.boot_source_selections.get_one(
             QuerySpec(
-                where=BootSourceSelectionClauseFactory.and_clauses(
+                where=BootSourceSelectionFilters.and_filters(
                     [
-                        BootSourceSelectionClauseFactory.with_id(id),
-                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                        BootSourceSelectionFilters.with_id(id),
+                        BootSourceSelectionFilters.with_boot_source_id(
                             boot_source_id
                         ),
                     ]
@@ -461,9 +457,7 @@ class BootSourcesHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ImageResponse:
         boot_source = await services.boot_sources.get_one(
-            query=QuerySpec(
-                where=BootSourcesClauseFactory.with_id(boot_source_id)
-            )
+            query=QuerySpec(where=BootSourcesFilters.with_id(boot_source_id))
         )
         if not boot_source:
             raise NotFoundException()
@@ -512,10 +506,10 @@ class BootSourcesHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         query = QuerySpec(
-            where=BootSourceSelectionClauseFactory.and_clauses(
+            where=BootSourceSelectionFilters.and_filters(
                 [
-                    BootSourceSelectionClauseFactory.with_id(id),
-                    BootSourceSelectionClauseFactory.with_boot_source_id(
+                    BootSourceSelectionFilters.with_id(id),
+                    BootSourceSelectionFilters.with_boot_source_id(
                         boot_source_id
                     ),
                 ]
@@ -561,10 +555,10 @@ class BootSourcesHandler(Handler):
     ) -> BootResourceListResponse:
         boot_source_selection = await services.boot_source_selections.get_one(
             QuerySpec(
-                where=BootSourceSelectionClauseFactory.and_clauses(
+                where=BootSourceSelectionFilters.and_filters(
                     [
-                        BootSourceSelectionClauseFactory.with_id(selection_id),
-                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                        BootSourceSelectionFilters.with_id(selection_id),
+                        BootSourceSelectionFilters.with_boot_source_id(
                             boot_source_id
                         ),
                     ]
@@ -578,7 +572,7 @@ class BootSourcesHandler(Handler):
             page=pagination_params.page,
             size=pagination_params.size,
             query=QuerySpec(
-                where=BootResourceClauseFactory.with_selection_id(selection_id)
+                where=BootResourceFilters.with_selection_id(selection_id)
             ),
         )
 
@@ -629,15 +623,13 @@ class BootSourcesHandler(Handler):
     ) -> BootResourceResponse:
         resource = await services.boot_resources.get_one(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_selection_boot_source_id(
+                        BootResourceFilters.with_selection_boot_source_id(
                             boot_source_id
                         ),
-                        BootResourceClauseFactory.with_selection_id(
-                            selection_id
-                        ),
-                        BootResourceClauseFactory.with_id(id),
+                        BootResourceFilters.with_selection_id(selection_id),
+                        BootResourceFilters.with_id(id),
                     ]
                 )
             ),
@@ -690,10 +682,10 @@ class BootSourcesHandler(Handler):
     ) -> BootSourceSelectionSyncResponse:
         boot_source_selection = await services.boot_source_selections.get_one(
             QuerySpec(
-                where=BootSourceSelectionClauseFactory.and_clauses(
+                where=BootSourceSelectionFilters.and_filters(
                     [
-                        BootSourceSelectionClauseFactory.with_id(id),
-                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                        BootSourceSelectionFilters.with_id(id),
+                        BootSourceSelectionFilters.with_boot_source_id(
                             boot_source_id
                         ),
                     ]
@@ -790,10 +782,10 @@ class BootSourcesHandler(Handler):
     ) -> Response:
         boot_source_selection = await services.boot_source_selections.get_one(
             QuerySpec(
-                where=BootSourceSelectionClauseFactory.and_clauses(
+                where=BootSourceSelectionFilters.and_filters(
                     [
-                        BootSourceSelectionClauseFactory.with_id(id),
-                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                        BootSourceSelectionFilters.with_id(id),
+                        BootSourceSelectionFilters.with_boot_source_id(
                             boot_source_id
                         ),
                     ]

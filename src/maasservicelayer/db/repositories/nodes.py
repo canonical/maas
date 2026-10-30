@@ -7,50 +7,18 @@ from typing import Any, Type, TypeVar
 from sqlalchemy import Select, select, Table, update
 from sqlalchemy.sql.operators import eq
 
-from maascommon.enums.node import NodeTypeEnum
-from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import BMCTable, NodeTable
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
 
-
-class NodeClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(NodeTable.c.id, id))
-
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=NodeTable.c.id.in_(ids))
-
-    @classmethod
-    def with_hostname(cls, hostname: str | None) -> Clause:
-        return Clause(condition=eq(NodeTable.c.hostname, hostname))
-
-    @classmethod
-    def with_system_id(cls, system_id: str) -> Clause:
-        return Clause(condition=eq(NodeTable.c.system_id, system_id))
-
-    @classmethod
-    def with_type(cls, value: NodeTypeEnum) -> Clause:
-        return Clause(condition=eq(NodeTable.c.node_type, value))
-
-    @classmethod
-    def with_owner_id(cls, owner_id: int) -> Clause:
-        return Clause(condition=eq(NodeTable.c.owner_id, owner_id))
-
-    @classmethod
-    def with_node_config_id(cls, node_config_id: int) -> Clause:
-        return Clause(
-            condition=eq(NodeTable.c.current_config_id, node_config_id)
-        )
-
-
 T = TypeVar("T", bound=Node)
 
 
 class AbstractNodesRepository(BaseRepository[T], ABC):
+    bmc_mapper = DefaultDomainDataMapper[Bmc](Bmc, BMCTable)
+
     async def get_url(self, system_id: str) -> str | None:
         stmt = select(NodeTable.c.url).where(
             NodeTable.c.system_id == system_id
@@ -71,7 +39,7 @@ class AbstractNodesRepository(BaseRepository[T], ABC):
         )
 
         result = (await self.execute_stmt(stmt)).one()
-        return Bmc(**result._asdict())
+        return self.bmc_mapper.to_domain(result._mapping)
 
     def _bmc_select_all_statement(self) -> Select[Any]:
         # TODO: add other fields

@@ -13,12 +13,10 @@ from maascommon.enums.scriptresult import ScriptStatus
 from maascommon.node import NODE_STATUS_LABELS
 from maasservicelayer.builders.nodes import NodeBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.nodes import (
-    NodeClauseFactory,
-    NodesRepository,
-)
+from maasservicelayer.db.repositories.nodes import NodesRepository
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.nodes import Node
@@ -116,7 +114,7 @@ class TestNodesService:
         )
         assert result == updated_node
         nodes_repository_mock.update_one.assert_called_once_with(
-            query=QuerySpec(where=NodeClauseFactory.with_system_id("xyzio")),
+            query=QuerySpec(where=NodeFilters.with_system_id("xyzio")),
             builder=builder,
         )
 

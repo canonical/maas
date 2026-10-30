@@ -5,9 +5,9 @@ from typing import List
 
 from maasservicelayer.builders.consumers import ConsumerBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.consumers import ConsumersRepository
-from maasservicelayer.db.repositories.tokens import TokenClauseFactory
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.tokens import TokenFilters
 from maasservicelayer.models.consumers import Consumer
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.tokens import TokensService
@@ -36,16 +36,14 @@ class ConsumersService(
     async def post_delete_hook(self, resource: Consumer) -> None:
         # Cascade
         await self.tokens_service.delete_many(
-            query=QuerySpec(
-                where=TokenClauseFactory.with_consumer_id(resource.id)
-            )
+            query=QuerySpec(where=TokenFilters.with_consumer_id(resource.id))
         )
 
     async def post_delete_many_hook(self, resources: List[Consumer]) -> None:
         # Cascade
         await self.tokens_service.delete_many(
             query=QuerySpec(
-                where=TokenClauseFactory.with_consumer_ids(
+                where=TokenFilters.with_consumer_ids(
                     [consumer.id for consumer in resources]
                 )
             )

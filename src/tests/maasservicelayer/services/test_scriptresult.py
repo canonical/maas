@@ -4,14 +4,23 @@
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.scriptresult import ScriptStatus
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.scriptresults import (
     ScriptResultsRepository,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.scriptresults import ScriptResultFilters
 from maasservicelayer.models.scriptresult import ScriptResult
 from maasservicelayer.services.scriptresult import ScriptResultsService
+from tests.fixtures.factories.node import create_test_machine_entry
+from tests.fixtures.factories.scriptresult import (
+    create_test_scriptresult_entry,
+)
+from tests.fixtures.factories.scriptset import create_test_scriptset_entry
+from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
 
@@ -33,38 +42,54 @@ class TestCommonScriptResultsService(ServiceCommonTests):
 
 @pytest.mark.asyncio
 class TestScriptResultsService:
-    @pytest.fixture
-    def scriptresults_repository_mock(self):
-        return Mock(ScriptResultsRepository)
-
-    @pytest.fixture
-    def scriptresults_service(
+    @pytest.mark.parametrize("empty_selection", [False, True])
+    async def test_updates_only_active_scripts_in_selected_sets(
         self,
-        scriptresults_repository_mock,
-    ) -> ScriptResultsService:
-        return ScriptResultsService(
-            context=Context(),
-            scriptresults_repository=scriptresults_repository_mock,
+        db_connection: AsyncConnection,
+        fixture: Fixture,
+        empty_selection: bool,
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+        selected = await create_test_scriptset_entry(fixture, node["id"])
+        other = await create_test_scriptset_entry(fixture, node["id"])
+        pending = await create_test_scriptresult_entry(
+            fixture, selected["id"], status=ScriptStatus.PENDING
+        )
+        running = await create_test_scriptresult_entry(
+            fixture, selected["id"], status=ScriptStatus.RUNNING
+        )
+        completed = await create_test_scriptresult_entry(
+            fixture, selected["id"], status=ScriptStatus.PASSED
+        )
+        unrelated = await create_test_scriptresult_entry(
+            fixture, other["id"], status=ScriptStatus.RUNNING
+        )
+        context = Context(connection=db_connection)
+        repository = ScriptResultsRepository(context)
+        service = ScriptResultsService(context, repository)
+
+        updated = await service.update_running_scripts(
+            scripts_sets=[] if empty_selection else [selected["id"]],
+            new_status=ScriptStatus.FAILED,
         )
 
-    async def test_update_running_scripts(
-        self, scriptresults_service, scriptresults_repository_mock
-    ):
-        script_sets = [1, 2, 3]
-        new_status = ScriptStatus.FAILED
-
-        await scriptresults_service.update_running_scripts(
-            scripts_sets=script_sets, new_status=new_status
+        assert {result.id for result in updated} == (
+            set() if empty_selection else {pending.id, running.id}
         )
-
-        scriptresults_repository_mock.update_many.assert_called_once()
-        kwargs = scriptresults_repository_mock.update_many.call_args.kwargs
-        query = str(
-            kwargs["query"].where.condition.compile(
-                compile_kwargs={"literal_binds": True}
+        results = await repository.get_many(
+            QuerySpec(
+                where=ScriptResultFilters.with_script_set_id_in(
+                    [selected["id"], other["id"]]
+                )
             )
         )
-        assert (
-            query
-            == "maasserver_scriptresult.status IN (0, 1) AND maasserver_scriptresult.script_set_id IN (1, 2, 3)"
-        )
+        assert {result.id: result.status for result in results} == {
+            pending.id: ScriptStatus.PENDING
+            if empty_selection
+            else ScriptStatus.FAILED,
+            running.id: ScriptStatus.RUNNING
+            if empty_selection
+            else ScriptStatus.FAILED,
+            completed.id: ScriptStatus.PASSED,
+            unrelated.id: ScriptStatus.RUNNING,
+        }

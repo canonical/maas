@@ -38,9 +38,6 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.node import NodeStatus
 from maascommon.enums.operations import OperationResourceType, OperationType
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.machines import MachineClauseFactory
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ConflictException,
@@ -57,6 +54,9 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNKNOWN_POWER_TYPE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.machines import MachineFilters
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -114,22 +114,20 @@ class MachinesHandler(Handler):
                 authenticated_user.id
             )
         )
-        where_clause = MachineClauseFactory.or_clauses(
+        where_clause = MachineFilters.or_filters(
             [
-                MachineClauseFactory.with_resource_pool_ids(
-                    set(view_access_pools)
-                ),
-                MachineClauseFactory.and_clauses(
+                MachineFilters.with_resource_pool_ids(set(view_access_pools)),
+                MachineFilters.and_filters(
                     [
-                        MachineClauseFactory.or_clauses(
+                        MachineFilters.or_filters(
                             [
-                                MachineClauseFactory.with_owner(None),
-                                MachineClauseFactory.with_owner(
+                                MachineFilters.with_owner(None),
+                                MachineFilters.with_owner(
                                     authenticated_user.username
                                 ),
                             ]
                         ),
-                        MachineClauseFactory.with_resource_pool_ids(
+                        MachineFilters.with_resource_pool_ids(
                             set(available_access_pools)
                         ),
                     ]
@@ -326,7 +324,7 @@ class MachinesHandler(Handler):
             commission_request = MachineCommissionRequest()
 
         machine = await services.machines.get_one(
-            query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id))
+            query=QuerySpec(where=NodeFilters.with_system_id(system_id))
         )
 
         if machine is None:

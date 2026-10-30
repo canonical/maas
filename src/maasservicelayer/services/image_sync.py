@@ -19,30 +19,20 @@ from maascommon.workflows.bootresource import ResourceDownloadParam
 from maasservicelayer.builders.bootresources import BootResourceBuilder
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import OrderByClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.bootresourcefiles import (
-    BootResourceFileClauseFactory,
-)
-from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
-)
-from maasservicelayer.db.repositories.bootresourcesets import (
-    BootResourceSetClauseFactory,
-    BootResourceSetsOrderByClauses,
-)
-from maasservicelayer.db.repositories.bootsourcecache import (
-    BootSourceCacheClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsources import (
-    BootSourcesClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-)
-from maasservicelayer.db.repositories.notifications import (
-    NotificationsClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.bootresourcefiles import BootResourceFileFilters
+from maasservicelayer.filters.bootresources import BootResourceFilters
+from maasservicelayer.filters.bootresourcesets import (
+    BootResourceSetFilters,
+    BootResourceSetsOrdering,
+)
+from maasservicelayer.filters.bootsourcecache import BootSourceCacheFilters
+from maasservicelayer.filters.bootsources import BootSourcesFilters
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+)
+from maasservicelayer.filters.notifications import NotificationsFilters
+from maasservicelayer.filters.query import OrderByFactory, QuerySpec
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.configurations import (
@@ -126,12 +116,12 @@ class ImageSyncService(Service):
         If not, it creates a warning notification.
         """
         query = QuerySpec(
-            where=NotificationsClauseFactory.with_ident(
+            where=NotificationsFilters.with_ident(
                 NotificationComponent.BOOT_SOURCES_AVAILABILITY
             )
         )
         if await self.boot_sources_service.exists(
-            query=QuerySpec(where=BootSourcesClauseFactory.with_enabled(True))
+            query=QuerySpec(where=BootSourcesFilters.with_enabled(True))
         ):
             with suppress(NotFoundException):
                 await self.notifications_service.delete_one(query=query)
@@ -165,12 +155,10 @@ class ImageSyncService(Service):
         no_error = True
         if not await self.boot_source_selections_service.exists(
             query=QuerySpec(
-                where=BootSourceSelectionClauseFactory.and_clauses(
+                where=BootSourceSelectionFilters.and_filters(
                     [
-                        BootSourceSelectionClauseFactory.with_os(
-                            commissioning_os
-                        ),
-                        BootSourceSelectionClauseFactory.with_release(
+                        BootSourceSelectionFilters.with_os(commissioning_os),
+                        BootSourceSelectionFilters.with_release(
                             commissioning_series
                         ),
                     ]
@@ -180,7 +168,7 @@ class ImageSyncService(Service):
             no_error = False
             await self.notifications_service.get_or_create(
                 query=QuerySpec(
-                    where=NotificationsClauseFactory.with_ident(
+                    where=NotificationsFilters.with_ident(
                         "commissioning_series_unselected"
                     )
                 ),
@@ -198,10 +186,10 @@ class ImageSyncService(Service):
             )
         if not await self.boot_source_cache_service.exists(
             query=QuerySpec(
-                where=BootSourceCacheClauseFactory.and_clauses(
+                where=BootSourceCacheFilters.and_filters(
                     [
-                        BootSourceCacheClauseFactory.with_os(commissioning_os),
-                        BootSourceCacheClauseFactory.with_release(
+                        BootSourceCacheFilters.with_os(commissioning_os),
+                        BootSourceCacheFilters.with_release(
                             commissioning_series
                         ),
                     ]
@@ -211,7 +199,7 @@ class ImageSyncService(Service):
             no_error = False
             await self.notifications_service.get_or_create(
                 query=QuerySpec(
-                    where=NotificationsClauseFactory.with_ident(
+                    where=NotificationsFilters.with_ident(
                         "commissioning_series_unavailable"
                     )
                 ),
@@ -379,24 +367,24 @@ class ImageSyncService(Service):
             _,
         ) = await self.boot_resources_service.get_or_create(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_rtype(
                             boot_resource_builder.ensure_set(
                                 boot_resource_builder.rtype
                             )
                         ),
-                        BootResourceClauseFactory.with_name(
+                        BootResourceFilters.with_name(
                             boot_resource_builder.ensure_set(
                                 boot_resource_builder.name
                             )
                         ),
-                        BootResourceClauseFactory.with_architecture(
+                        BootResourceFilters.with_architecture(
                             boot_resource_builder.ensure_set(
                                 boot_resource_builder.architecture
                             )
                         ),
-                        BootResourceClauseFactory.with_alias(
+                        BootResourceFilters.with_alias(
                             boot_resource_builder.ensure_set(
                                 boot_resource_builder.alias
                             )
@@ -414,19 +402,21 @@ class ImageSyncService(Service):
             # Add the selection id only to the non-bootloader images
             osystem, release = boot_resource.name.split("/")
             arch, _ = boot_resource.architecture.split("/", maxsplit=1)
-            related_selection = await self.boot_source_selections_service.get_one(
-                query=QuerySpec(
-                    where=BootSourceSelectionClauseFactory.and_clauses(
-                        [
-                            BootSourceSelectionClauseFactory.with_os(osystem),
-                            BootSourceSelectionClauseFactory.with_release(
-                                release
-                            ),
-                            BootSourceSelectionClauseFactory.with_arch(arch),
-                            BootSourceSelectionClauseFactory.with_boot_source_id(
-                                boot_source.id
-                            ),
-                        ]
+            related_selection = (
+                await self.boot_source_selections_service.get_one(
+                    query=QuerySpec(
+                        where=BootSourceSelectionFilters.and_filters(
+                            [
+                                BootSourceSelectionFilters.with_os(osystem),
+                                BootSourceSelectionFilters.with_release(
+                                    release
+                                ),
+                                BootSourceSelectionFilters.with_arch(arch),
+                                BootSourceSelectionFilters.with_boot_source_id(
+                                    boot_source.id
+                                ),
+                            ]
+                        )
                     )
                 )
             )
@@ -456,12 +446,12 @@ class ImageSyncService(Service):
                 # delete the root image
                 deleted_root_images = await self.boot_resource_files_service.delete_many(
                     query=QuerySpec(
-                        where=BootResourceFileClauseFactory.and_clauses(
+                        where=BootResourceFileFilters.and_filters(
                             [
-                                BootResourceFileClauseFactory.with_resource_set_id(
+                                BootResourceFileFilters.with_resource_set_id(
                                     boot_resource_set.id
                                 ),
-                                BootResourceFileClauseFactory.with_filetype(
+                                BootResourceFileFilters.with_filetype(
                                     BootResourceFileType.ROOT_IMAGE
                                 ),
                             ]
@@ -529,12 +519,10 @@ class ImageSyncService(Service):
         are always deleted.
         """
         query = QuerySpec(
-            where=BootResourceClauseFactory.and_clauses(
+            where=BootResourceFilters.and_filters(
                 [
-                    BootResourceClauseFactory.with_rtype(
-                        BootResourceType.SYNCED
-                    ),
-                    BootResourceClauseFactory.with_selection_id(selection_id),
+                    BootResourceFilters.with_rtype(BootResourceType.SYNCED),
+                    BootResourceFilters.with_selection_id(selection_id),
                 ]
             )
         )
@@ -547,14 +535,12 @@ class ImageSyncService(Service):
             found_first_complete_set = False
             resource_sets = await self.boot_resource_sets_service.get_many(
                 query=QuerySpec(
-                    where=BootResourceSetClauseFactory.with_resource_id(
+                    where=BootResourceSetFilters.with_resource_id(
                         boot_resource.id
                     ),
-                    order_by=[
-                        OrderByClauseFactory.desc_clause(
-                            BootResourceSetsOrderByClauses.by_id()
-                        )
-                    ],
+                    order_by=(
+                        OrderByFactory.desc(BootResourceSetsOrdering.by_id()),
+                    ),
                 )
             )
             for resource_set in resource_sets:
@@ -570,7 +556,7 @@ class ImageSyncService(Service):
 
         await self.boot_resource_sets_service.delete_many(
             query=QuerySpec(
-                where=BootResourceSetClauseFactory.with_ids(
+                where=BootResourceSetFilters.with_ids(
                     boot_resource_sets_to_delete
                 )
             )

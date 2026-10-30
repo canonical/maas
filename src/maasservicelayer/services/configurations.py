@@ -12,10 +12,6 @@ from maasservicelayer.builders.configurations import (
     DatabaseConfigurationBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.database_configurations import (
-    DatabaseConfigurationsClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ValidationException,
@@ -23,6 +19,10 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.database_configurations import (
+    DatabaseConfigurationsFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.configurations import (
     Config,
     ConfigFactory,
@@ -105,7 +105,7 @@ class ConfigurationsService(Service):
                     config_model.secret_model
                 )
             return await self.database_configurations_service.get(name=name)
-        except (DatabaseConfigurationNotFound, SecretNotFound):
+        except DatabaseConfigurationNotFound, SecretNotFound:
             return default_value
 
     async def get_many(self, names: set[str]) -> dict[str, Any]:
@@ -156,9 +156,7 @@ class ConfigurationsService(Service):
         configs.update(
             await self.database_configurations_service.get_many(
                 query=QuerySpec(
-                    DatabaseConfigurationsClauseFactory.with_names(
-                        regular_configs
-                    )
+                    DatabaseConfigurationsFilters.with_names(regular_configs)
                 )
             )
         )

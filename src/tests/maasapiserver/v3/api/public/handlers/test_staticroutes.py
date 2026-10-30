@@ -22,10 +22,6 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.subnet import RdnsMode
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.builders.staticroutes import StaticRouteBuilder
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.staticroutes import (
-    StaticRoutesClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     PreconditionFailedException,
@@ -33,6 +29,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.staticroutes import StaticRoutesFilters
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.staticroutes import StaticRoute
 from maasservicelayer.models.subnets import Subnet
@@ -132,11 +130,11 @@ class TestStaticRoutesApi(ApiCommonTests):
             page=1,
             size=1,
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.and_clauses(
+                where=StaticRoutesFilters.and_filters(
                     [
-                        StaticRoutesClauseFactory.with_source_id(1),
-                        StaticRoutesClauseFactory.with_vlan_id(1),
-                        StaticRoutesClauseFactory.with_fabric_id(1),
+                        StaticRoutesFilters.with_source_id(1),
+                        StaticRoutesFilters.with_vlan_id(1),
+                        StaticRoutesFilters.with_fabric_id(1),
                     ]
                 )
             ),
@@ -163,11 +161,11 @@ class TestStaticRoutesApi(ApiCommonTests):
             page=1,
             size=1,
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.and_clauses(
+                where=StaticRoutesFilters.and_filters(
                     [
-                        StaticRoutesClauseFactory.with_source_id(1),
-                        StaticRoutesClauseFactory.with_vlan_id(1),
-                        StaticRoutesClauseFactory.with_fabric_id(1),
+                        StaticRoutesFilters.with_source_id(1),
+                        StaticRoutesFilters.with_vlan_id(1),
+                        StaticRoutesFilters.with_fabric_id(1),
                     ]
                 )
             ),
@@ -197,12 +195,12 @@ class TestStaticRoutesApi(ApiCommonTests):
         }
         services_mock.staticroutes.get_one.assert_called_once_with(
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.and_clauses(
+                where=StaticRoutesFilters.and_filters(
                     [
-                        StaticRoutesClauseFactory.with_id(TEST_STATICROUTE.id),
-                        StaticRoutesClauseFactory.with_source_id(1),
-                        StaticRoutesClauseFactory.with_vlan_id(1),
-                        StaticRoutesClauseFactory.with_fabric_id(1),
+                        StaticRoutesFilters.with_id(TEST_STATICROUTE.id),
+                        StaticRoutesFilters.with_source_id(1),
+                        StaticRoutesFilters.with_vlan_id(1),
+                        StaticRoutesFilters.with_fabric_id(1),
                     ]
                 )
             )
@@ -338,10 +336,10 @@ class TestStaticRoutesApi(ApiCommonTests):
 
         services_mock.staticroutes.update_one.assert_called_once_with(
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.and_clauses(
+                where=StaticRoutesFilters.and_filters(
                     [
-                        StaticRoutesClauseFactory.with_id(TEST_STATICROUTE.id),
-                        StaticRoutesClauseFactory.with_source_id(
+                        StaticRoutesFilters.with_id(TEST_STATICROUTE.id),
+                        StaticRoutesFilters.with_source_id(
                             TEST_SOURCE_SUBNET.id
                         ),
                     ]
@@ -392,12 +390,12 @@ class TestStaticRoutesApi(ApiCommonTests):
         assert response.status_code == 204
         services_mock.staticroutes.get_one.assert_called_with(
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.and_clauses(
+                where=StaticRoutesFilters.and_filters(
                     [
-                        StaticRoutesClauseFactory.with_id(TEST_STATICROUTE.id),
-                        StaticRoutesClauseFactory.with_source_id(1),
-                        StaticRoutesClauseFactory.with_vlan_id(1),
-                        StaticRoutesClauseFactory.with_fabric_id(1),
+                        StaticRoutesFilters.with_id(TEST_STATICROUTE.id),
+                        StaticRoutesFilters.with_source_id(1),
+                        StaticRoutesFilters.with_vlan_id(1),
+                        StaticRoutesFilters.with_fabric_id(1),
                     ]
                 )
             )
@@ -432,12 +430,12 @@ class TestStaticRoutesApi(ApiCommonTests):
         assert response.status_code == 412
         services_mock.staticroutes.get_one.assert_called_with(
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.and_clauses(
+                where=StaticRoutesFilters.and_filters(
                     [
-                        StaticRoutesClauseFactory.with_id(TEST_STATICROUTE.id),
-                        StaticRoutesClauseFactory.with_source_id(1),
-                        StaticRoutesClauseFactory.with_vlan_id(1),
-                        StaticRoutesClauseFactory.with_fabric_id(1),
+                        StaticRoutesFilters.with_id(TEST_STATICROUTE.id),
+                        StaticRoutesFilters.with_source_id(1),
+                        StaticRoutesFilters.with_vlan_id(1),
+                        StaticRoutesFilters.with_fabric_id(1),
                     ]
                 )
             )

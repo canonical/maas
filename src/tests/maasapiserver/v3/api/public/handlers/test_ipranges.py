@@ -19,8 +19,6 @@ from maascommon.enums.ipranges import IPRangeType
 from maascommon.enums.subnet import RdnsMode
 from maascommon.openfga.base import MAASResourceEntitlement
 from maascommon.utils.network import MAASIPRange, MAASIPSet
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     PreconditionFailedException,
@@ -28,6 +26,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.ipranges import IPRangeFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.subnets import Subnet
@@ -103,11 +103,11 @@ class TestIPRangesApi(ApiCommonTests):
             page=1,
             size=1,
             query=QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
-                        IPRangeClauseFactory.with_subnet_id(1),
-                        IPRangeClauseFactory.with_vlan_id(1),
-                        IPRangeClauseFactory.with_fabric_id(1),
+                        IPRangeFilters.with_subnet_id(1),
+                        IPRangeFilters.with_vlan_id(1),
+                        IPRangeFilters.with_fabric_id(1),
                     ]
                 )
             ),
@@ -133,11 +133,11 @@ class TestIPRangesApi(ApiCommonTests):
             page=1,
             size=1,
             query=QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
-                        IPRangeClauseFactory.with_subnet_id(1),
-                        IPRangeClauseFactory.with_vlan_id(1),
-                        IPRangeClauseFactory.with_fabric_id(1),
+                        IPRangeFilters.with_subnet_id(1),
+                        IPRangeFilters.with_vlan_id(1),
+                        IPRangeFilters.with_fabric_id(1),
                     ]
                 )
             ),
@@ -169,12 +169,12 @@ class TestIPRangesApi(ApiCommonTests):
         }
         services_mock.ipranges.get_one.assert_called_once_with(
             QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
-                        IPRangeClauseFactory.with_id(TEST_IPRANGE.id),
-                        IPRangeClauseFactory.with_subnet_id(1),
-                        IPRangeClauseFactory.with_vlan_id(1),
-                        IPRangeClauseFactory.with_fabric_id(1),
+                        IPRangeFilters.with_id(TEST_IPRANGE.id),
+                        IPRangeFilters.with_subnet_id(1),
+                        IPRangeFilters.with_vlan_id(1),
+                        IPRangeFilters.with_fabric_id(1),
                     ]
                 )
             ),
@@ -600,12 +600,12 @@ class TestIPRangesApi(ApiCommonTests):
 
         services_mock.ipranges.get_one.assert_called_once_with(
             query=QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
-                        IPRangeClauseFactory.with_id(TEST_IPRANGE.id),
-                        IPRangeClauseFactory.with_subnet_id(1),
-                        IPRangeClauseFactory.with_vlan_id(1),
-                        IPRangeClauseFactory.with_fabric_id(1),
+                        IPRangeFilters.with_id(TEST_IPRANGE.id),
+                        IPRangeFilters.with_subnet_id(1),
+                        IPRangeFilters.with_vlan_id(1),
+                        IPRangeFilters.with_fabric_id(1),
                     ]
                 )
             )
@@ -629,12 +629,12 @@ class TestIPRangesApi(ApiCommonTests):
 
         services_mock.ipranges.get_one.assert_called_once_with(
             query=QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
-                        IPRangeClauseFactory.with_id(iprange.id),
-                        IPRangeClauseFactory.with_subnet_id(1),
-                        IPRangeClauseFactory.with_vlan_id(1),
-                        IPRangeClauseFactory.with_fabric_id(1),
+                        IPRangeFilters.with_id(iprange.id),
+                        IPRangeFilters.with_subnet_id(1),
+                        IPRangeFilters.with_vlan_id(1),
+                        IPRangeFilters.with_fabric_id(1),
                     ]
                 )
             )
@@ -665,12 +665,12 @@ class TestIPRangesApi(ApiCommonTests):
         assert response.status_code == 412
         services_mock.ipranges.get_one.assert_called_with(
             query=QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
-                        IPRangeClauseFactory.with_id(1),
-                        IPRangeClauseFactory.with_subnet_id(1),
-                        IPRangeClauseFactory.with_vlan_id(1),
-                        IPRangeClauseFactory.with_fabric_id(1),
+                        IPRangeFilters.with_id(1),
+                        IPRangeFilters.with_subnet_id(1),
+                        IPRangeFilters.with_vlan_id(1),
+                        IPRangeFilters.with_fabric_id(1),
                     ]
                 )
             )

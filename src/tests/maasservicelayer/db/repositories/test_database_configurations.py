@@ -10,10 +10,14 @@ from maasservicelayer.builders.configurations import (
     DatabaseConfigurationBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.database_configurations import (
     DatabaseConfigurationsRepository,
 )
+from maasservicelayer.filters.database_configurations import (
+    DatabaseConfigurationsFilters,
+)
+from maasservicelayer.filters.query import OrderBy, QuerySpec
+from maasservicelayer.models.configurations import DatabaseConfiguration
 from tests.fixtures.factories.configuration import create_test_configuration
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -97,6 +101,35 @@ class TestDatabaseConfigurationsRepository:
             QuerySpec()
         )
         assert len(configurations) == 0
+
+    async def test_get_many_filters_and_orders_domain_configuration(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        repository = DatabaseConfigurationsRepository(
+            Context(connection=db_connection)
+        )
+        await repository.set_many(
+            {"domain-a": 1, "domain-b": 2, "domain-c": 3}
+        )
+
+        configurations = await repository.get_many(
+            QuerySpec(
+                where=DatabaseConfigurationsFilters.with_names(
+                    {"domain-a", "domain-c"}
+                ),
+                order_by=(
+                    OrderBy(DatabaseConfiguration, "name", descending=True),
+                ),
+            )
+        )
+
+        assert [
+            (configuration.name, configuration.value)
+            for configuration in configurations
+        ] == [
+            ("domain-c", 3),
+            ("domain-a", 1),
+        ]
 
     async def test_set_many(self, db_connection: AsyncConnection) -> None:
         database_configuration_repository = DatabaseConfigurationsRepository(

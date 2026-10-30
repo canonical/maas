@@ -6,47 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.bootsources import (
-    BootSourcesClauseFactory,
-    BootSourcesRepository,
-)
+from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
 from maasservicelayer.db.tables import BootSourceTable
 from maasservicelayer.models.bootsources import BootSource
 from tests.fixtures.factories.boot_sources import create_test_bootsource_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestBootSourcesClauseFactory:
-    def test_with_id(self) -> None:
-        clause = BootSourcesClauseFactory.with_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsource.id = 1")
-
-    def test_with_url(self) -> None:
-        clause = BootSourcesClauseFactory.with_url("http://foo.com")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsource.url = 'http://foo.com'")
-
-    def test_with_ids(self) -> None:
-        clause = BootSourcesClauseFactory.with_ids({1, 2})
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsource.id IN (1, 2)")
-
-    def test_with_priority(self) -> None:
-        clause = BootSourcesClauseFactory.with_priority(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsource.priority = 1")
-
-    def test_with_enabled(self) -> None:
-        clause = BootSourcesClauseFactory.with_enabled(True)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsource.enabled = true")
 
 
 class TestBootSourcesRepository(RepositoryCommonTests[BootSource]):

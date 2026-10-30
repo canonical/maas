@@ -18,8 +18,6 @@ from maascommon.logging.security import (
 )
 from maasservicelayer.auth.jwt import JWT
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     UnauthorizedException,
@@ -27,6 +25,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.users import UserFilters
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.secrets import V3JWTKeySecret
 from maasservicelayer.services.base import Service
@@ -64,7 +64,7 @@ class AuthService(Service):
 
     async def login(self, username: str, password: str) -> AuthTokens:
         user = await self.users_service.get_one(
-            QuerySpec(UserClauseFactory.with_username(username))
+            QuerySpec(UserFilters.with_username(username))
         )
         if (
             not user

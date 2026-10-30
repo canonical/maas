@@ -6,11 +6,11 @@ from maasservicelayer.builders.bootresourcefilesync import (
     BootResourceFileSyncBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresourcefilesync import (
     BootResourceFileSyncRepository,
 )
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootresourcefilesync import BootResourceFileSync
 from maasservicelayer.services.base import BaseService, ServiceCache
 from maasservicelayer.services.nodes import NodesService
@@ -37,12 +37,12 @@ class BootResourceFileSyncService(
         return len(
             await self.nodes_service.get_many(
                 query=QuerySpec(
-                    where=NodeClauseFactory.or_clauses(
+                    where=NodeFilters.or_filters(
                         [
-                            NodeClauseFactory.with_type(
+                            NodeFilters.with_type(
                                 NodeTypeEnum.REGION_CONTROLLER
                             ),
-                            NodeClauseFactory.with_type(
+                            NodeFilters.with_type(
                                 NodeTypeEnum.REGION_AND_RACK_CONTROLLER
                             ),
                         ]

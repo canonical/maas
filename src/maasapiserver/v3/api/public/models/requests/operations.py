@@ -8,9 +8,9 @@ from fastapi import Query
 from pydantic import BaseModel, Field, model_validator
 
 from maascommon.enums.operations import OperationStatus, OperationType
-from maasservicelayer.db.filters import Clause
-from maasservicelayer.db.repositories.operations import OperationsClauseFactory
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.operations import OperationsFilters
 
 
 class OperationFilterParams(BaseModel):
@@ -51,28 +51,28 @@ class OperationFilterParams(BaseModel):
             )
         return self
 
-    def to_clause(self) -> Clause | None:
-        clauses = []
+    def to_filter(self) -> Filter | None:
+        filters = []
         if self.status is not None:
-            clauses.append(OperationsClauseFactory.with_status(self.status))
+            filters.append(OperationsFilters.with_status(self.status))
         if self.op_type is not None:
-            clauses.append(OperationsClauseFactory.with_op_type(self.op_type))
+            filters.append(OperationsFilters.with_op_type(self.op_type))
         if self.is_bulk is not None:
-            clauses.append(OperationsClauseFactory.with_is_bulk(self.is_bulk))
+            filters.append(OperationsFilters.with_is_bulk(self.is_bulk))
         if self.resource_type is not None:
-            clauses.append(
-                OperationsClauseFactory.with_resource_type(self.resource_type)
+            filters.append(
+                OperationsFilters.with_resource_type(self.resource_type)
             )
         if self.resource_id is not None:
-            clauses.append(
-                OperationsClauseFactory.with_resource_id(self.resource_id)
+            filters.append(
+                OperationsFilters.with_resource_id(self.resource_id)
             )
-        if len(clauses) == 0:
+        if len(filters) == 0:
             return None
-        elif len(clauses) == 1:
-            return clauses[0]
+        elif len(filters) == 1:
+            return filters[0]
         else:
-            return OperationsClauseFactory.and_clauses(clauses)
+            return OperationsFilters.and_filters(filters)
 
     def to_href_format(self) -> str:
         parts = []

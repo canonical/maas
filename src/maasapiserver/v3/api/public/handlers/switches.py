@@ -25,13 +25,13 @@ from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.interface import InterfaceType
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ConflictException,
     NotFoundException,
 )
+from maasservicelayer.filters.interfaces import InterfaceFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -173,7 +173,7 @@ class SwitchesHandler(Handler):
         """
         existing_interface = await services.interfaces.get_one(
             query=QuerySpec(
-                where=InterfaceClauseFactory.with_mac_address(
+                where=InterfaceFilters.with_mac_address(
                     switch_request.mac_address
                 )
             ),

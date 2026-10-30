@@ -10,10 +10,11 @@ from maascommon.enums.notifications import NotificationCategoryEnum
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.notifications import (
-    NotificationsClauseFactory,
     NotificationsRepository,
 )
 from maasservicelayer.db.tables import NotificationDismissalTable
+from maasservicelayer.filters.notifications import NotificationsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.notifications import (
     Notification,
@@ -27,30 +28,6 @@ from tests.fixtures.factories.notifications import (
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestNotificationClauseFactory:
-    def test_with_user_id(self) -> None:
-        clause = NotificationsClauseFactory.with_user_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_notification.user_id = 1"
-        )
-
-    def test_with_ident(self) -> None:
-        clause = NotificationsClauseFactory.with_ident("identifier")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_notification.ident = 'identifier'"
-        )
 
 
 class TestCommonNotificationRepository(RepositoryCommonTests[Notification]):
@@ -91,9 +68,6 @@ class TestCommonNotificationRepository(RepositoryCommonTests[Notification]):
     @pytest.fixture
     async def created_instance(self, fixture: Fixture) -> Notification:
         return await create_test_notification_entry(fixture)
-
-
-SELECT_ALL_STMT = "SELECT maasserver_notification.id, maasserver_notification.created, maasserver_notification.updated, maasserver_notification.ident, maasserver_notification.users, maasserver_notification.admins, maasserver_notification.message, maasserver_notification.context, maasserver_notification.user_id, maasserver_notification.category, maasserver_notification.dismissable"
 
 
 class TestNotificationsRepository:
@@ -163,52 +137,6 @@ class TestNotificationsRepository:
             notification_id=notification.id,
         )
         return notification
-
-    @pytest.mark.parametrize("is_admin", [True, False])
-    def test_all_notification_for_user_stmt(
-        self, repository: NotificationsRepository, is_admin: bool
-    ) -> None:
-        stmt = repository.all_notifications_for_user_stmt(
-            user_id=1, is_admin=is_admin
-        )
-
-        if is_admin:
-            condition = "maasserver_notification.admins = true"
-        else:
-            condition = "maasserver_notification.users = true"
-
-        expected_stmt = (
-            f"{SELECT_ALL_STMT} \n"
-            "FROM maasserver_notification \n"
-            f"WHERE maasserver_notification.user_id = 1 OR {condition}"
-        )
-        assert (
-            str(stmt.compile(compile_kwargs={"literal_binds": True}))
-            == expected_stmt
-        )
-
-    @pytest.mark.parametrize("is_admin", [True, False])
-    def test_active_notification_for_user_stmt(
-        self, repository: NotificationsRepository, is_admin: bool
-    ) -> None:
-        stmt = repository.active_notifications_for_user_stmt(
-            user_id=1, is_admin=is_admin
-        )
-        if is_admin:
-            condition = "maasserver_notification.admins = true"
-        else:
-            condition = "maasserver_notification.users = true"
-        expected_stmt = (
-            f"{SELECT_ALL_STMT} \n"
-            "FROM maasserver_notification LEFT OUTER JOIN maasserver_notificationdismissal "
-            "ON maasserver_notification.id = maasserver_notificationdismissal.notification_id "
-            "AND maasserver_notificationdismissal.user_id = 1 \n"
-            f"WHERE (maasserver_notification.user_id = 1 OR {condition}) AND maasserver_notificationdismissal.id IS NULL"
-        )
-        assert (
-            str(stmt.compile(compile_kwargs={"literal_binds": True}))
-            == expected_stmt
-        )
 
     async def test_get_by_id_for_user(
         self,
@@ -326,7 +254,15 @@ class TestNotificationsRepository:
         repository: NotificationsRepository,
         dismissed_notification_for_user: Notification,
     ) -> None:
-        await repository.delete_by_id(dismissed_notification_for_user.id)
+        deleted = await repository.delete_one(
+            QuerySpec(
+                where=NotificationsFilters.with_ident(
+                    dismissed_notification_for_user.ident
+                )
+            )
+        )
+        assert deleted == dismissed_notification_for_user
+        assert await repository.get_by_id(deleted.id) is None
         dismissed = await fixture.get(
             NotificationDismissalTable.name,
             eq(
@@ -377,3 +313,38 @@ class TestNotificationsRepository:
             ),
         )
         assert dismissed == []
+
+    async def test_targeted_notification_and_dismissal_are_user_specific(
+        self, repository, fixture, test_user, test_admin
+    ):
+        targeted = await create_test_notification_entry(
+            fixture,
+            ident="targeted",
+            user_id=test_user.id,
+            users=False,
+            admins=False,
+        )
+        await create_test_notification_entry(fixture, ident="role", users=True)
+        await create_test_notification_dismissal_entry(
+            fixture, user_id=test_admin.id, notification_id=targeted.id
+        )
+        assert await repository.get_many(
+            QuerySpec(where=NotificationsFilters.with_user_id(test_user.id))
+        ) == [targeted]
+        active = await repository.list_active_for_user(
+            page=1, size=10, user_id=test_user.id, is_admin=False
+        )
+        assert targeted in active.items
+        assert (
+            await repository.get_by_id_for_user(
+                targeted.id, test_admin.id, is_admin=True
+            )
+            is None
+        )
+        await repository.create_notification_dismissal(
+            targeted.id, test_user.id
+        )
+        active = await repository.list_active_for_user(
+            page=1, size=10, user_id=test_user.id, is_admin=False
+        )
+        assert targeted not in active.items

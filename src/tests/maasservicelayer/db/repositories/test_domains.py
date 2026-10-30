@@ -11,10 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.builders.domains import DomainBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.domains import (
-    DomainsClauseFactory,
-    DomainsRepository,
-)
+from maasservicelayer.db.repositories.domains import DomainsRepository
 from maasservicelayer.db.tables import DomainTable
 from maasservicelayer.models.base import MaasTimestampedBaseModel
 from maasservicelayer.models.domains import Domain
@@ -30,32 +27,6 @@ from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 T = TypeVar("T", bound=MaasTimestampedBaseModel)
-
-
-class TestDomainsClauseFactory:
-    def test_with_id(self) -> None:
-        clause = DomainsClauseFactory.with_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_domain.id = 1")
-
-    def test_with_name(self) -> None:
-        clause = DomainsClauseFactory.with_name("name")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_domain.name = 'name'")
-
-    def test_with_authoritative(self) -> None:
-        clause = DomainsClauseFactory.with_authoritative(True)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_domain.authoritative = true")
-
-    def test_with_ttl(self) -> None:
-        clause = DomainsClauseFactory.with_ttl(30)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_domain.ttl = 30")
 
 
 @pytest.mark.asyncio

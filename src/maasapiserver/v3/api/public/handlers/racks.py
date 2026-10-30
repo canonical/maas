@@ -27,9 +27,9 @@ from maasapiserver.v3.api.public.models.responses.racks import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.agents import AgentsClauseFactory
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.agents import AgentsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -326,7 +326,7 @@ class RacksHandler(Handler):
         agents = await services.agents.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=AgentsClauseFactory.with_rack_id(rack_id)),
+            query=QuerySpec(where=AgentsFilters.with_rack_id(rack_id)),
         )
         if not agents:
             raise NotFoundException()
@@ -380,10 +380,10 @@ class RacksHandler(Handler):
     ) -> AgentResponse:
         agent = await services.agents.get_one(
             QuerySpec(
-                where=AgentsClauseFactory.and_clauses(
+                where=AgentsFilters.and_filters(
                     [
-                        AgentsClauseFactory.with_id(id),
-                        AgentsClauseFactory.with_rack_id(rack_id),
+                        AgentsFilters.with_id(id),
+                        AgentsFilters.with_rack_id(rack_id),
                     ]
                 )
             )
@@ -423,10 +423,10 @@ class RacksHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         query = QuerySpec(
-            where=AgentsClauseFactory.and_clauses(
+            where=AgentsFilters.and_filters(
                 [
-                    AgentsClauseFactory.with_id(id),
-                    AgentsClauseFactory.with_rack_id(rack_id),
+                    AgentsFilters.with_id(id),
+                    AgentsFilters.with_rack_id(rack_id),
                 ]
             )
         )

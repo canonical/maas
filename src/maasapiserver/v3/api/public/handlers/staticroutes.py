@@ -24,11 +24,6 @@ from maasapiserver.v3.api.public.models.responses.staticroutes import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.staticroutes import (
-    StaticRoutesClauseFactory,
-)
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -36,6 +31,9 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.staticroutes import StaticRoutesFilters
+from maasservicelayer.filters.subnets import SubnetFilters
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -75,11 +73,11 @@ class StaticRoutesHandler(Handler):
             page=pagination_params.page,
             size=pagination_params.size,
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.and_clauses(
+                where=StaticRoutesFilters.and_filters(
                     [
-                        StaticRoutesClauseFactory.with_source_id(subnet_id),
-                        StaticRoutesClauseFactory.with_vlan_id(vlan_id),
-                        StaticRoutesClauseFactory.with_fabric_id(fabric_id),
+                        StaticRoutesFilters.with_source_id(subnet_id),
+                        StaticRoutesFilters.with_vlan_id(vlan_id),
+                        StaticRoutesFilters.with_fabric_id(fabric_id),
                     ]
                 )
             ),
@@ -135,11 +133,11 @@ class StaticRoutesHandler(Handler):
     ) -> StaticRouteResponse:
         source_subnet = await services.subnets.get_one(
             query=QuerySpec(
-                where=SubnetClauseFactory.and_clauses(
+                where=SubnetFilters.and_filters(
                     [
-                        SubnetClauseFactory.with_id(subnet_id),
-                        SubnetClauseFactory.with_vlan_id(vlan_id),
-                        SubnetClauseFactory.with_fabric_id(fabric_id),
+                        SubnetFilters.with_id(subnet_id),
+                        SubnetFilters.with_vlan_id(vlan_id),
+                        SubnetFilters.with_fabric_id(fabric_id),
                     ]
                 )
             )
@@ -195,12 +193,12 @@ class StaticRoutesHandler(Handler):
     ) -> StaticRouteResponse:
         static_route = await services.staticroutes.get_one(
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.and_clauses(
+                where=StaticRoutesFilters.and_filters(
                     [
-                        StaticRoutesClauseFactory.with_id(id),
-                        StaticRoutesClauseFactory.with_source_id(subnet_id),
-                        StaticRoutesClauseFactory.with_vlan_id(vlan_id),
-                        StaticRoutesClauseFactory.with_fabric_id(fabric_id),
+                        StaticRoutesFilters.with_id(id),
+                        StaticRoutesFilters.with_source_id(subnet_id),
+                        StaticRoutesFilters.with_vlan_id(vlan_id),
+                        StaticRoutesFilters.with_fabric_id(fabric_id),
                     ]
                 )
             )
@@ -247,11 +245,11 @@ class StaticRoutesHandler(Handler):
     ) -> StaticRouteResponse:
         source_subnet = await services.subnets.get_one(
             query=QuerySpec(
-                where=SubnetClauseFactory.and_clauses(
+                where=SubnetFilters.and_filters(
                     [
-                        SubnetClauseFactory.with_id(subnet_id),
-                        SubnetClauseFactory.with_vlan_id(vlan_id),
-                        SubnetClauseFactory.with_fabric_id(fabric_id),
+                        SubnetFilters.with_id(subnet_id),
+                        SubnetFilters.with_vlan_id(vlan_id),
+                        SubnetFilters.with_fabric_id(fabric_id),
                     ]
                 )
             )
@@ -268,12 +266,10 @@ class StaticRoutesHandler(Handler):
         builder = await staticroute_request.to_builder(source_subnet, services)
         static_route = await services.staticroutes.update_one(
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.and_clauses(
+                where=StaticRoutesFilters.and_filters(
                     [
-                        StaticRoutesClauseFactory.with_id(id),
-                        StaticRoutesClauseFactory.with_source_id(
-                            source_subnet.id
-                        ),
+                        StaticRoutesFilters.with_id(id),
+                        StaticRoutesFilters.with_source_id(source_subnet.id),
                     ]
                 )
             ),
@@ -317,12 +313,12 @@ class StaticRoutesHandler(Handler):
     ) -> Response:
         static_route = await services.staticroutes.get_one(
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.and_clauses(
+                where=StaticRoutesFilters.and_filters(
                     [
-                        StaticRoutesClauseFactory.with_id(id),
-                        StaticRoutesClauseFactory.with_source_id(subnet_id),
-                        StaticRoutesClauseFactory.with_vlan_id(vlan_id),
-                        StaticRoutesClauseFactory.with_fabric_id(fabric_id),
+                        StaticRoutesFilters.with_id(id),
+                        StaticRoutesFilters.with_source_id(subnet_id),
+                        StaticRoutesFilters.with_vlan_id(vlan_id),
+                        StaticRoutesFilters.with_fabric_id(fabric_id),
                     ]
                 )
             )

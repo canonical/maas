@@ -6,9 +6,9 @@ from unittest.mock import Mock
 import pytest
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.consumers import ConsumersRepository
-from maasservicelayer.db.repositories.tokens import TokenClauseFactory
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.tokens import TokenFilters
 from maasservicelayer.models.consumers import Consumer
 from maasservicelayer.services import ConsumersService, TokensService
 from tests.maasservicelayer.services.base import ServiceCommonTests
@@ -49,7 +49,7 @@ class TestCommonConsumersService(ServiceCommonTests):
         service_instance.repository.delete_by_id.assert_awaited_once_with(id=1)
         service_instance.tokens_service.delete_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=TokenClauseFactory.with_consumer_id(TEST_CONSUMER.id)
+                where=TokenFilters.with_consumer_id(TEST_CONSUMER.id)
             )
         )
 
@@ -66,6 +66,6 @@ class TestCommonConsumersService(ServiceCommonTests):
         )
         service_instance.tokens_service.delete_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=TokenClauseFactory.with_consumer_ids([TEST_CONSUMER.id])
+                where=TokenFilters.with_consumer_ids([TEST_CONSUMER.id])
             )
         )

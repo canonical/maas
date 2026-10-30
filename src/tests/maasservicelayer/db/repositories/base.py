@@ -8,15 +8,15 @@ from typing import Generic, TypeVar
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
-from sqlalchemy.sql.operators import eq
 
-from maasservicelayer.db.filters import Clause, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     MultipleResultsException,
     ReadOnlyRepository,
 )
 from maasservicelayer.exceptions.catalog import AlreadyExistsException
+from maasservicelayer.filters.base import FieldFilter, Operator
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder, Unset
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -26,6 +26,15 @@ T = TypeVar("T", bound=MaasBaseModel)
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class ReadOnlyRepositoryCommonTests(abc.ABC, Generic[T]):
+    def make_query(self, repository, id: int | None = None):
+        if id is None:
+            return QuerySpec()
+        return QuerySpec(
+            where=FieldFilter(
+                repository.get_model_factory(), "id", Operator.EQ, id
+            )
+        )
+
     @pytest.fixture
     @abc.abstractmethod
     def repository_instance(
@@ -89,24 +98,13 @@ class ReadOnlyRepositoryCommonTests(abc.ABC, Generic[T]):
         self, repository_instance, created_instance: T
     ):
         exists = await repository_instance.exists(
-            QuerySpec(
-                where=Clause(
-                    eq(
-                        repository_instance.get_repository_table().c.id,
-                        created_instance.id,
-                    )
-                )
-            )
+            self.make_query(repository_instance, created_instance.id)
         )
         assert exists is True
 
     async def test_exists_not_found(self, repository_instance):
         exists = await repository_instance.exists(
-            QuerySpec(
-                where=Clause(
-                    eq(repository_instance.get_repository_table().c.id, -1)
-                )
-            )
+            self.make_query(repository_instance, -1)
         )
         assert exists is False
 
@@ -126,11 +124,7 @@ class ReadOnlyRepositoryCommonTests(abc.ABC, Generic[T]):
         self, repository_instance: BaseRepository
     ):
         instance = await repository_instance.get_one(
-            QuerySpec(
-                where=Clause(
-                    eq(repository_instance.get_repository_table().c.id, -1)
-                )
-            )
+            self.make_query(repository_instance, -1)
         )
         assert instance is None
 
@@ -138,14 +132,7 @@ class ReadOnlyRepositoryCommonTests(abc.ABC, Generic[T]):
         self, repository_instance: BaseRepository, created_instance: T
     ):
         instance = await repository_instance.get_one(
-            QuerySpec(
-                where=Clause(
-                    eq(
-                        repository_instance.get_repository_table().c.id,
-                        created_instance.id,
-                    )
-                )
-            )
+            self.make_query(repository_instance, created_instance.id)
         )
         assert instance == created_instance
 
@@ -157,7 +144,9 @@ class ReadOnlyRepositoryCommonTests(abc.ABC, Generic[T]):
         num_objects: int,
     ):
         with pytest.raises(MultipleResultsException):
-            await repository_instance.get_one(QuerySpec())
+            await repository_instance.get_one(
+                self.make_query(repository_instance)
+            )
 
     @pytest.mark.parametrize("num_objects", [3])
     async def test_get_many(
@@ -166,7 +155,9 @@ class ReadOnlyRepositoryCommonTests(abc.ABC, Generic[T]):
         _setup_test_list: Sequence[T],
         num_objects: int,
     ):
-        instances = await repository_instance.get_many(QuerySpec())
+        instances = await repository_instance.get_many(
+            self.make_query(repository_instance)
+        )
         assert len(instances) == num_objects
 
 
@@ -260,14 +251,7 @@ class RepositoryCommonTests(ReadOnlyRepositoryCommonTests, Generic[T]):
         self, repository_instance: BaseRepository, created_instance: T
     ):
         deleted_resource = await repository_instance.delete_one(
-            QuerySpec(
-                where=Clause(
-                    eq(
-                        repository_instance.get_repository_table().c.id,
-                        created_instance.id,
-                    )
-                )
-            )
+            self.make_query(repository_instance, created_instance.id)
         )
         assert deleted_resource.id == created_instance.id
         deleted = await repository_instance.get_by_id(created_instance.id)
@@ -281,7 +265,9 @@ class RepositoryCommonTests(ReadOnlyRepositoryCommonTests, Generic[T]):
         num_objects: int,
     ):
         with pytest.raises(MultipleResultsException):
-            await repository_instance.delete_one(QuerySpec())
+            await repository_instance.delete_one(
+                self.make_query(repository_instance)
+            )
 
     async def test_delete_by_id(
         self, repository_instance: BaseRepository, created_instance: T
@@ -298,11 +284,13 @@ class RepositoryCommonTests(ReadOnlyRepositoryCommonTests, Generic[T]):
         num_objects: int,
     ):
         deleted_resources = await repository_instance.delete_many(
-            query=QuerySpec()
+            query=self.make_query(repository_instance)
         )
         print(deleted_resources)
         assert len(deleted_resources) == num_objects
-        resources = await repository_instance.get_many(query=QuerySpec())
+        resources = await repository_instance.get_many(
+            query=self.make_query(repository_instance)
+        )
         assert len(resources) == 0
 
     async def test_update_by_id(
@@ -323,14 +311,7 @@ class RepositoryCommonTests(ReadOnlyRepositoryCommonTests, Generic[T]):
     ):
         created_resource = await repository_instance.create(instance_builder)
         updated_resource = await repository_instance.update_one(
-            QuerySpec(
-                where=Clause(
-                    eq(
-                        repository_instance.get_repository_table().c.id,
-                        created_resource.id,
-                    )
-                )
-            ),
+            self.make_query(repository_instance, created_resource.id),
             instance_builder,
         )
         assert updated_resource.updated > created_resource.updated
@@ -345,7 +326,9 @@ class RepositoryCommonTests(ReadOnlyRepositoryCommonTests, Generic[T]):
     ):
         builder = instance_builder_model()
         with pytest.raises(MultipleResultsException):
-            await repository_instance.update_one(QuerySpec(), builder)
+            await repository_instance.update_one(
+                self.make_query(repository_instance), builder
+            )
 
     @pytest.mark.parametrize("num_objects", [2])
     async def test_update_many(
@@ -357,7 +340,7 @@ class RepositoryCommonTests(ReadOnlyRepositoryCommonTests, Generic[T]):
     ):
         builder = instance_builder_model()
         updated_resources = await repository_instance.update_many(
-            QuerySpec(), builder
+            self.make_query(repository_instance), builder
         )
         assert len(updated_resources) == 2
         assert all(resource.updated for resource in updated_resources)

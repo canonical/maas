@@ -9,10 +9,10 @@ from maascommon.enums.interface import InterfaceType
 from maasservicelayer.builders.fabrics import FabricBuilder
 from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.exceptions.catalog import BadRequestException
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.subnets import SubnetFilters
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.fabrics import Fabric
 from maasservicelayer.models.interfaces import Interface
@@ -229,7 +229,7 @@ class TestFabricsService:
 
         subnets_service_mock.exists.assert_called_once_with(
             query=QuerySpec(
-                where=SubnetClauseFactory.with_fabric_id(
+                where=SubnetFilters.with_fabric_id(
                     fabric_id=fabric_to_delete.id
                 )
             )
@@ -275,7 +275,7 @@ class TestFabricsService:
 
         subnets_service_mock.exists.assert_called_once_with(
             query=QuerySpec(
-                where=SubnetClauseFactory.with_fabric_id(
+                where=SubnetFilters.with_fabric_id(
                     fabric_id=fabric_to_delete.id
                 )
             )

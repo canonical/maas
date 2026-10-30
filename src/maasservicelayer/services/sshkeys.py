@@ -19,11 +19,7 @@ from maascommon.enums.sshkeys import (
 from maascommon.fips import is_fips_enabled, validate_fips_ssh_public_key
 from maasservicelayer.builders.sshkeys import SshKeyBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.sshkeys import (
-    SshKeyClauseFactory,
-    SshKeysRepository,
-)
+from maasservicelayer.db.repositories.sshkeys import SshKeysRepository
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -33,6 +29,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.sshkeys import SshKeyFilters
 from maasservicelayer.logging.tls import fips_tls_trace_config
 from maasservicelayer.models.sshkeys import SshKey
 from maasservicelayer.services.base import BaseService, Service, ServiceCache
@@ -86,11 +84,11 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
 
         ssh_key_exists = await self.exists(
             query=QuerySpec(
-                where=SshKeyClauseFactory.and_clauses(
+                where=SshKeyFilters.and_filters(
                     [
-                        SshKeyClauseFactory.with_key(builder.key),
+                        SshKeyFilters.with_key(builder.key),
                         # TODO: remove type ignore after implementing safe get for builders
-                        SshKeyClauseFactory.with_user_id(builder.user_id),  # type: ignore
+                        SshKeyFilters.with_user_id(builder.user_id),  # type: ignore
                     ]
                 )
             )
@@ -140,11 +138,11 @@ class SshKeysService(BaseService[SshKey, SshKeysRepository, SshKeyBuilder]):
 
         existing_keys = await self.get_many(
             query=QuerySpec(
-                where=SshKeyClauseFactory.and_clauses(
+                where=SshKeyFilters.and_filters(
                     [
-                        SshKeyClauseFactory.with_user_id(user_id),
-                        SshKeyClauseFactory.with_protocol(protocol),
-                        SshKeyClauseFactory.with_auth_id(auth_id),
+                        SshKeyFilters.with_user_id(user_id),
+                        SshKeyFilters.with_protocol(protocol),
+                        SshKeyFilters.with_auth_id(auth_id),
                     ]
                 )
             )

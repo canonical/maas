@@ -8,92 +8,93 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maascommon.enums.dns import DNSResourceTypeEnum
 from maasservicelayer.builders.dnsdata import DNSDataBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.dnsdata import (
-    DNSDataClauseFactory,
-    DNSDataRepository,
-)
+from maasservicelayer.db.repositories.dnsdata import DNSDataRepository
 from maasservicelayer.db.tables import DNSDataTable
+from maasservicelayer.filters.dnsdata import DNSDataFilters
+from maasservicelayer.filters.query import QuerySpec
 from tests.fixtures.factories.dnsdata import create_test_dnsdata_entry
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry
 from tests.maasapiserver.fixtures.db import Fixture
 
 
-class TestDNSDataClauseFactory:
-    def test_with_dnsresource_id(self) -> None:
-        clause = DNSDataClauseFactory.with_dnsresource_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_dnsdata.dnsresource_id = 1"
-        )
-
-    def test_with_rrtype(self) -> None:
-        clause = DNSDataClauseFactory.with_rrtype(DNSResourceTypeEnum.CNAME)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_dnsdata.rrtype = 'CNAME'"
-        )
-
-    def test_with_rrdata_starting_with(self) -> None:
-        clause = DNSDataClauseFactory.with_rrdata_starting_with("0 0 ")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_dnsdata.rrdata LIKE '0 0 ' || '%'"
-        )
-
-    def test_with_dnsresource_name(self) -> None:
-        clause = DNSDataClauseFactory.with_dnsresource_name("name")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_dnsresource.name = 'name'"
-        )
-
-        assert len(clause.joins) == 1
-        assert (
-            str(
-                clause.joins[0].compile(compile_kwargs={"literal_binds": True})
-            )
-            == "maasserver_dnsresource JOIN maasserver_dnsdata ON maasserver_dnsresource.id = maasserver_dnsdata.dnsresource_id"
-        )
-
-    def test_with_domain_id(self) -> None:
-        clause = DNSDataClauseFactory.with_domain_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_dnsresource.domain_id = 1"
-        )
-
-        assert len(clause.joins) == 1
-        assert (
-            str(
-                clause.joins[0].compile(compile_kwargs={"literal_binds": True})
-            )
-            == "maasserver_dnsresource JOIN maasserver_dnsdata ON maasserver_dnsresource.id = maasserver_dnsdata.dnsresource_id"
-        )
-
-
 @pytest.mark.asyncio
 class TestDNSDataRepository:
+    @pytest.mark.parametrize(
+        "filter_name, value",
+        [
+            ("with_rrtype", DNSResourceTypeEnum.TXT),
+            ("with_rrdata_starting_with", "matching "),
+            ("with_dnsresource_name", "matching"),
+            ("with_domain_id", None),
+            ("with_dnsresource_id", None),
+        ],
+    )
+    async def test_get_many_with_domain_filters(
+        self,
+        db_connection: AsyncConnection,
+        fixture: Fixture,
+        filter_name: str,
+        value,
+    ) -> None:
+        domain = await create_test_domain_entry(fixture)
+        resource = await create_test_dnsresource_entry(
+            fixture, domain, name="matching"
+        )
+        expected = await create_test_dnsdata_entry(
+            fixture, resource, rrtype="TXT", rrdata="matching record"
+        )
+        other_domain = await create_test_domain_entry(fixture)
+        other_resource = await create_test_dnsresource_entry(
+            fixture, other_domain, name="other"
+        )
+        await create_test_dnsdata_entry(
+            fixture, other_resource, rrtype="CNAME", rrdata="other record"
+        )
+        if filter_name == "with_domain_id":
+            value = domain.id
+        elif filter_name == "with_dnsresource_id":
+            value = resource.id
+        repository = DNSDataRepository(Context(connection=db_connection))
+
+        result = await repository.get_many(
+            QuerySpec(where=getattr(DNSDataFilters, filter_name)(value))
+        )
+
+        assert result == [expected]
+
+    async def test_combines_related_resource_filters(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        domain = await create_test_domain_entry(fixture)
+        resource = await create_test_dnsresource_entry(
+            fixture, domain, name="matching"
+        )
+        expected = await create_test_dnsdata_entry(fixture, resource)
+        other_resource = await create_test_dnsresource_entry(
+            fixture, domain, name="other"
+        )
+        await create_test_dnsdata_entry(fixture, other_resource)
+        other_domain = await create_test_domain_entry(fixture)
+        same_name_resource = await create_test_dnsresource_entry(
+            fixture, other_domain, name="matching"
+        )
+        await create_test_dnsdata_entry(fixture, same_name_resource)
+        repository = DNSDataRepository(Context(connection=db_connection))
+
+        result = await repository.get_many(
+            QuerySpec(
+                where=DNSDataFilters.and_filters(
+                    [
+                        DNSDataFilters.with_domain_id(domain.id),
+                        DNSDataFilters.with_dnsresource_name("matching"),
+                    ]
+                )
+            )
+        )
+
+        assert result == [expected]
+
     async def test_create(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:

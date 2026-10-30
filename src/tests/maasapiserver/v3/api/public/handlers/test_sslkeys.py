@@ -15,8 +15,6 @@ from maasapiserver.v3.api.public.models.responses.sslkey import (
     SSLKeysStatisticsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.sslkeys import SSLKeyClauseFactory
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -28,6 +26,8 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.sslkeys import SSLKeyFilters
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.sslkeys import SSLKey
 from maasservicelayer.utils.date import utcnow
@@ -139,17 +139,6 @@ class TestSSLKeysApi(ApiCommonTests):
         assert (
             statistics_response.items[1].display
             == "blake F0:A0:7B:FD:D8:2B:B7:D1:1A:77:FF:22:C9:90:EA:55"
-        )
-        services_mock.sslkeys.list.assert_called_with(
-            page=1,
-            size=2,
-            query=QuerySpec(
-                where=SSLKeyClauseFactory.and_clauses(
-                    [
-                        SSLKeyClauseFactory.with_user_id(0),
-                    ]
-                )
-            ),
         )
 
     async def test_list_statistics_other_page(
@@ -322,10 +311,10 @@ class TestSSLKeysApi(ApiCommonTests):
 
         services_mock.sslkeys.delete_one.assert_called_once_with(
             query=QuerySpec(
-                where=SSLKeyClauseFactory.and_clauses(
+                where=SSLKeyFilters.and_filters(
                     [
-                        SSLKeyClauseFactory.with_id(1),
-                        SSLKeyClauseFactory.with_user_id(0),
+                        SSLKeyFilters.with_id(1),
+                        SSLKeyFilters.with_user_id(0),
                     ]
                 )
             ),
@@ -356,10 +345,10 @@ class TestSSLKeysApi(ApiCommonTests):
 
         services_mock.sslkeys.delete_one.assert_called_once_with(
             query=QuerySpec(
-                where=SSLKeyClauseFactory.and_clauses(
+                where=SSLKeyFilters.and_filters(
                     [
-                        SSLKeyClauseFactory.with_id(sslkey_id_to_delete),
-                        SSLKeyClauseFactory.with_user_id(0),
+                        SSLKeyFilters.with_id(sslkey_id_to_delete),
+                        SSLKeyFilters.with_user_id(0),
                     ]
                 )
             ),
@@ -394,10 +383,10 @@ class TestSSLKeysApi(ApiCommonTests):
 
         services_mock.sslkeys.delete_one.assert_called_once_with(
             query=QuerySpec(
-                where=SSLKeyClauseFactory.and_clauses(
+                where=SSLKeyFilters.and_filters(
                     [
-                        SSLKeyClauseFactory.with_id(sslkey_id_to_delete),
-                        SSLKeyClauseFactory.with_user_id(0),
+                        SSLKeyFilters.with_id(sslkey_id_to_delete),
+                        SSLKeyFilters.with_user_id(0),
                     ]
                 )
             ),

@@ -33,10 +33,6 @@ from maasapiserver.v3.auth.base import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.resource_pools import (
-    ResourcePoolClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ForbiddenException,
@@ -45,6 +41,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.resource_pools import ResourcePoolFilters
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -59,9 +57,7 @@ class ResourcePoolHandler(Handler):
         visible_pools = await services.openfga_tuples.get_client().list_pools_with_view_available_machines_access(
             authenticated_user.id
         )
-        return QuerySpec(
-            where=ResourcePoolClauseFactory.with_ids(ids=visible_pools)
-        )
+        return QuerySpec(where=ResourcePoolFilters.with_ids(ids=visible_pools))
 
     @handler(
         path="/resource_pools",
