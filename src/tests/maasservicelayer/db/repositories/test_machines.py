@@ -2,12 +2,14 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import pytest
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.context import Context
 from maasservicelayer.db.mappers.base import UnsupportedFilterError
 from maasservicelayer.db.repositories.machines import MachinesRepository
+from maasservicelayer.db.tables import NodeTable
 from maasservicelayer.filters.base import FieldFilter, Operator
 from maasservicelayer.filters.machines import MachineFilters
 from maasservicelayer.filters.nodes import NodeFilters
@@ -87,6 +89,37 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         )
         assert result.items == []
         assert result.total == 0
+
+    async def test_filter_unassigned_owner_includes_machine_and_counts_it(
+        self,
+        repository_instance: MachinesRepository,
+        db_connection: AsyncConnection,
+        fixture: Fixture,
+    ) -> None:
+        bmc = await create_test_bmc(fixture)
+        user = await create_test_user(fixture)
+        machine = await create_test_machine(fixture, bmc=bmc, user=user)
+        await db_connection.execute(
+            update(NodeTable)
+            .where(NodeTable.c.id == machine.id)
+            .values(owner_id=None)
+        )
+
+        query = QuerySpec(
+            where=MachineFilters.and_filters(
+                [
+                    NodeFilters.with_id(machine.id),
+                    MachineFilters.with_owner(None),
+                ]
+            )
+        )
+        result = await repository_instance.list(
+            page=1, size=10, query=query
+        )
+
+        assert [item.id for item in result.items] == [machine.id]
+        assert result.total == 1
+        assert await repository_instance.exists(query)
 
     @pytest.mark.parametrize("pool_ids", [None, set()])
     async def test_list_with_empty_resource_pool_filter(

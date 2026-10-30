@@ -24,7 +24,7 @@ class MachineDomainDataMapper(DefaultDomainDataMapper[Machine]):
             "owner": ColumnMapping(
                 UserTable.c.username,
                 (
-                    NodeTable.join(
+                    NodeTable.outerjoin(
                         UserTable, UserTable.c.id == NodeTable.c.owner_id
                     ),
                 ),

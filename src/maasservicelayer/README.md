@@ -91,6 +91,7 @@ Mappers own the translation between storage rows, domain models, and write value
 
 `field_mappings()` is shared by filtering, ordering, simple read renames, and write-column selection. A direct column on the mapper's table is writable by default. Computed expressions and related-table columns are not writable unless their `ColumnMapping` explicitly names an own-table `storage_column`.
 For example, OpenFGA declares `user -> _user` once; both reads and writes use that metadata.
+Nullable relationships must use outer joins so filters and count queries retain domain rows without a related row, such as unassigned machines when filtering on `owner`.
 
 Custom codecs preprocess populated write values before calling `DefaultDomainDataMapper._build_resource()`, and override `to_domain()` for the inverse conversion. File content and node user data declare decoded SQL query expressions plus raw writable text columns; returned storage values are decoded before model construction, exactly once across get/list/upsert/delete paths.
 
