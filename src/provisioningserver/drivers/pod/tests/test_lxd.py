@@ -372,7 +372,7 @@ class TestClusteredLXDPodDriver(MAASTestCase):
         usable_pool.name = factory.make_name("pool")
         mock_get_usable_storage_pool.return_value = usable_pool
         mock_machine = Mock()
-        self.fake_lxd.virtual_machines.create.return_value = mock_machine
+        self.fake_lxd.instances.create.return_value = mock_machine
         mock_get_discovered_machine = self.patch(
             self.driver, "_get_discovered_machine"
         )
@@ -411,7 +411,7 @@ class TestClusteredLXDPodDriver(MAASTestCase):
         discovered_machine, empty_hints = yield self.driver.compose(
             None, self.make_context(), request
         )
-        self.fake_lxd.virtual_machines.create.assert_called_once_with(
+        self.fake_lxd.instances.create.assert_called_once_with(
             definition,
             wait=True,
             target=self.fake_lxd.host_info["environment"]["server_name"],
@@ -1193,7 +1193,7 @@ class TestLXDPodDriver(MAASTestCase):
         mock_machine.expanded_config = expanded_config
         mock_machine.expanded_devices = expanded_devices
         mock_machine.location = "FakeLXD"
-        self.fake_lxd.virtual_machines.create.return_value = mock_machine
+        self.fake_lxd.instances.create.return_value = mock_machine
         discovered_machine = driver._get_discovered_machine(
             self.fake_lxd.make_client(), mock_machine, [usable_pool], request
         )
@@ -1513,7 +1513,7 @@ class TestLXDPodDriver(MAASTestCase):
         usable_pool.name = factory.make_name("pool")
         mock_get_usable_storage_pool.return_value = usable_pool
         mock_machine = Mock()
-        self.fake_lxd.virtual_machines.create.return_value = mock_machine
+        self.fake_lxd.instances.create.return_value = mock_machine
         mock_get_discovered_machine = self.patch(
             self.driver, "_get_discovered_machine"
         )
@@ -1552,7 +1552,7 @@ class TestLXDPodDriver(MAASTestCase):
         discovered_machine, _ = yield self.driver.compose(
             pod_id, context, request
         )
-        self.fake_lxd.virtual_machines.create.assert_called_once_with(
+        self.fake_lxd.instances.create.assert_called_once_with(
             definition, wait=True
         )
 
@@ -1659,7 +1659,7 @@ class TestLXDPodDriver(MAASTestCase):
             location="FakeLXD",
             status_code=101,
         )
-        self.fake_lxd.virtual_machines.create.return_value = mock_machine
+        self.fake_lxd.instances.create.return_value = mock_machine
 
         definition = {
             "name": request.hostname,
@@ -1701,7 +1701,7 @@ class TestLXDPodDriver(MAASTestCase):
         discovered_machine, _ = yield self.driver.compose(
             pod_id, self.make_context(), request
         )
-        self.fake_lxd.virtual_machines.create.assert_called_once_with(
+        self.fake_lxd.instances.create.assert_called_once_with(
             definition, wait=True
         )
 
@@ -1761,7 +1761,7 @@ class TestLXDPodDriver(MAASTestCase):
         usable_pool.name = factory.make_name("pool")
         mock_get_usable_storage_pool.return_value = usable_pool
         mock_machine = Mock()
-        self.fake_lxd.virtual_machines.create.return_value = mock_machine
+        self.fake_lxd.instances.create.return_value = mock_machine
         mock_get_discovered_machine = self.patch(
             self.driver, "_get_discovered_machine"
         )
@@ -1794,7 +1794,7 @@ class TestLXDPodDriver(MAASTestCase):
         discovered_machine, _ = yield self.driver.compose(
             None, self.make_context(), request
         )
-        self.fake_lxd.virtual_machines.create.assert_called_once_with(
+        self.fake_lxd.instances.create.assert_called_once_with(
             definition, wait=True
         )
         self.assertEqual(sentinel.discovered_machine, discovered_machine)
@@ -1812,7 +1812,7 @@ class TestLXDPodDriver(MAASTestCase):
         usable_pool.name = factory.make_name("pool")
         mock_get_usable_storage_pool.return_value = usable_pool
         mock_machine = Mock()
-        self.fake_lxd.virtual_machines.create.return_value = mock_machine
+        self.fake_lxd.instances.create.return_value = mock_machine
         mock_get_discovered_machine = self.patch(
             self.driver, "_get_discovered_machine"
         )
@@ -1851,7 +1851,7 @@ class TestLXDPodDriver(MAASTestCase):
         discovered_machine, empty_hints = yield self.driver.compose(
             None, self.make_context(), request
         )
-        self.fake_lxd.virtual_machines.create.assert_called_once_with(
+        self.fake_lxd.instances.create.assert_called_once_with(
             definition, wait=True
         )
         self.fake_lxd.profiles.exists.assert_called_once_with("maas")
