@@ -453,6 +453,7 @@ def method_fields_reserved_fields_patch(self, handler, fields):
 
 
 Emitter.method_fields = method_fields_reserved_fields_patch
+# Custom emitter to speed up node listing with lots of nested objects.
 Emitter.construct = construct
 
 # only keep the JSON emitter as it's the only format we support
