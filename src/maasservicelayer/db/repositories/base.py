@@ -232,8 +232,9 @@ class ReadOnlyRepository(Repository, Generic[T]):
         total_stmt = select(count()).select_from(self.get_repository_table())
         if translated:
             # Don't apply the order by clause in the total_stmt
-            where_query = SQLQuerySpec(where=translated.where)
-            total_stmt = where_query.enrich_stmt(total_stmt)
+            total_stmt = SQLQuerySpec(where=translated.where).enrich_stmt(
+                total_stmt
+            )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (

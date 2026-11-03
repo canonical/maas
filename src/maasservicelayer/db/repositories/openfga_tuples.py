@@ -9,7 +9,12 @@ from ulid import ULID
 
 from maascommon.enums.openfga import OPENFGA_STORE_ID
 from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import (
+    Clause,
+    ClauseFactory,
+    QuerySpec,
+    SQLQuerySpec,
+)
 from maasservicelayer.db.mappers.base import (
     BaseDomainDataMapper,
     CreateOrUpdateResource,
@@ -169,7 +174,12 @@ class OpenFGATuplesRepository(Repository):
         self, page: int, size: int, query: QuerySpec
     ) -> ListResult[OpenFGATuple]:
         total_stmt = select(count()).select_from(OpenFGATupleTable)
-        total_stmt = self._translate(query).enrich_stmt(total_stmt)
+        translated = self._translate(query)
+        total_stmt = (
+            SQLQuerySpec(where=translated.where)
+            .enrich_stmt(total_stmt)
+            .enrich_stmt(total_stmt)
+        )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (

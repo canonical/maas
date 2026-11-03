@@ -10,7 +10,12 @@ from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeDeviceBus, NodeStatus, NodeTypeEnum
 from maascommon.workflows.msm import MachinesCountByStatus
-from maasservicelayer.db.filters import AnyQuerySpec, Clause, ClauseFactory
+from maasservicelayer.db.filters import (
+    AnyQuerySpec,
+    Clause,
+    ClauseFactory,
+    SQLQuerySpec,
+)
 from maasservicelayer.db.repositories.nodes import AbstractNodesRepository
 from maasservicelayer.db.tables import (
     BMCTable,
@@ -112,7 +117,12 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
             .where(eq(NodeTable.c.node_type, NodeTypeEnum.MACHINE))
         )
         if query:
-            total_stmt = self._translate(query).enrich_stmt(total_stmt)
+            translated = self._translate(query)
+            total_stmt = (
+                SQLQuerySpec(where=translated.where)
+                .enrich_stmt(total_stmt)
+                .enrich_stmt(total_stmt)
+            )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (

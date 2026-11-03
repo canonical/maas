@@ -23,7 +23,12 @@ from sqlalchemy.sql.operators import and_, eq, gt
 from maasservicelayer.builders.users import UserProfileBuilder
 from maasservicelayer.constants import SYSTEM_USERS
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import AnyQuerySpec, Clause, ClauseFactory
+from maasservicelayer.db.filters import (
+    AnyQuerySpec,
+    Clause,
+    ClauseFactory,
+    SQLQuerySpec,
+)
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
@@ -243,7 +248,12 @@ class UsersRepository(BaseRepository[User]):
             .where(not_(UserTable.c.username.in_(SYSTEM_USERS)))
         )
         if query:
-            total_stmt = self._translate(query).enrich_stmt(total_stmt)
+            translated = self._translate(query)
+            total_stmt = (
+                SQLQuerySpec(where=translated.where)
+                .enrich_stmt(total_stmt)
+                .enrich_stmt(total_stmt)
+            )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
@@ -353,7 +363,12 @@ class UsersRepository(BaseRepository[User]):
                 )
             )
         )
-        total_stmt = self._translate(query).enrich_stmt(total_stmt)
+        translated = self._translate(query)
+        total_stmt = (
+            SQLQuerySpec(where=translated.where)
+            .enrich_stmt(total_stmt)
+            .enrich_stmt(total_stmt)
+        )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
         stmt = (
             self._user_statistics_stmt().offset((page - 1) * size).limit(size)

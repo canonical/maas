@@ -8,7 +8,12 @@ from sqlalchemy.sql.functions import func
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import (
+    Clause,
+    ClauseFactory,
+    QuerySpec,
+    SQLQuerySpec,
+)
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import NodeTable, ResourcePoolTable
 from maasservicelayer.models.base import ListResult
@@ -43,7 +48,12 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
             self.get_repository_table()
         )
         if query:
-            total_stmt = self._translate(query).enrich_stmt(total_stmt)
+            translated = self._translate(query)
+            total_stmt = (
+                SQLQuerySpec(where=translated.where)
+                .enrich_stmt(total_stmt)
+                .enrich_stmt(total_stmt)
+            )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
