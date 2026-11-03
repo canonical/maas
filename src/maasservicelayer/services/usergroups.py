@@ -6,15 +6,13 @@ from typing import List
 from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
 from maasservicelayer.builders.usergroups import UserGroupBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.usergroups import (
-    UserGroupsClauseFactory,
-    UserGroupsRepository,
-)
+from maasservicelayer.db.repositories.usergroups import UserGroupsRepository
 from maasservicelayer.db.repositories.usergroups_members import (
-    UserGroupMembersClauseFactory,
     UserGroupMembersRepository,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.usergroups import UserGroupsFilters
+from maasservicelayer.filters.usergroups_members import UserGroupMembersFilters
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.usergroup_members import UserGroupMember
 from maasservicelayer.models.usergroups import UserGroup, UserGroupStatistics
@@ -58,10 +56,10 @@ class UserGroupsService(
     async def _check_already_member(self, user_id: int, group_id: int) -> None:
         exists = await self.usergroup_members_repository.exists(
             QuerySpec(
-                where=UserGroupMembersClauseFactory.and_clauses(
+                where=UserGroupMembersFilters.and_filters(
                     [
-                        UserGroupMembersClauseFactory.with_group_id(group_id),
-                        UserGroupMembersClauseFactory.with_id(user_id),
+                        UserGroupMembersFilters.with_group_id(group_id),
+                        UserGroupMembersFilters.with_id(user_id),
                     ]
                 )
             )
@@ -73,7 +71,7 @@ class UserGroupsService(
 
     async def add_user_to_group(self, user_id: int, group_name: str):
         group = await self.get_one(
-            QuerySpec(where=UserGroupsClauseFactory.with_name(group_name))
+            QuerySpec(where=UserGroupsFilters.with_name(group_name))
         )
         if group is None:
             raise UserGroupNotFound()
@@ -97,9 +95,7 @@ class UserGroupsService(
         self, group_id: int
     ) -> List[UserGroupMember]:
         return await self.usergroup_members_repository.list_all(
-            QuerySpec(
-                where=UserGroupMembersClauseFactory.with_group_id(group_id)
-            )
+            QuerySpec(where=UserGroupMembersFilters.with_group_id(group_id))
         )
 
     async def list_usergroup_members_page(
@@ -109,7 +105,7 @@ class UserGroupsService(
             page=page,
             size=size,
             query=QuerySpec(
-                where=UserGroupMembersClauseFactory.with_group_id(group_id)
+                where=UserGroupMembersFilters.with_group_id(group_id)
             ),
         )
 
@@ -133,10 +129,10 @@ class UserGroupsService(
     ) -> None:
         already_member = await self.usergroup_members_repository.exists(
             QuerySpec(
-                where=UserGroupMembersClauseFactory.and_clauses(
+                where=UserGroupMembersFilters.and_filters(
                     [
-                        UserGroupMembersClauseFactory.with_group_id(group_id),
-                        UserGroupMembersClauseFactory.with_ids(user_ids),
+                        UserGroupMembersFilters.with_group_id(group_id),
+                        UserGroupMembersFilters.with_ids(user_ids),
                     ]
                 )
             )

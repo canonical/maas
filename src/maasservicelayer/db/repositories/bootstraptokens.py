@@ -11,6 +11,15 @@ from maasservicelayer.db.tables import BootstrapTokenTable
 from maasservicelayer.models.bootstraptokens import BootstrapToken
 
 
+class BootstrapTokensRepository(BaseRepository[BootstrapToken]):
+    def get_repository_table(self) -> Table:
+        return BootstrapTokenTable
+
+    def get_model_factory(self) -> type[BootstrapToken]:
+        return BootstrapToken
+
+
+# Legacy SQL clause factory, removed once every caller uses domain filters.
 class BootstrapTokensClauseFactory(ClauseFactory):
     @classmethod
     def with_rack_id(cls, rack_id: int) -> Clause:
@@ -25,11 +34,3 @@ class BootstrapTokensClauseFactory(ClauseFactory):
     @classmethod
     def with_secret(cls, secret):
         return Clause(condition=eq(BootstrapTokenTable.c.secret, secret))
-
-
-class BootstrapTokensRepository(BaseRepository[BootstrapToken]):
-    def get_repository_table(self) -> Table:
-        return BootstrapTokenTable
-
-    def get_model_factory(self) -> type[BootstrapToken]:
-        return BootstrapToken

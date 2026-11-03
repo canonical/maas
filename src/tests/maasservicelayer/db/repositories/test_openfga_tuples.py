@@ -9,74 +9,16 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maascommon.enums.openfga import OPENFGA_STORE_ID
 from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.openfga_tuples import (
-    OpenFGATuplesClauseFactory,
     OpenFGATuplesRepository,
 )
 from maasservicelayer.db.tables import OpenFGATupleTable
+from maasservicelayer.filters.openfga_tuples import OpenFGATuplesFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.openfga_tuple import EntitlementDeleteSpec
 from tests.fixtures.factories.openfga_tuples import create_openfga_tuple
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.utils.ulid import is_ulid
-
-
-class TestOpenFGATuplesClauseFactory:
-    def test_with_object_type(self) -> None:
-        clause = OpenFGATuplesClauseFactory.with_object_type("type")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("openfga.tuple.object_type = 'type'")
-
-    def test_with_object_id(self) -> None:
-        clause = OpenFGATuplesClauseFactory.with_object_id("id")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("openfga.tuple.object_id = 'id'")
-
-    def test_with_relation(self):
-        clause = OpenFGATuplesClauseFactory.with_relation("relation")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("openfga.tuple.relation = 'relation'")
-
-    def test_with_user(self):
-        clause = OpenFGATuplesClauseFactory.with_user("user:user")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("openfga.tuple._user = 'user:user'")
-
-    def test_with_users(self) -> None:
-        clause = OpenFGATuplesClauseFactory.with_users(
-            ["user:1", "user:2", "user:3"]
-        )
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("openfga.tuple._user IN ('user:1', 'user:2', 'user:3')")
-
-    def test_with_entitlement_tuples(self) -> None:
-        clause = OpenFGATuplesClauseFactory.with_entitlement_tuples(
-            [
-                EntitlementDeleteSpec(
-                    entitlement="can_view_machines",
-                    resource_type="pool",
-                    resource_id=1,
-                ),
-                EntitlementDeleteSpec(
-                    entitlement="can_edit_machines",
-                    resource_type="pool",
-                    resource_id=2,
-                ),
-            ]
-        )
-        sql_str = str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        )
-        assert "can_view_machines" in sql_str
-        assert "can_edit_machines" in sql_str
-        assert "'pool'" in sql_str
-        assert "'1'" in sql_str
-        assert "'2'" in sql_str
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
@@ -237,7 +179,7 @@ class TestOpenFGATuplesRepository:
         )
 
         query = QuerySpec(
-            where=OpenFGATuplesClauseFactory.with_user("group:10#member")
+            where=OpenFGATuplesFilters.with_user("group:10#member")
         )
         first_page = await repository.list_entitlements(
             page=1, size=1, query=query
@@ -260,3 +202,84 @@ class TestOpenFGATuplesRepository:
             t.user == "group:10#member"
             for t in first_page.items + second_page.items
         )
+
+    async def test_delete_entitlements_preserves_user_and_resource_scope(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        repository = OpenFGATuplesRepository(Context(connection=db_connection))
+        baseline = {
+            (
+                item.user,
+                item.relation,
+                item.object_type,
+                item.object_id,
+                item.user_type,
+            )
+            for item in await repository.get_many(QuerySpec())
+        }
+        tuples = [
+            ("group:10#member", "can_view_machines", "pool", "1"),
+            ("group:20#member", "can_view_machines", "pool", "1"),
+            ("group:10#member", "can_edit_machines", "pool", "1"),
+            ("group:10#member", "can_view_machines", "pool", "2"),
+        ]
+        for user, relation, object_type, object_id in tuples:
+            await create_openfga_tuple(
+                fixture,
+                user=user,
+                user_type="userset",
+                relation=relation,
+                object_type=object_type,
+                object_id=object_id,
+            )
+        await repository.delete_many(
+            QuerySpec(
+                where=OpenFGATuplesFilters.and_filters(
+                    [
+                        OpenFGATuplesFilters.with_user("group:10#member"),
+                        OpenFGATuplesFilters.with_entitlement_tuples(
+                            [
+                                EntitlementDeleteSpec(
+                                    "can_view_machines", "pool", 1
+                                )
+                            ]
+                        ),
+                    ]
+                )
+            )
+        )
+        remaining = await repository.get_many(QuerySpec())
+        assert {
+            (
+                item.user,
+                item.relation,
+                item.object_type,
+                item.object_id,
+                item.user_type,
+            )
+            for item in remaining
+        } == baseline | {(*item, "userset") for item in tuples[1:]}
+
+    async def test_empty_entitlement_specs_delete_nothing(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        repository = OpenFGATuplesRepository(Context(connection=db_connection))
+        await create_openfga_tuple(
+            fixture,
+            user="user:alice",
+            user_type="user",
+            relation="member",
+            object_type="group",
+            object_id="10",
+        )
+        baseline = {
+            tuple(item.model_dump().items())
+            for item in await repository.get_many(QuerySpec())
+        }
+        await repository.delete_many(
+            QuerySpec(where=OpenFGATuplesFilters.with_entitlement_tuples([]))
+        )
+        remaining = await repository.get_many(QuerySpec())
+        assert {
+            tuple(item.model_dump().items()) for item in remaining
+        } == baseline
