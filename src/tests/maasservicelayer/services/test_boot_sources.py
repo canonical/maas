@@ -11,14 +11,12 @@ from maascommon.workflows.bootresource import (
 )
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootsourcecache import (
-    BootSourceCacheClauseFactory,
-)
 from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
+from maasservicelayer.filters.bootsourcecache import BootSourceCacheFilters
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services.boot_sources import BootSourcesService
 from maasservicelayer.services.bootsourcecache import BootSourceCacheService
@@ -91,14 +89,14 @@ class TestBootSourcesService(ServiceCommonTests):
 
         boot_source_cache_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=BootSourceCacheClauseFactory.with_boot_source_ids(
+                where=BootSourceCacheFilters.with_boot_source_ids(
                     [boot_source.id]
                 )
             )
         )
         boot_source_selections_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=BootSourceSelectionClauseFactory.with_boot_source_ids(
+                where=BootSourceSelectionFilters.with_boot_source_ids(
                     [boot_source.id]
                 )
             )

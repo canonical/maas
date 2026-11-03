@@ -21,22 +21,16 @@ from maascommon.workflows.bootresource import (
 from maasserver.enum import NotificationComponent
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootresourcefiles import (
-    BootResourceFileClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsources import (
-    BootSourcesClauseFactory,
-)
-from maasservicelayer.db.repositories.notifications import (
-    NotificationsClauseFactory,
-)
 from maasservicelayer.db.tables import (
     BootResourceFileTable,
     BootResourceSetTable,
     BootResourceTable,
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.bootresourcefiles import BootResourceFileFilters
+from maasservicelayer.filters.bootsources import BootSourcesFilters
+from maasservicelayer.filters.notifications import NotificationsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootresourcesets import BootResourceSet
@@ -347,11 +341,11 @@ class TestImageSyncService:
 
         assert result is True
         self.boot_sources_service.exists.assert_awaited_once_with(
-            query=QuerySpec(where=BootSourcesClauseFactory.with_enabled(True))
+            query=QuerySpec(where=BootSourcesFilters.with_enabled(True))
         )
         self.notifications_service.delete_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=NotificationsClauseFactory.with_ident(
+                where=NotificationsFilters.with_ident(
                     NotificationComponent.BOOT_SOURCES_AVAILABILITY
                 )
             )
@@ -380,7 +374,7 @@ class TestImageSyncService:
         assert result is False
         self.notifications_service.get_or_create.assert_awaited_once_with(
             query=QuerySpec(
-                where=NotificationsClauseFactory.with_ident(
+                where=NotificationsFilters.with_ident(
                     NotificationComponent.BOOT_SOURCES_AVAILABILITY
                 )
             ),
@@ -408,7 +402,7 @@ class TestImageSyncService:
 
         self.notifications_service.get_or_create.assert_awaited_once_with(
             query=QuerySpec(
-                where=NotificationsClauseFactory.with_ident(
+                where=NotificationsFilters.with_ident(
                     "commissioning_series_unselected"
                 )
             ),
@@ -434,7 +428,7 @@ class TestImageSyncService:
 
         self.notifications_service.get_or_create.assert_awaited_once_with(
             query=QuerySpec(
-                where=NotificationsClauseFactory.with_ident(
+                where=NotificationsFilters.with_ident(
                     "commissioning_series_unavailable"
                 )
             ),
@@ -704,12 +698,12 @@ class TestImageSyncService:
         )
         self.boot_resource_files_service.delete_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.and_clauses(
+                where=BootResourceFileFilters.and_filters(
                     [
-                        BootResourceFileClauseFactory.with_resource_set_id(
+                        BootResourceFileFilters.with_resource_set_id(
                             boot_resource_set.id
                         ),
-                        BootResourceFileClauseFactory.with_filetype(
+                        BootResourceFileFilters.with_filetype(
                             BootResourceFileType.ROOT_IMAGE
                         ),
                     ]

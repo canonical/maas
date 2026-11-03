@@ -49,14 +49,12 @@ from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
 )
 from maasservicelayer.db import Database
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootsources import (
-    BootSourcesClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.bootsources import BootSourcesFilters
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.logging.tls import fips_tls_trace_config
 from maasservicelayer.models.configurations import UpstreamDnsConfig
 from maasservicelayer.models.secrets import MSMConnectorSecret
@@ -360,9 +358,7 @@ class MSMConnectorActivity(ActivityBase):
         async with self.start_transaction() as services:
             await services.boot_sources.delete_one(
                 QuerySpec(
-                    where=BootSourcesClauseFactory.with_url(
-                        input.sm_url + MSM_SS_EP
-                    )
+                    where=BootSourcesFilters.with_url(input.sm_url + MSM_SS_EP)
                 )
             )
 
@@ -385,9 +381,7 @@ class MSMConnectorActivity(ActivityBase):
         async with self.start_transaction() as services:
             source = await services.boot_sources.get_one(
                 QuerySpec(
-                    where=BootSourcesClauseFactory.with_url(
-                        input.sm_url + MSM_SS_EP
-                    )
+                    where=BootSourcesFilters.with_url(input.sm_url + MSM_SS_EP)
                 )
             )
             if source is None:
@@ -414,7 +408,7 @@ class MSMConnectorActivity(ActivityBase):
                 ) from err
             await services.boot_source_selections.delete_many(
                 QuerySpec(
-                    where=BootSourceSelectionClauseFactory.with_boot_source_id(
+                    where=BootSourceSelectionFilters.with_boot_source_id(
                         source.id
                     )
                 )

@@ -11,9 +11,9 @@ from maasapiserver.v3.api.public.models.requests.boot_source_selections import (
     BulkSelectionRequest,
     SelectionRequest,
 )
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-    BootSourceSelectionStatusClauseFactory,
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+    BootSourceSelectionStatusFilters,
 )
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.utils.date import utcnow
@@ -92,39 +92,35 @@ class TestBootSourceSelectionStatusFilterParams:
             (
                 [1, 2, 3],
                 None,
-                BootSourceSelectionStatusClauseFactory.with_ids([1, 2, 3]),
+                BootSourceSelectionStatusFilters.with_ids([1, 2, 3]),
             ),
             (
                 None,
                 True,
-                BootSourceSelectionStatusClauseFactory.with_selected(True),
+                BootSourceSelectionStatusFilters.with_selected(True),
             ),
             (
                 None,
                 False,
-                BootSourceSelectionStatusClauseFactory.with_selected(False),
+                BootSourceSelectionStatusFilters.with_selected(False),
             ),
             (
                 [4, 5],
                 True,
-                BootSourceSelectionStatusClauseFactory.and_clauses(
+                BootSourceSelectionStatusFilters.and_filters(
                     [
-                        BootSourceSelectionStatusClauseFactory.with_ids(
-                            [4, 5]
-                        ),
-                        BootSourceSelectionStatusClauseFactory.with_selected(
-                            True
-                        ),
+                        BootSourceSelectionStatusFilters.with_ids([4, 5]),
+                        BootSourceSelectionStatusFilters.with_selected(True),
                     ]
                 ),
             ),
         ],
     )
-    def test_to_clause(self, ids, selected, expected):
+    def test_to_filter(self, ids, selected, expected):
         filters = BootSourceSelectionStatusFilterParams(
             ids=ids, selected=selected
         )
-        clause = filters.to_clause()
+        clause = filters.to_filter()
         assert clause is not None
         assert clause == expected
 
@@ -166,13 +162,13 @@ class TestBootSourceSelectionStatisticFilterParams:
         "ids,expected",
         [
             (None, None),
-            ([1], BootSourceSelectionClauseFactory.with_ids([1])),
-            ([1, 2, 3], BootSourceSelectionClauseFactory.with_ids([1, 2, 3])),
+            ([1], BootSourceSelectionFilters.with_ids([1])),
+            ([1, 2, 3], BootSourceSelectionFilters.with_ids([1, 2, 3])),
         ],
     )
-    def test_to_clause(self, ids, expected):
+    def test_to_filter(self, ids, expected):
         filters = BootSourceSelectionStatisticFilterParams(ids=ids)
-        clause = filters.to_clause()
+        clause = filters.to_filter()
         assert clause == expected
 
     @pytest.mark.parametrize(

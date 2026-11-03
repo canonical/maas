@@ -17,11 +17,10 @@ from maascommon.osystem import (
     OperatingSystemRegistry,
 )
 from maasservicelayer.builders.bootresources import BootResourceBuilder
-from maasservicelayer.db.filters import Clause, QuerySpec
-from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.bootresources import BootResourceFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 
@@ -180,13 +179,13 @@ class BootResourceCreateRequest(BaseModel):
         if not base_image:
             existing_boot_resource = await services.boot_resources.get_one(
                 query=QuerySpec(
-                    where=BootResourceClauseFactory.and_clauses(
+                    where=BootResourceFilters.and_filters(
                         [
-                            BootResourceClauseFactory.with_name(name),
-                            BootResourceClauseFactory.with_architecture(
+                            BootResourceFilters.with_name(name),
+                            BootResourceFilters.with_architecture(
                                 architecture
                             ),
-                            BootResourceClauseFactory.with_rtype(
+                            BootResourceFilters.with_rtype(
                                 BootResourceType.UPLOADED
                             ),
                         ]
@@ -316,13 +315,13 @@ class CustomImageFilterParams(BaseModel):
         )
     )
 
-    def to_clause(self) -> Clause | None:
+    def to_filter(self) -> Filter | None:
         clauses = []
         if self.ids is not None:
-            clauses.append(BootResourceClauseFactory.with_ids(self.ids))
+            clauses.append(BootResourceFilters.with_ids(self.ids))
         if self.file_type is not None:
             clauses.append(
-                BootResourceClauseFactory.with_filetype(
+                BootResourceFilters.with_filetype(
                     BootResourceFileTypeChoice.get_resource_filetype(
                         self.file_type
                     )
@@ -334,7 +333,7 @@ class CustomImageFilterParams(BaseModel):
         elif len(clauses) == 1:
             return clauses[0]
         else:
-            return BootResourceClauseFactory.and_clauses(clauses)
+            return BootResourceFilters.and_filters(clauses)
 
     def to_href_format(self) -> str | None:
         parts = []

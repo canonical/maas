@@ -11,6 +11,15 @@ from maasservicelayer.db.tables import BootSourceTable
 from maasservicelayer.models.bootsources import BootSource
 
 
+class BootSourcesRepository(BaseRepository[BootSource]):
+    def get_repository_table(self) -> Table:
+        return BootSourceTable
+
+    def get_model_factory(self) -> type[BootSource]:
+        return BootSource
+
+
+# Legacy SQL clause factory, removed once every caller uses domain filters.
 class BootSourcesClauseFactory(ClauseFactory):
     @classmethod
     def with_id(cls, id: int) -> Clause:
@@ -31,11 +40,3 @@ class BootSourcesClauseFactory(ClauseFactory):
     @classmethod
     def with_enabled(cls, enabled: bool) -> Clause:
         return Clause(condition=eq(BootSourceTable.c.enabled, enabled))
-
-
-class BootSourcesRepository(BaseRepository[BootSource]):
-    def get_repository_table(self) -> Table:
-        return BootSourceTable
-
-    def get_model_factory(self) -> type[BootSource]:
-        return BootSource

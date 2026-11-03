@@ -4,14 +4,12 @@ from maascommon.enums.boot_resources import BootResourceType
 from maascommon.osystem import BOOT_IMAGE_PURPOSE, OperatingSystemRegistry
 from maasservicelayer.builders.bootresources import BootResourceBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
     BootResourcesRepository,
 )
-from maasservicelayer.db.repositories.bootresourcesets import (
-    BootResourceSetClauseFactory,
-)
+from maasservicelayer.filters.bootresources import BootResourceFilters
+from maasservicelayer.filters.bootresourcesets import BootResourceSetFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootresources import (
     BootResource,
@@ -69,22 +67,20 @@ class BootResourceService(
         # for commissioning, so this wasn't ported yet.
         resources = await self.get_many(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.or_clauses(
+                        BootResourceFilters.or_filters(
                             [
-                                BootResourceClauseFactory.with_rtype(
+                                BootResourceFilters.with_rtype(
                                     BootResourceType.SYNCED
                                 ),
-                                BootResourceClauseFactory.with_rtype(
+                                BootResourceFilters.with_rtype(
                                     BootResourceType.UPLOADED
                                 ),
                             ]
                         ),
-                        BootResourceClauseFactory.with_name(
-                            f"{osystem}/{series}"
-                        ),
-                        BootResourceClauseFactory.with_architecture_starting_with(
+                        BootResourceFilters.with_name(f"{osystem}/{series}"),
+                        BootResourceFilters.with_architecture_starting_with(
                             architecture
                         ),
                     ]
@@ -126,7 +122,7 @@ class BootResourceService(
     ) -> None:
         await self.boot_resource_sets_service.delete_many(
             query=QuerySpec(
-                where=BootResourceSetClauseFactory.with_resource_id(
+                where=BootResourceSetFilters.with_resource_id(
                     resource_to_be_deleted.id
                 )
             )
@@ -137,7 +133,7 @@ class BootResourceService(
     ) -> None:
         await self.boot_resource_sets_service.delete_many(
             query=QuerySpec(
-                where=BootResourceSetClauseFactory.with_resource_ids(
+                where=BootResourceSetFilters.with_resource_ids(
                     [r.id for r in resources]
                 )
             )
@@ -151,7 +147,7 @@ class BootResourceService(
         boot_resources_ids = {b.id for b in boot_resources}
         all_resource_sets = await self.boot_resource_sets_service.get_many(
             query=QuerySpec(
-                where=BootResourceSetClauseFactory.with_resource_ids(
+                where=BootResourceSetFilters.with_resource_ids(
                     list(boot_resources_ids)
                 )
             )
@@ -165,7 +161,7 @@ class BootResourceService(
 
         return await self.delete_many(
             query=QuerySpec(
-                where=BootResourceClauseFactory.with_ids(
+                where=BootResourceFilters.with_ids(
                     boot_resource_ids_without_sets
                 )
             )
@@ -226,12 +222,12 @@ class BootResourceService(
         sets_for_boot_resource = (
             await self.boot_resource_sets_service.get_many(
                 query=QuerySpec(
-                    where=BootResourceSetClauseFactory.and_clauses(
+                    where=BootResourceSetFilters.and_filters(
                         [
-                            BootResourceSetClauseFactory.with_resource_id(
+                            BootResourceSetFilters.with_resource_id(
                                 boot_resource_id
                             ),
-                            BootResourceSetClauseFactory.with_version_prefix(
+                            BootResourceSetFilters.with_version_prefix(
                                 version_name
                             ),
                         ]

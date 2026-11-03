@@ -38,10 +38,6 @@ from maascommon.workflows.bootresource import (
     SyncRequestParam,
 )
 from maasservicelayer.builders.bootresources import BootResourceBuilder
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -52,6 +48,8 @@ from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.bootresources import BootResourceFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresources import (
@@ -583,10 +581,10 @@ class TestCustomImagesApi(ApiCommonTests):
 
         services_mock.boot_resources.delete_one.assert_called_once_with(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_id(1),
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_id(1),
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
                     ]
@@ -618,10 +616,10 @@ class TestCustomImagesApi(ApiCommonTests):
 
         services_mock.boot_resources.delete_one.assert_called_once_with(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_id(1),
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_id(1),
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
                     ]
@@ -654,10 +652,10 @@ class TestCustomImagesApi(ApiCommonTests):
 
         services_mock.boot_resources.delete_one.assert_called_once_with(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_id(2),
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_id(2),
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
                     ]
@@ -701,10 +699,10 @@ class TestCustomImagesApi(ApiCommonTests):
 
         services_mock.boot_resources.delete_one.assert_called_once_with(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_id(2),
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_id(2),
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
                     ]
@@ -727,10 +725,10 @@ class TestCustomImagesApi(ApiCommonTests):
         assert response.status_code == 204
         services_mock.boot_resources.delete_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_ids([1, 2]),
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_ids([1, 2]),
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
                     ]
@@ -1067,8 +1065,8 @@ class TestBootloadersApi(ApiCommonTests):
             page=1,
             size=1,
             query=QuerySpec(
-                where=BootResourceClauseFactory.not_clause(
-                    BootResourceClauseFactory.with_bootloader_type(None)
+                where=BootResourceFilters.not_filter(
+                    BootResourceFilters.with_bootloader_type(None)
                 )
             ),
         )
@@ -1117,14 +1115,12 @@ class TestBootloadersApi(ApiCommonTests):
         assert stat_response.id == 1
         services_mock.boot_resources.get_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.not_clause(
-                            BootResourceClauseFactory.with_bootloader_type(
-                                None
-                            )
+                        BootResourceFilters.not_filter(
+                            BootResourceFilters.with_bootloader_type(None)
                         ),
-                        BootResourceClauseFactory.with_id(1),
+                        BootResourceFilters.with_id(1),
                     ]
                 )
             )
