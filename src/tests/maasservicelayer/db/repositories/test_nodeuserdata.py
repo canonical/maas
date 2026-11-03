@@ -5,12 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.nodeuserdata import NodeUserDataBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.nodeuserdata import (
-    NodeUserDataClauseFactory,
     NodeUserDataRepository,
 )
 from maasservicelayer.db.tables import NodeUserDataTable
+from maasservicelayer.filters.base import FieldFilter, Operator
+from maasservicelayer.filters.nodeuserdata import NodeUserDataFilters
+from maasservicelayer.filters.query import OrderBy, QuerySpec
 from maasservicelayer.models.nodeuserdata import NodeUserData
 from tests.fixtures.factories.node import create_test_machine_entry
 from tests.fixtures.factories.nodeuserdata import (
@@ -18,30 +19,6 @@ from tests.fixtures.factories.nodeuserdata import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestNodeUserDataClauseFactory:
-    def test_with_node_id(self) -> None:
-        clause = NodeUserDataClauseFactory.with_node_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_nodeuserdata.node_id = 1"
-        )
-
-    def test_with_for_ephemeral_environment(self) -> None:
-        clause = NodeUserDataClauseFactory.with_for_ephemeral_environment(True)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_nodeuserdata.for_ephemeral_environment = true"
-        )
 
 
 class TestNodeUserDataRepository(RepositoryCommonTests[NodeUserData]):
@@ -224,3 +201,59 @@ class TestNodeUserDataRepository(RepositoryCommonTests[NodeUserData]):
         deleted = await repository_instance.delete_by_id(created_instance.id)
 
         assert deleted == created_instance
+
+    @pytest.mark.parametrize("data", [b"", b"\x00\xff\xfe", b"plain text"])
+    @pytest.mark.parametrize("operator", [Operator.EQ, Operator.IN])
+    async def test_domain_data_filter_round_trip(
+        self, repository_instance, instance_builder, data, operator
+    ):
+        instance_builder.data = data
+        created = await repository_instance.upsert(instance_builder)
+        other = await repository_instance.upsert(
+            NodeUserDataBuilder(
+                node_id=created.node_id,
+                data=b"other",
+                for_ephemeral_environment=False,
+            )
+        )
+        value = [data] if operator is Operator.IN else data
+        query = QuerySpec(
+            where=FieldFilter(NodeUserData, "data", operator, value)
+        )
+        assert await repository_instance.get_one(query) == created
+        assert await repository_instance.delete_one(query) == created
+        assert await repository_instance.get_one(query) is None
+        assert await repository_instance.get_by_id(other.id) == other
+
+    async def test_data_ordering_uses_decoded_bytes(
+        self, repository_instance, fixture
+    ):
+        for data in [b"\xff", b"\x00", b"a"]:
+            node = await create_test_machine_entry(fixture)
+            await repository_instance.upsert(
+                NodeUserDataBuilder(
+                    node_id=node["id"],
+                    data=data,
+                    for_ephemeral_environment=True,
+                )
+            )
+        entries = await repository_instance.get_many(
+            QuerySpec(order_by=(OrderBy(NodeUserData, "data"),))
+        )
+        assert [entry.data for entry in entries] == [b"\x00", b"a", b"\xff"]
+
+    async def test_filters_keep_environments_separate(
+        self, repository_instance, instance_builder
+    ):
+        ephemeral = await repository_instance.upsert(instance_builder)
+        instance_builder.for_ephemeral_environment = False
+        await repository_instance.upsert(instance_builder)
+        query = QuerySpec(
+            where=NodeUserDataFilters.and_filters(
+                [
+                    NodeUserDataFilters.with_node_id(ephemeral.node_id),
+                    NodeUserDataFilters.with_for_ephemeral_environment(True),
+                ]
+            )
+        )
+        assert await repository_instance.get_many(query) == [ephemeral]

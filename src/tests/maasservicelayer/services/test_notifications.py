@@ -7,7 +7,6 @@ import pytest
 from maascommon.enums.notifications import NotificationCategoryEnum
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.notifications import (
     NotificationsRepository,
 )
@@ -15,6 +14,7 @@ from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     NotFoundException,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.notifications import Notification
 from maasservicelayer.services import OpenFGATupleService

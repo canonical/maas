@@ -8,8 +8,8 @@ import pytest
 
 from maascommon.apiclient import MAASAPIClient
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.agents import AgentsRepository
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.agents import Agent
 from maasservicelayer.services import (
     AgentsService,

@@ -34,8 +34,6 @@ from maascommon.openfga.base import (
     MAASResourceEntitlement,
     PoolResourceEntitlements,
 )
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.machines import MachineClauseFactory
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.exceptions.constants import (
     BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE,
@@ -47,6 +45,8 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNKNOWN_POWER_TYPE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.machines import MachineFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
@@ -296,20 +296,18 @@ class TestMachinesApi(ApiCommonTests):
             page=1,
             size=2,
             query=QuerySpec(
-                where=MachineClauseFactory.or_clauses(
+                where=MachineFilters.or_filters(
                     [
-                        MachineClauseFactory.with_resource_pool_ids({100}),
-                        MachineClauseFactory.and_clauses(
+                        MachineFilters.with_resource_pool_ids({100}),
+                        MachineFilters.and_filters(
                             [
-                                MachineClauseFactory.or_clauses(
+                                MachineFilters.or_filters(
                                     [
-                                        MachineClauseFactory.with_owner(None),
-                                        MachineClauseFactory.with_owner(
-                                            "username"
-                                        ),
+                                        MachineFilters.with_owner(None),
+                                        MachineFilters.with_owner("username"),
                                     ]
                                 ),
-                                MachineClauseFactory.with_resource_pool_ids(
+                                MachineFilters.with_resource_pool_ids(
                                     {TEST_MACHINE.pool_id}
                                 ),
                             ]
