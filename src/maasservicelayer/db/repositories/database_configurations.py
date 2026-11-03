@@ -44,7 +44,7 @@ class DatabaseConfigurationsRepository(Repository):
         stmt = select(
             "*",
         ).select_from(ConfigTable)
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         result = (await self.execute_stmt(stmt)).all()
         return [DatabaseConfiguration(**row._asdict()) for row in result]
 

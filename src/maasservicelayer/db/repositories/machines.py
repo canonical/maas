@@ -10,7 +10,7 @@ from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeDeviceBus, NodeStatus, NodeTypeEnum
 from maascommon.workflows.msm import MachinesCountByStatus
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import AnyQuerySpec, Clause, ClauseFactory
 from maasservicelayer.db.repositories.nodes import AbstractNodesRepository
 from maasservicelayer.db.tables import (
     BMCTable,
@@ -102,7 +102,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
         )
 
     async def list(
-        self, page: int, size: int, query: QuerySpec | None = None
+        self, page: int, size: int, query: AnyQuerySpec | None = None
     ) -> ListResult[Machine]:
         # Override the default implementation because we have to specialize the `total_stmt` query. If we realise this is a
         # common use case, we might think about an abstraction at BaseRepository level.
@@ -112,7 +112,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
             .where(eq(NodeTable.c.node_type, NodeTypeEnum.MACHINE))
         )
         if query:
-            total_stmt = query.enrich_stmt(total_stmt)
+            total_stmt = self._translate(query).enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
@@ -122,7 +122,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
             .limit(size)
         )
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[Machine](
             items=[

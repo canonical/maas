@@ -67,7 +67,7 @@ class OpenFGATuplesClauseFactory(ClauseFactory):
 
 class OpenFGATuplesDataMapper(BaseDomainDataMapper):
     def __init__(self):
-        super().__init__(OpenFGATupleTable)
+        super().__init__(OpenFGATuple, OpenFGATupleTable)
 
     def build_resource(
         self, builder: ResourceBuilder
@@ -90,7 +90,7 @@ class OpenFGATuplesRepository(Repository):
 
     async def get_many(self, query: QuerySpec) -> list[OpenFGATuple]:
         stmt = select(OpenFGATupleTable).select_from(OpenFGATupleTable)
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         result = await self.execute_stmt(stmt)
         items = []
         for row in result:
@@ -162,14 +162,14 @@ class OpenFGATuplesRepository(Repository):
 
     async def delete_many(self, query: QuerySpec) -> None:
         stmt = delete(OpenFGATupleTable).returning(OpenFGATupleTable)
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         await self.execute_stmt(stmt)
 
     async def list_entitlements(
         self, page: int, size: int, query: QuerySpec
     ) -> ListResult[OpenFGATuple]:
         total_stmt = select(count()).select_from(OpenFGATupleTable)
-        total_stmt = query.enrich_stmt(total_stmt)
+        total_stmt = self._translate(query).enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
@@ -179,7 +179,7 @@ class OpenFGATuplesRepository(Repository):
             .offset((page - 1) * size)
             .limit(size)
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         result = await self.execute_stmt(stmt)
         items = []
         for row in result:

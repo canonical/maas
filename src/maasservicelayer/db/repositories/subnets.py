@@ -8,7 +8,12 @@ from typing import List, Type
 from sqlalchemy import desc, join, or_, select, Table
 
 from maascommon.enums.subnet import RdnsMode
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import (
+    AnyQuerySpec,
+    Clause,
+    ClauseFactory,
+    QuerySpec,
+)
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import IPRangeTable, SubnetTable, VlanTable
 from maasservicelayer.exceptions.catalog import (
@@ -109,7 +114,7 @@ class SubnetsRepository(BaseRepository[Subnet]):
         del res["dhcp_on"]
         return Subnet(**res)
 
-    async def _pre_delete_checks(self, query: QuerySpec) -> None:
+    async def _pre_delete_checks(self, query: AnyQuerySpec) -> None:
         vlan_dhcp_on_and_dynamic_ip_range = (
             select(SubnetTable)
             .join(VlanTable, eq(SubnetTable.c.vlan_id, VlanTable.c.id))
@@ -122,7 +127,7 @@ class SubnetsRepository(BaseRepository[Subnet]):
             vlan_dhcp_on_and_dynamic_ip_range
         )
         # use the query from `delete` to specify which subnet we want to delete
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         subnet = (await self.execute_stmt(stmt)).one_or_none()
         if subnet:
             raise ValidationException(
@@ -135,7 +140,7 @@ class SubnetsRepository(BaseRepository[Subnet]):
                 ]
             )
 
-    async def delete_one(self, query: QuerySpec) -> Subnet | None:
+    async def delete_one(self, query: AnyQuerySpec) -> Subnet | None:
         await self._pre_delete_checks(query)
         return await super().delete_one(query)
 
@@ -143,5 +148,5 @@ class SubnetsRepository(BaseRepository[Subnet]):
         query = QuerySpec(where=Clause(eq(SubnetTable.c.id, id)))
         return await self.delete_one(query)
 
-    async def delete_many(self, query: QuerySpec) -> List[Subnet]:
+    async def delete_many(self, query: AnyQuerySpec) -> List[Subnet]:
         raise NotImplementedError("delete_many is not implemented yet.")

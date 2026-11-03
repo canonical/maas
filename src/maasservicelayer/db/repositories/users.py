@@ -23,7 +23,7 @@ from sqlalchemy.sql.operators import and_, eq, gt
 from maasservicelayer.builders.users import UserProfileBuilder
 from maasservicelayer.constants import SYSTEM_USERS
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import AnyQuerySpec, Clause, ClauseFactory
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
@@ -98,7 +98,9 @@ class UserClauseFactory(ClauseFactory):
 class UsersRepository(BaseRepository[User]):
     def __init__(self, context: Context):
         super().__init__(context)
-        self.userprofile_mapper = DefaultDomainDataMapper(UserProfileTable)
+        self.userprofile_mapper = DefaultDomainDataMapper(
+            UserProfile, UserProfileTable
+        )
 
     def get_repository_table(self) -> Table:
         return UserTable
@@ -232,7 +234,7 @@ class UsersRepository(BaseRepository[User]):
         return UserProfile(**deleted_profile._asdict())
 
     async def list(
-        self, page: int, size: int, query: QuerySpec | None = None
+        self, page: int, size: int, query: AnyQuerySpec | None = None
     ) -> ListResult[User]:
         # Exclude the SYSTEM_USERS from the queries.
         total_stmt = (
@@ -241,7 +243,7 @@ class UsersRepository(BaseRepository[User]):
             .where(not_(UserTable.c.username.in_(SYSTEM_USERS)))
         )
         if query:
-            total_stmt = query.enrich_stmt(total_stmt)
+            total_stmt = self._translate(query).enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
@@ -253,7 +255,7 @@ class UsersRepository(BaseRepository[User]):
             .limit(size)
         )
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[User](
@@ -339,7 +341,7 @@ class UsersRepository(BaseRepository[User]):
         )
 
     async def list_statistics(
-        self, page: int, size: int, query: QuerySpec
+        self, page: int, size: int, query: AnyQuerySpec
     ) -> ListResult[UserStatistics]:
         total_stmt = (
             select(func.count())
@@ -351,12 +353,12 @@ class UsersRepository(BaseRepository[User]):
                 )
             )
         )
-        total_stmt = query.enrich_stmt(total_stmt)
+        total_stmt = self._translate(query).enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
         stmt = (
             self._user_statistics_stmt().offset((page - 1) * size).limit(size)
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[UserStatistics](

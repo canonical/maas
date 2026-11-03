@@ -4,7 +4,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 import ipaddress
-from operator import eq
 from typing import Any, Generic, List, Sequence, TypeVar
 
 import psycopg2.extensions
@@ -25,7 +24,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.functions import count
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import Clause, QuerySpec
+from maasservicelayer.db.filters import AnyQuerySpec, SQLQuerySpec
 from maasservicelayer.db.mappers.base import BaseDomainDataMapper
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.exceptions.catalog import (
@@ -37,6 +36,8 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.base import FieldFilter, Operator
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import (
     ListResult,
     MaasBaseModel,
@@ -66,8 +67,19 @@ T = TypeVar("T", bound=MaasBaseModel)
 
 
 class Repository(ABC):  # noqa: B024
+    mapper: BaseDomainDataMapper
+
     def __init__(self, context: Context):
         self.context = context
+
+    def _translate(self, query: AnyQuerySpec) -> SQLQuerySpec:
+        """Compile a domain query before building a SQL statement."""
+        # Legacy SQL queries are already compiled.
+        if isinstance(query, SQLQuerySpec):
+            return query
+        if not isinstance(query, QuerySpec):
+            raise TypeError("Repositories require a domain QuerySpec.")
+        return self.mapper.to_query(query)
 
     # TODO: remove this when the connection in context is changed back to the AsyncConnection type only.
     async def execute_stmt(self, stmt) -> CursorResult[Any]:
@@ -167,30 +179,35 @@ class ReadOnlyRepository(Repository, Generic[T]):
         """
         How this repository should convert the domain model into the data model.
         """
-        return DefaultDomainDataMapper(self.get_repository_table())
+        return DefaultDomainDataMapper(
+            self.get_model_factory(), self.get_repository_table()
+        )
+
+    def _query_for_id(self, id: int) -> QuerySpec:
+        return QuerySpec(
+            where=FieldFilter(self.get_model_factory(), "id", Operator.EQ, id)
+        )
 
     def select_all_statement(self) -> Select[Any]:
         return select(self.get_repository_table()).select_from(
             self.get_repository_table()
         )
 
-    async def exists(self, query: QuerySpec) -> bool:
+    async def exists(self, query: AnyQuerySpec) -> bool:
         exists_stmt = select(self.get_repository_table().c.id).select_from(
             self.get_repository_table()
         )
-        exists_stmt = query.enrich_stmt(exists_stmt).exists()
+        exists_stmt = self._translate(query).enrich_stmt(exists_stmt).exists()
         stmt = select(exists_stmt)
         return bool((await self.execute_stmt(stmt)).scalar())
 
-    async def get_many(self, query: QuerySpec) -> List[T]:
+    async def get_many(self, query: AnyQuerySpec) -> List[T]:
         return await self._get(query)
 
     async def get_by_id(self, id: int) -> T | None:
-        return await self.get_one(
-            QuerySpec(where=Clause(eq(self.get_repository_table().c.id, id)))
-        )
+        return await self.get_one(self._query_for_id(id))
 
-    async def get_one(self, query: QuerySpec) -> T | None:
+    async def get_one(self, query: AnyQuerySpec) -> T | None:
         results = await self._get(query)
 
         if results:
@@ -201,20 +218,21 @@ class ReadOnlyRepository(Repository, Generic[T]):
             return results[0]
         return None
 
-    async def _get(self, query: QuerySpec) -> List[T]:
+    async def _get(self, query: AnyQuerySpec) -> List[T]:
         stmt = self.select_all_statement()
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return [self.get_model_factory()(**row._asdict()) for row in result]
 
     async def list(
-        self, page: int, size: int, query: QuerySpec | None = None
+        self, page: int, size: int, query: AnyQuerySpec | None = None
     ) -> ListResult[T]:
+        translated = self._translate(query) if query is not None else None
         total_stmt = select(count()).select_from(self.get_repository_table())
-        if query:
+        if translated:
             # Don't apply the order by clause in the total_stmt
-            where_query = QuerySpec(where=query.where)
+            where_query = SQLQuerySpec(where=translated.where)
             total_stmt = where_query.enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
@@ -224,8 +242,8 @@ class ReadOnlyRepository(Repository, Generic[T]):
             .offset((page - 1) * size)
             .limit(size)
         )
-        if query:
-            stmt = query.enrich_stmt(stmt)
+        if translated:
+            stmt = translated.enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[T](
@@ -235,13 +253,13 @@ class ReadOnlyRepository(Repository, Generic[T]):
             total=total,
         )
 
-    async def list_all(self, query: QuerySpec | None = None) -> List[T]:
+    async def list_all(self, query: AnyQuerySpec | None = None) -> List[T]:
         # Please, prefer not to use this method. It's here just as a utility for v2 endpoints that need to use the service layer.
         stmt = self.select_all_statement().order_by(
             desc(self.get_repository_table().c.id)
         )
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return [self.get_model_factory()(**row._asdict()) for row in result]
@@ -299,7 +317,7 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
             self._raise_already_existing_exception()
 
     async def update_many(
-        self, query: QuerySpec, builder: ResourceBuilder
+        self, query: AnyQuerySpec, builder: ResourceBuilder
     ) -> List[T]:
         updated_resources = await self._update(query, builder)
         return [
@@ -309,14 +327,12 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
 
     async def update_by_id(self, id: int, builder: ResourceBuilder) -> T:
         return await self.update_one(
-            query=QuerySpec(
-                where=Clause(eq(self.get_repository_table().c.id, id))
-            ),
+            query=self._query_for_id(id),
             builder=builder,
         )
 
     async def update_one(
-        self, query: QuerySpec, builder: ResourceBuilder
+        self, query: AnyQuerySpec, builder: ResourceBuilder
     ) -> T:
         updated_resources = await self._update(query, builder)
         if not updated_resources:
@@ -326,7 +342,7 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
         return self.get_model_factory()(**updated_resources[0]._asdict())
 
     async def _update(
-        self, query: QuerySpec, builder: ResourceBuilder
+        self, query: AnyQuerySpec, builder: ResourceBuilder
     ) -> Sequence[Row]:
         resource = self.mapper.build_resource(builder)
         # Populate the updated field only if the caller did not set it.
@@ -338,24 +354,20 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
             .returning(self.get_repository_table())
             .values(**resource.get_values())
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         try:
             updated_resources = (await self.execute_stmt(stmt)).all()
         except IntegrityError:
             self._raise_already_existing_exception()
         return updated_resources
 
-    async def delete_many(self, query: QuerySpec) -> List[T]:
+    async def delete_many(self, query: AnyQuerySpec) -> List[T]:
         return await self._delete(query)
 
     async def delete_by_id(self, id: int) -> T | None:
-        return await self.delete_one(
-            query=QuerySpec(
-                where=Clause(eq(self.get_repository_table().c.id, id))
-            )
-        )
+        return await self.delete_one(query=self._query_for_id(id))
 
-    async def delete_one(self, query: QuerySpec) -> T | None:
+    async def delete_one(self, query: AnyQuerySpec) -> T | None:
         result = await self._delete(query)
         if not result:
             return None
@@ -365,7 +377,7 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
             )
         return result[0]
 
-    async def _delete(self, query: QuerySpec) -> List[T]:
+    async def _delete(self, query: AnyQuerySpec) -> List[T]:
         """
         If no resource for the query is found, silently ignore it and return `None`.
         Otherwise, return the deleted resources.
@@ -373,7 +385,7 @@ class BaseRepository(ReadOnlyRepository[T], Generic[T]):
         stmt = delete(self.get_repository_table()).returning(
             self.get_repository_table()
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
         return [self.get_model_factory()(**row._asdict()) for row in results]
 

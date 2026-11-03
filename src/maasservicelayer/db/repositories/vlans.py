@@ -7,7 +7,7 @@ from sqlalchemy import select, Table
 from sqlalchemy.sql.operators import eq, or_
 
 from maascommon.enums.node import NodeTypeEnum
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import AnyQuerySpec, Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
@@ -90,7 +90,7 @@ class VlansRepository(BaseRepository[Vlan]):
         result = (await self.execute_stmt(stmt)).one()
         return self.get_model_factory()(**result._asdict())
 
-    async def get_node_vlans(self, query: QuerySpec) -> List[Vlan]:
+    async def get_node_vlans(self, query: AnyQuerySpec) -> List[Vlan]:
         """
         Returns all the vlans accessible by a node
         """
@@ -133,6 +133,6 @@ class VlansRepository(BaseRepository[Vlan]):
                 ),
             )
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         result = (await self.execute_stmt(stmt)).all()
         return [Vlan(**row._asdict()) for row in result]

@@ -273,7 +273,7 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
             self.get_repository_table()
         )
         if query:
-            total_stmt = query.enrich_stmt(total_stmt)
+            total_stmt = self._translate(query).enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = self._selection_statistics_stmt()
@@ -283,7 +283,7 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
             .limit(size)
         )
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
 
         result = await self.execute_stmt(stmt)
         return ListResult(

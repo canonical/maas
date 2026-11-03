@@ -33,7 +33,7 @@ from maasservicelayer.builders.tokens import TokenBuilder
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.constants import SYSTEM_USERS
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.filters import AnyQuerySpec, QuerySpec
 from maasservicelayer.db.repositories.consumers import ConsumerClauseFactory
 from maasservicelayer.db.repositories.filestorage import (
     FileStorageClauseFactory,
@@ -346,7 +346,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         )
 
     async def list_statistics(
-        self, page: int, size: int, query: QuerySpec
+        self, page: int, size: int, query: AnyQuerySpec
     ) -> ListResult[UserStatistics]:
         return await self.repository.list_statistics(
             page=page, size=size, query=query

@@ -43,7 +43,7 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
             self.get_repository_table()
         )
         if query:
-            total_stmt = query.enrich_stmt(total_stmt)
+            total_stmt = self._translate(query).enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
@@ -76,7 +76,7 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
             .order_by(desc(ResourcePoolTable.c.id))
         )
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
 
         result = await self.execute_stmt(stmt)
         return ListResult[ResourcePoolStatistics](

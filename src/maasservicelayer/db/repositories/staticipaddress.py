@@ -11,7 +11,12 @@ from sqlalchemy.sql.operators import eq
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
 from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import (
+    AnyQuerySpec,
+    Clause,
+    ClauseFactory,
+    QuerySpec,
+)
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
@@ -222,7 +227,9 @@ class StaticIPAddressRepository(BaseRepository):
 
         return [StaticIPAddress(**row._asdict()) for row in result]
 
-    async def get_for_nodes(self, query: QuerySpec) -> list[StaticIPAddress]:
+    async def get_for_nodes(
+        self, query: AnyQuerySpec
+    ) -> list[StaticIPAddress]:
         stmt = (
             select(
                 StaticIPAddressTable,
@@ -250,7 +257,7 @@ class StaticIPAddressRepository(BaseRepository):
                 SubnetTable.c.id == StaticIPAddressTable.c.subnet_id,
             )
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
         return [StaticIPAddress(**row._asdict()) for row in results]
 
@@ -268,7 +275,7 @@ class StaticIPAddressRepository(BaseRepository):
                 == InterfaceIPAddressTable.c.staticipaddress_id,
             )
         )
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
         return [MacAddress(row._asdict()["mac_address"]) for row in results]
 
