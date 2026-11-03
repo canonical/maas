@@ -85,22 +85,6 @@ NODES_SELECT_RELATED = (
 )
 
 
-def blockdev_prefetch(expression):
-    for filesystem_set in (
-        "filesystem_set",
-        "partitiontable_set__partitions__filesystem_set",
-    ):
-        yield Prefetch(
-            f"{expression}__{filesystem_set}",
-            queryset=Filesystem.objects.select_related(
-                "cache_set",
-                "filesystem_group",
-            ),
-        )
-    yield f"{expression}__physicalblockdevice__numa_node"
-    yield f"{expression}__virtualblockdevice__filesystem_group"
-
-
 # The prefetched objects are linked together by `prepare_nodes_for_listing`.
 NODES_PREFETCH = [
     "ownerdata_set",
@@ -108,7 +92,20 @@ NODES_PREFETCH = [
     "gateway_link_ipv4__subnet",
     "gateway_link_ipv6__subnet",
     # storage prefetches
-    *blockdev_prefetch("current_config__blockdevice_set"),
+    Prefetch(
+        "current_config__blockdevice_set__filesystem_set",
+        queryset=Filesystem.objects.select_related(
+            "cache_set", "filesystem_group"
+        ),
+    ),
+    Prefetch(
+        "current_config__blockdevice_set__partitiontable_set__partitions__filesystem_set",
+        queryset=Filesystem.objects.select_related(
+            "cache_set", "filesystem_group"
+        ),
+    ),
+    "current_config__blockdevice_set__physicalblockdevice__numa_node",
+    "current_config__blockdevice_set__virtualblockdevice__filesystem_group",
     "current_config__filesystem_set",
     # interface prefetches
     "current_config__interface_set__numa_node",
@@ -145,11 +142,33 @@ def _prepare_interfaces(nodes):
 
 
 def _prepare_block_devices(nodes):
-    """Link the prefetched storage of `nodes` to the specific block devices.
+    """Link the prefetched storage of `nodes` so rendering runs no queries.
 
-    Block devices are rendered as `PhysicalBlockDevice` or
-    `VirtualBlockDevice`, so they share the relations prefetched on the base
-    `BlockDevice` and their partition tables and filesystems refer to them.
+    Block devices use multi-table inheritance: a `BlockDevice` row plus a
+    `PhysicalBlockDevice` or `VirtualBlockDevice` row. The same device then
+    exists as two Python objects. `blockdevice_set` returns the base
+    `BlockDevice`, while rendering uses the subtype from `actual_instance`.
+    Prefetched relations are cached per object, so the subtype starts with
+    an empty cache. Calling `filesystem_set` or `partitiontable_set` on it
+    would query again for every device. Prefetching the same relations
+    through the subtype paths instead loads the same rows a second time.
+
+    Each relation is prefetched once, on the base `BlockDevice` (see
+    `NODES_PREFETCH`). This function connects the loaded objects so that
+    rendering finds everything in memory:
+
+    - The subtype instance shares the base instance's prefetch cache. The
+      subtype rows themselves come from the `physicalblockdevice__numa_node`
+      and `virtualblockdevice__filesystem_group` prefetches, one query per
+      subtype for the whole listing.
+    - Filesystems and partition tables point back to the subtype instance,
+      not the base one, so `get_node()` and the rendered fields work on the
+      object that is rendered.
+    - `node.boot_disk` is taken from the loaded devices. A separate
+      `boot_disk` prefetch would load that device and its storage again.
+    - The effective filesystem, first partition table and cache-set index
+      are computed once here. Rendering asks for them many times, and the
+      cache-set index would otherwise be a query for each cache set.
     """
     for node in nodes:
         if node.current_config is None:
