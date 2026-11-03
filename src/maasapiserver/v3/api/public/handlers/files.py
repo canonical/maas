@@ -34,10 +34,6 @@ from maasapiserver.v3.auth.base import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.builders.filestorage import FileStorageBuilder
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.filestorage import (
-    FileStorageClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -45,6 +41,9 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.filestorage import FileStorageFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -87,18 +86,14 @@ class FilesHandler(Handler):
     ) -> FileListResponse:
         assert authenticated_user is not None
 
-        filters = [
-            FileStorageClauseFactory.with_owner_id(authenticated_user.id)
+        filters: list[Filter] = [
+            FileStorageFilters.with_owner_id(authenticated_user.id)
         ]
         if prefix:
-            filters.append(
-                FileStorageClauseFactory.with_filename_prefix(prefix)
-            )
+            filters.append(FileStorageFilters.with_filename_prefix(prefix))
 
         files = await services.filestorage.get_many(
-            query=QuerySpec(
-                where=FileStorageClauseFactory.and_clauses(filters)
-            )
+            query=QuerySpec(where=FileStorageFilters.and_filters(filters))
         )
 
         files = sorted(files, key=lambda file: file.filename)
@@ -142,10 +137,10 @@ class FilesHandler(Handler):
 
         file = await services.filestorage.get_one(
             query=QuerySpec(
-                where=FileStorageClauseFactory.and_clauses(
+                where=FileStorageFilters.and_filters(
                     [
-                        FileStorageClauseFactory.with_filename(filename),
-                        FileStorageClauseFactory.with_owner_id(
+                        FileStorageFilters.with_filename(filename),
+                        FileStorageFilters.with_owner_id(
                             authenticated_user.id
                         ),
                     ]
@@ -204,10 +199,10 @@ class FilesHandler(Handler):
 
         file = await services.filestorage.get_one(
             query=QuerySpec(
-                where=FileStorageClauseFactory.and_clauses(
+                where=FileStorageFilters.and_filters(
                     [
-                        FileStorageClauseFactory.with_key(key),
-                        FileStorageClauseFactory.with_owner_id(
+                        FileStorageFilters.with_key(key),
+                        FileStorageFilters.with_owner_id(
                             authenticated_user.id
                         ),
                     ]
@@ -304,10 +299,10 @@ class FilesHandler(Handler):
 
         await services.filestorage.delete_one(
             query=QuerySpec(
-                where=FileStorageClauseFactory.and_clauses(
+                where=FileStorageFilters.and_filters(
                     [
-                        FileStorageClauseFactory.with_filename(filename),
-                        FileStorageClauseFactory.with_owner_id(
+                        FileStorageFilters.with_filename(filename),
+                        FileStorageFilters.with_owner_id(
                             authenticated_user.id
                         ),
                     ]

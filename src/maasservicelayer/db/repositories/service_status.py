@@ -12,6 +12,15 @@ from maasservicelayer.db.tables import ServiceStatusTable
 from maasservicelayer.models.service_status import ServiceStatus
 
 
+class ServiceStatusRepository(BaseRepository[ServiceStatus]):
+    def get_repository_table(self) -> Table:
+        return ServiceStatusTable
+
+    def get_model_factory(self) -> Type[ServiceStatus]:
+        return ServiceStatus
+
+
+# Legacy SQL clause factory, removed once every caller uses domain filters.
 class ServiceStatusClauseFactory(ClauseFactory):
     @classmethod
     def with_name(cls, name: ServiceName) -> Clause:
@@ -20,11 +29,3 @@ class ServiceStatusClauseFactory(ClauseFactory):
     @classmethod
     def with_node_id(cls, id: int) -> Clause:
         return Clause(condition=eq(ServiceStatusTable.c.node_id, id))
-
-
-class ServiceStatusRepository(BaseRepository[ServiceStatus]):
-    def get_repository_table(self) -> Table:
-        return ServiceStatusTable
-
-    def get_model_factory(self) -> Type[ServiceStatus]:
-        return ServiceStatus

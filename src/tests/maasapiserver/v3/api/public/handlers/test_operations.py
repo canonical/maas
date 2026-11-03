@@ -19,12 +19,12 @@ from maascommon.enums.operations import (
     OperationTaskStatus,
     OperationType,
 )
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.operations import OperationsClauseFactory
 from maasservicelayer.exceptions.catalog import (
     ConflictException,
     NotFoundException,
 )
+from maasservicelayer.filters.operations import OperationsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.operations import Operation, OperationTask
 from maasservicelayer.utils.date import utcnow
@@ -173,9 +173,7 @@ class TestOperationsApi(ApiCommonTests):
             user_id=0,
             can_view_all=True,
             query=QuerySpec(
-                where=OperationsClauseFactory.with_status(
-                    OperationStatus.RUNNING
-                )
+                where=OperationsFilters.with_status(OperationStatus.RUNNING)
             ),
         )
 
@@ -202,10 +200,10 @@ class TestOperationsApi(ApiCommonTests):
             user_id=0,
             can_view_all=True,
             query=QuerySpec(
-                where=OperationsClauseFactory.and_clauses(
+                where=OperationsFilters.and_filters(
                     [
-                        OperationsClauseFactory.with_resource_type("machine"),
-                        OperationsClauseFactory.with_resource_id(42),
+                        OperationsFilters.with_resource_type("machine"),
+                        OperationsFilters.with_resource_id(42),
                     ]
                 )
             ),
@@ -419,9 +417,7 @@ class TestOperationsApi(ApiCommonTests):
             user_id=0,
             can_view_all=False,
             query=QuerySpec(
-                where=OperationsClauseFactory.with_status(
-                    OperationStatus.RUNNING
-                )
+                where=OperationsFilters.with_status(OperationStatus.RUNNING)
             ),
         )
 
