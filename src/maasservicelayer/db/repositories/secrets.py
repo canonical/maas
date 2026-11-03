@@ -8,12 +8,18 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import eq
 
+from maasservicelayer.context import Context
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import Repository
 from maasservicelayer.db.tables import SecretTable, VaultSecretTable
 from maasservicelayer.models.secrets import Secret, VaultSecret
 
 
-class SecretsRepository(Repository):
+class SecretsRepository(Repository[Secret]):
+    def __init__(self, context: Context):
+        super().__init__(context)
+        self.mapper = DefaultDomainDataMapper(Secret, SecretTable)
+
     async def create_or_update(self, path: str, value: dict[str, Any]) -> None:
         created_at = updated_at = datetime.datetime.now(datetime.timezone.utc)
         insert_stmt = insert(SecretTable).values(
@@ -32,7 +38,7 @@ class SecretsRepository(Repository):
             .where(eq(SecretTable.c.path, path))
         )
         result = (await self.execute_stmt(stmt)).one_or_none()
-        return Secret(**result._asdict()) if result else None
+        return self.mapper.to_domain(result._mapping) if result else None
 
     async def delete(self, path: str) -> None:
         await self.execute_stmt(
@@ -40,8 +46,12 @@ class SecretsRepository(Repository):
         )
 
 
-class VaultSecretsRepository(Repository):
+class VaultSecretsRepository(Repository[VaultSecret]):
     """Track the Vault secrets managed by MAAS."""
+
+    def __init__(self, context: Context):
+        super().__init__(context)
+        self.mapper = DefaultDomainDataMapper(VaultSecret, VaultSecretTable)
 
     async def create_or_update(self, path: str) -> None:
         insert_stmt = insert(VaultSecretTable).values(path=path, deleted=False)
@@ -58,7 +68,7 @@ class VaultSecretsRepository(Repository):
             .where(eq(VaultSecretTable.c.path, path))
         )
         result = (await self.execute_stmt(stmt)).one_or_none()
-        return VaultSecret(**result._asdict()) if result else None
+        return self.mapper.to_domain(result._mapping) if result else None
 
     async def mark_deleted(self, path: str) -> None:
         await self.execute_stmt(

@@ -57,6 +57,10 @@ class TestSecretsRepository:
         assert secret.value == "hello"
         assert secret.path == "/test"
 
+    async def test_get_not_found(self, db_connection: AsyncConnection) -> None:
+        repository = SecretsRepository(Context(connection=db_connection))
+        assert await repository.get("/missing") is None
+
     async def test_delete(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:

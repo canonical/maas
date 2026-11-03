@@ -1,11 +1,9 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from base64 import b64decode
 from operator import eq
-from typing import List
 
-from sqlalchemy import delete, Table, update
+from sqlalchemy import Table, update
 from sqlalchemy.dialects.postgresql import insert
 
 from maasservicelayer.builders.filestorage import FileStorageBuilder
@@ -15,7 +13,6 @@ from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import FileStorageTable
 from maasservicelayer.filters.filestorage import FileStorageFilters
 from maasservicelayer.filters.query import QuerySpec
-from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.filestorage import FileStorage
 
 
@@ -26,7 +23,7 @@ class FileStorageRepository(BaseRepository[FileStorage]):
     def get_model_factory(self) -> type[FileStorage]:
         return FileStorage
 
-    def get_mapper(self) -> BaseDomainDataMapper:
+    def get_mapper(self) -> BaseDomainDataMapper[FileStorage]:
         return FileStorageDomainDataMapper(
             FileStorage, self.get_repository_table()
         )
@@ -76,55 +73,7 @@ class FileStorageRepository(BaseRepository[FileStorage]):
             )
 
         result = (await self.execute_stmt(stmt)).one()
-        result_dict = result._asdict()
-        result_dict["content"] = b64decode(result_dict["content"])
-        return self.get_model_factory()(**result_dict)
-
-    async def _get(self, query: QuerySpec) -> List[FileStorage]:
-        """
-        This override is required to convert the string-based, base64-encoded
-        file content that the database uses, to a valid `bytes` representation
-        used by the service layer model.
-
-        This is called by `get_one`, `get_by_id`, and `get_many`.
-        """
-        stmt = self.select_all_statement()
-        stmt = self._translate(query).enrich_stmt(stmt)
-
-        result = (await self.execute_stmt(stmt)).all()
-        stored_files = []
-        for row in result:
-            row_dict = row._asdict()
-            row_dict["content"] = b64decode(row_dict["content"])
-            stored_files.append(self.get_model_factory()(**row_dict))
-        return stored_files
-
-    async def _delete(self, query: QuerySpec) -> List[FileStorage]:
-        stmt = delete(FileStorageTable).returning(FileStorageTable)
-        stmt = self._translate(query).enrich_stmt(stmt)
-        result = (await self.execute_stmt(stmt)).all()
-        stored_files = []
-        for row in result:
-            row_dict = row._asdict()
-            row_dict["content"] = b64decode(row_dict["content"])
-            stored_files.append(self.get_model_factory()(**row_dict))
-        return stored_files
-
-    async def list(
-        self, page: int, size: int, query: QuerySpec | None = None
-    ) -> ListResult[FileStorage]:
-        result = await super().list(page, size, query)
-        for file in result.items:
-            file.content = b64decode(file.content)
-        return result
-
-    async def list_all(
-        self, query: QuerySpec | None = None
-    ) -> List[FileStorage]:
-        files = await super().list_all(query)
-        for file in files:
-            file.content = b64decode(file.content)
-        return files
+        return self.mapper.to_domain(result._mapping)
 
     async def update_one(self, query, builder):
         raise NotImplementedError("Update is not supported for file storage")
