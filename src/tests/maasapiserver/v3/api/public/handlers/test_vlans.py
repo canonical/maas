@@ -21,8 +21,6 @@ from maasapiserver.v3.api.public.models.responses.vlans import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.builders.vlans import VlanBuilder
-from maasservicelayer.db.filters import ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     PreconditionFailedException,
@@ -30,6 +28,9 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.base import FilterFactory
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.utils.date import utcnow
@@ -344,10 +345,10 @@ class TestVlanApi(ApiCommonTests):
         assert response.status_code == 204
         services_mock.vlans.delete_one.assert_called_with(
             query=QuerySpec(
-                where=ClauseFactory.and_clauses(
+                where=FilterFactory.and_filters(
                     [
-                        VlansClauseFactory.with_id(1),
-                        VlansClauseFactory.with_fabric_id(1),
+                        VlansFilters.with_id(1),
+                        VlansFilters.with_fabric_id(1),
                     ]
                 )
             ),
@@ -377,10 +378,10 @@ class TestVlanApi(ApiCommonTests):
         assert response.status_code == 412
         services_mock.vlans.delete_one.assert_called_with(
             query=QuerySpec(
-                where=ClauseFactory.and_clauses(
+                where=FilterFactory.and_filters(
                     [
-                        VlansClauseFactory.with_id(1),
-                        VlansClauseFactory.with_fabric_id(1),
+                        VlansFilters.with_id(1),
+                        VlansFilters.with_fabric_id(1),
                     ]
                 )
             ),

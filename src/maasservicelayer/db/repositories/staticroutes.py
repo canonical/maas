@@ -7,11 +7,24 @@ from typing import Type
 from sqlalchemy import join, Table
 
 from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.mappers.staticroutes import StaticRouteDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import StaticRouteTable, SubnetTable, VlanTable
 from maasservicelayer.models.staticroutes import StaticRoute
 
 
+class StaticRoutesRepository(BaseRepository[StaticRoute]):
+    def get_mapper(self) -> StaticRouteDataMapper:
+        return StaticRouteDataMapper(StaticRoute, StaticRouteTable)
+
+    def get_repository_table(self) -> Table:
+        return StaticRouteTable
+
+    def get_model_factory(self) -> Type[StaticRoute]:
+        return StaticRoute
+
+
+# Legacy SQL clause factory, removed once every caller uses domain filters.
 class StaticRoutesClauseFactory(ClauseFactory):
     @classmethod
     def with_id(cls, id: int) -> Clause:
@@ -57,11 +70,3 @@ class StaticRoutesClauseFactory(ClauseFactory):
         return Clause(
             condition=eq(StaticRouteTable.c.destination_id, subnet_id)
         )
-
-
-class StaticRoutesRepository(BaseRepository[StaticRoute]):
-    def get_repository_table(self) -> Table:
-        return StaticRouteTable
-
-    def get_model_factory(self) -> Type[StaticRoute]:
-        return StaticRoute

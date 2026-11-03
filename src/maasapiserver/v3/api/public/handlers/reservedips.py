@@ -25,11 +25,6 @@ from maasapiserver.v3.api.public.models.responses.reservedips import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.reservedips import (
-    ReservedIPsClauseFactory,
-)
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -37,6 +32,9 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.reservedips import ReservedIPsFilters
+from maasservicelayer.filters.subnets import SubnetFilters
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -73,11 +71,11 @@ class ReservedIPsHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ReservedIPsListResponse:
         query = QuerySpec(
-            where=ReservedIPsClauseFactory.and_clauses(
+            where=ReservedIPsFilters.and_filters(
                 [
-                    ReservedIPsClauseFactory.with_fabric_id(fabric_id),
-                    ReservedIPsClauseFactory.with_subnet_id(subnet_id),
-                    ReservedIPsClauseFactory.with_vlan_id(vlan_id),
+                    ReservedIPsFilters.with_fabric_id(fabric_id),
+                    ReservedIPsFilters.with_subnet_id(subnet_id),
+                    ReservedIPsFilters.with_vlan_id(vlan_id),
                 ]
             )
         )
@@ -139,12 +137,12 @@ class ReservedIPsHandler(Handler):
     ) -> ReservedIPResponse:
         reservedip = await services.reservedips.get_one(
             query=QuerySpec(
-                ReservedIPsClauseFactory.and_clauses(
+                ReservedIPsFilters.and_filters(
                     [
-                        ReservedIPsClauseFactory.with_id(reservedip_id),
-                        ReservedIPsClauseFactory.with_fabric_id(fabric_id),
-                        ReservedIPsClauseFactory.with_subnet_id(subnet_id),
-                        ReservedIPsClauseFactory.with_vlan_id(vlan_id),
+                        ReservedIPsFilters.with_id(reservedip_id),
+                        ReservedIPsFilters.with_fabric_id(fabric_id),
+                        ReservedIPsFilters.with_subnet_id(subnet_id),
+                        ReservedIPsFilters.with_vlan_id(vlan_id),
                     ]
                 )
             )
@@ -191,11 +189,11 @@ class ReservedIPsHandler(Handler):
     ) -> ReservedIPResponse:
         subnet = await services.subnets.get_one(
             query=QuerySpec(
-                where=SubnetClauseFactory.and_clauses(
+                where=SubnetFilters.and_filters(
                     [
-                        SubnetClauseFactory.with_id(subnet_id),
-                        SubnetClauseFactory.with_vlan_id(vlan_id),
-                        SubnetClauseFactory.with_fabric_id(fabric_id),
+                        SubnetFilters.with_id(subnet_id),
+                        SubnetFilters.with_vlan_id(vlan_id),
+                        SubnetFilters.with_fabric_id(fabric_id),
                     ]
                 )
             )
@@ -253,12 +251,12 @@ class ReservedIPsHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> ReservedIPResponse:
         query = QuerySpec(
-            where=ReservedIPsClauseFactory.and_clauses(
+            where=ReservedIPsFilters.and_filters(
                 [
-                    ReservedIPsClauseFactory.with_id(id),
-                    ReservedIPsClauseFactory.with_subnet_id(subnet_id),
-                    ReservedIPsClauseFactory.with_vlan_id(vlan_id),
-                    ReservedIPsClauseFactory.with_fabric_id(fabric_id),
+                    ReservedIPsFilters.with_id(id),
+                    ReservedIPsFilters.with_subnet_id(subnet_id),
+                    ReservedIPsFilters.with_vlan_id(vlan_id),
+                    ReservedIPsFilters.with_fabric_id(fabric_id),
                 ]
             )
         )
@@ -307,12 +305,12 @@ class ReservedIPsHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         query = QuerySpec(
-            where=ReservedIPsClauseFactory.and_clauses(
+            where=ReservedIPsFilters.and_filters(
                 [
-                    ReservedIPsClauseFactory.with_id(id),
-                    ReservedIPsClauseFactory.with_subnet_id(subnet_id),
-                    ReservedIPsClauseFactory.with_vlan_id(vlan_id),
-                    ReservedIPsClauseFactory.with_fabric_id(fabric_id),
+                    ReservedIPsFilters.with_id(id),
+                    ReservedIPsFilters.with_subnet_id(subnet_id),
+                    ReservedIPsFilters.with_vlan_id(vlan_id),
+                    ReservedIPsFilters.with_fabric_id(fabric_id),
                 ]
             )
         )

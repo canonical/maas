@@ -10,11 +10,51 @@ from sqlalchemy import join, select, Table
 
 from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.mappers.ipranges import IPRangeDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import IPRangeTable, SubnetTable, VlanTable
 from maasservicelayer.models.ipranges import IPRange
 
 
+class IPRangesRepository(BaseRepository[IPRange]):
+    def get_repository_table(self) -> Table:
+        return IPRangeTable
+
+    def get_model_factory(self) -> Type[IPRange]:
+        return IPRange
+
+    def get_mapper(self) -> IPRangeDomainDataMapper:
+        return IPRangeDomainDataMapper(IPRange, IPRangeTable)
+
+    async def get_dynamic_range_for_ip(
+        self, subnet_id: int, ip: IPvAnyAddress
+    ) -> IPRange | None:
+        stmt = (
+            select(IPRangeTable)
+            .select_from(IPRangeTable)
+            .join(
+                SubnetTable,
+                SubnetTable.c.id == IPRangeTable.c.subnet_id,
+            )
+            .filter(SubnetTable.c.id == subnet_id)
+        )
+
+        result = (await self.execute_stmt(stmt)).all()
+
+        ipranges = [IPRange(**row._asdict()) for row in result]
+
+        netaddr_ip = netaddr.IPAddress(str(ip))
+
+        for iprange in ipranges:
+            if netaddr_ip in netaddr.IPRange(
+                str(iprange.start_ip), str(iprange.end_ip)
+            ):
+                return iprange
+
+        return None
+
+
+# Legacy SQL clause factory, removed once every caller uses domain filters.
 class IPRangeClauseFactory(ClauseFactory):
     @classmethod
     def with_subnet_id(cls, subnet_id: int) -> Clause:
@@ -74,38 +114,3 @@ class IPRangeClauseFactory(ClauseFactory):
     @classmethod
     def with_user_id(cls, user_id: int) -> Clause:
         return Clause(condition=eq(IPRangeTable.c.user_id, user_id))
-
-
-class IPRangesRepository(BaseRepository[IPRange]):
-    def get_repository_table(self) -> Table:
-        return IPRangeTable
-
-    def get_model_factory(self) -> Type[IPRange]:
-        return IPRange
-
-    async def get_dynamic_range_for_ip(
-        self, subnet_id: int, ip: IPvAnyAddress
-    ) -> IPRange | None:
-        stmt = (
-            select(IPRangeTable)
-            .select_from(IPRangeTable)
-            .join(
-                SubnetTable,
-                SubnetTable.c.id == IPRangeTable.c.subnet_id,
-            )
-            .filter(SubnetTable.c.id == subnet_id)
-        )
-
-        result = (await self.execute_stmt(stmt)).all()
-
-        ipranges = [IPRange(**row._asdict()) for row in result]
-
-        netaddr_ip = netaddr.IPAddress(str(ip))
-
-        for iprange in ipranges:
-            if netaddr_ip in netaddr.IPRange(
-                str(iprange.start_ip), str(iprange.end_ip)
-            ):
-                return iprange
-
-        return None

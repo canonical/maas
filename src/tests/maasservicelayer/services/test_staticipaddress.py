@@ -14,10 +14,10 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
