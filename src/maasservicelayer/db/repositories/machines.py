@@ -4,22 +4,19 @@
 from typing import Any, Type
 
 from sqlalchemy import and_, desc, Select, select, Table
-from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeDeviceBus, NodeStatus, NodeTypeEnum
 from maascommon.workflows.msm import MachinesCountByStatus
 from maasservicelayer.db.filters import SQLQuerySpec
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.mappers.machines import MachineDomainDataMapper
 from maasservicelayer.db.repositories.nodes import AbstractNodesRepository
 from maasservicelayer.db.tables import (
-    BMCTable,
-    DomainTable,
     NodeConfigTable,
     NodeDeviceTable,
     NodeTable,
-    UserTable,
 )
 from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
@@ -27,6 +24,13 @@ from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 
 
 class MachinesRepository(AbstractNodesRepository[Machine]):
+    usb_device_mapper = DefaultDomainDataMapper[UsbDevice](
+        UsbDevice, NodeDeviceTable
+    )
+    pci_device_mapper = DefaultDomainDataMapper[PciDevice](
+        PciDevice, NodeDeviceTable
+    )
+
     def get_repository_table(self) -> Table:
         return NodeTable
 
@@ -36,55 +40,6 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
     def get_mapper(self) -> MachineDomainDataMapper:
         return MachineDomainDataMapper(
             self.get_model_factory(), self.get_repository_table()
-        )
-
-    def select_all_statement(self) -> Select[Any]:
-        return (
-            select(
-                NodeTable.c.id,
-                NodeTable.c.system_id,
-                NodeTable.c.created,
-                NodeTable.c.updated,
-                func.coalesce(UserTable.c.username, "").label("owner"),
-                NodeTable.c.description,
-                NodeTable.c.cpu_speed,
-                NodeTable.c.memory,
-                NodeTable.c.osystem,
-                NodeTable.c.architecture,
-                NodeTable.c.distro_series,
-                NodeTable.c.hwe_kernel,
-                NodeTable.c.locked,
-                NodeTable.c.cpu_count,
-                NodeTable.c.status,
-                NodeTable.c.node_type,
-                NodeTable.c.hostname,
-                NodeTable.c.power_state,
-                NodeTable.c.owner_id,
-                NodeTable.c.error_description,
-                NodeTable.c.current_commissioning_script_set_id,
-                NodeTable.c.current_testing_script_set_id,
-                NodeTable.c.current_installation_script_set_id,
-                NodeTable.c.pool_id,
-                BMCTable.c.power_type,
-                func.concat(
-                    NodeTable.c.hostname, ".", DomainTable.c.name
-                ).label("fqdn"),
-            )
-            .select_from(NodeTable)
-            .join(
-                DomainTable,
-                eq(DomainTable.c.id, NodeTable.c.domain_id),
-                isouter=True,
-            )
-            .join(
-                UserTable,
-                eq(UserTable.c.id, NodeTable.c.owner_id),
-                isouter=True,
-            )
-            .join(
-                BMCTable, eq(BMCTable.c.id, NodeTable.c.bmc_id), isouter=True
-            )
-            .where(eq(NodeTable.c.node_type, NodeTypeEnum.MACHINE))
         )
 
     async def list(
@@ -114,9 +69,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
             stmt = translated.enrich_stmt(stmt)
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[Machine](
-            items=[
-                self.get_model_factory()(**row._asdict()) for row in result
-            ],
+            items=[self.mapper.to_domain(row._mapping) for row in result],
             total=total,
         )
 
@@ -141,7 +94,10 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
         result = (await self.execute_stmt(stmt)).all()
 
         return ListResult[UsbDevice](
-            items=[UsbDevice(**row._asdict()) for row in result],
+            items=[
+                self.usb_device_mapper.to_domain(row._mapping)
+                for row in result
+            ],
             total=total,
         )
 
@@ -166,7 +122,10 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
         result = (await self.execute_stmt(stmt)).all()
 
         return ListResult[PciDevice](
-            items=[PciDevice(**row._asdict()) for row in result],
+            items=[
+                self.pci_device_mapper.to_domain(row._mapping)
+                for row in result
+            ],
             total=total,
         )
 

@@ -10,6 +10,7 @@ from sqlalchemy.sql.operators import eq
 from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.db.mappers.staticipaddress import (
+    MacAddressDataMapper,
     StaticIPAddressDomainDataMapper,
 )
 from maasservicelayer.db.repositories.base import BaseRepository
@@ -57,7 +58,7 @@ class StaticIPAddressRepository(BaseRepository[StaticIPAddress]):
         ).returning(StaticIPAddressTable)
 
         result = (await self.execute_stmt(upsert_stmt)).one()
-        return StaticIPAddress(**result._asdict())
+        return self.mapper.to_domain(result._mapping)
 
     async def get_discovered_ips_in_family_for_interfaces(
         self,
@@ -100,7 +101,7 @@ class StaticIPAddressRepository(BaseRepository[StaticIPAddress]):
             )
         ).all()
 
-        return [StaticIPAddress(**row._asdict()) for row in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
     async def get_for_interfaces(
         self, interface_ids: list[int]
@@ -118,7 +119,7 @@ class StaticIPAddressRepository(BaseRepository[StaticIPAddress]):
 
         result = (await self.execute_stmt(stmt)).all()
 
-        return [StaticIPAddress(**row._asdict()) for row in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
     async def get_for_nodes(self, query: QuerySpec) -> list[StaticIPAddress]:
         stmt = (
@@ -150,7 +151,7 @@ class StaticIPAddressRepository(BaseRepository[StaticIPAddress]):
         )
         stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
-        return [StaticIPAddress(**row._asdict()) for row in results]
+        return [self.mapper.to_domain(row._mapping) for row in results]
 
     async def get_mac_addresses(self, query: QuerySpec) -> list[MacAddress]:
         stmt = (
@@ -168,7 +169,9 @@ class StaticIPAddressRepository(BaseRepository[StaticIPAddress]):
         )
         stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
-        return [MacAddress(row._asdict()["mac_address"]) for row in results]
+        return [
+            MacAddressDataMapper.to_domain(row._mapping) for row in results
+        ]
 
     async def unlink_from_interfaces(self, staticipaddress_id: int):
         stmt = delete(InterfaceIPAddressTable).where(
@@ -235,4 +238,4 @@ class StaticIPAddressRepository(BaseRepository[StaticIPAddress]):
             .distinct()
         )
         results = (await self.execute_stmt(stmt)).all()
-        return [StaticIPAddress(**row._asdict()) for row in results]
+        return [self.mapper.to_domain(row._mapping) for row in results]
