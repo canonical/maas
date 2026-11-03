@@ -29,6 +29,7 @@ from piston3.utils import HttpStatusCode, rc
 from maascommon.constants import MAAS_USER_USERNAME
 from maasserver import openfga
 from maasserver.api.doc import get_api_description
+from maasserver.api.emitter import construct
 from maasserver.authorization import can_edit_global_entities
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -452,6 +453,7 @@ def method_fields_reserved_fields_patch(self, handler, fields):
 
 
 Emitter.method_fields = method_fields_reserved_fields_patch
+Emitter.construct = construct
 
 # only keep the JSON emitter as it's the only format we support
 for name in list(Emitter.EMITTERS):
