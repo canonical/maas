@@ -21,24 +21,6 @@ from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 
 
-class DNSResourceClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(DNSResourceTable.c.id, id))
-
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=DNSResourceTable.c.id.in_(ids))
-
-    @classmethod
-    def with_name(cls, name: str) -> Clause:
-        return Clause(condition=eq(DNSResourceTable.c.name, name))
-
-    @classmethod
-    def with_domain_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(DNSResourceTable.c.domain_id, id))
-
-
 class DNSResourceRepository(BaseRepository[DNSResource]):
     def get_repository_table(self) -> Table:
         return DNSResourceTable
@@ -239,3 +221,22 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
             for dnsresource_id in dnsresource_ids
             if dnsresource_id not in dnsresources_with_dnsdata
         ]
+
+
+# Legacy SQL clause factory, removed once every caller uses domain filters.
+class DNSResourceClauseFactory(ClauseFactory):
+    @classmethod
+    def with_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(DNSResourceTable.c.id, id))
+
+    @classmethod
+    def with_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=DNSResourceTable.c.id.in_(ids))
+
+    @classmethod
+    def with_name(cls, name: str) -> Clause:
+        return Clause(condition=eq(DNSResourceTable.c.name, name))
+
+    @classmethod
+    def with_domain_id(cls, id: int) -> Clause:
+        return Clause(condition=eq(DNSResourceTable.c.domain_id, id))
