@@ -6,7 +6,9 @@ from typing import Type
 from sqlalchemy import desc, func, select, Table
 from sqlalchemy.sql.functions import count
 
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import SQLQuerySpec
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.mappers.usergroups import UserGroupsDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import UserGroupMembersView, UserGroupTable
@@ -16,6 +18,12 @@ from maasservicelayer.models.usergroups import UserGroup, UserGroupStatistics
 
 
 class UserGroupsRepository(BaseRepository[UserGroup]):
+    def __init__(self, context: Context):
+        super().__init__(context)
+        self.statistics_mapper = DefaultDomainDataMapper[UserGroupStatistics](
+            UserGroupStatistics, UserGroupTable
+        )
+
     def get_repository_table(self) -> Table:
         return UserGroupTable
 
@@ -67,6 +75,9 @@ class UserGroupsRepository(BaseRepository[UserGroup]):
 
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[UserGroupStatistics](
-            items=[UserGroupStatistics(**row._asdict()) for row in result],
+            items=[
+                self.statistics_mapper.to_domain(row._mapping)
+                for row in result
+            ],
             total=total,
         )

@@ -40,7 +40,7 @@ class VlansRepository(BaseRepository[Vlan]):
             .limit(1)
         )
         result = (await self.execute_stmt(stmt)).one()
-        return self.get_model_factory()(**result._asdict())
+        return self.mapper.to_domain(result._mapping)
 
     async def get_node_vlans(self, query: QuerySpec) -> List[Vlan]:
         """
@@ -87,4 +87,4 @@ class VlansRepository(BaseRepository[Vlan]):
         )
         stmt = self._translate(query).enrich_stmt(stmt)
         result = (await self.execute_stmt(stmt)).all()
-        return [Vlan(**row._asdict()) for row in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]

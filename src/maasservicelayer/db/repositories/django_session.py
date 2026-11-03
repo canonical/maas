@@ -24,10 +24,12 @@ from maasservicelayer.models.django_session import DjangoSession
 from maasservicelayer.utils.date import utcnow
 
 
-class DjangoSessionRepository(Repository):
+class DjangoSessionRepository(Repository[DjangoSession]):
     def __init__(self, context: Context):
         super().__init__(context)
-        self.mapper = DefaultDomainDataMapper(DjangoSession, SessionTable)
+        self.mapper = DefaultDomainDataMapper[DjangoSession](
+            DjangoSession, SessionTable
+        )
 
     async def create(self, builder: DjangoSessionBuilder) -> DjangoSession:
         resource = self.mapper.build_resource(builder)
@@ -38,7 +40,7 @@ class DjangoSessionRepository(Repository):
         )
         try:
             result = (await self.execute_stmt(stmt)).one()
-            return DjangoSession(**result._asdict())
+            return self.mapper.to_domain(result._mapping)
         except IntegrityError as e:
             raise AlreadyExistsException(
                 details=[
@@ -59,7 +61,7 @@ class DjangoSessionRepository(Repository):
         )
         session = (await self.execute_stmt(stmt)).one_or_none()
         if session:
-            return DjangoSession(**session._asdict())
+            return self.mapper.to_domain(session._mapping)
         return None
 
     async def update_by_session_key(
@@ -91,7 +93,7 @@ class DjangoSessionRepository(Repository):
                     )
                 ]
             )
-        return DjangoSession(**result._asdict())
+        return self.mapper.to_domain(result._mapping)
 
     async def delete_by_session_key(self, session_key: str) -> None:
         stmt = delete(SessionTable).where(

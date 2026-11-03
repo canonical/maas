@@ -8,7 +8,9 @@ from sqlalchemy.sql.functions import func
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
+from maasservicelayer.context import Context
 from maasservicelayer.db.filters import SQLQuerySpec
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import NodeTable, ResourcePoolTable
 from maasservicelayer.filters.query import QuerySpec
@@ -20,6 +22,12 @@ from maasservicelayer.models.resource_pools import (
 
 
 class ResourcePoolRepository(BaseRepository[ResourcePool]):
+    def __init__(self, context: Context):
+        super().__init__(context)
+        self.statistics_mapper = DefaultDomainDataMapper[
+            ResourcePoolStatistics
+        ](ResourcePoolStatistics, ResourcePoolTable)
+
     def get_repository_table(self) -> Table:
         return ResourcePoolTable
 
@@ -79,7 +87,8 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
         result = await self.execute_stmt(stmt)
         return ListResult[ResourcePoolStatistics](
             items=[
-                ResourcePoolStatistics(**row._asdict()) for row in result.all()
+                self.statistics_mapper.to_domain(row._mapping)
+                for row in result.all()
             ],
             total=total,
         )

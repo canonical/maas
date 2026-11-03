@@ -15,6 +15,7 @@ from maasservicelayer.db.filters import SQLQuerySpec
 from maasservicelayer.db.mappers.bootresources import (
     BootResourceDomainDataMapper,
 )
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     BootResourceFileSyncTable,
@@ -33,6 +34,13 @@ from maasservicelayer.models.bootresources import (
 
 
 class BootResourcesRepository(BaseRepository[BootResource]):
+    _status_mapper = DefaultDomainDataMapper[CustomBootResourceStatus](
+        CustomBootResourceStatus, BootResourceTable
+    )
+    _statistic_mapper = DefaultDomainDataMapper[CustomBootResourceStatistic](
+        CustomBootResourceStatistic, BootResourceTable
+    )
+
     def get_mapper(self) -> BootResourceDomainDataMapper:
         return BootResourceDomainDataMapper(BootResource, BootResourceTable)
 
@@ -118,7 +126,7 @@ class BootResourcesRepository(BaseRepository[BootResource]):
         if not result:
             return None
 
-        return CustomBootResourceStatus(**result._asdict())
+        return self._status_mapper.to_domain(result._mapping)
 
     async def list_custom_images_status(
         self, page: int, size: int, query: QuerySpec | None = None
@@ -149,7 +157,7 @@ class BootResourcesRepository(BaseRepository[BootResource]):
 
         return ListResult(
             items=[
-                CustomBootResourceStatus(**row._asdict())
+                self._status_mapper.to_domain(row._mapping)
                 for row in result.fetchall()
             ],
             total=total,
@@ -271,7 +279,7 @@ class BootResourcesRepository(BaseRepository[BootResource]):
         if not result:
             return None
 
-        return CustomBootResourceStatistic(**result._asdict())
+        return self._statistic_mapper.to_domain(result._mapping)
 
     async def list_custom_images_statistics(
         self, page: int, size: int, query: QuerySpec | None = None
@@ -301,7 +309,7 @@ class BootResourcesRepository(BaseRepository[BootResource]):
 
         return ListResult(
             items=[
-                CustomBootResourceStatistic(**row._asdict())
+                self._statistic_mapper.to_domain(row._mapping)
                 for row in result.fetchall()
             ],
             total=total,

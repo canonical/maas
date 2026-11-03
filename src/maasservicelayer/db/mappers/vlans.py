@@ -13,9 +13,10 @@ from maasservicelayer.filters.vlans import (
     WithRelayVlanExists,
     WithSystemId,
 )
+from maasservicelayer.models.vlans import Vlan
 
 
-class VlanDataMapper(DefaultDomainDataMapper):
+class VlanDataMapper(DefaultDomainDataMapper[Vlan]):
     def custom_filter_clause(self, filter: CustomFilter) -> Clause:
         match filter:
             case WithSystemId(system_id):

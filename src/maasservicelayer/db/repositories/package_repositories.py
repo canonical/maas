@@ -30,7 +30,7 @@ class PackageRepositoriesRepository(BaseRepository[PackageRepository]):
         result = await self.execute_stmt(stmt)
         # The main archive is always present
         package_repo = result.one()
-        return PackageRepository(**package_repo._asdict())
+        return self.mapper.to_domain(package_repo._mapping)
 
     async def get_ports_archive(self) -> PackageRepository:
         stmt = select(PackageRepositoryTable).where(
@@ -43,4 +43,4 @@ class PackageRepositoriesRepository(BaseRepository[PackageRepository]):
         result = await self.execute_stmt(stmt)
         # The ports archive is always present
         package_repo = result.one()
-        return PackageRepository(**package_repo._asdict())
+        return self.mapper.to_domain(package_repo._mapping)

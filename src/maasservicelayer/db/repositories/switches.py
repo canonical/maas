@@ -3,6 +3,7 @@
 
 from sqlalchemy import func, Select, select, Table
 
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     BootResourceTable,
@@ -15,6 +16,10 @@ from maasservicelayer.models.switches import Switch, SwitchWithTargetImage
 
 class SwitchesRepository(BaseRepository[Switch]):
     """Repository for managing Switch entities in the database."""
+
+    details_mapper = DefaultDomainDataMapper[SwitchWithTargetImage](
+        SwitchWithTargetImage, SwitchTable
+    )
 
     def get_repository_table(self) -> Table:
         return SwitchTable
@@ -51,7 +56,9 @@ class SwitchesRepository(BaseRepository[Switch]):
         stmt = self.select_all_with_details.where(SwitchTable.c.id == id)
         row = (await self.execute_stmt(stmt)).one_or_none()
         return (
-            SwitchWithTargetImage(**row._asdict()) if row is not None else None
+            self.details_mapper.to_domain(row._mapping)
+            if row is not None
+            else None
         )
 
     async def list_with_details(
@@ -65,6 +72,8 @@ class SwitchesRepository(BaseRepository[Switch]):
         )
         result = (await self.execute_stmt(stmt)).all()
         return ListResult(
-            items=[SwitchWithTargetImage(**row._asdict()) for row in result],
+            items=[
+                self.details_mapper.to_domain(row._mapping) for row in result
+            ],
             total=total,
         )

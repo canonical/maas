@@ -37,10 +37,7 @@ class SubnetsRepository(BaseRepository[Subnet]):
             ip = ip.ipv4_mapped
 
         stmt = (
-            select(
-                SubnetTable,
-                VlanTable.c.dhcp_on,
-            )
+            select(SubnetTable)
             .select_from(SubnetTable)
             .join(
                 VlanTable,
@@ -56,9 +53,7 @@ class SubnetsRepository(BaseRepository[Subnet]):
         if not result:
             return None
 
-        res = result._asdict()
-        del res["dhcp_on"]
-        return Subnet(**res)
+        return self.mapper.to_domain(result._mapping)
 
     async def _pre_delete_checks(self, query: QuerySpec) -> None:
         vlan_dhcp_on_and_dynamic_ip_range = (
