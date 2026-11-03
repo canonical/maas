@@ -10,7 +10,6 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import AnyQuerySpec
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
@@ -44,7 +43,7 @@ class VlansService(BaseService[Vlan, VlansRepository, VlanBuilder]):
         self.temporal_service = temporal_service
         self.nodes_service = nodes_service
 
-    async def get_node_vlans(self, query: AnyQuerySpec) -> List[Vlan]:
+    async def get_node_vlans(self, query: QuerySpec) -> List[Vlan]:
         return await self.repository.get_node_vlans(query=query)
 
     async def get_fabric_default_vlan(self, fabric_id: int) -> Vlan:

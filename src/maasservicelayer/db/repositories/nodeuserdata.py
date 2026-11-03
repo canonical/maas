@@ -8,13 +8,13 @@ from sqlalchemy import delete, Table
 from sqlalchemy.dialects.postgresql import insert
 
 from maasservicelayer.builders.nodeuserdata import NodeUserDataBuilder
-from maasservicelayer.db.filters import AnyQuerySpec
 from maasservicelayer.db.mappers.base import BaseDomainDataMapper
 from maasservicelayer.db.mappers.nodeuserdata import (
     NodeUserDataDomainDataMapper,
 )
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import NodeUserDataTable
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.nodeuserdata import NodeUserData
 
 
@@ -44,7 +44,7 @@ class NodeUserDataRepository(BaseRepository[NodeUserData]):
         result = (await self.execute_stmt(upsert_stmt)).one()
         return self._to_model(result._asdict())
 
-    async def _get(self, query: AnyQuerySpec) -> List[NodeUserData]:
+    async def _get(self, query: QuerySpec) -> List[NodeUserData]:
         """
         This override is required to convert the string-based,
         base64-encoded data that the database uses, to a valid `bytes`
@@ -58,7 +58,7 @@ class NodeUserDataRepository(BaseRepository[NodeUserData]):
         result = (await self.execute_stmt(stmt)).all()
         return [self._to_model(row._asdict()) for row in result]
 
-    async def _delete(self, query: AnyQuerySpec) -> List[NodeUserData]:
+    async def _delete(self, query: QuerySpec) -> List[NodeUserData]:
         """Decode `data` on deleted rows, as `_get` does.
 
         This is called by `delete_one`, `delete_by_id`, and `delete_many`.

@@ -12,7 +12,6 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import AnyQuerySpec
 from maasservicelayer.db.repositories.ipranges import IPRangesRepository
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
@@ -116,7 +115,7 @@ class IPRangesService(
         raise NotImplementedError("Not implemented yet.")
 
     async def update_many(
-        self, query: AnyQuerySpec, builder: IPRangeBuilder
+        self, query: QuerySpec, builder: IPRangeBuilder
     ) -> List[IPRange]:
         updated_resources = await self.repository.update_many(
             query=query, builder=builder

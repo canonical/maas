@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import Iterable, List
+from typing import List
 
 from sqlalchemy import desc, func, Select, select, Table
 
@@ -11,12 +11,7 @@ from maascommon.enums.boot_resources import (
     BootResourceType,
 )
 from maascommon.enums.node import NodeStatus
-from maasservicelayer.db.filters import (
-    AnyQuerySpec,
-    Clause,
-    ClauseFactory,
-    SQLQuerySpec,
-)
+from maasservicelayer.db.filters import SQLQuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ReadOnlyRepository,
@@ -92,12 +87,12 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
         result = await self.execute_stmt(stmt)
         return [BootSourceSelection(**row._asdict()) for row in result]
 
-    async def update_one(self, query: AnyQuerySpec, builder):
+    async def update_one(self, query: QuerySpec, builder):
         raise NotImplementedError(
             "Update is not supported for bootsourceselections"
         )
 
-    async def update_many(self, query: AnyQuerySpec, builder):
+    async def update_many(self, query: QuerySpec, builder):
         raise NotImplementedError(
             "Update is not supported for bootsourceselections"
         )
@@ -107,7 +102,7 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
             "Update is not supported for bootsourceselections"
         )
 
-    async def _update(self, query: AnyQuerySpec, builder):
+    async def _update(self, query: QuerySpec, builder):
         raise NotImplementedError(
             "Update is not supported for bootsourceselections"
         )
@@ -263,53 +258,3 @@ class BootSourceSelectionStatusRepository(
 
     def get_model_factory(self) -> type[BootSourceSelectionStatus]:
         return BootSourceSelectionStatus
-
-
-# Legacy SQL clause factory, removed once every caller uses domain filters.
-class BootSourceSelectionClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(BootSourceSelectionTable.c.id, id))
-
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=BootSourceSelectionTable.c.id.in_(ids))
-
-    @classmethod
-    def with_boot_source_id(cls, boot_source_id: int) -> Clause:
-        return Clause(
-            condition=eq(
-                BootSourceSelectionTable.c.boot_source_id, boot_source_id
-            )
-        )
-
-    @classmethod
-    def with_boot_source_ids(cls, boot_source_ids: Iterable[int]) -> Clause:
-        return Clause(
-            condition=BootSourceSelectionTable.c.boot_source_id.in_(
-                boot_source_ids
-            )
-        )
-
-    @classmethod
-    def with_os(cls, os: str) -> Clause:
-        return Clause(condition=eq(BootSourceSelectionTable.c.os, os))
-
-    @classmethod
-    def with_release(cls, release: str) -> Clause:
-        return Clause(
-            condition=eq(BootSourceSelectionTable.c.release, release)
-        )
-
-    @classmethod
-    def with_arch(cls, arch: str) -> Clause:
-        return Clause(condition=eq(BootSourceSelectionTable.c.arch, arch))
-
-    @classmethod
-    def with_legacyselection_id(cls, legacyselection_id: int) -> Clause:
-        return Clause(
-            condition=eq(
-                BootSourceSelectionTable.c.legacyselection_id,
-                legacyselection_id,
-            )
-        )

@@ -46,10 +46,6 @@ It contains only domain filters and ordering; callers do not construct SQL claus
 The repository translates incoming queries through its mapper before executing statements.
 The resulting `SQLQuerySpec`, `Clause`, and `OrderByClause` in `maasservicelayer.db.filters` are internal SQL representations, not accepted query inputs.
 
-During the migration, entities that still use a legacy `<Entity>ClauseFactory` pass `maasservicelayer.db.filters.QuerySpec`, an alias of `SQLQuerySpec`, which repositories run unchanged.
-Repository and service methods accept either form, typed as `AnyQuerySpec`.
-New code must use domain queries; both aliases and the remaining clause factories are removed once every entity uses domain filters.
-
 ### Domain queries and filters
 
 Domain filters and ordering live in `src/maasservicelayer/filters/`, without SQLAlchemy types or statement-building methods.

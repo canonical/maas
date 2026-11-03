@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.sshkeys import SshKeysProtocolType
 from maasservicelayer.context import Context
+from maasservicelayer.db.filters import SQLQuerySpec
 from maasservicelayer.db.mappers.base import UnsupportedFilterError
 from maasservicelayer.db.repositories.sshkeys import SshKeysRepository
 from maasservicelayer.filters.base import FieldFilter, Filter, Operator
@@ -76,6 +77,15 @@ class TestSshKeysRepository(RepositoryCommonTests[SshKey]):
             )
         )
         assert result == [keys[1], keys[2], keys[0]]
+
+    async def test_rejects_sql_query_before_delete(
+        self, repository_instance, filter_keys
+    ):
+        with pytest.raises(TypeError):
+            await repository_instance.delete_many(SQLQuerySpec())
+        assert {
+            key.id for key in await repository_instance.get_many(QuerySpec())
+        } == {key.id for key in filter_keys.values()}
 
     async def test_rejects_order_for_another_model(
         self, repository_instance, filter_keys

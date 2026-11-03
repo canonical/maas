@@ -15,7 +15,6 @@ from maascommon.logging.security import (
     UPDATED,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import AnyQuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ReadOnlyRepository,
@@ -29,6 +28,7 @@ from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import (
     ListResult,
     MaasBaseModel,
@@ -141,24 +141,24 @@ class ReadOnlyService(Service, Generic[M, ROR]):
         super().__init__(context, cache)
         self.repository = repository
 
-    async def exists(self, query: AnyQuerySpec):
+    async def exists(self, query: QuerySpec):
         return await self.repository.exists(query=query)
 
-    async def get_many(self, query: AnyQuerySpec) -> List[M]:
+    async def get_many(self, query: QuerySpec) -> List[M]:
         return await self.repository.get_many(query=query)
 
-    async def get_one(self, query: AnyQuerySpec) -> M | None:
+    async def get_one(self, query: QuerySpec) -> M | None:
         return await self.repository.get_one(query=query)
 
     async def get_by_id(self, id: int) -> M | None:
         return await self.repository.get_by_id(id=id)
 
     async def list(
-        self, page: int, size: int, query: AnyQuerySpec | None = None
+        self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[M]:
         return await self.repository.list(page=page, size=size, query=query)
 
-    async def list_all(self, query: AnyQuerySpec | None = None) -> List[M]:
+    async def list_all(self, query: QuerySpec | None = None) -> List[M]:
         # Please, prefer not to use this method. It's here just as a utility for v2 endpoints that need to use the service layer.
         return await self.repository.list_all(query=query)
 
@@ -228,7 +228,7 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         return created_resources
 
     async def get_or_create(
-        self, query: AnyQuerySpec, builder: B
+        self, query: QuerySpec, builder: B
     ) -> Tuple[M, bool]:
         """
         Retrieves a resource matching the given query, or creates it if it does not exist.
@@ -260,7 +260,7 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         """
         pass
 
-    async def update_many(self, query: AnyQuerySpec, builder: B) -> List[M]:
+    async def update_many(self, query: QuerySpec, builder: B) -> List[M]:
         await self.pre_update_many(builder)
         updated_resources = await self.repository.update_many(
             query=query, builder=builder
@@ -293,7 +293,7 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
 
     async def update_one(
         self,
-        query: AnyQuerySpec,
+        query: QuerySpec,
         builder: B,
         etag_if_match: str | None = None,
     ) -> M:
@@ -351,7 +351,7 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
         """
         return None
 
-    async def delete_many(self, query: AnyQuerySpec) -> List[M]:
+    async def delete_many(self, query: QuerySpec) -> List[M]:
         resources = await self.get_many(query)
         await self.pre_delete_many_hook(resources)
         resources = await self.repository.delete_many(query=query)
@@ -377,7 +377,7 @@ class BaseService(ReadOnlyService[M, BR], ABC, Generic[M, BR, B]):
 
     async def delete_one(
         self,
-        query: AnyQuerySpec,
+        query: QuerySpec,
         etag_if_match: str | None = None,
         force: bool = False,
     ) -> M | None:

@@ -7,7 +7,6 @@ from sqlalchemy import func, select, Table
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.token import TokenType
-from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     ConsumerTable,
@@ -80,22 +79,3 @@ class OIDCRevokedTokenRepository(BaseRepository[OIDCRevokedToken]):
 
     def get_model_factory(self) -> type[OIDCRevokedToken]:
         return OIDCRevokedToken
-
-
-# Legacy SQL clause factory, removed once every caller uses domain filters.
-class TokenClauseFactory(ClauseFactory):
-    @classmethod
-    def with_consumer_id(cls, consumer_id: int) -> Clause:
-        return Clause(condition=eq(TokenTable.c.consumer_id, consumer_id))
-
-    @classmethod
-    def with_consumer_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=TokenTable.c.consumer_id.in_(ids))
-
-    @classmethod
-    def with_secret(cls, secret: str) -> Clause:
-        return Clause(condition=eq(TokenTable.c.secret, secret))
-
-    @classmethod
-    def with_key(cls, key: str) -> Clause:
-        return Clause(condition=eq(TokenTable.c.key, key))

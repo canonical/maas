@@ -8,7 +8,7 @@ from sqlalchemy.sql.functions import func
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
-from maasservicelayer.db.filters import Clause, ClauseFactory, SQLQuerySpec
+from maasservicelayer.db.filters import SQLQuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import NodeTable, ResourcePoolTable
 from maasservicelayer.filters.query import QuerySpec
@@ -83,10 +83,3 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
             ],
             total=total,
         )
-
-
-# Legacy SQL clause factory, removed once every caller uses domain filters.
-class ResourcePoolClauseFactory(ClauseFactory):
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=ResourcePoolTable.c.id.in_(ids))
