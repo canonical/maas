@@ -11,13 +11,11 @@ from maasservicelayer.builders.dnsdata import DNSDataBuilder
 from maasservicelayer.builders.dnsresources import DNSResourceBuilder
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dnsdata import DNSDataClauseFactory
-from maasservicelayer.db.repositories.dnsresources import (
-    DNSResourceClauseFactory,
-)
-from maasservicelayer.db.repositories.domains import DomainsClauseFactory
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.dnsdata import DNSDataFilters
+from maasservicelayer.filters.dnsresources import DNSResourceFilters
+from maasservicelayer.filters.domains import DomainsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.dnsresourcerecordsets import (
     DNSResourceTypeEnum,
     GenericDNSRecord,
@@ -322,24 +320,16 @@ class TestV3DNSResourceRecordSetsService:
         await v3dnsrrsets_service.update_kms_srv(kms_host)
 
         domains_service.get_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=DomainsClauseFactory.with_authoritative(True)
-            )
+            query=QuerySpec(where=DomainsFilters.with_authoritative(True))
         )
         dnsdata_service.delete_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=DNSDataClauseFactory.and_clauses(
+                where=DNSDataFilters.and_filters(
                     [
-                        DNSDataClauseFactory.with_domain_id(0),
-                        DNSDataClauseFactory.with_dnsresource_name(
-                            "_vlmcs._tcp"
-                        ),
-                        DNSDataClauseFactory.with_rrtype(
-                            DNSResourceTypeEnum.SRV
-                        ),
-                        DNSDataClauseFactory.with_rrdata_starting_with(
-                            "0 0 1688 "
-                        ),
+                        DNSDataFilters.with_domain_id(0),
+                        DNSDataFilters.with_dnsresource_name("_vlmcs._tcp"),
+                        DNSDataFilters.with_rrtype(DNSResourceTypeEnum.SRV),
+                        DNSDataFilters.with_rrdata_starting_with("0 0 1688 "),
                     ]
                 )
             )
@@ -399,17 +389,15 @@ class TestV3DNSResourceRecordSetsService:
         await v3dnsrrsets_service.update_kms_srv(kms_host)
 
         domains_service.get_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=DomainsClauseFactory.with_authoritative(True)
-            )
+            query=QuerySpec(where=DomainsFilters.with_authoritative(True))
         )
         print(dnsresource_service.get_one.call_args)
         dnsresource_service.get_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=DNSResourceClauseFactory.and_clauses(
+                where=DNSResourceFilters.and_filters(
                     [
-                        DNSResourceClauseFactory.with_name("_vlmcs._tcp"),
-                        DNSResourceClauseFactory.with_domain_id(0),
+                        DNSResourceFilters.with_name("_vlmcs._tcp"),
+                        DNSResourceFilters.with_domain_id(0),
                     ]
                 )
             )

@@ -14,30 +14,19 @@ from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.ipranges import IPRangeType
 from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import OrderByClause, QuerySpec
-from maasservicelayer.db.repositories.domains import DomainsClauseFactory
-from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
-from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
-from maasservicelayer.db.repositories.reservedips import (
-    ReservedIPsClauseFactory,
-)
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
-from maasservicelayer.db.repositories.vlans import VlansClauseFactory
-from maasservicelayer.db.tables import (
-    DomainTable,
-    IPRangeTable,
-    ReservedIPTable,
-    StaticIPAddressTable,
-    VlanTable,
-)
 from maasservicelayer.exceptions.catalog import (
     NotFoundException,
     ValidationException,
 )
+from maasservicelayer.filters.domains import DomainsFilters
+from maasservicelayer.filters.interfaces import InterfaceFilters
+from maasservicelayer.filters.ipranges import IPRangeFilters
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import OrderBy, QuerySpec
+from maasservicelayer.filters.reservedips import ReservedIPsFilters
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
+from maasservicelayer.filters.subnets import SubnetFilters
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.models.dhcp import (
     DHCPDataForAgent,
     HostReservationData,
@@ -47,8 +36,11 @@ from maasservicelayer.models.dhcp import (
     SubnetData,
     VlanData,
 )
+from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.interfaces import Interface
+from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.nodes import Node
+from maasservicelayer.models.reservedips import ReservedIP
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.models.vlans import Vlan
@@ -120,7 +112,7 @@ class DHCPService(Service):
     ) -> DHCPDataForAgent:
         """Retrieve Kea configuration inputs for a rack controller system ID."""
         rack = await self.nodes_service.get_one(
-            query=QuerySpec(where=NodeClauseFactory.with_system_id(system_id))
+            query=QuerySpec(where=NodeFilters.with_system_id(system_id))
         )
         if rack is None:
             raise NotFoundException()
@@ -143,15 +135,15 @@ class DHCPService(Service):
         # Retrieve relevant VLANs for this rack
         active_vlans = await self.vlans_service.get_many(
             QuerySpec(
-                where=VlansClauseFactory.and_clauses(
+                where=VlansFilters.and_filters(
                     [
-                        VlansClauseFactory.with_dhcp_on(True),
-                        VlansClauseFactory.with_primary_or_secondary_rack_id(
+                        VlansFilters.with_dhcp_on(True),
+                        VlansFilters.with_primary_or_secondary_rack_id(
                             rack.id
                         ),
                     ]
                 ),
-                order_by=[OrderByClause(VlanTable.c.id)],
+                order_by=(OrderBy(Vlan, "id"),),
             )
         )
         interfaces = await self._get_rack_interfaces(rack, cache)
@@ -167,7 +159,7 @@ class DHCPService(Service):
         if vlans:
             relay_vlans = await self.vlans_service.get_many(
                 query=QuerySpec(
-                    where=VlansClauseFactory.with_relay_vlan_id_in(list(vlans))
+                    where=VlansFilters.with_relay_vlan_id_in(list(vlans))
                 )
             )
             for relay in relay_vlans:
@@ -177,10 +169,10 @@ class DHCPService(Service):
         # Retrieve relevant subnets for this rack
         subnets = await self.subnets_service.get_many(
             query=QuerySpec(
-                where=SubnetClauseFactory.and_clauses(
+                where=SubnetFilters.and_filters(
                     [
-                        SubnetClauseFactory.with_vlan_id_in(list(vlans)),
-                        SubnetClauseFactory.with_managed(True),
+                        SubnetFilters.with_vlan_id_in(list(vlans)),
+                        SubnetFilters.with_managed(True),
                     ]
                 )
             )
@@ -197,10 +189,10 @@ class DHCPService(Service):
         # Retrieve relevant IP ranges for this rack
         ipranges = await self.ipranges_service.get_many(
             query=QuerySpec(
-                where=IPRangeClauseFactory.with_subnet_ids(
+                where=IPRangeFilters.with_subnet_ids(
                     [subnet.id for subnet in subnets]
                 ),
-                order_by=[OrderByClause(IPRangeTable.c.id)],
+                order_by=(OrderBy(IPRange, "id"),),
             )
         )
         dynamic_counts = {subnet.id: 0 for subnet in subnets}
@@ -224,15 +216,15 @@ class DHCPService(Service):
         default_domain = await self.domains_service.get_default_domain()
         search_domains = await self.domains_service.get_many(
             query=QuerySpec(
-                where=DomainsClauseFactory.and_clauses(
+                where=DomainsFilters.and_filters(
                     [
-                        DomainsClauseFactory.not_clause(
-                            DomainsClauseFactory.with_name(default_domain.name)
+                        DomainsFilters.not_filter(
+                            DomainsFilters.with_name(default_domain.name)
                         ),
-                        DomainsClauseFactory.with_authoritative(True),
+                        DomainsFilters.with_authoritative(True),
                     ]
                 ),
-                order_by=[OrderByClause(DomainTable.c.name)],
+                order_by=(OrderBy(Domain, "name"),),
             )
         )
         external_only = await self.configurations_service.get(
@@ -254,15 +246,13 @@ class DHCPService(Service):
         )
         rack_ips = await self.staticipaddress_service.get_for_nodes(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.and_clauses(
+                where=StaticIPAddressFilters.and_filters(
                     [
-                        StaticIPAddressClauseFactory.with_node_system_id(
-                            system_id
-                        ),
-                        StaticIPAddressClauseFactory.with_alloc_type_in(
+                        StaticIPAddressFilters.with_node_system_id(system_id),
+                        StaticIPAddressFilters.with_alloc_type_in(
                             [IpAddressType.STICKY, IpAddressType.USER_RESERVED]
                         ),
-                        StaticIPAddressClauseFactory.with_ip_not_null(),
+                        StaticIPAddressFilters.with_ip_not_null(),
                     ]
                 )
             )
@@ -418,7 +408,7 @@ class DHCPService(Service):
             return cache.interfaces_by_config[rack.current_config_id]
         interfaces = await self.interfaces_service.get_many(
             query=QuerySpec(
-                where=InterfaceClauseFactory.with_node_config_id(
+                where=InterfaceFilters.with_node_config_id(
                     rack.current_config_id
                 )
             )
@@ -475,15 +465,13 @@ class DHCPService(Service):
         if subnet_id not in cache.dynamic_count_by_subnet:
             ranges = await self.ipranges_service.get_many(
                 query=QuerySpec(
-                    where=IPRangeClauseFactory.and_clauses(
+                    where=IPRangeFilters.and_filters(
                         [
-                            IPRangeClauseFactory.with_subnet_id(subnet_id),
-                            IPRangeClauseFactory.with_type(
-                                IPRangeType.DYNAMIC
-                            ),
+                            IPRangeFilters.with_subnet_id(subnet_id),
+                            IPRangeFilters.with_type(IPRangeType.DYNAMIC),
                         ]
                     ),
-                    order_by=[OrderByClause(IPRangeTable.c.id)],
+                    order_by=(OrderBy(IPRange, "id"),),
                 )
             )
             cache.dynamic_count_by_subnet[subnet_id] = len(ranges)
@@ -658,23 +646,21 @@ class DHCPService(Service):
             return hosts_by_subnet
         ips = await self.staticipaddress_service.get_many(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.and_clauses(
+                where=StaticIPAddressFilters.and_filters(
                     [
-                        StaticIPAddressClauseFactory.with_subnet_id_in(
-                            subnet_ids
-                        ),
-                        StaticIPAddressClauseFactory.with_alloc_type_in(
+                        StaticIPAddressFilters.with_subnet_id_in(subnet_ids),
+                        StaticIPAddressFilters.with_alloc_type_in(
                             [
                                 IpAddressType.AUTO,
                                 IpAddressType.STICKY,
                                 IpAddressType.USER_RESERVED,
                             ]
                         ),
-                        StaticIPAddressClauseFactory.with_ip_not_null(),
-                        StaticIPAddressClauseFactory.with_temp_expires_on_is_null(),
+                        StaticIPAddressFilters.with_ip_not_null(),
+                        StaticIPAddressFilters.with_temp_expires_on_is_null(),
                     ]
                 ),
-                order_by=[OrderByClause(StaticIPAddressTable.c.id)],
+                order_by=(OrderBy(StaticIPAddress, "id"),),
             )
         )
         seen_interfaces: set[int] = set()
@@ -729,8 +715,8 @@ class DHCPService(Service):
                     )
         reserved_ips = await self.reservedips_service.get_many(
             query=QuerySpec(
-                where=ReservedIPsClauseFactory.with_subnet_id_in(subnet_ids),
-                order_by=[OrderByClause(ReservedIPTable.c.id)],
+                where=ReservedIPsFilters.with_subnet_id_in(subnet_ids),
+                order_by=(OrderBy(ReservedIP, "id"),),
             )
         )
         known_macs = {
@@ -762,7 +748,7 @@ class DHCPService(Service):
         else:
             node = await self.nodes_service.get_one(
                 query=QuerySpec(
-                    where=NodeClauseFactory.with_node_config_id(
+                    where=NodeFilters.with_node_config_id(
                         interface.node_config_id
                     )
                 )
@@ -778,18 +764,16 @@ class DHCPService(Service):
     ) -> dict[tuple[int | None, int], str]:
         addresses = await self.staticipaddress_service.get_for_nodes(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.and_clauses(
+                where=StaticIPAddressFilters.and_filters(
                     [
-                        StaticIPAddressClauseFactory.with_node_system_id(
+                        StaticIPAddressFilters.with_node_system_id(
                             rack.system_id
                         ),
-                        StaticIPAddressClauseFactory.with_interface_enabled(
-                            True
-                        ),
-                        StaticIPAddressClauseFactory.with_alloc_type_in(
+                        StaticIPAddressFilters.with_interface_enabled(True),
+                        StaticIPAddressFilters.with_alloc_type_in(
                             [IpAddressType.STICKY, IpAddressType.USER_RESERVED]
                         ),
-                        StaticIPAddressClauseFactory.with_ip_not_null(),
+                        StaticIPAddressFilters.with_ip_not_null(),
                     ]
                 )
             )
@@ -824,7 +808,7 @@ class DHCPService(Service):
             return []
         addresses: list[IPv4Address | IPv6Address] = []
         vlan_subnets = await self.subnets_service.get_many(
-            query=QuerySpec(where=SubnetClauseFactory.with_vlan_id(vlan.id))
+            query=QuerySpec(where=SubnetFilters.with_vlan_id(vlan.id))
         )
         rack_ids = [
             rack_id
@@ -836,16 +820,16 @@ class DHCPService(Service):
             assert rack is not None
             ips = await self.staticipaddress_service.get_for_nodes(
                 query=QuerySpec(
-                    where=StaticIPAddressClauseFactory.and_clauses(
+                    where=StaticIPAddressFilters.and_filters(
                         [
-                            StaticIPAddressClauseFactory.with_node_system_id(
+                            StaticIPAddressFilters.with_node_system_id(
                                 rack.system_id
                             ),
-                            StaticIPAddressClauseFactory.with_subnet_id_in(
+                            StaticIPAddressFilters.with_subnet_id_in(
                                 [sn.id for sn in vlan_subnets]
                             ),
-                            StaticIPAddressClauseFactory.with_ip_not_null(),
-                            StaticIPAddressClauseFactory.with_alloc_type_not_in(
+                            StaticIPAddressFilters.with_ip_not_null(),
+                            StaticIPAddressFilters.with_alloc_type_not_in(
                                 [IpAddressType.DISCOVERED]
                             ),
                         ]
@@ -867,12 +851,10 @@ class DHCPService(Service):
         addresses: list[IPv4Address | IPv6Address] = []
         regions = await self.nodes_service.get_many(
             query=QuerySpec(
-                where=NodeClauseFactory.or_clauses(
+                where=NodeFilters.or_filters(
                     [
-                        NodeClauseFactory.with_type(
-                            NodeTypeEnum.REGION_CONTROLLER
-                        ),
-                        NodeClauseFactory.with_type(
+                        NodeFilters.with_type(NodeTypeEnum.REGION_CONTROLLER),
+                        NodeFilters.with_type(
                             NodeTypeEnum.REGION_AND_RACK_CONTROLLER
                         ),
                     ]
@@ -901,18 +883,18 @@ class DHCPService(Service):
                     key
                 ] = await self.staticipaddress_service.get_for_nodes(
                     query=QuerySpec(
-                        where=StaticIPAddressClauseFactory.and_clauses(
+                        where=StaticIPAddressFilters.and_filters(
                             [
-                                StaticIPAddressClauseFactory.with_node_system_id(
+                                StaticIPAddressFilters.with_node_system_id(
                                     region.system_id
                                 ),
-                                StaticIPAddressClauseFactory.with_subnet_id(
+                                StaticIPAddressFilters.with_subnet_id(
                                     subnet.id
                                 ),
-                                StaticIPAddressClauseFactory.with_ip_not_null(),
+                                StaticIPAddressFilters.with_ip_not_null(),
                             ]
                         ),
-                        order_by=[OrderByClause(StaticIPAddressTable.c.ip)],
+                        order_by=(OrderBy(StaticIPAddress, "ip"),),
                     )
                 )
             return region_ips_cache[key]

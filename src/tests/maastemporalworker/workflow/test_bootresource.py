@@ -57,16 +57,12 @@ from maascommon.workflows.bootresource import (
 )
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.db import Database
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
+from maasservicelayer.filters.bootresources import BootResourceFilters
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
 )
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-)
-from maasservicelayer.db.repositories.notifications import (
-    NotificationsClauseFactory,
-)
+from maasservicelayer.filters.notifications import NotificationsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootresourcesets import BootResourceSet
@@ -740,7 +736,7 @@ class TestFetchManifestAndUpdateCacheActivity:
         services_mock.boot_source_selections.ensure_selections_from_legacy.assert_awaited_once()
         services_mock.notifications.delete_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=NotificationsClauseFactory.with_ident(
+                where=NotificationsFilters.with_ident(
                     NotificationComponent.FETCH_IMAGE_MANIFEST.format(id=1)
                 )
             ),
@@ -774,7 +770,7 @@ class TestFetchManifestAndUpdateCacheActivity:
 
         services_mock.notifications.create_or_update.assert_awaited_once_with(
             query=QuerySpec(
-                where=NotificationsClauseFactory.with_ident(
+                where=NotificationsFilters.with_ident(
                     NotificationComponent.FETCH_IMAGE_MANIFEST.format(id=1)
                 )
             ),
@@ -870,19 +866,19 @@ class TestGetFilesToDownloadForSelectionActivity:
         )
         services_mock.boot_source_selections.get_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootSourceSelectionClauseFactory.and_clauses(
+                where=BootSourceSelectionFilters.and_filters(
                     [
-                        BootSourceSelectionClauseFactory.with_os(
+                        BootSourceSelectionFilters.with_os(
                             boot_source_selection.os
                         ),
-                        BootSourceSelectionClauseFactory.with_arch(
+                        BootSourceSelectionFilters.with_arch(
                             boot_source_selection.arch
                         ),
-                        BootSourceSelectionClauseFactory.with_release(
+                        BootSourceSelectionFilters.with_release(
                             boot_source_selection.release
                         ),
-                        BootSourceSelectionClauseFactory.not_clause(
-                            BootSourceSelectionClauseFactory.with_id(
+                        BootSourceSelectionFilters.not_filter(
+                            BootSourceSelectionFilters.with_id(
                                 boot_source_selection.id
                             )
                         ),
@@ -891,9 +887,7 @@ class TestGetFilesToDownloadForSelectionActivity:
             )
         )
         services_mock.boot_resources.delete_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_selection_id(2)
-            )
+            query=QuerySpec(where=BootResourceFilters.with_selection_id(2))
         )
         services_mock.boot_sources.get_by_id.assert_awaited_once_with(1)
         services_mock.image_manifests.get_or_fetch.assert_awaited_once_with(
@@ -966,9 +960,7 @@ class TestGetManuallyUploadedResourcesActivity:
 
         services_mock.boot_resources.get_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceClauseFactory.with_rtype(
-                    BootResourceType.UPLOADED
-                )
+                where=BootResourceFilters.with_rtype(BootResourceType.UPLOADED)
             )
         )
 
@@ -1041,7 +1033,7 @@ class TestRegisterNotificationErrorActivity:
 
         services_mock.notifications.create_or_update.assert_awaited_once_with(
             query=QuerySpec(
-                where=NotificationsClauseFactory.with_ident(
+                where=NotificationsFilters.with_ident(
                     NotificationComponent.REGION_IMAGE_SYNC
                 )
             ),
@@ -1074,7 +1066,7 @@ class TestDeleteNotificationErrorActivity:
 
         services_mock.notifications.delete_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=NotificationsClauseFactory.with_ident(
+                where=NotificationsFilters.with_ident(
                     NotificationComponent.REGION_IMAGE_SYNC
                 )
             ),
@@ -1120,7 +1112,7 @@ class TestGetStillAvailableSelections:
         services_mock.notifications.create_or_update.assert_not_awaited()
         services_mock.notifications.delete_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=NotificationsClauseFactory.with_ident(
+                where=NotificationsFilters.with_ident(
                     NotificationComponent.SELECTION_AVAILABILITY.format(
                         id=selection.id
                     )
@@ -1156,7 +1148,7 @@ class TestGetStillAvailableSelections:
         services_mock.notifications.delete_one.assert_not_awaited()
         services_mock.notifications.create_or_update.assert_awaited_once_with(
             query=QuerySpec(
-                where=NotificationsClauseFactory.with_ident(
+                where=NotificationsFilters.with_ident(
                     NotificationComponent.SELECTION_AVAILABILITY.format(
                         id=selection.id
                     )

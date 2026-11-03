@@ -13,12 +13,7 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.interfaces import InterfaceBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.interfaces import (
-    InterfaceClauseFactory,
-    InterfaceRepository,
-)
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
+from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -28,6 +23,9 @@ from maasservicelayer.exceptions.constants import (
     PRECONDITION_FAILED,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.interfaces import InterfaceFilters
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.nodes import Node
@@ -172,9 +170,7 @@ class InterfacesService(
 
         node = await self.node_service.get_one(
             query=QuerySpec(
-                where=NodeClauseFactory.with_node_config_id(
-                    interface.node_config_id
-                )
+                where=NodeFilters.with_node_config_id(interface.node_config_id)
             ),
         )
         if not node:
@@ -230,9 +226,7 @@ class InterfacesService(
 
         node = await self.node_service.get_one(
             query=QuerySpec(
-                where=NodeClauseFactory.with_node_config_id(
-                    interface.node_config_id
-                )
+                where=NodeFilters.with_node_config_id(interface.node_config_id)
             ),
         )
         if not node:
@@ -297,7 +291,5 @@ class InterfacesService(
             return
 
         await self.delete_many(
-            query=QuerySpec(
-                where=InterfaceClauseFactory.with_ids(interface_ids)
-            )
+            query=QuerySpec(where=InterfaceFilters.with_ids(interface_ids))
         )
