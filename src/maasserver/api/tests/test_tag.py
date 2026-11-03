@@ -247,7 +247,14 @@ class TestTagAPI(APITestCase.ForUser):
         query_counts = []
         machine_counts = []
 
-        machine = factory.make_Node_with_Interface_on_Subnet()
+        # Pin the first machine's VLAN to a known Space. Otherwise
+        # `make_Node_with_Interface_on_Subnet` randomises whether the
+        # VLAN gets a Space (`make_Subnet(space=RANDOM_OR_NONE)`), and
+        # the bulk VLAN/Space prefetch in `_prepare_vlans` only issues
+        # its query once a Space actually needs loading, making the
+        # query count depend on that coin flip.
+        vlan = factory.make_VLAN(space=factory.make_Space())
+        machine = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
         machine.tags.add(tag)
         num_queries, response = count_queries(
             self.client.get, get_tag_uri(tag), {"op": "machines"}
@@ -270,7 +277,7 @@ class TestTagAPI(APITestCase.ForUser):
         machine_counts.append(len(response.json()))
 
         self.assertEqual(machine_counts, [1, 2, 3])
-        self.assertEqual(query_counts, [44, 44, 44])
+        self.assertEqual(query_counts, [45, 45, 45])
 
     def test_GET_devices_returns_devices(self):
         tag = factory.make_Tag()

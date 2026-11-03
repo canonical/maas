@@ -229,7 +229,6 @@ def _prepare_vlans(interfaces):
     for vlan in vlans.values():
         if vlan.relay_vlan_id in vlans:
             vlan.relay_vlan = vlans[vlan.relay_vlan_id]
-        vlan.fabric._default_vlan = vlan.fabric.get_default_vlan()
     for interface in interfaces:
         if interface.vlan_id in vlans:
             interface.vlan = vlans[interface.vlan_id]
