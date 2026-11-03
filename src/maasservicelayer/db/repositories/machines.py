@@ -118,10 +118,8 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
         )
         if query:
             translated = self._translate(query)
-            total_stmt = (
-                SQLQuerySpec(where=translated.where)
-                .enrich_stmt(total_stmt)
-                .enrich_stmt(total_stmt)
+            total_stmt = SQLQuerySpec(where=translated.where).enrich_stmt(
+                total_stmt
             )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
