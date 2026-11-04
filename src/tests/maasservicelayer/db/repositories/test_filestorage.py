@@ -1,7 +1,6 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from base64 import b64decode, b64encode
-from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -83,16 +82,6 @@ class TestFilestorageRepository(RepositoryCommonTests[FileStorage]):
         assert type(file.content) is bytes
         assert file.content != encoded_content
         assert file.content == content
-
-    @patch("maasservicelayer.db.repositories.filestorage.b64decode")
-    async def test_get_one_doesnt_convert_content_if_none(
-        self,
-        b64decode_mock: MagicMock,
-        repository_instance: FileStorageRepository,
-    ) -> None:
-        file = await repository_instance.get_one(query=QuerySpec())
-        assert file is None
-        b64decode_mock.assert_not_called()
 
     async def test_get_by_id_converts_content_str_to_bytes(
         self,

@@ -25,6 +25,7 @@ from maasservicelayer.constants import SYSTEM_USERS
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import SQLQuerySpec
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
+from maasservicelayer.db.mappers.usergroups import UserGroupsDataMapper
 from maasservicelayer.db.mappers.users import UsersDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
@@ -54,9 +55,13 @@ from maasservicelayer.utils.date import utcnow
 class UsersRepository(BaseRepository[User]):
     def __init__(self, context: Context):
         super().__init__(context)
-        self.userprofile_mapper = DefaultDomainDataMapper(
+        self.userprofile_mapper = DefaultDomainDataMapper[UserProfile](
             UserProfile, UserProfileTable
         )
+        self.user_statistics_mapper = DefaultDomainDataMapper[UserStatistics](
+            UserStatistics, UserTable
+        )
+        self.usergroup_mapper = UserGroupsDataMapper()
 
     def get_mapper(self) -> UsersDataMapper:
         return UsersDataMapper()
@@ -108,7 +113,7 @@ class UsersRepository(BaseRepository[User]):
         row = (await self.execute_stmt(stmt)).one_or_none()
         if not row:
             return None
-        return User(**row._asdict())
+        return self.mapper.to_domain(row._mapping)
 
     async def find_by_refresh_token(self, token_hash: str) -> User | None:
         stmt = (
@@ -125,7 +130,7 @@ class UsersRepository(BaseRepository[User]):
         row = (await self.execute_stmt(stmt)).one_or_none()
         if not row:
             return None
-        return User(**row._asdict())
+        return self.mapper.to_domain(row._mapping)
 
     async def clear_all_sessions(self) -> None:
         await self.execute_stmt(delete(SessionTable))
@@ -141,7 +146,7 @@ class UsersRepository(BaseRepository[User]):
         row = (await self.execute_stmt(stmt)).one_or_none()
         if not row:
             return None
-        return UserProfile(**row._asdict())
+        return self.userprofile_mapper.to_domain(row._mapping)
 
     async def create_profile(
         self, user_id: int, builder: UserProfileBuilder
@@ -156,7 +161,7 @@ class UsersRepository(BaseRepository[User]):
             profile = (await self.execute_stmt(stmt)).one()
         except IntegrityError:
             self._raise_already_existing_exception()
-        return UserProfile(**profile._asdict())
+        return self.userprofile_mapper.to_domain(profile._mapping)
 
     async def update_profile(
         self, user_id: int, builder: UserProfileBuilder
@@ -181,7 +186,7 @@ class UsersRepository(BaseRepository[User]):
                     )
                 ]
             )
-        return UserProfile(**updated_profile._asdict())
+        return self.userprofile_mapper.to_domain(updated_profile._mapping)
 
     async def delete_profile(self, user_id: int) -> UserProfile:
         stmt = (
@@ -190,7 +195,7 @@ class UsersRepository(BaseRepository[User]):
             .returning(UserProfileTable)
         )
         deleted_profile = (await self.execute_stmt(stmt)).one()
-        return UserProfile(**deleted_profile._asdict())
+        return self.userprofile_mapper.to_domain(deleted_profile._mapping)
 
     async def list(
         self, page: int, size: int, query: QuerySpec | None = None
@@ -221,7 +226,7 @@ class UsersRepository(BaseRepository[User]):
 
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[User](
-            items=[User(**row._asdict()) for row in result],
+            items=[self.mapper.to_domain(row._mapping) for row in result],
             total=total,
         )
 
@@ -250,9 +255,9 @@ class UsersRepository(BaseRepository[User]):
             .order_by(UserGroupTable.c.name)
         )
         for row in (await self.execute_stmt(stmt)).all():
-            row_data = row._asdict()
-            user_id = row_data.pop("user_id")
-            groups_by_user[user_id].append(UserGroup(**row_data))
+            groups_by_user[row.user_id].append(
+                self.usergroup_mapper.to_domain(row._mapping)
+            )
         return UserGroupsByUser(groups_by_user=groups_by_user)
 
     async def count_by_provider(self, provider_id: int) -> int:
@@ -327,7 +332,10 @@ class UsersRepository(BaseRepository[User]):
 
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[UserStatistics](
-            items=[UserStatistics(**row._asdict()) for row in result],
+            items=[
+                self.user_statistics_mapper.to_domain(row._mapping)
+                for row in result
+            ],
             total=total,
         )
 
@@ -336,7 +344,7 @@ class UsersRepository(BaseRepository[User]):
         result = (await self.execute_stmt(stmt)).one_or_none()
         if not result:
             return None
-        return UserStatistics(**result._asdict())
+        return self.user_statistics_mapper.to_domain(result._mapping)
 
     async def has_users(self) -> bool:
         stmt = (
