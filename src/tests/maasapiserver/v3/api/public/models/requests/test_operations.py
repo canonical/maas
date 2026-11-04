@@ -8,8 +8,8 @@ from maasapiserver.v3.api.public.models.requests.operations import (
     OperationFilterParams,
 )
 from maascommon.enums.operations import OperationStatus, OperationType
-from maasservicelayer.db.repositories.operations import OperationsClauseFactory
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.operations import OperationsFilters
 
 
 class TestOperationFilterParams:
@@ -138,7 +138,7 @@ class TestOperationFilterParams:
                 None,
                 None,
                 None,
-                OperationsClauseFactory.with_status(OperationStatus.RUNNING),
+                OperationsFilters.with_status(OperationStatus.RUNNING),
             ),
             (
                 None,
@@ -146,9 +146,7 @@ class TestOperationFilterParams:
                 None,
                 None,
                 None,
-                OperationsClauseFactory.with_op_type(
-                    OperationType.MACHINE_DEPLOY
-                ),
+                OperationsFilters.with_op_type(OperationType.MACHINE_DEPLOY),
             ),
             (
                 None,
@@ -156,7 +154,7 @@ class TestOperationFilterParams:
                 True,
                 None,
                 None,
-                OperationsClauseFactory.with_is_bulk(True),
+                OperationsFilters.with_is_bulk(True),
             ),
             (
                 None,
@@ -164,7 +162,7 @@ class TestOperationFilterParams:
                 False,
                 None,
                 None,
-                OperationsClauseFactory.with_is_bulk(False),
+                OperationsFilters.with_is_bulk(False),
             ),
             (
                 None,
@@ -172,7 +170,7 @@ class TestOperationFilterParams:
                 None,
                 "machine",
                 None,
-                OperationsClauseFactory.with_resource_type("machine"),
+                OperationsFilters.with_resource_type("machine"),
             ),
             (
                 None,
@@ -180,10 +178,10 @@ class TestOperationFilterParams:
                 None,
                 "machine",
                 42,
-                OperationsClauseFactory.and_clauses(
+                OperationsFilters.and_filters(
                     [
-                        OperationsClauseFactory.with_resource_type("machine"),
-                        OperationsClauseFactory.with_resource_id(42),
+                        OperationsFilters.with_resource_type("machine"),
+                        OperationsFilters.with_resource_id(42),
                     ]
                 ),
             ),
@@ -193,15 +191,13 @@ class TestOperationFilterParams:
                 True,
                 None,
                 None,
-                OperationsClauseFactory.and_clauses(
+                OperationsFilters.and_filters(
                     [
-                        OperationsClauseFactory.with_status(
-                            OperationStatus.RUNNING
-                        ),
-                        OperationsClauseFactory.with_op_type(
+                        OperationsFilters.with_status(OperationStatus.RUNNING),
+                        OperationsFilters.with_op_type(
                             OperationType.MACHINE_DEPLOY
                         ),
-                        OperationsClauseFactory.with_is_bulk(True),
+                        OperationsFilters.with_is_bulk(True),
                     ]
                 ),
             ),
@@ -211,19 +207,19 @@ class TestOperationFilterParams:
                 None,
                 "machine",
                 42,
-                OperationsClauseFactory.and_clauses(
+                OperationsFilters.and_filters(
                     [
-                        OperationsClauseFactory.with_op_type(
+                        OperationsFilters.with_op_type(
                             OperationType.MACHINE_COMMISSION
                         ),
-                        OperationsClauseFactory.with_resource_type("machine"),
-                        OperationsClauseFactory.with_resource_id(42),
+                        OperationsFilters.with_resource_type("machine"),
+                        OperationsFilters.with_resource_id(42),
                     ]
                 ),
             ),
         ],
     )
-    def test_to_clause(
+    def test_to_filter(
         self, status, op_type, is_bulk, resource_type, resource_id, expected
     ) -> None:
         params = OperationFilterParams(
@@ -233,7 +229,7 @@ class TestOperationFilterParams:
             resource_type=resource_type,
             resource_id=resource_id,
         )
-        clause = params.to_clause()
+        clause = params.to_filter()
         assert clause is not None
         assert clause == expected
 

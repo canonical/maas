@@ -8,7 +8,6 @@ from maascommon.enums.service import ServiceName, ServiceStatusEnum
 from maasservicelayer.builders.service_status import ServiceStatusBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.service_status import (
-    ServiceStatusClauseFactory,
     ServiceStatusRepository,
 )
 from maasservicelayer.models.service_status import ServiceStatus
@@ -18,19 +17,6 @@ from tests.fixtures.factories.service_status import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestServiceStatusClauseFactory:
-    def test_builder(self) -> None:
-        clause = ServiceStatusClauseFactory.with_node_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_service.node_id = 1")
-
-        clause = ServiceStatusClauseFactory.with_name(ServiceName.HTTP)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_service.name = 'http'")
 
 
 class TestServiceStatusRepository(RepositoryCommonTests[ServiceStatus]):
