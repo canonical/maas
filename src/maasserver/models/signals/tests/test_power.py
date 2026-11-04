@@ -3,7 +3,7 @@
 
 """Tests for node power status query when state changes."""
 
-from unittest.mock import ANY
+from unittest.mock import ANY, Mock
 
 from twisted.internet import defer
 from twisted.internet.task import Clock
@@ -128,3 +128,110 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
             ANY,
             "Failed to update power state of machine after state transition.",
         )
+
+
+class TestUpdatePowerStateOfDeployedNode(MAASTransactionServerTestCase):
+    def prepare(self, power_state, can_set_boot_order, status=None):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED if status is None else status
+        )
+        self.patch(Node, "power_query").return_value = power_state
+        self.power_info = self.patch(Node, "get_effective_power_info")
+        self.power_info.return_value = Mock(
+            can_set_boot_order=can_set_boot_order
+        )
+        return node
+
+    def assertRecheckScheduled(
+        self, clock, system_id, attempts_left, consecutive_on
+    ):
+        [recheck] = clock.calls
+        self.assertEqual(
+            recheck.getTime(), power.DEPLOYED_RECHECK_INTERVAL.total_seconds()
+        )
+        self.assertEqual(recheck.func, power.update_power_state_of_node)
+        self.assertEqual(
+            recheck.args,
+            (system_id, attempts_left, consecutive_on, clock),
+        )
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_reschedules_when_deployed_node_is_not_on(self):
+        node = yield deferToDatabase(
+            transactional(self.prepare), POWER_STATE.OFF, True
+        )
+        clock = Clock()
+        yield power.update_power_state_of_node(node.system_id, clock=clock)
+        self.assertRecheckScheduled(
+            clock,
+            node.system_id,
+            power.DEPLOYED_RECHECK_MAX_ATTEMPTS - 1,
+            0,
+        )
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_reschedules_once_more_after_a_single_on_reading(self):
+        node = yield deferToDatabase(
+            transactional(self.prepare), POWER_STATE.ON, True
+        )
+        clock = Clock()
+        yield power.update_power_state_of_node(node.system_id, clock=clock)
+        self.assertRecheckScheduled(
+            clock,
+            node.system_id,
+            power.DEPLOYED_RECHECK_MAX_ATTEMPTS - 1,
+            1,
+        )
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_settles_after_required_consecutive_on_readings(self):
+        node = yield deferToDatabase(
+            transactional(self.prepare), POWER_STATE.ON, True
+        )
+        clock = Clock()
+        power_state = yield power.update_power_state_of_node(
+            node.system_id,
+            consecutive_on_seen=power.REQUIRED_CONSECUTIVE_ON_READINGS - 1,
+            clock=clock,
+        )
+        self.assertEqual(power_state, POWER_STATE.ON)
+        self.assertEqual(clock.calls, [])
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_does_not_reschedule_for_power_type_without_boot_order(self):
+        node = yield deferToDatabase(
+            transactional(self.prepare), POWER_STATE.OFF, False
+        )
+        clock = Clock()
+        yield power.update_power_state_of_node(node.system_id, clock=clock)
+        self.assertEqual(clock.calls, [])
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_does_not_reschedule_when_attempts_are_exhausted(self):
+        node = yield deferToDatabase(
+            transactional(self.prepare), POWER_STATE.OFF, True
+        )
+        clock = Clock()
+        yield power.update_power_state_of_node(
+            node.system_id, recheck_attempts_left=0, clock=clock
+        )
+        self.assertEqual(clock.calls, [])
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_does_not_reschedule_when_node_is_no_longer_deployed(self):
+        node = yield deferToDatabase(
+            transactional(self.prepare),
+            POWER_STATE.OFF,
+            True,
+            NODE_STATUS.READY,
+        )
+        clock = Clock()
+        yield power.update_power_state_of_node(node.system_id, clock=clock)
+        self.assertEqual(clock.calls, [])
+        self.power_info.assert_not_called()
