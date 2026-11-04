@@ -17,7 +17,6 @@ from maascommon.dns import (
 )
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.enums.node import NodeTypeEnum
-from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     DomainTable,
@@ -768,22 +767,3 @@ class DomainsRepository(BaseRepository[Domain]):
                 )
 
         return [values for values in result.values()]
-
-
-# Legacy SQL clause factory, removed once every caller uses domain filters.
-class DomainsClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(DomainTable.c.id, id))
-
-    @classmethod
-    def with_name(cls, name: str) -> Clause:
-        return Clause(condition=eq(DomainTable.c.name, name))
-
-    @classmethod
-    def with_authoritative(cls, authoritative: bool) -> Clause:
-        return Clause(condition=eq(DomainTable.c.authoritative, authoritative))
-
-    @classmethod
-    def with_ttl(cls, ttl: int) -> Clause:
-        return Clause(condition=eq(DomainTable.c.ttl, ttl))

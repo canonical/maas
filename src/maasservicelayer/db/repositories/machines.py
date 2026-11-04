@@ -10,7 +10,7 @@ from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeDeviceBus, NodeStatus, NodeTypeEnum
 from maascommon.workflows.msm import MachinesCountByStatus
-from maasservicelayer.db.filters import AnyQuerySpec, SQLQuerySpec
+from maasservicelayer.db.filters import SQLQuerySpec
 from maasservicelayer.db.mappers.machines import MachineDomainDataMapper
 from maasservicelayer.db.repositories.nodes import AbstractNodesRepository
 from maasservicelayer.db.tables import (
@@ -21,6 +21,7 @@ from maasservicelayer.db.tables import (
     NodeTable,
     UserTable,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 
@@ -87,7 +88,7 @@ class MachinesRepository(AbstractNodesRepository[Machine]):
         )
 
     async def list(
-        self, page: int, size: int, query: AnyQuerySpec | None = None
+        self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[Machine]:
         # Override the default implementation because we have to specialize the `total_stmt` query. If we realise this is a
         # common use case, we might think about an abstraction at BaseRepository level.

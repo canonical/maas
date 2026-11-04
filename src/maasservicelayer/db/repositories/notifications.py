@@ -13,7 +13,6 @@ from maasservicelayer.builders.notifications import (
     NotificationDismissalBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import AnyQuerySpec, Clause, ClauseFactory
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.mappers.notifications import (
     NotificationsDomainDataMapper,
@@ -154,7 +153,7 @@ class NotificationsRepository(BaseRepository[Notification]):
         await self.execute_stmt(stmt)
 
     @override
-    async def _delete(self, query: AnyQuerySpec) -> List[Notification]:
+    async def _delete(self, query: QuerySpec) -> List[Notification]:
         stmt = delete(NotificationTable).returning(self.get_repository_table())
         stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
@@ -166,14 +165,3 @@ class NotificationsRepository(BaseRepository[Notification]):
         )
         await self.execute_stmt(cascade_stmt)
         return deleted
-
-
-# Legacy SQL clause factory, removed once every caller uses domain filters.
-class NotificationsClauseFactory(ClauseFactory):
-    @classmethod
-    def with_user_id(cls, user_id: int) -> Clause:
-        return Clause(condition=eq(NotificationTable.c.user_id, user_id))
-
-    @classmethod
-    def with_ident(cls, ident: str) -> Clause:
-        return Clause(condition=eq(NotificationTable.c.ident, ident))

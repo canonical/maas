@@ -3,8 +3,8 @@
 
 from maascommon.workflows.msm import MachinesCountByStatus
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import AnyQuerySpec
 from maasservicelayer.db.repositories.machines import MachinesRepository
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.services.dnspublications import DNSPublicationsService
@@ -35,7 +35,7 @@ class MachinesService(NodesService):
         self.machines_repository = machines_repository
 
     # TODO: This is an override for happy type checking, consider making node service generic
-    async def get_one(self, query: AnyQuerySpec) -> Machine | None:
+    async def get_one(self, query: QuerySpec) -> Machine | None:
         return await self.machines_repository.get_one(query=query)
 
     async def list_machine_usb_devices(

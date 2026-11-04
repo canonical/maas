@@ -11,7 +11,6 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import AnyQuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
@@ -179,16 +178,14 @@ class StaticIPAddressService(
     ) -> list[StaticIPAddress]:
         return await self.repository.get_for_interfaces(interface_ids)
 
-    async def get_for_nodes(
-        self, query: AnyQuerySpec
-    ) -> list[StaticIPAddress]:
+    async def get_for_nodes(self, query: QuerySpec) -> list[StaticIPAddress]:
         return await self.repository.get_for_nodes(query=query)
 
     async def get_mac_addresses(self, query: QuerySpec) -> list[MacAddress]:
         return await self.repository.get_mac_addresses(query=query)
 
     async def update_many(
-        self, query: AnyQuerySpec, builder: StaticIPAddressBuilder
+        self, query: QuerySpec, builder: StaticIPAddressBuilder
     ) -> List[StaticIPAddress]:
         updated_resources = await self.repository.update_many(
             query=query, builder=builder

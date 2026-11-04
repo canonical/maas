@@ -9,7 +9,6 @@ from sqlalchemy import delete, Table, update
 from sqlalchemy.dialects.postgresql import insert
 
 from maasservicelayer.builders.filestorage import FileStorageBuilder
-from maasservicelayer.db.filters import AnyQuerySpec, Clause, ClauseFactory
 from maasservicelayer.db.mappers.base import BaseDomainDataMapper
 from maasservicelayer.db.mappers.filestorage import FileStorageDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
@@ -81,7 +80,7 @@ class FileStorageRepository(BaseRepository[FileStorage]):
         result_dict["content"] = b64decode(result_dict["content"])
         return self.get_model_factory()(**result_dict)
 
-    async def _get(self, query: AnyQuerySpec) -> List[FileStorage]:
+    async def _get(self, query: QuerySpec) -> List[FileStorage]:
         """
         This override is required to convert the string-based, base64-encoded
         file content that the database uses, to a valid `bytes` representation
@@ -100,7 +99,7 @@ class FileStorageRepository(BaseRepository[FileStorage]):
             stored_files.append(self.get_model_factory()(**row_dict))
         return stored_files
 
-    async def _delete(self, query: AnyQuerySpec) -> List[FileStorage]:
+    async def _delete(self, query: QuerySpec) -> List[FileStorage]:
         stmt = delete(FileStorageTable).returning(FileStorageTable)
         stmt = self._translate(query).enrich_stmt(stmt)
         result = (await self.execute_stmt(stmt)).all()
@@ -112,7 +111,7 @@ class FileStorageRepository(BaseRepository[FileStorage]):
         return stored_files
 
     async def list(
-        self, page: int, size: int, query: AnyQuerySpec | None = None
+        self, page: int, size: int, query: QuerySpec | None = None
     ) -> ListResult[FileStorage]:
         result = await super().list(page, size, query)
         for file in result.items:
@@ -120,7 +119,7 @@ class FileStorageRepository(BaseRepository[FileStorage]):
         return result
 
     async def list_all(
-        self, query: AnyQuerySpec | None = None
+        self, query: QuerySpec | None = None
     ) -> List[FileStorage]:
         files = await super().list_all(query)
         for file in files:
@@ -138,24 +137,3 @@ class FileStorageRepository(BaseRepository[FileStorage]):
 
     async def _update(self, query, builder):
         raise NotImplementedError("Update is not supported for file storage")
-
-
-# Legacy SQL clause factory, removed once every caller uses domain filters.
-class FileStorageClauseFactory(ClauseFactory):
-    @classmethod
-    def with_filename(cls, filename: str) -> Clause:
-        return Clause(condition=eq(FileStorageTable.c.filename, filename))
-
-    @classmethod
-    def with_filename_prefix(cls, prefix: str) -> Clause:
-        return Clause(
-            condition=FileStorageTable.c.filename.ilike(f"{prefix}%")
-        )
-
-    @classmethod
-    def with_key(cls, key: str) -> Clause:
-        return Clause(condition=eq(FileStorageTable.c.key, key))
-
-    @classmethod
-    def with_owner_id(cls, owner_id: int) -> Clause:
-        return Clause(condition=eq(FileStorageTable.c.owner_id, owner_id))

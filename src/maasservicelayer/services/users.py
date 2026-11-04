@@ -33,7 +33,6 @@ from maasservicelayer.builders.tokens import TokenBuilder
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.constants import SYSTEM_USERS
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import AnyQuerySpec
 from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
@@ -325,7 +324,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         )
 
     async def list_statistics(
-        self, page: int, size: int, query: AnyQuerySpec
+        self, page: int, size: int, query: QuerySpec
     ) -> ListResult[UserStatistics]:
         return await self.repository.list_statistics(
             page=page, size=size, query=query

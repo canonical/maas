@@ -2,9 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from operator import eq
-from typing import Iterable
 
-from sqlalchemy import case, desc, func, join, Select, select, Table
+from sqlalchemy import case, desc, func, Select, select, Table
 
 from maascommon.enums.boot_resources import (
     BootResourceFileType,
@@ -12,7 +11,7 @@ from maascommon.enums.boot_resources import (
     ImageStatus,
 )
 from maascommon.enums.node import NodeStatus, NodeTypeEnum
-from maasservicelayer.db.filters import Clause, ClauseFactory, SQLQuerySpec
+from maasservicelayer.db.filters import SQLQuerySpec
 from maasservicelayer.db.mappers.bootresources import (
     BootResourceDomainDataMapper,
 )
@@ -22,7 +21,6 @@ from maasservicelayer.db.tables import (
     BootResourceFileTable,
     BootResourceSetTable,
     BootResourceTable,
-    BootSourceSelectionTable,
     NodeTable,
 )
 from maasservicelayer.filters.query import QuerySpec
@@ -307,99 +305,4 @@ class BootResourcesRepository(BaseRepository[BootResource]):
                 for row in result.fetchall()
             ],
             total=total,
-        )
-
-
-# Legacy SQL clause factory, removed once every caller uses domain filters.
-class BootResourceClauseFactory(ClauseFactory):
-    @classmethod
-    def with_name(cls, name: str) -> Clause:
-        return Clause(condition=eq(BootResourceTable.c.name, name))
-
-    @classmethod
-    def with_names(cls, names: list[str]) -> Clause:
-        return Clause(condition=BootResourceTable.c.name.in_(names))
-
-    @classmethod
-    def with_architecture(cls, architecture: str) -> Clause:
-        return Clause(
-            condition=eq(BootResourceTable.c.architecture, architecture)
-        )
-
-    @classmethod
-    def with_architecture_starting_with(cls, partial_arch: str) -> Clause:
-        return Clause(
-            condition=BootResourceTable.c.architecture.startswith(partial_arch)
-        )
-
-    @classmethod
-    def with_alias(cls, alias: str | None) -> Clause:
-        return Clause(condition=eq(BootResourceTable.c.alias, alias))
-
-    @classmethod
-    def with_rtype(cls, rtype: BootResourceType) -> Clause:
-        return Clause(condition=eq(BootResourceTable.c.rtype, rtype))
-
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(BootResourceTable.c.id, id))
-
-    @classmethod
-    def with_ids(cls, ids: Iterable[int]) -> Clause:
-        return Clause(condition=BootResourceTable.c.id.in_(ids))
-
-    @classmethod
-    def with_selection_id(cls, selection_id: int) -> Clause:
-        return Clause(
-            condition=eq(BootResourceTable.c.selection_id, selection_id)
-        )
-
-    @classmethod
-    def with_selection_ids(cls, selection_ids: Iterable[int]) -> Clause:
-        return Clause(
-            condition=BootResourceTable.c.selection_id.in_(selection_ids)
-        )
-
-    @classmethod
-    def with_bootloader_type(cls, bootloader_type: str | None) -> Clause:
-        return Clause(
-            condition=eq(BootResourceTable.c.bootloader_type, bootloader_type)
-        )
-
-    @classmethod
-    def with_selection_boot_source_id(cls, boot_source_id: int) -> Clause:
-        return Clause(
-            condition=eq(
-                BootSourceSelectionTable.c.boot_source_id, boot_source_id
-            ),
-            joins=[
-                join(
-                    BootSourceSelectionTable,
-                    BootResourceTable,
-                    eq(
-                        BootSourceSelectionTable.c.id,
-                        BootResourceTable.c.selection_id,
-                    ),
-                )
-            ],
-        )
-
-    @classmethod
-    def with_filetype(cls, filetype: BootResourceFileType) -> Clause:
-        subquery = (
-            select(BootResourceSetTable.c.resource_id)
-            .distinct()
-            .select_from(BootResourceSetTable)
-            .join(
-                BootResourceFileTable,
-                eq(
-                    BootResourceFileTable.c.resource_set_id,
-                    BootResourceSetTable.c.id,
-                ),
-            )
-            .where(eq(BootResourceFileTable.c.filetype, filetype))
-            .scalar_subquery()
-        )
-        return Clause(
-            condition=BootResourceTable.c.id.in_(subquery),
         )

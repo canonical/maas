@@ -4,20 +4,7 @@
 from dataclasses import dataclass, field
 from typing import TypeVar
 
-from sqlalchemy import (
-    and_,
-    asc,
-    ColumnElement,
-    Delete,
-    desc,
-    Join,
-    not_,
-    or_,
-    Select,
-    Update,
-)
-
-from maasservicelayer.filters.query import QuerySpec as DomainQuerySpec
+from sqlalchemy import and_, ColumnElement, Delete, Join, or_, Select, Update
 
 
 @dataclass
@@ -207,28 +194,3 @@ class ClauseFactory:
             condition=and_(*[clause.condition for clause in clauses]),
             joins=cls._combine_joins(clauses),
         )
-
-    # Legacy SQL clause API, kept until every entity uses domain filters.
-    @classmethod
-    def not_clause(cls, clause: Clause) -> Clause:
-        return Clause(condition=not_(clause.condition), joins=clause.joins)
-
-
-class OrderByClauseFactory:
-    @staticmethod
-    def asc_clause(clause: OrderByClause) -> OrderByClause:
-        clause.column = asc(clause.column)
-        return clause
-
-    @staticmethod
-    def desc_clause(clause: OrderByClause) -> OrderByClause:
-        clause.column = desc(clause.column)
-        return clause
-
-
-# Legacy name for SQL queries built outside the data layer. Repositories run
-# them unchanged until their callers migrate to domain queries.
-QuerySpec = SQLQuerySpec
-
-# Repository and service inputs while callers migrate to domain queries.
-type AnyQuerySpec = DomainQuerySpec | SQLQuerySpec

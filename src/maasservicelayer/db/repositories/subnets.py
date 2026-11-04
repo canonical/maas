@@ -5,10 +5,8 @@ from ipaddress import IPv4Address, IPv6Address
 from operator import eq
 from typing import List, Type
 
-from sqlalchemy import desc, join, or_, select, Table
+from sqlalchemy import desc, select, Table
 
-from maascommon.enums.subnet import RdnsMode
-from maasservicelayer.db.filters import AnyQuerySpec, Clause, ClauseFactory
 from maasservicelayer.db.mappers.subnets import SubnetDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import IPRangeTable, SubnetTable, VlanTable
@@ -19,7 +17,6 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import PRECONDITION_FAILED
 from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.filters.subnets import SubnetFilters
-from maasservicelayer.models.fields import IPv4v6Network
 from maasservicelayer.models.subnets import Subnet
 
 
@@ -63,7 +60,7 @@ class SubnetsRepository(BaseRepository[Subnet]):
         del res["dhcp_on"]
         return Subnet(**res)
 
-    async def _pre_delete_checks(self, query: AnyQuerySpec) -> None:
+    async def _pre_delete_checks(self, query: QuerySpec) -> None:
         vlan_dhcp_on_and_dynamic_ip_range = (
             select(SubnetTable)
             .join(VlanTable, eq(SubnetTable.c.vlan_id, VlanTable.c.id))
@@ -89,7 +86,7 @@ class SubnetsRepository(BaseRepository[Subnet]):
                 ]
             )
 
-    async def delete_one(self, query: AnyQuerySpec) -> Subnet | None:
+    async def delete_one(self, query: QuerySpec) -> Subnet | None:
         await self._pre_delete_checks(query)
         return await super().delete_one(query)
 
@@ -97,58 +94,5 @@ class SubnetsRepository(BaseRepository[Subnet]):
         query = QuerySpec(where=SubnetFilters.with_id(id))
         return await self.delete_one(query)
 
-    async def delete_many(self, query: AnyQuerySpec) -> List[Subnet]:
+    async def delete_many(self, query: QuerySpec) -> List[Subnet]:
         raise NotImplementedError("delete_many is not implemented yet.")
-
-
-# Legacy SQL clause factory, removed once every caller uses domain filters.
-class SubnetClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(SubnetTable.c.id, id))
-
-    @classmethod
-    def with_vlan_id(cls, vlan_id: int) -> Clause:
-        return Clause(condition=eq(SubnetTable.c.vlan_id, vlan_id))
-
-    @classmethod
-    def with_vlan_id_in(cls, vlan_ids: list[int]) -> Clause:
-        return Clause(condition=SubnetTable.c.vlan_id.in_(vlan_ids))
-
-    @classmethod
-    def with_fabric_id(cls, fabric_id: int) -> Clause:
-        return Clause(
-            condition=eq(VlanTable.c.fabric_id, fabric_id),
-            joins=[
-                join(
-                    SubnetTable,
-                    VlanTable,
-                    eq(SubnetTable.c.vlan_id, VlanTable.c.id),
-                )
-            ],
-        )
-
-    @classmethod
-    def with_allow_dns(cls, allow_dns: bool) -> Clause:
-        return Clause(condition=eq(SubnetTable.c.allow_dns, allow_dns))
-
-    @classmethod
-    def with_managed(cls, managed: bool) -> Clause:
-        return Clause(condition=eq(SubnetTable.c.managed, managed))
-
-    @classmethod
-    def with_rdns_mode(cls, rdns_mode: RdnsMode) -> Clause:
-        return Clause(condition=eq(SubnetTable.c.rdns_mode, rdns_mode))
-
-    @classmethod
-    def with_not_rdns_mode(cls, rdns_mode: RdnsMode) -> Clause:
-        return Clause(condition=(SubnetTable.c.rdns_mode != rdns_mode))
-
-    @classmethod
-    def with_cidr_overlap(cls, cidr: IPv4v6Network) -> Clause:
-        return Clause(
-            condition=or_(
-                SubnetTable.c.cidr.op(">>")(cidr),
-                SubnetTable.c.cidr.op("<<")(cidr),
-            )
-        )
