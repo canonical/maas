@@ -12,6 +12,8 @@ from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.interfaces import InterfaceRepository
 from maasservicelayer.db.tables import InterfaceRelationshipTable
+from maasservicelayer.filters.interfaces import InterfaceFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -61,6 +63,22 @@ def _assert_interface_in_list(
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestInterfaceRepository:
+    @pytest.mark.parametrize("mac", ["AA:BB:CC:DD:EE:FF", "aa-bb-cc-dd-ee-ff"])
+    async def test_domain_mac_filter_normalizes_address(
+        self, db_connection: AsyncConnection, fixture: Fixture, mac: str
+    ) -> None:
+        interface = await create_test_interface_entry(
+            fixture, mac_address="aa:bb:cc:dd:ee:ff"
+        )
+        await create_test_interface_entry(
+            fixture, mac_address="11:22:33:44:55:66"
+        )
+        repository = InterfaceRepository(Context(connection=db_connection))
+        result = await repository.get_many(
+            QuerySpec(where=InterfaceFilters.with_mac_address(mac))
+        )
+        assert [item.id for item in result] == [interface.id]
+
     async def test_get_parents(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:

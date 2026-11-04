@@ -12,7 +12,6 @@ from sqlalchemy.sql.operators import eq
 from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.fields import normalise_macaddress
-from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
@@ -30,37 +29,6 @@ from maasservicelayer.utils.date import utcnow
 UNKNOWN_INTERFACE_NAME = "eth0"
 
 
-class InterfaceClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(InterfaceTable.c.id, id))
-
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=InterfaceTable.c.id.in_(ids))
-
-    @classmethod
-    def with_mac_address(cls, mac_address: str) -> Clause:
-        return Clause(
-            condition=eq(
-                InterfaceTable.c.mac_address,
-                normalise_macaddress(mac_address),
-            )
-        )
-
-    @classmethod
-    def with_vlan_id_in(cls, vlan_ids: list[int]) -> Clause:
-        return Clause(condition=InterfaceTable.c.vlan_id.in_(vlan_ids))
-
-    @classmethod
-    def with_node_config_id(cls, config_id: int) -> Clause:
-        return Clause(condition=eq(InterfaceTable.c.node_config_id, config_id))
-
-    @classmethod
-    def with_switch_id(cls, switch_id: int) -> Clause:
-        return Clause(condition=eq(InterfaceTable.c.switch_id, switch_id))
-
-
 def build_interface_links(
     interface: dict[str, list[dict[str, Any]]], reverse=True
 ) -> dict[str, list[Link]]:
@@ -75,7 +43,7 @@ def build_interface_links(
     return interface  # type: ignore
 
 
-class InterfaceRepository(BaseRepository):
+class InterfaceRepository(BaseRepository[Interface]):
     def get_repository_table(self) -> Table:
         return InterfaceTable
 

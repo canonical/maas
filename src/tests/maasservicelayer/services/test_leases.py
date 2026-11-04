@@ -17,14 +17,10 @@ from maascommon.enums.ipaddress import (
 )
 from maascommon.enums.ipranges import IPRangeType
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dnsresources import (
-    DNSResourceClauseFactory,
-)
-from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
+from maasservicelayer.filters.dnsresources import DNSResourceFilters
+from maasservicelayer.filters.interfaces import InterfaceFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.leases import Lease
 from maasservicelayer.models.staticipaddress import StaticIPAddress
@@ -82,14 +78,14 @@ class TestIntegrationLeasesService:
 
         unknown_interface = await services.interfaces.get_one(
             query=QuerySpec(
-                where=InterfaceClauseFactory.with_mac_address(mac_address)
+                where=InterfaceFilters.with_mac_address(mac_address)
             )
         )
         assert unknown_interface.type == InterfaceType.UNKNOWN
 
         ip_address = await services.staticipaddress.get_one(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_ip(IPv4Address(ip))
+                where=StaticIPAddressFilters.with_ip(IPv4Address(ip))
             )
         )
         assert ip_address.alloc_type == IpAddressType.DISCOVERED
@@ -136,20 +132,20 @@ class TestIntegrationLeasesService:
         )
         unknown_interface = await services.interfaces.get_one(
             query=QuerySpec(
-                where=InterfaceClauseFactory.with_mac_address(mac_address)
+                where=InterfaceFilters.with_mac_address(mac_address)
             )
         )
         assert unknown_interface is not None
         assert unknown_interface.type == InterfaceType.UNKNOWN
         ip_address = await services.staticipaddress.get_one(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_ip(IPv4Address(ip))
+                where=StaticIPAddressFilters.with_ip(IPv4Address(ip))
             )
         )
         assert ip_address is not None
 
         dnsresource = await services.dnsresources.get_one(
-            query=QuerySpec(where=DNSResourceClauseFactory.with_name(hostname))
+            query=QuerySpec(where=DNSResourceFilters.with_name(hostname))
         )
         assert dnsresource is not None
 
@@ -187,7 +183,7 @@ class TestIntegrationLeasesService:
         )
         sip1 = await services.staticipaddress.get_one(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_ip(IPv4Address(ip))
+                where=StaticIPAddressFilters.with_ip(IPv4Address(ip))
             )
         )
 
@@ -205,7 +201,7 @@ class TestIntegrationLeasesService:
 
         sip2 = await services.staticipaddress.get_one(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_ip(IPv4Address(ip))
+                where=StaticIPAddressFilters.with_ip(IPv4Address(ip))
             )
         )
         assert sip1.ip == sip2.ip
@@ -238,7 +234,7 @@ class TestIntegrationLeasesService:
         )
         sip = await services.staticipaddress.get_one(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_ip(IPv4Address(ip))
+                where=StaticIPAddressFilters.with_ip(IPv4Address(ip))
             )
         )
         assert sip is not None
@@ -275,7 +271,7 @@ class TestIntegrationLeasesService:
         )
         sip = await services.staticipaddress.get_one(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_ip(IPv4Address(ip))
+                where=StaticIPAddressFilters.with_ip(IPv4Address(ip))
             )
         )
         assert sip is not None
@@ -317,10 +313,10 @@ class TestIntegrationLeasesService:
         )
         sip = await services.staticipaddress.get_one(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.and_clauses(
+                where=StaticIPAddressFilters.and_filters(
                     [
-                        StaticIPAddressClauseFactory.with_ip(IPv4Address(ip)),
-                        StaticIPAddressClauseFactory.with_alloc_type(
+                        StaticIPAddressFilters.with_ip(IPv4Address(ip)),
+                        StaticIPAddressFilters.with_alloc_type(
                             IpAddressType.DISCOVERED
                         ),
                     ]
@@ -338,7 +334,7 @@ class TestIntegrationLeasesService:
         assert linked_ip_address[0]["staticipaddress_id"] == sip.id
 
         iface = await services.interfaces.get_one(
-            query=QuerySpec(InterfaceClauseFactory.with_id(boot_iface["id"]))
+            query=QuerySpec(InterfaceFilters.with_id(boot_iface["id"]))
         )
         discovered_ips = await services.staticipaddress.get_discovered_ips_in_family_for_interfaces(
             interfaces=[iface], family=IpAddressFamily.IPV4
@@ -389,7 +385,7 @@ class TestIntegrationLeasesService:
         )
         sips = await services.staticipaddress.get_many(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_interface_ids(
+                where=StaticIPAddressFilters.with_interface_ids(
                     [boot_iface["id"]]
                 )
             )
@@ -451,7 +447,7 @@ class TestIntegrationLeasesService:
         # The old IP should have been deleted.
         old_sip_after = await services.staticipaddress.get_one(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_ip(IPv4Address(old_ip))
+                where=StaticIPAddressFilters.with_ip(IPv4Address(old_ip))
             )
         )
         assert old_sip_after is None
@@ -459,7 +455,7 @@ class TestIntegrationLeasesService:
         # The new IP should exist.
         new_sip = await services.staticipaddress.get_one(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_ip(IPv4Address(new_ip))
+                where=StaticIPAddressFilters.with_ip(IPv4Address(new_ip))
             )
         )
         assert new_sip is not None
@@ -506,18 +502,16 @@ class TestIntegrationLeasesService:
         )
         sips = await services.staticipaddress.get_many(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.and_clauses(
+                where=StaticIPAddressFilters.and_filters(
                     [
-                        StaticIPAddressClauseFactory.with_interface_ids(
+                        StaticIPAddressFilters.with_interface_ids(
                             [boot_iface["id"]]
                         ),
-                        StaticIPAddressClauseFactory.with_alloc_type(
+                        StaticIPAddressFilters.with_alloc_type(
                             IpAddressType.DISCOVERED
                         ),
-                        StaticIPAddressClauseFactory.with_ip(None),
-                        StaticIPAddressClauseFactory.with_subnet_id(
-                            subnet["id"]
-                        ),
+                        StaticIPAddressFilters.with_ip(None),
+                        StaticIPAddressFilters.with_subnet_id(subnet["id"]),
                     ]
                 )
             )
@@ -565,7 +559,7 @@ class TestIntegrationLeasesService:
             )
         )
         dnsresource = await services.dnsresources.get_one(
-            query=QuerySpec(where=DNSResourceClauseFactory.with_name(hostname))
+            query=QuerySpec(where=DNSResourceFilters.with_name(hostname))
         )
         assert dnsresource is not None
 
@@ -584,13 +578,13 @@ class TestIntegrationLeasesService:
 
         sip = await services.staticipaddress.get_one(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_ip(IPv4Address(ip))
+                where=StaticIPAddressFilters.with_ip(IPv4Address(ip))
             )
         )
         assert sip is None
 
         dnsresource = await services.dnsresources.get_one(
-            query=QuerySpec(where=DNSResourceClauseFactory.with_name(hostname))
+            query=QuerySpec(where=DNSResourceFilters.with_name(hostname))
         )
         assert dnsresource is not None
 

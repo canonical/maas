@@ -9,15 +9,6 @@ from maasservicelayer.builders.dnsdata import DNSDataBuilder
 from maasservicelayer.builders.dnsresources import DNSResourceBuilder
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dnsdata import DNSDataClauseFactory
-from maasservicelayer.db.repositories.dnsresources import (
-    DNSResourceClauseFactory,
-)
-from maasservicelayer.db.repositories.domains import DomainsClauseFactory
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -28,6 +19,11 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.dnsdata import DNSDataFilters
+from maasservicelayer.filters.dnsresources import DNSResourceFilters
+from maasservicelayer.filters.domains import DomainsFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
 from maasservicelayer.models.dnsresourcerecordsets import GenericDNSRecord
 from maasservicelayer.models.dnsresources import DNSResource
 from maasservicelayer.models.domains import Domain
@@ -127,10 +123,10 @@ class V3DNSResourceRecordSetsService(Service):
 
         dns_resource = await self.dnsresource_service.get_one(
             query=QuerySpec(
-                where=DNSResourceClauseFactory.and_clauses(
+                where=DNSResourceFilters.and_filters(
                     [
-                        DNSResourceClauseFactory.with_name(dns_record.name),
-                        DNSResourceClauseFactory.with_domain_id(domain_id),
+                        DNSResourceFilters.with_name(dns_record.name),
+                        DNSResourceFilters.with_domain_id(domain_id),
                     ]
                 )
             )
@@ -181,7 +177,7 @@ class V3DNSResourceRecordSetsService(Service):
             )
             static_ip_addr = await self.staticipaddress_service.get_one(
                 query=QuerySpec(
-                    where=StaticIPAddressClauseFactory.with_ip(ip_address)
+                    where=StaticIPAddressFilters.with_ip(ip_address)
                 )
             )
             if static_ip_addr is None:
@@ -216,14 +212,10 @@ class V3DNSResourceRecordSetsService(Service):
         ttl = dns_record.ttl or domain.ttl
         cname_exists = await self.dnsdata_service.exists(
             query=QuerySpec(
-                where=DNSDataClauseFactory.and_clauses(
+                where=DNSDataFilters.and_filters(
                     [
-                        DNSDataClauseFactory.with_dnsresource_id(
-                            dns_resource.id
-                        ),
-                        DNSDataClauseFactory.with_rrtype(
-                            DNSResourceTypeEnum.CNAME
-                        ),
+                        DNSDataFilters.with_dnsresource_id(dns_resource.id),
+                        DNSDataFilters.with_rrtype(DNSResourceTypeEnum.CNAME),
                     ]
                 )
             )
@@ -242,13 +234,13 @@ class V3DNSResourceRecordSetsService(Service):
             # both the dnsdata and the IPs
             other_exists = await self.dnsdata_service.exists(
                 query=QuerySpec(
-                    where=DNSDataClauseFactory.and_clauses(
+                    where=DNSDataFilters.and_filters(
                         [
-                            DNSDataClauseFactory.with_dnsresource_id(
+                            DNSDataFilters.with_dnsresource_id(
                                 dns_resource.id
                             ),
-                            DNSDataClauseFactory.not_clause(
-                                DNSDataClauseFactory.with_rrtype(
+                            DNSDataFilters.not_filter(
+                                DNSDataFilters.with_rrtype(
                                     DNSResourceTypeEnum.CNAME
                                 )
                             ),
@@ -284,25 +276,23 @@ class V3DNSResourceRecordSetsService(Service):
 
     async def update_kms_srv(self, kms_host: str | None):
         for domain in await self.domains_service.get_many(
-            query=QuerySpec(
-                where=DomainsClauseFactory.with_authoritative(True)
-            )
+            query=QuerySpec(where=DomainsFilters.with_authoritative(True))
         ):
             if kms_host in (None, ""):
                 # No more Config.windows_kms_host, so we need to delete the kms
                 # host entries that we may have created.
                 await self.dnsdata_service.delete_one(
                     query=QuerySpec(
-                        where=DNSDataClauseFactory.and_clauses(
+                        where=DNSDataFilters.and_filters(
                             [
-                                DNSDataClauseFactory.with_domain_id(domain.id),
-                                DNSDataClauseFactory.with_dnsresource_name(
+                                DNSDataFilters.with_domain_id(domain.id),
+                                DNSDataFilters.with_dnsresource_name(
                                     "_vlmcs._tcp"
                                 ),
-                                DNSDataClauseFactory.with_rrtype(
+                                DNSDataFilters.with_rrtype(
                                     DNSResourceTypeEnum.SRV
                                 ),
-                                DNSDataClauseFactory.with_rrdata_starting_with(
+                                DNSDataFilters.with_rrdata_starting_with(
                                     "0 0 1688 "
                                 ),
                             ]
@@ -328,14 +318,10 @@ class V3DNSResourceRecordSetsService(Service):
                 )
                 dns_resource = await self.dnsresource_service.get_one(
                     query=QuerySpec(
-                        where=DNSResourceClauseFactory.and_clauses(
+                        where=DNSResourceFilters.and_filters(
                             [
-                                DNSResourceClauseFactory.with_name(
-                                    srv_record.name
-                                ),
-                                DNSResourceClauseFactory.with_domain_id(
-                                    domain.id
-                                ),
+                                DNSResourceFilters.with_name(srv_record.name),
+                                DNSResourceFilters.with_domain_id(domain.id),
                             ]
                         )
                     )
