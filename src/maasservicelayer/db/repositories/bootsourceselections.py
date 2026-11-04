@@ -12,6 +12,7 @@ from maascommon.enums.boot_resources import (
 )
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.db.filters import SQLQuerySpec
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ReadOnlyRepository,
@@ -35,6 +36,10 @@ from maasservicelayer.models.bootsourceselections import (
 
 
 class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
+    _statistic_mapper = DefaultDomainDataMapper[BootSourceSelectionStatistic](
+        BootSourceSelectionStatistic, BootSourceSelectionTable
+    )
+
     def get_repository_table(self) -> Table:
         return BootSourceSelectionTable
 
@@ -85,7 +90,7 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
         )
 
         result = await self.execute_stmt(stmt)
-        return [BootSourceSelection(**row._asdict()) for row in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
     async def update_one(self, query: QuerySpec, builder):
         raise NotImplementedError(
@@ -216,7 +221,7 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
         if not result:
             return None
 
-        return BootSourceSelectionStatistic(**result._asdict())
+        return self._statistic_mapper.to_domain(result._mapping)
 
     async def list_selections_statistics(
         self, page: int, size: int, query: QuerySpec | None = None
@@ -243,7 +248,7 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
         result = await self.execute_stmt(stmt)
         return ListResult(
             items=[
-                BootSourceSelectionStatistic(**row._asdict())
+                self._statistic_mapper.to_domain(row._mapping)
                 for row in result.fetchall()
             ],
             total=total,

@@ -11,9 +11,10 @@ from maasservicelayer.filters.ipranges import (
     IPRangeFabricFilter,
     IPRangeVlanFilter,
 )
+from maasservicelayer.models.ipranges import IPRange
 
 
-class IPRangeDomainDataMapper(DefaultDomainDataMapper):
+class IPRangeDomainDataMapper(DefaultDomainDataMapper[IPRange]):
     @staticmethod
     def _subnet_join():
         return join(

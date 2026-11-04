@@ -12,9 +12,10 @@ from maasservicelayer.filters.subnets import (
     SubnetFabricFilter,
     SubnetRdnsModeNotFilter,
 )
+from maasservicelayer.models.subnets import Subnet
 
 
-class SubnetDomainDataMapper(DefaultDomainDataMapper):
+class SubnetDomainDataMapper(DefaultDomainDataMapper[Subnet]):
     def custom_filter_clause(self, filter: CustomFilter) -> Clause:
         match filter:
             case SubnetFabricFilter(fabric_id):

@@ -8,9 +8,10 @@ from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.tables import StaticRouteTable, SubnetTable, VlanTable
 from maasservicelayer.filters.base import CustomFilter
 from maasservicelayer.filters.staticroutes import WithFabricId, WithVlanId
+from maasservicelayer.models.staticroutes import StaticRoute
 
 
-class StaticRouteDataMapper(DefaultDomainDataMapper):
+class StaticRouteDataMapper(DefaultDomainDataMapper[StaticRoute]):
     def custom_filter_clause(self, filter: CustomFilter) -> Clause:
         match filter:
             case WithVlanId(vlan_id):

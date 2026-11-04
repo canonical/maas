@@ -38,7 +38,7 @@ class IPRangesRepository(BaseRepository[IPRange]):
 
         result = (await self.execute_stmt(stmt)).all()
 
-        ipranges = [IPRange(**row._asdict()) for row in result]
+        ipranges = [self.mapper.to_domain(row._mapping) for row in result]
 
         netaddr_ip = netaddr.IPAddress(str(ip))
 

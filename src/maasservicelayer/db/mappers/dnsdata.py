@@ -12,9 +12,10 @@ from maasservicelayer.filters.dnsdata import (
     DNSDataStartingWith,
     DNSDataWithResourceName,
 )
+from maasservicelayer.models.dnsdata import DNSData
 
 
-class DNSDataDomainDataMapper(DefaultDomainDataMapper):
+class DNSDataDomainDataMapper(DefaultDomainDataMapper[DNSData]):
     def custom_filter_clause(self, filter: CustomFilter) -> Clause:
         match filter:
             case DNSDataStartingWith(partial_rrdata):
