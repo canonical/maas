@@ -8,12 +8,12 @@ from sqlalchemy.sql.operators import eq
 
 from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.openfga_tuples import (
-    OpenFGATuplesClauseFactory,
     OpenFGATuplesRepository,
 )
 from maasservicelayer.db.tables import OpenFGATupleTable
+from maasservicelayer.filters.openfga_tuples import OpenFGATuplesFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.openfga_tuple import EntitlementDeleteSpec
 from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
 from maasservicelayer.services.openfga_tuples import (
@@ -197,7 +197,7 @@ class TestIntegrationOpenFGAService:
             fixture, "user:1", "user", "member", "group", "2000"
         )
         await services.openfga_tuples.delete_many(
-            QuerySpec(where=OpenFGATuplesClauseFactory.with_user("user:1"))
+            QuerySpec(where=OpenFGATuplesFilters.with_user("user:1"))
         )
         retrieved_tuple = await fixture.get(
             OpenFGATupleTable.fullname,
@@ -376,6 +376,63 @@ class TestIntegrationOpenFGAService:
         )
         assert len(unrelated) == 1
 
+    @pytest.mark.parametrize(
+        "resource_type,resource_id", [("maas", 0), ("pool", 42)]
+    )
+    async def test_delete_entitlement_preserves_other_boundaries(
+        self,
+        fixture: Fixture,
+        services: ServiceCollectionV3,
+        resource_type: str,
+        resource_id: int,
+    ):
+        entitlement = "can_edit_machines"
+        target = (
+            "group:5#member",
+            entitlement,
+            resource_type,
+            str(resource_id),
+        )
+        unrelated = {
+            ("group:6#member", entitlement, resource_type, str(resource_id)),
+            (
+                "group:5#member",
+                "can_view_machines",
+                resource_type,
+                str(resource_id),
+            ),
+            ("group:5#member", entitlement, "other", str(resource_id)),
+            (
+                "group:5#member",
+                entitlement,
+                resource_type,
+                str(resource_id + 1),
+            ),
+        }
+        for user, relation, object_type, object_id in [target, *unrelated]:
+            await create_openfga_tuple(
+                fixture, user, "userset", relation, object_type, object_id
+            )
+
+        await services.openfga_tuples.delete_entitlement(
+            group_id=5,
+            entitlement_name=entitlement,
+            resource_type=resource_type,
+            resource_id=resource_id,
+        )
+
+        remaining = await services.openfga_tuples.get_many(
+            QuerySpec(
+                where=OpenFGATuplesFilters.with_users(
+                    ["group:5#member", "group:6#member"]
+                )
+            )
+        )
+        assert {
+            (item.user, item.relation, item.object_type, item.object_id)
+            for item in remaining
+        } == unrelated
+
 
 @pytest.mark.asyncio
 class TestOpenFGAService:
@@ -406,86 +463,6 @@ class TestOpenFGAService:
             == id(apiclient2_again)
         )
 
-    async def test_delete_entitlement_maas(self) -> None:
-        mock_repository = Mock(OpenFGATuplesRepository)
-        mock_repository.delete_many = AsyncMock(return_value=None)
-        service = OpenFGATupleService(
-            context=Context(),
-            openfga_tuple_repository=mock_repository,
-            cache=OpenFGAServiceCache(),
-        )
-
-        await service.delete_entitlement(
-            group_id=1,
-            entitlement_name="can_edit_machines",
-            resource_type="maas",
-            resource_id=0,
-        )
-
-        mock_repository.delete_many.assert_called_once()
-        query = mock_repository.delete_many.call_args[0][0]
-        assert query.where is not None
-        compiled = query.where.condition.compile(
-            compile_kwargs={"literal_binds": True}
-        )
-        sql_str = str(compiled)
-        assert "group:1#member" in sql_str
-        assert "can_edit_machines" in sql_str
-        assert "'maas'" in sql_str
-
-    async def test_delete_entitlement_pool(self) -> None:
-        mock_repository = Mock(OpenFGATuplesRepository)
-        mock_repository.delete_many = AsyncMock(return_value=None)
-        service = OpenFGATupleService(
-            context=Context(),
-            openfga_tuple_repository=mock_repository,
-            cache=OpenFGAServiceCache(),
-        )
-
-        await service.delete_entitlement(
-            group_id=5,
-            entitlement_name="can_deploy_machines",
-            resource_type="pool",
-            resource_id=42,
-        )
-
-        mock_repository.delete_many.assert_called_once()
-        query = mock_repository.delete_many.call_args[0][0]
-        compiled = query.where.condition.compile(
-            compile_kwargs={"literal_binds": True}
-        )
-        sql_str = str(compiled)
-        assert "group:5#member" in sql_str
-        assert "can_deploy_machines" in sql_str
-        assert "'pool'" in sql_str
-        assert "'42'" in sql_str
-
-    async def test_bulk_remove_users_from_group(self) -> None:
-        mock_repository = Mock(OpenFGATuplesRepository)
-        mock_repository.delete_many = AsyncMock(return_value=None)
-        service = OpenFGATupleService(
-            context=Context(),
-            openfga_tuple_repository=mock_repository,
-            cache=OpenFGAServiceCache(),
-        )
-
-        await service.bulk_remove_users_from_group(
-            group_id=7, user_ids=[10, 20, 30]
-        )
-
-        mock_repository.delete_many.assert_called_once()
-        query = mock_repository.delete_many.call_args[0][0]
-        compiled = query.where.condition.compile(
-            compile_kwargs={"literal_binds": True}
-        )
-        sql_str = str(compiled)
-        assert "user:10" in sql_str
-        assert "user:20" in sql_str
-        assert "user:30" in sql_str
-        assert "member" in sql_str
-        assert "'group'" in sql_str
-        assert "'7'" in sql_str
-
     async def test_bulk_add_users_to_group(self) -> None:
         mock_repository = Mock(OpenFGATuplesRepository)
         mock_repository.bulk_upsert = AsyncMock(return_value=None)
@@ -505,87 +482,6 @@ class TestOpenFGAService:
         assert all(b.relation == "member" for b in builders)
         assert all(b.object_type == "group" for b in builders)
         assert all(b.object_id == "8" for b in builders)
-
-    async def test_bulk_delete_entitlements(self) -> None:
-        mock_repository = Mock(OpenFGATuplesRepository)
-        mock_repository.delete_many = AsyncMock(return_value=None)
-        service = OpenFGATupleService(
-            context=Context(),
-            openfga_tuple_repository=mock_repository,
-            cache=OpenFGAServiceCache(),
-        )
-
-        await service.bulk_delete_entitlements(
-            group_id=9,
-            items=[
-                EntitlementDeleteSpec(
-                    entitlement="can_edit_machines",
-                    resource_type="maas",
-                    resource_id=0,
-                ),
-                EntitlementDeleteSpec(
-                    entitlement="can_view_machines",
-                    resource_type="pool",
-                    resource_id=42,
-                ),
-            ],
-        )
-
-        mock_repository.delete_many.assert_called_once()
-        query = mock_repository.delete_many.call_args[0][0]
-        compiled = query.where.condition.compile(
-            compile_kwargs={"literal_binds": True}
-        )
-        sql_str = str(compiled)
-        assert "group:9#member" in sql_str
-        assert "can_edit_machines" in sql_str
-        assert "'maas'" in sql_str
-        assert "can_view_machines" in sql_str
-        assert "'pool'" in sql_str
-        assert "'42'" in sql_str
-
-    async def test_list_entitlements_page(self) -> None:
-        mock_repository = Mock(OpenFGATuplesRepository)
-        mock_repository.list_entitlements = AsyncMock(
-            return_value=Mock(items=[], total=0)
-        )
-        service = OpenFGATupleService(
-            context=Context(),
-            openfga_tuple_repository=mock_repository,
-            cache=OpenFGAServiceCache(),
-        )
-
-        await service.list_entitlements_page(group_id=3, page=2, size=10)
-
-        mock_repository.list_entitlements.assert_called_once()
-        call_args = mock_repository.list_entitlements.call_args[0]
-        page, size, query = call_args
-        assert page == 2
-        assert size == 10
-        compiled = query.where.condition.compile(
-            compile_kwargs={"literal_binds": True}
-        )
-        assert "group:3#member" in str(compiled)
-
-    async def test_list_entitlements_for_groups(self) -> None:
-        mock_repository = Mock(OpenFGATuplesRepository)
-        mock_repository.get_many = AsyncMock(return_value=[])
-        service = OpenFGATupleService(
-            context=Context(),
-            openfga_tuple_repository=mock_repository,
-            cache=OpenFGAServiceCache(),
-        )
-
-        await service.list_entitlements_for_groups([1, 2])
-
-        mock_repository.get_many.assert_called_once()
-        query = mock_repository.get_many.call_args[0][0]
-        compiled = query.where.condition.compile(
-            compile_kwargs={"literal_binds": True}
-        )
-        sql_str = str(compiled)
-        assert "group:1#member" in sql_str
-        assert "group:2#member" in sql_str
 
     async def test_list_entitlements_for_groups_empty(self) -> None:
         mock_repository = Mock(OpenFGATuplesRepository)

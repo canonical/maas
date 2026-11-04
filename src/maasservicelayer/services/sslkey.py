@@ -6,11 +6,7 @@ from cryptography import x509
 from maascommon.fips import is_fips_enabled, validate_fips_tls_certificate
 from maasservicelayer.builders.sslkeys import SSLKeyBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.sslkeys import (
-    SSLKeyClauseFactory,
-    SSLKeysRepository,
-)
+from maasservicelayer.db.repositories.sslkeys import SSLKeysRepository
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -21,6 +17,8 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.sslkeys import SSLKeyFilters
 from maasservicelayer.models.sslkeys import SSLKey
 from maasservicelayer.services.base import BaseService
 
@@ -48,7 +46,7 @@ class SSLKeysService(BaseService[SSLKey, SSLKeysRepository, SSLKeyBuilder]):
             self._validate_fips_certificate(builder.key)
 
         sslkey_exists = await self.exists(
-            query=QuerySpec(where=SSLKeyClauseFactory.with_key(builder.key))
+            query=QuerySpec(where=SSLKeyFilters.with_key(builder.key))
         )
         if sslkey_exists:
             raise AlreadyExistsException(

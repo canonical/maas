@@ -6,25 +6,13 @@ from typing import Type
 from sqlalchemy import desc, func, select, Table
 from sqlalchemy.sql.functions import count
 
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import SQLQuerySpec
+from maasservicelayer.db.mappers.usergroups import UserGroupsDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import UserGroupMembersView, UserGroupTable
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.usergroups import UserGroup, UserGroupStatistics
-
-
-class UserGroupsClauseFactory(ClauseFactory):
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=UserGroupTable.c.id.in_(ids))
-
-    @classmethod
-    def with_name(cls, name: str) -> Clause:
-        return Clause(condition=UserGroupTable.c.name == name)
-
-    @classmethod
-    def with_name_like(cls, name: str) -> Clause:
-        return Clause(condition=UserGroupTable.c.name.ilike(f"%{name}%"))
 
 
 class UserGroupsRepository(BaseRepository[UserGroup]):
@@ -34,23 +22,30 @@ class UserGroupsRepository(BaseRepository[UserGroup]):
     def get_model_factory(self) -> Type[UserGroup]:
         return UserGroup
 
+    def get_mapper(self) -> UserGroupsDataMapper:
+        return UserGroupsDataMapper()
+
     async def list_groups_statistics(
         self,
         page: int,
         size: int,
         query: QuerySpec | None = None,
     ) -> ListResult[UserGroupStatistics]:
+        sql_query = (
+            SQLQuerySpec(where=self._translate(query).where)
+            if query is not None
+            else None
+        )
         total_stmt = select(count()).select_from(UserGroupTable)
-        if query and query.where:
-            where_query = QuerySpec(where=query.where)
-            total_stmt = where_query.enrich_stmt(total_stmt)
+        if sql_query is not None:
+            total_stmt = sql_query.enrich_stmt(total_stmt)
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         groups_stmt = select(
             UserGroupTable.c.id,
         )
-        if query and query.where:
-            groups_stmt = QuerySpec(where=query.where).enrich_stmt(groups_stmt)
+        if sql_query is not None:
+            groups_stmt = sql_query.enrich_stmt(groups_stmt)
         groups_subq = groups_stmt.subquery()
 
         stmt = (

@@ -28,11 +28,9 @@ from maasservicelayer.auth.oidc_adapters import (
 from maasservicelayer.builders.external_auth import OAuthProviderBuilder
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.external_auth import (
     ExternalOAuthRepository,
 )
-from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BadGatewayException,
     BaseExceptionDetail,
@@ -47,6 +45,8 @@ from maasservicelayer.exceptions.constants import (
     PRECONDITION_FAILED,
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.users import UserFilters
 from maasservicelayer.models.base import Unset
 from maasservicelayer.models.external_auth import (
     OAuthProvider,
@@ -126,9 +126,7 @@ class ExternalOAuthService(
     ):
         """Update the is_active status of all the users connected to `provider_id`."""
         await self.users_service.update_many(
-            query=QuerySpec(
-                where=UserClauseFactory.with_provider_id(provider_id)
-            ),
+            query=QuerySpec(where=UserFilters.with_provider_id(provider_id)),
             builder=UserBuilder(is_active=is_active),
         )
 
@@ -205,9 +203,7 @@ class ExternalOAuthService(
         data = await client.callback(code=code, nonce=nonce)
         user, newly_created = await self.users_service.get_or_create(
             query=QuerySpec(
-                UserClauseFactory.with_username_or_email_like(
-                    data.user_info.email
-                )
+                UserFilters.with_username_or_email_like(data.user_info.email)
             ),
             builder=UserBuilder(
                 username=data.user_info.email,

@@ -44,8 +44,6 @@ from maasapiserver.v3.auth.base import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -56,6 +54,8 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.users import UserFilters
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.usergroups import UserGroupNotFound
@@ -111,9 +111,7 @@ class UsersHandler(Handler):
     ) -> UserResponse:
         assert authenticated_user is not None
         user = await services.users.get_one(
-            QuerySpec(
-                UserClauseFactory.with_username(authenticated_user.username)
-            )
+            QuerySpec(UserFilters.with_username(authenticated_user.username))
         )
         if user is None:
             raise UnauthorizedException(
@@ -308,7 +306,7 @@ class UsersHandler(Handler):
         users = await services.users.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=filters.to_clause()),
+            query=QuerySpec(where=filters.to_filter()),
         )
         groups_by_user = await services.users.get_groups_for_users(
             [user.id for user in users.items]
@@ -534,7 +532,7 @@ class UsersHandler(Handler):
     ) -> Response:
         assert authenticated_user is not None
         user_exists = await services.users.exists(
-            query=QuerySpec(UserClauseFactory.with_id(user_id))
+            query=QuerySpec(UserFilters.with_id(user_id))
         )
         if not user_exists:
             raise NotFoundException()
@@ -615,7 +613,7 @@ class UsersHandler(Handler):
         users = await services.users.list_statistics(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=filters.to_clause()),
+            query=QuerySpec(where=filters.to_filter()),
         )
         next_link = None
         if users.has_next(pagination_params.page, pagination_params.size):

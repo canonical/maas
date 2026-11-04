@@ -4,93 +4,27 @@
 from sqlalchemy import delete, desc, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.functions import count
-from sqlalchemy.sql.operators import eq
 from ulid import ULID
 
 from maascommon.enums.openfga import OPENFGA_STORE_ID
 from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
-from maasservicelayer.db.filters import (
-    Clause,
-    ClauseFactory,
-    QuerySpec,
-    SQLQuerySpec,
-)
-from maasservicelayer.db.mappers.base import (
-    BaseDomainDataMapper,
-    CreateOrUpdateResource,
-)
+from maasservicelayer.context import Context
+from maasservicelayer.db.filters import SQLQuerySpec
+from maasservicelayer.db.mappers.openfga_tuples import OpenFGATuplesDataMapper
 from maasservicelayer.db.repositories.base import Repository
 from maasservicelayer.db.tables import OpenFGATupleTable
-from maasservicelayer.models.base import ListResult, ResourceBuilder
-from maasservicelayer.models.openfga_tuple import (
-    EntitlementDeleteSpec,
-    OpenFGATuple,
-)
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.utils.date import utcnow
 
 
-class OpenFGATuplesClauseFactory(ClauseFactory):
-    @classmethod
-    def with_object_type(cls, object_type: str) -> Clause:
-        return Clause(
-            condition=eq(OpenFGATupleTable.c.object_type, object_type)
-        )
-
-    @classmethod
-    def with_object_id(cls, object_id: str) -> Clause:
-        return Clause(condition=eq(OpenFGATupleTable.c.object_id, object_id))
-
-    @classmethod
-    def with_relation(cls, relation: str) -> Clause:
-        return Clause(condition=eq(OpenFGATupleTable.c.relation, relation))
-
-    @classmethod
-    def with_user(cls, user: str) -> Clause:
-        return Clause(condition=eq(OpenFGATupleTable.c._user, user))
-
-    @classmethod
-    def with_users(cls, users: list[str]) -> Clause:
-        return Clause(condition=OpenFGATupleTable.c._user.in_(users))
-
-    @classmethod
-    def with_entitlement_tuples(
-        cls, specs: list[EntitlementDeleteSpec]
-    ) -> Clause:
-        return cls.or_clauses(
-            [
-                cls.and_clauses(
-                    [
-                        cls.with_relation(spec.entitlement),
-                        cls.with_object_type(spec.resource_type),
-                        cls.with_object_id(str(spec.resource_id)),
-                    ]
-                )
-                for spec in specs
-            ]
-        )
-
-
-class OpenFGATuplesDataMapper(BaseDomainDataMapper):
-    def __init__(self):
-        super().__init__(OpenFGATuple, OpenFGATupleTable)
-
-    def build_resource(
-        self, builder: ResourceBuilder
-    ) -> CreateOrUpdateResource:
-        resource = CreateOrUpdateResource()
-
-        populated_fields = builder.populated_fields()
-        if "user" in populated_fields:
-            populated_fields["_user"] = populated_fields.pop("user")
-
-        for name, value in populated_fields.items():
-            resource.set_value(self.table_columns[name].name, value)
-
-        return resource
-
-
 class OpenFGATuplesRepository(Repository):
-    def get_mapper(self) -> BaseDomainDataMapper:
+    def __init__(self, context: Context):
+        super().__init__(context)
+        self.mapper = self.get_mapper()
+
+    def get_mapper(self) -> OpenFGATuplesDataMapper:
         return OpenFGATuplesDataMapper()
 
     async def get_many(self, query: QuerySpec) -> list[OpenFGATuple]:
@@ -105,7 +39,7 @@ class OpenFGATuplesRepository(Repository):
         return items
 
     async def upsert(self, builder: OpenFGATupleBuilder) -> OpenFGATuple:
-        resource = self.get_mapper().build_resource(builder)
+        resource = self.mapper.build_resource(builder)
 
         new_timestamp = utcnow()
         new_ulid = str(ULID())
@@ -145,7 +79,7 @@ class OpenFGATuplesRepository(Repository):
         new_timestamp = utcnow()
         values_list = [
             {
-                **self.get_mapper().build_resource(builder).get_values(),
+                **self.mapper.build_resource(builder).get_values(),
                 "store": OPENFGA_STORE_ID,
                 "inserted_at": new_timestamp,
                 "ulid": str(ULID()),
@@ -174,8 +108,8 @@ class OpenFGATuplesRepository(Repository):
         self, page: int, size: int, query: QuerySpec
     ) -> ListResult[OpenFGATuple]:
         total_stmt = select(count()).select_from(OpenFGATupleTable)
-        translated = self._translate(query)
-        total_stmt = SQLQuerySpec(where=translated.where).enrich_stmt(
+        sql_query = self._translate(query)
+        total_stmt = SQLQuerySpec(where=sql_query.where).enrich_stmt(
             total_stmt
         )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
@@ -187,7 +121,7 @@ class OpenFGATuplesRepository(Repository):
             .offset((page - 1) * size)
             .limit(size)
         )
-        stmt = self._translate(query).enrich_stmt(stmt)
+        stmt = sql_query.enrich_stmt(stmt)
         result = await self.execute_stmt(stmt)
         items = []
         for row in result:

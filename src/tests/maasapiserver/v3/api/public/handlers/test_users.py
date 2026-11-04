@@ -28,8 +28,6 @@ from maasapiserver.v3.api.public.models.responses.users import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.builders.users import UserBuilder
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BadRequestException,
@@ -43,6 +41,8 @@ from maasservicelayer.exceptions.constants import (
     PRECONDITION_FAILED,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.users import UserFilters
 from maasservicelayer.models.base import ListResult, UNSET
 from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroups import UserGroup, UserGroupsByUser
@@ -387,7 +387,7 @@ class TestUsersApi(ApiCommonTests):
             page=1,
             size=1,
             query=QuerySpec(
-                where=UserClauseFactory.with_username_or_email_like("example")
+                where=UserFilters.with_username_or_email_like("example")
             ),
         )
 
@@ -1096,7 +1096,7 @@ class TestUsersApi(ApiCommonTests):
         )
         assert response.status_code == 412
         services_mock.users.exists.assert_called_with(
-            query=QuerySpec(UserClauseFactory.with_id(USER_1.id))
+            query=QuerySpec(UserFilters.with_id(USER_1.id))
         )
         services_mock.users.delete_by_id.assert_called_with(
             USER_1.id,
@@ -1260,7 +1260,7 @@ class TestUsersApi(ApiCommonTests):
             page=1,
             size=1,
             query=QuerySpec(
-                where=UserClauseFactory.with_username_or_email_like("example")
+                where=UserFilters.with_username_or_email_like("example")
             ),
         )
 

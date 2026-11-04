@@ -23,24 +23,6 @@ from maasservicelayer.models.tokens import (
 )
 
 
-class TokenClauseFactory(ClauseFactory):
-    @classmethod
-    def with_consumer_id(cls, consumer_id: int) -> Clause:
-        return Clause(condition=eq(TokenTable.c.consumer_id, consumer_id))
-
-    @classmethod
-    def with_consumer_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=TokenTable.c.consumer_id.in_(ids))
-
-    @classmethod
-    def with_secret(cls, secret: str) -> Clause:
-        return Clause(condition=eq(TokenTable.c.secret, secret))
-
-    @classmethod
-    def with_key(cls, key: str) -> Clause:
-        return Clause(condition=eq(TokenTable.c.key, key))
-
-
 class TokensRepository(BaseRepository[Token]):
     """
     Piston3 Token repository. See
@@ -84,12 +66,6 @@ class TokensRepository(BaseRepository[Token]):
         return [str(row[0]) for row in result]
 
 
-class RefreshTokenClauseFactory(ClauseFactory):
-    @classmethod
-    def with_token(cls, token: str) -> Clause:
-        return Clause(condition=eq(RefreshTokenTable.c.token, token))
-
-
 class RefreshTokenRepository(BaseRepository[RefreshToken]):
     def get_repository_table(self) -> Table:
         return RefreshTokenTable
@@ -98,17 +74,28 @@ class RefreshTokenRepository(BaseRepository[RefreshToken]):
         return RefreshToken
 
 
-class OIDCRevokedTokenClauseFactory(ClauseFactory):
-    @classmethod
-    def with_token_hash(cls, token_hash: str) -> Clause:
-        return Clause(
-            condition=eq(OIDCRevokedTokenTable.c.token_hash, token_hash)
-        )
-
-
 class OIDCRevokedTokenRepository(BaseRepository[OIDCRevokedToken]):
     def get_repository_table(self) -> Table:
         return OIDCRevokedTokenTable
 
     def get_model_factory(self) -> type[OIDCRevokedToken]:
         return OIDCRevokedToken
+
+
+# Legacy SQL clause factory, removed once every caller uses domain filters.
+class TokenClauseFactory(ClauseFactory):
+    @classmethod
+    def with_consumer_id(cls, consumer_id: int) -> Clause:
+        return Clause(condition=eq(TokenTable.c.consumer_id, consumer_id))
+
+    @classmethod
+    def with_consumer_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=TokenTable.c.consumer_id.in_(ids))
+
+    @classmethod
+    def with_secret(cls, secret: str) -> Clause:
+        return Clause(condition=eq(TokenTable.c.secret, secret))
+
+    @classmethod
+    def with_key(cls, key: str) -> Clause:
+        return Clause(condition=eq(TokenTable.c.key, key))

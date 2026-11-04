@@ -29,9 +29,9 @@ from maasapiserver.v3.auth.base import (
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.sslkeys import SSLKeyClauseFactory
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.sslkeys import SSLKeyFilters
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -69,7 +69,7 @@ class SSLKeysHandler(Handler):
             page=pagination_params.page,
             size=pagination_params.size,
             query=QuerySpec(
-                where=SSLKeyClauseFactory.with_user_id(authenticated_user.id),
+                where=SSLKeyFilters.with_user_id(authenticated_user.id),
             ),
         )
 
@@ -119,7 +119,7 @@ class SSLKeysHandler(Handler):
             page=pagination_params.page,
             size=pagination_params.size,
             query=QuerySpec(
-                where=SSLKeyClauseFactory.with_user_id(authenticated_user.id),
+                where=SSLKeyFilters.with_user_id(authenticated_user.id),
             ),
         )
 
@@ -171,12 +171,10 @@ class SSLKeysHandler(Handler):
 
         sslkey = await services.sslkeys.get_one(
             query=QuerySpec(
-                where=SSLKeyClauseFactory.and_clauses(
+                where=SSLKeyFilters.and_filters(
                     [
-                        SSLKeyClauseFactory.with_id(sslkey_id),
-                        SSLKeyClauseFactory.with_user_id(
-                            authenticated_user.id
-                        ),
+                        SSLKeyFilters.with_id(sslkey_id),
+                        SSLKeyFilters.with_user_id(authenticated_user.id),
                     ]
                 )
             ),
@@ -248,12 +246,10 @@ class SSLKeysHandler(Handler):
 
         await services.sslkeys.delete_one(
             query=QuerySpec(
-                where=SSLKeyClauseFactory.and_clauses(
+                where=SSLKeyFilters.and_filters(
                     [
-                        SSLKeyClauseFactory.with_id(sslkey_id),
-                        SSLKeyClauseFactory.with_user_id(
-                            authenticated_user.id
-                        ),
+                        SSLKeyFilters.with_id(sslkey_id),
+                        SSLKeyFilters.with_user_id(authenticated_user.id),
                     ]
                 )
             ),
