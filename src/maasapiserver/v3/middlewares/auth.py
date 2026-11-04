@@ -9,6 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 import structlog
 
+from maasapiserver.v3.auth.bearer import get_bearer_token
 from maasapiserver.v3.auth.cookie_manager import (
     EncryptedCookieManager,
     MAASLocalCookie,
@@ -375,13 +376,14 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
             MAASOAuth2Cookie.OAUTH2_ACCESS_TOKEN
         )
 
+        bearer_token = get_bearer_token(auth_header)
         user = None
         # If no OIDC token or auth_header is specified then the request is unauthenticated and we let the handler
         # decide wether or not to serve it.
         if access_token:
             user = await self._oidc_authentication(request, access_token)
-        elif auth_header and auth_header.lower().startswith("bearer "):
-            user = await self._jwt_authentication(request, auth_header)
+        elif bearer_token is not None:
+            user = await self._jwt_authentication(request, bearer_token)
 
         request.state.authenticated_user = user
 
@@ -399,9 +401,8 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
         return response
 
     async def _jwt_authentication(
-        self, request: Request, auth_header: str
+        self, request: Request, token: str
     ) -> AuthenticatedUser:
-        token = auth_header.split(" ")[1]
         if is_api_token(token):
             return await self.providers_cache.get_pat_provider().authenticate(
                 request, token

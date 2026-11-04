@@ -13,11 +13,18 @@ from maasapiserver.v3.api.public.models.responses.api_tokens import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
+from maasservicelayer.exceptions.constants import (
+    API_TOKEN_NOT_ALLOWED_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.tokens import ApiToken
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.api_tokens import ApiTokenService
+from maasservicelayer.utils.api_tokens import generate_api_token
 from maasservicelayer.utils.date import utcnow
+from tests.fixtures.factories.token import create_test_api_token
+from tests.fixtures.factories.user import create_test_user
+from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,
@@ -156,3 +163,39 @@ class TestApiTokensApi(ApiCommonTests):
 
         assert response.status_code == 204
         services_mock.api_tokens.revoke.assert_awaited_once_with(TEST_TOKEN)
+
+
+class TestApiTokenMintingWithRealTokens:
+    async def test_api_token_cannot_mint_api_token(
+        self, api_client: AsyncClient, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture)
+        generated = generate_api_token()
+        await create_test_api_token(
+            fixture,
+            user_id=user.id,
+            public_id=generated.public_id,
+            secret_hash=generated.secret_hash,
+        )
+
+        response = await api_client.post(
+            f"{V3_API_PREFIX}/users/me/pats",
+            headers={"Authorization": f"bearer {generated.raw_token}"},
+            json={"name": "minted", "expires_at": "2030-01-01T00:00:00+00:00"},
+        )
+
+        assert response.status_code == 403
+        assert (
+            response.json()["details"][0]["type"]
+            == API_TOKEN_NOT_ALLOWED_VIOLATION_TYPE
+        )
+
+    async def test_session_user_can_mint_api_token(
+        self, authenticated_user_api_client_v3: AsyncClient
+    ) -> None:
+        response = await authenticated_user_api_client_v3.post(
+            f"{V3_API_PREFIX}/users/me/pats",
+            json={"name": "minted", "expires_at": "2030-01-01T00:00:00+00:00"},
+        )
+
+        assert response.status_code == 201

@@ -24,7 +24,11 @@ from maasapiserver.v3.api.public.models.responses.api_tokens import (
     ApiTokenResponse,
     ApiTokensListResponse,
 )
-from maasapiserver.v3.auth.base import check_authentication, check_permissions
+from maasapiserver.v3.auth.base import (
+    check_authentication,
+    check_permissions,
+    reject_api_tokens,
+)
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.db.filters import QuerySpec
@@ -173,7 +177,10 @@ class ApiTokensHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=201,
-        dependencies=[Depends(check_authentication())],
+        dependencies=[
+            Depends(check_authentication()),
+            Depends(reject_api_tokens()),
+        ],
     )
     async def create_my_token(
         self,
