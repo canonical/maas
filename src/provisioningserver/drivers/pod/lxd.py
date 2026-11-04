@@ -150,12 +150,11 @@ def get_lxd_machine_definition(request, include_profile=False):
             "limits.memory.hugepages": (
                 "true" if request.hugepages_backed else "false"
             ),
-            # LP: 1867387 - Disable secure boot until its fixed in MAAS
-            "security.secureboot": "false",
         },
         "profiles": profiles,
         # Image source is empty as we get images from MAAS when netbooting.
         "source": {"type": "none"},
+        "type": "virtual-machine",
     }
 
 
@@ -397,7 +396,7 @@ class LXDPodDriver(PodDriver):
             with self._get_client(
                 pod_id, context, project=project
             ) as project_cli:
-                for virtual_machine in project_cli.virtual_machines.all():
+                for virtual_machine in project_cli.instances.all():
                     discovered_machine = self._get_discovered_machine(
                         project_cli,
                         virtual_machine,
