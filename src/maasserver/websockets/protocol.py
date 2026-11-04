@@ -7,7 +7,6 @@
 from collections import deque
 from contextlib import ExitStack
 from functools import partial
-import ipaddress
 import json
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
