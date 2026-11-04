@@ -20,8 +20,8 @@ _BASE62_ALPHABET = (
 # Base62 digits needed to represent SECRET_BYTES bytes; 43 for 32 bytes.
 _SECRET_LENGTH = math.ceil(SECRET_BYTES * 8 / math.log2(len(_BASE62_ALPHABET)))
 _TOKEN_REGEX = re.compile(
-    rf"^{PAT_PREFIX}(?P<public_id>[0-9a-f]{{{PUBLIC_ID_BYTES * 2}}})"
-    rf"_(?P<secret>[0-9A-Za-z]{{{_SECRET_LENGTH}}})$"
+    rf"{PAT_PREFIX}(?P<public_id>[0-9a-f]{{{PUBLIC_ID_BYTES * 2}}})"
+    rf"_(?P<secret>[0-9A-Za-z]{{{_SECRET_LENGTH}}})"
 )
 
 
@@ -57,7 +57,7 @@ def generate_api_token() -> GeneratedApiToken:
 
 def parse_api_token(raw_token: str) -> tuple[str, str] | None:
     """Return `(public_id, secret)` or `None` if the format is invalid."""
-    match = _TOKEN_REGEX.match(raw_token)
+    match = _TOKEN_REGEX.fullmatch(raw_token)
     if not match:
         return None
     return match["public_id"], match["secret"]

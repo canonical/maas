@@ -37,6 +37,8 @@ class TestApiTokens:
             "maas_pat_E623C3C3B9B63C3B_" + "a" * 43,
             "maas_pat_e623c3c3b9b63c3b_" + "a" * 42,
             "maas_pat_e623c3c3b9b63c3b_" + "a" * 42 + "+",
+            "maas_pat_e623c3c3b9b63c3b_" + "a" * 43 + "\n",
+            "maas_pat_e623c3c3b9b63c3b_" + "a" * 43 + "\r\n",
         ],
     )
     def test_parse_rejects_malformed_tokens(self, raw_token: str) -> None:
