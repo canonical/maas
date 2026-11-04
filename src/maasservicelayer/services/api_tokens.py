@@ -59,6 +59,8 @@ class ApiTokenService(
         )
         return token, generated.raw_token
 
+    # The generic create would accept a caller-chosen secret_hash and skip
+    # generating the secret, so tokens must come from create_token.
     async def create(self, builder):
         raise NotImplementedError(
             "Create is not supported for API tokens. Use create_token instead."
