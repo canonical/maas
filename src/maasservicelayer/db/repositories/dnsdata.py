@@ -8,11 +8,24 @@ from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.dns import DNSResourceTypeEnum
 from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.mappers.dnsdata import DNSDataDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import DNSDataTable, DNSResourceTable
 from maasservicelayer.models.dnsdata import DNSData
 
 
+class DNSDataRepository(BaseRepository[DNSData]):
+    def get_mapper(self) -> DNSDataDomainDataMapper:
+        return DNSDataDomainDataMapper(DNSData, DNSDataTable)
+
+    def get_repository_table(self) -> Table:
+        return DNSDataTable
+
+    def get_model_factory(self) -> Type[DNSData]:
+        return DNSData
+
+
+# Legacy SQL clause factory, removed once every caller uses domain filters.
 class DNSDataClauseFactory(ClauseFactory):
     @classmethod
     def with_dnsresource_id(cls, id: int) -> Clause:
@@ -53,11 +66,3 @@ class DNSDataClauseFactory(ClauseFactory):
                 ),
             ],
         )
-
-
-class DNSDataRepository(BaseRepository[DNSData]):
-    def get_repository_table(self) -> Table:
-        return DNSDataTable
-
-    def get_model_factory(self) -> Type[DNSData]:
-        return DNSData
