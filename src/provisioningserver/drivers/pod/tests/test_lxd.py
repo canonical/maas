@@ -2110,11 +2110,11 @@ class TestGetLXDMachineDefinition(MAASTestCase):
                     "limits.cpu": str(request.cores),
                     "limits.memory": str(request.memory * 1024 * 1024),
                     "limits.memory.hugepages": "false",
-                    "security.secureboot": "false",
                 },
                 "name": request.hostname,
                 "profiles": [],
                 "source": {"type": "none"},
+                "type": "virtual-machine",
             },
         )
 
