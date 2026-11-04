@@ -41,14 +41,32 @@ ME_BASE = f"{V3_API_PREFIX}/users/me/pats"
 ADMIN_BASE = f"{V3_API_PREFIX}/pats"
 
 
-async def _get_token_or_404(
-    services: ServiceCollectionV3, token_id: int, user_id: int | None = None
+async def _get_my_token_or_404(
+    services: ServiceCollectionV3, token_id: int, user_id: int
 ) -> ApiToken:
-    clauses = [ApiTokenClauseFactory.with_id(token_id)]
-    if user_id is not None:
-        clauses.append(ApiTokenClauseFactory.with_user_id(user_id))
     token = await services.api_tokens.get_one(
-        QuerySpec(where=combine_clauses(clauses))
+        QuerySpec(
+            where=ApiTokenClauseFactory.and_clauses(
+                [
+                    ApiTokenClauseFactory.with_id(token_id),
+                    ApiTokenClauseFactory.with_user_id(user_id),
+                ]
+            )
+        )
+    )
+    if token is None:
+        raise NotFoundException()
+    return token
+
+
+# There is a minor duplication here for safety purposes:
+# one should be used by admin look ups, the other for personal
+# look ups.
+async def _get_any_token_or_404(
+    services: ServiceCollectionV3, token_id: int
+) -> ApiToken:
+    token = await services.api_tokens.get_one(
+        QuerySpec(where=ApiTokenClauseFactory.with_id(token_id))
     )
     if token is None:
         raise NotFoundException()
@@ -140,7 +158,7 @@ class ApiTokensHandler(Handler):
         ],
         services: Annotated[ServiceCollectionV3, Depends(services)],
     ) -> ApiTokenResponse:
-        token = await _get_token_or_404(
+        token = await _get_my_token_or_404(
             services, token_id, authenticated_user.id
         )
         return ApiTokenResponse.from_model(token, ME_BASE)
@@ -194,7 +212,7 @@ class ApiTokensHandler(Handler):
         ],
         services: Annotated[ServiceCollectionV3, Depends(services)],
     ) -> Response:
-        token = await _get_token_or_404(
+        token = await _get_my_token_or_404(
             services, token_id, authenticated_user.id
         )
         await services.api_tokens.revoke(token)
@@ -254,7 +272,7 @@ class ApiTokensHandler(Handler):
         token_id: int,
         services: Annotated[ServiceCollectionV3, Depends(services)],
     ) -> ApiTokenResponse:
-        token = await _get_token_or_404(services, token_id)
+        token = await _get_any_token_or_404(services, token_id)
         return ApiTokenResponse.from_model(token, ADMIN_BASE)
 
     @handler(
@@ -281,6 +299,6 @@ class ApiTokensHandler(Handler):
         token_id: int,
         services: Annotated[ServiceCollectionV3, Depends(services)],
     ) -> Response:
-        token = await _get_token_or_404(services, token_id)
+        token = await _get_any_token_or_404(services, token_id)
         await services.api_tokens.revoke(token)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
