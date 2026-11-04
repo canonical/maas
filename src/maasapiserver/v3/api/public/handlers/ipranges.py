@@ -27,9 +27,6 @@ from maasapiserver.v3.auth.base import (
     get_authenticated_user,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ForbiddenException,
@@ -40,6 +37,9 @@ from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.ipranges import IPRangeFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.subnets import SubnetFilters
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -74,11 +74,11 @@ class IPRangesHandler(Handler):
             page=pagination_params.page,
             size=pagination_params.size,
             query=QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
-                        IPRangeClauseFactory.with_subnet_id(subnet_id),
-                        IPRangeClauseFactory.with_vlan_id(vlan_id),
-                        IPRangeClauseFactory.with_fabric_id(fabric_id),
+                        IPRangeFilters.with_subnet_id(subnet_id),
+                        IPRangeFilters.with_vlan_id(vlan_id),
+                        IPRangeFilters.with_fabric_id(fabric_id),
                     ]
                 )
             ),
@@ -152,11 +152,11 @@ class IPRangesHandler(Handler):
 
         subnet = await services.subnets.get_one(
             query=QuerySpec(
-                where=SubnetClauseFactory.and_clauses(
+                where=SubnetFilters.and_filters(
                     [
-                        SubnetClauseFactory.with_id(subnet_id),
-                        SubnetClauseFactory.with_vlan_id(vlan_id),
-                        SubnetClauseFactory.with_fabric_id(fabric_id),
+                        SubnetFilters.with_id(subnet_id),
+                        SubnetFilters.with_vlan_id(vlan_id),
+                        SubnetFilters.with_fabric_id(fabric_id),
                     ]
                 )
             )
@@ -207,12 +207,12 @@ class IPRangesHandler(Handler):
     ) -> IPRangeResponse:
         iprange = await services.ipranges.get_one(
             QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
-                        IPRangeClauseFactory.with_id(id),
-                        IPRangeClauseFactory.with_subnet_id(subnet_id),
-                        IPRangeClauseFactory.with_vlan_id(vlan_id),
-                        IPRangeClauseFactory.with_fabric_id(fabric_id),
+                        IPRangeFilters.with_id(id),
+                        IPRangeFilters.with_subnet_id(subnet_id),
+                        IPRangeFilters.with_vlan_id(vlan_id),
+                        IPRangeFilters.with_fabric_id(fabric_id),
                     ]
                 )
             )
@@ -255,12 +255,12 @@ class IPRangesHandler(Handler):
     ) -> Response:
         iprange = await services.ipranges.get_one(
             query=QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
-                        IPRangeClauseFactory.with_id(iprange_id),
-                        IPRangeClauseFactory.with_subnet_id(subnet_id),
-                        IPRangeClauseFactory.with_vlan_id(vlan_id),
-                        IPRangeClauseFactory.with_fabric_id(fabric_id),
+                        IPRangeFilters.with_id(iprange_id),
+                        IPRangeFilters.with_subnet_id(subnet_id),
+                        IPRangeFilters.with_vlan_id(vlan_id),
+                        IPRangeFilters.with_fabric_id(fabric_id),
                     ]
                 )
             )
@@ -333,11 +333,11 @@ class IPRangesHandler(Handler):
             )
         subnet = await services.subnets.get_one(
             query=QuerySpec(
-                where=SubnetClauseFactory.and_clauses(
+                where=SubnetFilters.and_filters(
                     [
-                        SubnetClauseFactory.with_id(subnet_id),
-                        SubnetClauseFactory.with_vlan_id(vlan_id),
-                        SubnetClauseFactory.with_fabric_id(fabric_id),
+                        SubnetFilters.with_id(subnet_id),
+                        SubnetFilters.with_vlan_id(vlan_id),
+                        SubnetFilters.with_fabric_id(fabric_id),
                     ]
                 )
             )
@@ -353,10 +353,10 @@ class IPRangesHandler(Handler):
             )
         iprange = await services.ipranges.get_one(
             query=QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
-                        IPRangeClauseFactory.with_id(iprange_id),
-                        IPRangeClauseFactory.with_subnet_id(subnet_id),
+                        IPRangeFilters.with_id(iprange_id),
+                        IPRangeFilters.with_subnet_id(subnet_id),
                     ]
                 )
             )
@@ -394,10 +394,10 @@ class IPRangesHandler(Handler):
         )
         iprange = await services.ipranges.update_one(
             query=QuerySpec(
-                where=IPRangeClauseFactory.and_clauses(
+                where=IPRangeFilters.and_filters(
                     [
-                        IPRangeClauseFactory.with_id(iprange_id),
-                        IPRangeClauseFactory.with_subnet_id(subnet_id),
+                        IPRangeFilters.with_id(iprange_id),
+                        IPRangeFilters.with_subnet_id(subnet_id),
                     ]
                 )
             ),

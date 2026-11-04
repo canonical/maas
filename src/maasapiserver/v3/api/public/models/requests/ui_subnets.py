@@ -8,18 +8,18 @@ from maasapiserver.v3.api.public.models.requests.base import (
     FreeTextSearchQueryParam,
     OrderByQueryFilter,
 )
-from maasservicelayer.db.filters import Clause
-from maasservicelayer.db.repositories.ui_subnets import (
-    UISubnetsClauseFactory,
-    UISubnetsOrderByClauses,
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.ui_subnets import (
+    UISubnetsFilters,
+    UISubnetsOrdering,
 )
 
 
 class UISubnetOrderByQueryFilter(OrderByQueryFilter):
-    order_by_columns = {
-        "cidr": UISubnetsOrderByClauses.by_cidr(),
-        "fabric": UISubnetsOrderByClauses.by_fabric_name(),
-        "space": UISubnetsOrderByClauses.by_space_name(),
+    order_by_fields = {
+        "cidr": UISubnetsOrdering.by_cidr(),
+        "fabric": UISubnetsOrdering.by_fabric_name(),
+        "space": UISubnetsOrdering.by_space_name(),
     }
 
 
@@ -44,34 +44,30 @@ class UISubnetFiltersParams(BaseModel):
         Query(default=None, title="Filter by subnet id", alias="subnet_id")
     )
 
-    def to_clause(self) -> Clause | None:
-        clauses = []
+    def to_filter(self) -> Filter | None:
+        filters = []
         if self.cidrs:
-            clauses.append(UISubnetsClauseFactory.with_cidrs(self.cidrs))
+            filters.append(UISubnetsFilters.with_cidrs(self.cidrs))
         if self.vlan_ids:
-            clauses.append(UISubnetsClauseFactory.with_vlan_ids(self.vlan_ids))
+            filters.append(UISubnetsFilters.with_vlan_ids(self.vlan_ids))
 
         if self.fabric_names:
-            clauses.append(
-                UISubnetsClauseFactory.with_fabric_names(self.fabric_names)
+            filters.append(
+                UISubnetsFilters.with_fabric_names(self.fabric_names)
             )
 
         if self.space_names:
-            clauses.append(
-                UISubnetsClauseFactory.with_space_names(self.space_names)
-            )
+            filters.append(UISubnetsFilters.with_space_names(self.space_names))
 
         if self.subnet_ids:
-            clauses.append(
-                UISubnetsClauseFactory.with_subnet_ids(self.subnet_ids)
-            )
+            filters.append(UISubnetsFilters.with_subnet_ids(self.subnet_ids))
 
-        if not clauses:
+        if not filters:
             return None
-        if len(clauses) > 1:
-            return UISubnetsClauseFactory.and_clauses(clauses)
+        if len(filters) > 1:
+            return UISubnetsFilters.and_filters(filters)
         else:
-            return clauses[0]
+            return filters[0]
 
     def to_href_format(self) -> str:
         tokens = []
@@ -92,14 +88,14 @@ class UISubnetFiltersParams(BaseModel):
 
 
 class UISubnetsFreeTextSearchQueryParam(FreeTextSearchQueryParam):
-    def to_clause(self) -> Clause | None:
+    def to_filter(self) -> Filter | None:
         if self.q:
-            return UISubnetsClauseFactory.or_clauses(
+            return UISubnetsFilters.or_filters(
                 [
-                    UISubnetsClauseFactory.with_fabric_name_like(self.q),
-                    UISubnetsClauseFactory.with_vlan_name_like(self.q),
-                    UISubnetsClauseFactory.with_space_name_like(self.q),
-                    UISubnetsClauseFactory.with_cidr_like(self.q),
+                    UISubnetsFilters.with_fabric_name_like(self.q),
+                    UISubnetsFilters.with_vlan_name_like(self.q),
+                    UISubnetsFilters.with_space_name_like(self.q),
+                    UISubnetsFilters.with_cidr_like(self.q),
                 ]
             )
         return None

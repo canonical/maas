@@ -1,10 +1,8 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from operator import eq
-
+from pydantic import BaseModel
 import pytest
-from sqlalchemy import BigInteger, Column, desc, MetaData, String, Table
 
 from maasapiserver.v3.api.public.models.requests.base import (
     FreeTextSearchQueryParam,
@@ -12,8 +10,9 @@ from maasapiserver.v3.api.public.models.requests.base import (
     OptionalNamedBaseModel,
     OrderByQueryFilter,
 )
-from maasservicelayer.db.filters import Clause, OrderByClause
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.base import FieldFilter, Filter, Operator
+from maasservicelayer.filters.query import OrderBy
 
 VALID_NAMES = [
     "ValidName",
@@ -63,17 +62,15 @@ class TestOptionalNamedBaseModel:
         assert model.name is None
 
 
-METADATA = MetaData()
-
-DummyTable = Table(
-    "dummy_table", METADATA, Column("id", BigInteger), Column("name", String)
-)
+class DummyModel(BaseModel):
+    id: int
+    name: str
 
 
 class OrderByQueryTestClass(OrderByQueryFilter):
-    order_by_columns = {
-        "id": OrderByClause(column=DummyTable.c.id),
-        "name": OrderByClause(column=DummyTable.c.name),
+    order_by_fields = {
+        "id": OrderBy(DummyModel, "id"),
+        "name": OrderBy(DummyModel, "name"),
     }
 
 
@@ -103,9 +100,17 @@ class TestOrderByQueryFilter:
         with pytest.raises(ValidationException):
             OrderByQueryTestClass(order_by=["desc(id)", "asc(id)"])
 
-    def test_to_clauses(self) -> None:
-        q = OrderByQueryTestClass(order_by=["desc(id)"])
-        assert q.to_clauses() == [OrderByClause(column=desc(DummyTable.c.id))]
+    def test_ordering_directions_and_precedence(self) -> None:
+        query = OrderByQueryTestClass(order_by=["id", "asc(name)"])
+        assert [
+            (order.field, order.descending) for order in query.to_order_by()
+        ] == [("id", True), ("name", False)]
+
+    def test_ordering_requests_do_not_share_direction(self) -> None:
+        descending = OrderByQueryTestClass(order_by=["desc(id)"])
+        ascending = OrderByQueryTestClass(order_by=["asc(id)"])
+        assert ascending.to_order_by()[0].descending is False
+        assert descending.to_order_by()[0].descending is True
 
     def test_to_href_format(self) -> None:
         q = OrderByQueryTestClass(order_by=["desc(id)"])
@@ -115,10 +120,10 @@ class TestOrderByQueryFilter:
 
 
 class FreeTextSearchQueryParamTestClass(FreeTextSearchQueryParam):
-    def to_clause(self) -> Clause | None:
+    def to_filter(self) -> Filter | None:
         if not self.q:
             return None
-        return Clause(condition=eq(DummyTable.c.name, self.q))
+        return FieldFilter(DummyModel, "name", Operator.EQ, self.q)
 
 
 class TestFreeTextSearchQueryParam:
@@ -128,12 +133,3 @@ class TestFreeTextSearchQueryParam:
 
         freetext_query = FreeTextSearchQueryParamTestClass(q="foo")
         assert freetext_query.to_href_format() == "q=foo"
-
-    def test_to_clause(self) -> None:
-        freetext_query = FreeTextSearchQueryParamTestClass(q=None)
-        assert freetext_query.to_clause() is None
-
-        freetext_query = FreeTextSearchQueryParamTestClass(q="foo")
-        assert freetext_query.to_clause() == Clause(
-            condition=eq(DummyTable.c.name, "foo")
-        )

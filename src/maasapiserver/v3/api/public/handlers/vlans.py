@@ -26,9 +26,10 @@ from maasapiserver.v3.api.public.models.responses.vlans import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.base import FilterFactory
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -99,9 +100,7 @@ class VlansHandler(Handler):
         vlans = await services.vlans.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(
-                where=VlansClauseFactory.with_fabric_id(fabric_id)
-            ),
+            query=QuerySpec(where=VlansFilters.with_fabric_id(fabric_id)),
         )
         return VlansListResponse(
             items=[
@@ -152,10 +151,10 @@ class VlansHandler(Handler):
     ) -> VlanResponse:
         vlan = await services.vlans.get_one(
             query=QuerySpec(
-                ClauseFactory.and_clauses(
+                FilterFactory.and_filters(
                     [
-                        VlansClauseFactory.with_fabric_id(fabric_id),
-                        VlansClauseFactory.with_id(vlan_id),
+                        VlansFilters.with_fabric_id(fabric_id),
+                        VlansFilters.with_id(vlan_id),
                     ]
                 )
             )
@@ -201,10 +200,10 @@ class VlansHandler(Handler):
         resource_builder = await vlan_request.to_builder(services, vlan_id)
         vlan = await services.vlans.update_one(
             query=QuerySpec(
-                ClauseFactory.and_clauses(
+                FilterFactory.and_filters(
                     [
-                        VlansClauseFactory.with_fabric_id(fabric_id),
-                        VlansClauseFactory.with_id(vlan_id),
+                        VlansFilters.with_fabric_id(fabric_id),
+                        VlansFilters.with_id(vlan_id),
                     ]
                 )
             ),
@@ -245,10 +244,10 @@ class VlansHandler(Handler):
     ) -> Response:
         await services.vlans.delete_one(
             query=QuerySpec(
-                where=ClauseFactory.and_clauses(
+                where=FilterFactory.and_filters(
                     [
-                        VlansClauseFactory.with_id(vlan_id),
-                        VlansClauseFactory.with_fabric_id(fabric_id),
+                        VlansFilters.with_id(vlan_id),
+                        VlansFilters.with_fabric_id(fabric_id),
                     ]
                 )
             ),

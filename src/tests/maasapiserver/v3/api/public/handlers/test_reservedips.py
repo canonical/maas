@@ -21,10 +21,6 @@ from maasapiserver.v3.api.public.models.responses.reservedips import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.subnet import RdnsMode
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.reservedips import (
-    ReservedIPsClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     PreconditionFailedException,
@@ -32,6 +28,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.reservedips import ReservedIPsFilters
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.reservedips import ReservedIP
@@ -117,11 +115,11 @@ class TestReservedIPsApi(ApiCommonTests):
             page=1,
             size=1,
             query=QuerySpec(
-                where=ReservedIPsClauseFactory.and_clauses(
+                where=ReservedIPsFilters.and_filters(
                     [
-                        ReservedIPsClauseFactory.with_fabric_id(1),
-                        ReservedIPsClauseFactory.with_subnet_id(1),
-                        ReservedIPsClauseFactory.with_vlan_id(1),
+                        ReservedIPsFilters.with_fabric_id(1),
+                        ReservedIPsFilters.with_subnet_id(1),
+                        ReservedIPsFilters.with_vlan_id(1),
                     ]
                 )
             ),
@@ -148,11 +146,11 @@ class TestReservedIPsApi(ApiCommonTests):
             page=1,
             size=1,
             query=QuerySpec(
-                where=ReservedIPsClauseFactory.and_clauses(
+                where=ReservedIPsFilters.and_filters(
                     [
-                        ReservedIPsClauseFactory.with_fabric_id(1),
-                        ReservedIPsClauseFactory.with_subnet_id(1),
-                        ReservedIPsClauseFactory.with_vlan_id(1),
+                        ReservedIPsFilters.with_fabric_id(1),
+                        ReservedIPsFilters.with_subnet_id(1),
+                        ReservedIPsFilters.with_vlan_id(1),
                     ]
                 )
             ),
@@ -182,12 +180,12 @@ class TestReservedIPsApi(ApiCommonTests):
         }
         services_mock.reservedips.get_one.assert_called_once_with(
             query=QuerySpec(
-                ReservedIPsClauseFactory.and_clauses(
+                ReservedIPsFilters.and_filters(
                     [
-                        ReservedIPsClauseFactory.with_id(TEST_RESERVEDIP.id),
-                        ReservedIPsClauseFactory.with_fabric_id(1),
-                        ReservedIPsClauseFactory.with_subnet_id(1),
-                        ReservedIPsClauseFactory.with_vlan_id(1),
+                        ReservedIPsFilters.with_id(TEST_RESERVEDIP.id),
+                        ReservedIPsFilters.with_fabric_id(1),
+                        ReservedIPsFilters.with_subnet_id(1),
+                        ReservedIPsFilters.with_vlan_id(1),
                     ]
                 )
             )
@@ -290,12 +288,12 @@ class TestReservedIPsApi(ApiCommonTests):
         assert response.json()["comment"] == "updated comment"
 
         query = QuerySpec(
-            where=ReservedIPsClauseFactory.and_clauses(
+            where=ReservedIPsFilters.and_filters(
                 [
-                    ReservedIPsClauseFactory.with_id(TEST_RESERVEDIP.id),
-                    ReservedIPsClauseFactory.with_subnet_id(1),
-                    ReservedIPsClauseFactory.with_vlan_id(1),
-                    ReservedIPsClauseFactory.with_fabric_id(1),
+                    ReservedIPsFilters.with_id(TEST_RESERVEDIP.id),
+                    ReservedIPsFilters.with_subnet_id(1),
+                    ReservedIPsFilters.with_vlan_id(1),
+                    ReservedIPsFilters.with_fabric_id(1),
                 ]
             )
         )
@@ -342,12 +340,12 @@ class TestReservedIPsApi(ApiCommonTests):
         assert response.status_code == 204
         services_mock.reservedips.delete_one.assert_called_with(
             query=QuerySpec(
-                where=ReservedIPsClauseFactory.and_clauses(
+                where=ReservedIPsFilters.and_filters(
                     [
-                        ReservedIPsClauseFactory.with_id(TEST_RESERVEDIP.id),
-                        ReservedIPsClauseFactory.with_subnet_id(1),
-                        ReservedIPsClauseFactory.with_vlan_id(1),
-                        ReservedIPsClauseFactory.with_fabric_id(1),
+                        ReservedIPsFilters.with_id(TEST_RESERVEDIP.id),
+                        ReservedIPsFilters.with_subnet_id(1),
+                        ReservedIPsFilters.with_vlan_id(1),
+                        ReservedIPsFilters.with_fabric_id(1),
                     ]
                 )
             ),
@@ -378,12 +376,12 @@ class TestReservedIPsApi(ApiCommonTests):
         assert response.status_code == 412
         services_mock.reservedips.delete_one.assert_called_with(
             query=QuerySpec(
-                where=ReservedIPsClauseFactory.and_clauses(
+                where=ReservedIPsFilters.and_filters(
                     [
-                        ReservedIPsClauseFactory.with_id(TEST_RESERVEDIP.id),
-                        ReservedIPsClauseFactory.with_subnet_id(1),
-                        ReservedIPsClauseFactory.with_vlan_id(1),
-                        ReservedIPsClauseFactory.with_fabric_id(1),
+                        ReservedIPsFilters.with_id(TEST_RESERVEDIP.id),
+                        ReservedIPsFilters.with_subnet_id(1),
+                        ReservedIPsFilters.with_vlan_id(1),
+                        ReservedIPsFilters.with_fabric_id(1),
                     ]
                 )
             ),

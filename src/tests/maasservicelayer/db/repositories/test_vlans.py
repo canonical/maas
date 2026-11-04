@@ -8,12 +8,10 @@ from sqlalchemy.sql.operators import eq
 from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.vlans import (
-    VlansClauseFactory,
-    VlansRepository,
-)
+from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.db.tables import VlanTable
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.models.vlans import Vlan
 from tests.fixtures.factories.fabric import create_test_fabric_entry
 from tests.fixtures.factories.interface import create_test_interface_entry
@@ -28,22 +26,72 @@ from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
-class TestVlansClauseFactory:
-    def test_builder(self) -> None:
-        clause = VlansClauseFactory.with_system_id(system_id="abc")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_node.system_id = 'abc'")
-
-        clause = VlansClauseFactory.with_node_type(
-            type=NodeTypeEnum.RACK_CONTROLLER
-        )
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_node.node_type = 2")
-
-
 class TestVlansRepository(RepositoryCommonTests[Vlan]):
+    @pytest.mark.parametrize("exists", [True, False])
+    async def test_relay_vlan_presence(
+        self,
+        fixture: Fixture,
+        repository_instance: VlansRepository,
+        exists: bool,
+    ) -> None:
+        relay = await create_test_vlan_entry(fixture)
+        relayed = await create_test_vlan_entry(
+            fixture, relay_vlan_id=relay["id"]
+        )
+        result = await repository_instance.get_many(
+            QuerySpec(
+                where=VlansFilters.and_filters(
+                    [
+                        VlansFilters.with_relay_vlan_exists(exists),
+                        VlansFilters.or_filters(
+                            [
+                                VlansFilters.with_id(relay["id"]),
+                                VlansFilters.with_id(relayed["id"]),
+                            ]
+                        ),
+                    ]
+                )
+            )
+        )
+        assert [item.id for item in result] == [
+            relayed["id"] if exists else relay["id"]
+        ]
+
+    async def test_primary_or_secondary_rack_filter(
+        self, fixture: Fixture, repository_instance: VlansRepository
+    ) -> None:
+        rack = await create_test_rack_controller_entry(fixture)
+        primary = await create_test_vlan_entry(
+            fixture, primary_rack_id=rack["id"]
+        )
+        secondary = await create_test_vlan_entry(
+            fixture, secondary_rack_id=rack["id"]
+        )
+        unrelated = await create_test_vlan_entry(fixture)
+        result = await repository_instance.get_many(
+            QuerySpec(
+                where=VlansFilters.with_primary_or_secondary_rack_id(
+                    rack["id"]
+                )
+            )
+        )
+        assert {item.id for item in result} == {primary["id"], secondary["id"]}
+        complement = await repository_instance.get_many(
+            QuerySpec(
+                where=VlansFilters.and_filters(
+                    [
+                        VlansFilters.with_id(unrelated["id"]),
+                        VlansFilters.not_filter(
+                            VlansFilters.with_primary_or_secondary_rack_id(
+                                rack["id"]
+                            )
+                        ),
+                    ]
+                )
+            )
+        )
+        assert [item.id for item in complement] == [unrelated["id"]]
+
     @pytest.fixture
     def repository_instance(
         self, db_connection: AsyncConnection
@@ -92,9 +140,7 @@ class TestVlansRepository(RepositoryCommonTests[Vlan]):
         self, repository_instance: VlansRepository
     ):
         result = await repository_instance.get_node_vlans(
-            query=QuerySpec(
-                where=VlansClauseFactory.with_system_id(system_id="abc")
-            )
+            query=QuerySpec(where=VlansFilters.with_system_id(system_id="abc"))
         )
         assert result == []
 
@@ -120,8 +166,15 @@ class TestVlansRepository(RepositoryCommonTests[Vlan]):
 
         result = await repository_instance.get_node_vlans(
             query=QuerySpec(
-                where=VlansClauseFactory.with_system_id(
-                    rack_controller["system_id"]
+                where=VlansFilters.and_filters(
+                    [
+                        VlansFilters.with_system_id(
+                            rack_controller["system_id"]
+                        ),
+                        VlansFilters.with_node_type(
+                            NodeTypeEnum.RACK_CONTROLLER
+                        ),
+                    ]
                 )
             )
         )
@@ -131,6 +184,21 @@ class TestVlansRepository(RepositoryCommonTests[Vlan]):
         )
         assert len(result) == 1
         assert result[0] == vlan
+        assert (
+            await repository_instance.get_node_vlans(
+                QuerySpec(
+                    where=VlansFilters.and_filters(
+                        [
+                            VlansFilters.with_system_id(
+                                rack_controller["system_id"]
+                            ),
+                            VlansFilters.with_node_type(NodeTypeEnum.MACHINE),
+                        ]
+                    )
+                )
+            )
+            == []
+        )
 
     async def test_get_rack_controller_vlans_multiple_vlans(
         self, fixture: Fixture, repository_instance: VlansRepository
@@ -158,9 +226,7 @@ class TestVlansRepository(RepositoryCommonTests[Vlan]):
         )
         result = await repository_instance.get_node_vlans(
             query=QuerySpec(
-                where=VlansClauseFactory.with_system_id(
-                    rack_controller["system_id"]
-                )
+                where=VlansFilters.with_system_id(rack_controller["system_id"])
             )
         )
         assert len(result) == 2
