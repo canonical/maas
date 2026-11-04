@@ -11,7 +11,12 @@ from maascommon.enums.boot_resources import (
     BootResourceType,
 )
 from maascommon.enums.node import NodeStatus
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import (
+    Clause,
+    ClauseFactory,
+    QuerySpec,
+    SQLQuerySpec,
+)
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ReadOnlyRepository,
@@ -273,7 +278,10 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
             self.get_repository_table()
         )
         if query:
-            total_stmt = query.enrich_stmt(total_stmt)
+            translated = self._translate(query)
+            total_stmt = SQLQuerySpec(where=translated.where).enrich_stmt(
+                total_stmt
+            )
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = self._selection_statistics_stmt()
@@ -283,7 +291,7 @@ class BootSourceSelectionsRepository(BaseRepository[BootSourceSelection]):
             .limit(size)
         )
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
 
         result = await self.execute_stmt(stmt)
         return ListResult(

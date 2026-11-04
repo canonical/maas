@@ -12,7 +12,7 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.filters import AnyQuerySpec, QuerySpec
 from maasservicelayer.db.repositories.dhcpsnippets import (
     DhcpSnippetsClauseFactory,
 )
@@ -119,7 +119,7 @@ class IPRangesService(
         raise NotImplementedError("Not implemented yet.")
 
     async def update_many(
-        self, query: QuerySpec, builder: IPRangeBuilder
+        self, query: AnyQuerySpec, builder: IPRangeBuilder
     ) -> List[IPRange]:
         updated_resources = await self.repository.update_many(
             query=query, builder=builder

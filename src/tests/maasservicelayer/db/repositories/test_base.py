@@ -1,6 +1,7 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from dataclasses import dataclass
 from datetime import datetime
 from operator import eq
 from typing import Type
@@ -21,12 +22,20 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
 from maasservicelayer.db import Database
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import Clause
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     MultipleResultsException,
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.base import (
+    CustomFilter,
+    FieldFilter,
+    FilterFactory,
+    Operator,
+)
+from maasservicelayer.filters.query import OrderBy, QuerySpec
 from maasservicelayer.models.base import (
     MaasTimestampedBaseModel,
     ResourceBuilder,
@@ -108,6 +117,23 @@ class AModel(MaasTimestampedBaseModel):
     data: str
 
 
+@dataclass(frozen=True)
+class WithRelatedData(CustomFilter):
+    model = AModel
+    value: str
+    include_c: bool = False
+
+
+class AMapper(DefaultDomainDataMapper):
+    def custom_filter_clause(self, filter):
+        if isinstance(filter, WithRelatedData):
+            joins = [join(A, B, eq(A.c.b_id, B.c.id))]
+            if filter.include_c:
+                joins.append(join(B, C, eq(B.c.c_id, C.c.id)))
+            return Clause(condition=A.c.data == filter.value, joins=joins)
+        return super().custom_filter_clause(filter)
+
+
 class AResourceBuilder(ResourceBuilder):
     id: int | Unset = Field(default=UNSET)
     created: datetime | Unset = Field(default=UNSET)
@@ -122,18 +148,25 @@ class MyRepository(BaseRepository[AModel]):
     def get_model_factory(self) -> Type[AModel]:
         return AModel
 
+    def get_mapper(self):
+        return AMapper(AModel, A)
+
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestMyRepository:
     async def test_exists(self, db_connection: AsyncConnection) -> None:
         repo = MyRepository(Context(connection=db_connection))
-        exists = await repo.exists(QuerySpec(where=Clause(eq(A.c.id, 1))))
+        exists = await repo.exists(
+            QuerySpec(where=FieldFilter(AModel, "id", Operator.EQ, 1))
+        )
         assert exists is True
 
     async def test_dont_exist(self, db_connection: AsyncConnection) -> None:
         repo = MyRepository(Context(connection=db_connection))
-        exists = await repo.exists(QuerySpec(where=Clause(eq(A.c.id, 0))))
+        exists = await repo.exists(
+            QuerySpec(where=FieldFilter(AModel, "id", Operator.EQ, 0))
+        )
         assert exists is False
 
     async def test_get_many(self, db_connection: AsyncConnection) -> None:
@@ -143,12 +176,7 @@ class TestMyRepository:
 
     async def test_get_one(self, db_connection: AsyncConnection) -> None:
         repo = MyRepository(Context(connection=db_connection))
-        query = QuerySpec(
-            where=Clause(
-                condition=eq(A.c.data, "foo"),
-                joins=[join(A, B, eq(A.c.b_id, B.c.id))],
-            )
-        )
+        query = QuerySpec(where=WithRelatedData("foo"))
         a_obj = await repo.get_one(query)
         assert a_obj is not None
         assert a_obj.id == 1
@@ -165,7 +193,9 @@ class TestMyRepository:
         self, db_connection: AsyncConnection
     ) -> None:
         repo = MyRepository(Context(connection=db_connection))
-        a_obj = await repo.get_one(QuerySpec(where=Clause(eq(A.c.id, 0))))
+        a_obj = await repo.get_one(
+            QuerySpec(where=FieldFilter(AModel, "id", Operator.EQ, 0))
+        )
         assert a_obj is None
 
     async def test_get_by_id(self, db_connection: AsyncConnection) -> None:
@@ -187,16 +217,10 @@ class TestMyRepository:
     ) -> None:
         repo = MyRepository(Context(connection=db_connection))
         query = QuerySpec(
-            where=ClauseFactory.and_clauses(
+            where=FilterFactory.and_filters(
                 [
-                    Clause(
-                        condition=eq(A.c.data, "foo"),
-                        joins=[join(A, B, eq(A.c.b_id, B.c.id))],
-                    ),
-                    Clause(
-                        condition=eq(A.c.data, "foo"),
-                        joins=[join(B, C, eq(B.c.c_id, C.c.id))],
-                    ),
+                    WithRelatedData("foo"),
+                    WithRelatedData("foo", include_c=True),
                 ]
             )
         )
@@ -208,12 +232,7 @@ class TestMyRepository:
     async def test_update_one(self, db_connection: AsyncConnection) -> None:
         repo = MyRepository(Context(connection=db_connection))
         builder = AResourceBuilder(data="test")
-        query = QuerySpec(
-            where=Clause(
-                condition=eq(A.c.data, "foo"),
-                joins=[join(A, B, eq(A.c.b_id, B.c.id))],
-            )
-        )
+        query = QuerySpec(where=WithRelatedData("foo"))
         updated_obj = await repo.update_one(query=query, builder=builder)
         assert updated_obj is not None
         assert updated_obj.data == "test"
@@ -233,7 +252,9 @@ class TestMyRepository:
         repo = MyRepository(Context(connection=db_connection))
         builder = AResourceBuilder(data="test")
         query = QuerySpec(
-            where=Clause(condition=eq(A.c.data, "definitely_not_a_match"))
+            where=FieldFilter(
+                AModel, "data", Operator.EQ, "definitely_not_a_match"
+            )
         )
         with pytest.raises(NotFoundException):
             await repo.update_one(query=query, builder=builder)
@@ -252,16 +273,10 @@ class TestMyRepository:
         repo = MyRepository(Context(connection=db_connection))
         builder = AResourceBuilder(data="test")
         query = QuerySpec(
-            where=ClauseFactory.and_clauses(
+            where=FilterFactory.and_filters(
                 [
-                    Clause(
-                        condition=eq(A.c.data, "foo"),
-                        joins=[join(A, B, eq(A.c.b_id, B.c.id))],
-                    ),
-                    Clause(
-                        condition=eq(A.c.data, "foo"),
-                        joins=[join(B, C, eq(B.c.c_id, C.c.id))],
-                    ),
+                    WithRelatedData("foo"),
+                    WithRelatedData("foo", include_c=True),
                 ]
             )
         )
@@ -278,12 +293,7 @@ class TestMyRepository:
 
     async def test_delete_one(self, db_connection: AsyncConnection) -> None:
         repo = MyRepository(Context(connection=db_connection))
-        query = QuerySpec(
-            where=Clause(
-                condition=eq(A.c.data, "foo"),
-                joins=[join(A, B, eq(A.c.b_id, B.c.id))],
-            )
-        )
+        query = QuerySpec(where=WithRelatedData("foo"))
         deleted_resource = await repo.delete_one(query=query)
         assert deleted_resource.id == 1
         deleted_obj = await repo.get_one(query=query)
@@ -294,8 +304,8 @@ class TestMyRepository:
     ) -> None:
         repo = MyRepository(Context(connection=db_connection))
         query = QuerySpec(
-            where=Clause(
-                condition=eq(A.c.data, "definitely not a match"),
+            where=FieldFilter(
+                AModel, "data", Operator.EQ, "definitely not a match"
             )
         )
         deleted_resource = await repo.delete_one(query=query)
@@ -315,16 +325,10 @@ class TestMyRepository:
     ) -> None:
         repo = MyRepository(Context(connection=db_connection))
         query = QuerySpec(
-            where=ClauseFactory.and_clauses(
+            where=FilterFactory.and_filters(
                 [
-                    Clause(
-                        condition=eq(A.c.data, "foo"),
-                        joins=[join(A, B, eq(A.c.b_id, B.c.id))],
-                    ),
-                    Clause(
-                        condition=eq(A.c.data, "foo"),
-                        joins=[join(B, C, eq(B.c.c_id, C.c.id))],
-                    ),
+                    WithRelatedData("foo"),
+                    WithRelatedData("foo", include_c=True),
                 ]
             )
         )
@@ -347,10 +351,18 @@ class TestMyRepository:
     ) -> None:
         repo = MyRepository(Context(connection=db_connection))
         resources = await repo.list_all(
-            query=QuerySpec(
-                Clause(
-                    condition=eq(A.c.data, "foo"),
-                )
-            )
+            query=QuerySpec(FieldFilter(AModel, "data", Operator.EQ, "foo"))
         )
         assert len(resources) == 1
+
+    async def test_list_orders_items_without_ordering_the_count(
+        self, db_connection: AsyncConnection
+    ) -> None:
+        repo = MyRepository(Context(connection=db_connection))
+        result = await repo.list(
+            page=1,
+            size=1,
+            query=QuerySpec(order_by=(OrderBy(AModel, "id"),)),
+        )
+        assert result.total == 2
+        assert [resource.id for resource in result.items] == [1]
