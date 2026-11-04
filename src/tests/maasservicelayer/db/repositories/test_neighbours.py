@@ -1,17 +1,16 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv4Address
+from ipaddress import ip_address
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.neighbours import NeighbourBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.neighbours import (
-    NeighbourClauseFactory,
-    NeighboursRepository,
-)
+from maasservicelayer.db.repositories.neighbours import NeighboursRepository
+from maasservicelayer.filters.neighbours import NeighbourFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.neighbours import Neighbour
 from tests.fixtures.factories.discoveries import (
@@ -23,31 +22,40 @@ from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
-class TestNeighbourClauseFactory:
-    def test_with_ip(self) -> None:
-        clause = NeighbourClauseFactory.with_ip(IPv4Address("10.0.0.1"))
-        # We can't compile the statement with literal binds because they don't
-        # exist for INET
-        assert (
-            str(clause.condition.compile())
-            == "maasserver_neighbour.ip = :ip_1"
-        )
-
-    def test_with_mac(self) -> None:
-        clause = NeighbourClauseFactory.with_mac(
-            MacAddress("aa:bb:cc:dd:ee:ff")
-        )
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_neighbour.mac_address = 'aa:bb:cc:dd:ee:ff'"
-        )
-
-
 class TestNeighboursRepository(RepositoryCommonTests[Neighbour]):
+    @pytest.mark.parametrize("ip", ["10.0.0.1", "2001:db8::1"])
+    async def test_get_by_ip_and_mac(
+        self,
+        repository_instance: NeighboursRepository,
+        fixture: Fixture,
+        ip: str,
+    ) -> None:
+        rack_controller = await create_test_rack_controller_entry(fixture)
+        interface = await create_test_interface_entry(
+            fixture, node=rack_controller
+        )
+        expected = await create_test_neighbour_entry(
+            fixture,
+            interface_id=interface.id,
+            ip=ip,
+            mac_address="aa:bb:cc:dd:ee:ff",
+        )
+        await create_test_neighbour_entry(
+            fixture,
+            interface_id=interface.id,
+            ip="10.0.0.2",
+            mac_address="00:11:22:33:44:55",
+        )
+
+        for filter in (
+            NeighbourFilters.with_ip(ip_address(ip)),
+            NeighbourFilters.with_mac(MacAddress("aa:bb:cc:dd:ee:ff")),
+        ):
+            result = await repository_instance.get_many(
+                QuerySpec(where=filter)
+            )
+            assert result == [expected]
+
     @pytest.fixture
     def repository_instance(
         self, db_connection: AsyncConnection

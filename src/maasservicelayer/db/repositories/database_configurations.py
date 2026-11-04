@@ -10,23 +10,21 @@ from sqlalchemy.sql.operators import eq
 from maasservicelayer.builders.configurations import (
     DatabaseConfigurationBuilder,
 )
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.context import Context
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import Repository
 from maasservicelayer.db.tables import ConfigTable
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.configurations import DatabaseConfiguration
 
 
-class DatabaseConfigurationsClauseFactory(ClauseFactory):
-    @classmethod
-    def with_name(cls, name: str) -> Clause:
-        return Clause(condition=eq(ConfigTable.c.name, name))
+class DatabaseConfigurationsRepository(Repository[DatabaseConfiguration]):
+    def __init__(self, context: Context):
+        super().__init__(context)
+        self.mapper = DefaultDomainDataMapper[DatabaseConfiguration](
+            DatabaseConfiguration, ConfigTable
+        )
 
-    @classmethod
-    def with_names(cls, names: set[str]) -> Clause:
-        return Clause(condition=ConfigTable.c.name.in_(names))
-
-
-class DatabaseConfigurationsRepository(Repository):
     async def get(self, name: str) -> DatabaseConfiguration | None:
         stmt = (
             select(
@@ -38,15 +36,15 @@ class DatabaseConfigurationsRepository(Repository):
         result = (await self.execute_stmt(stmt)).one_or_none()
         if result is None:
             return None
-        return DatabaseConfiguration(**result._asdict())
+        return self.mapper.to_domain(result._mapping)
 
     async def get_many(self, query: QuerySpec) -> list[DatabaseConfiguration]:
         stmt = select(
             "*",
         ).select_from(ConfigTable)
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         result = (await self.execute_stmt(stmt)).all()
-        return [DatabaseConfiguration(**row._asdict()) for row in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
     async def create_or_update(
         self, builder: DatabaseConfigurationBuilder
@@ -61,7 +59,7 @@ class DatabaseConfigurationsRepository(Repository):
             .returning(ConfigTable)
         )
         result = (await self.execute_stmt(upsert_stmt)).one()
-        return DatabaseConfiguration(**result._asdict())
+        return self.mapper.to_domain(result._mapping)
 
     async def clear(self) -> None:
         await self.execute_stmt(delete(ConfigTable))
@@ -81,4 +79,4 @@ class DatabaseConfigurationsRepository(Repository):
         ]
         stmt = pg_insert(ConfigTable).values(data).returning(ConfigTable)
         result = await self.execute_stmt(stmt)
-        return [DatabaseConfiguration(**row._asdict()) for row in result.all()]
+        return [self.mapper.to_domain(row._mapping) for row in result.all()]

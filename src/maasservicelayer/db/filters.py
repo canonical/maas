@@ -4,26 +4,18 @@
 from dataclasses import dataclass, field
 from typing import TypeVar
 
-from sqlalchemy import (
-    and_,
-    asc,
-    ColumnElement,
-    Delete,
-    desc,
-    Join,
-    not_,
-    or_,
-    Select,
-    Update,
-)
+from sqlalchemy import and_, ColumnElement, Delete, Join, or_, Select, Update
 
 
 @dataclass
 class OrderByClause:
     column: ColumnElement
+    joins: list[Join] = field(default_factory=list)
 
     def __eq__(self, other) -> bool:
-        return self.column.compare(other.column)
+        return isinstance(other, type(self)) and Clause(
+            condition=self.column, joins=self.joins
+        ) == Clause(condition=other.column, joins=other.joins)
 
 
 @dataclass
@@ -54,10 +46,8 @@ UD = TypeVar("UD", Update, Delete)
 
 
 @dataclass
-class QuerySpec:
-    """
-    Contains the query specification to be executed.
-    """
+class SQLQuerySpec:
+    """SQL clauses to apply to a statement inside the data layer."""
 
     where: Clause | None = None
     # order_by can't be a single clause as SQLAlchemy requires the order_by args to be a list
@@ -68,9 +58,8 @@ class QuerySpec:
         """Enrich the SQL statement by adding the clauses (if present) in the object.
 
         The purpose of this method is to handle all the logic for enriching a statement
-        in a single spot, so when you have to apply a QuerySpec to a statement, all you
-        have to do is: `stmt = query.enrich_stmt(stmt)`, where `query` is the QuerySpec
-        object.
+        in a single spot: `stmt = query.enrich_stmt(stmt)`, where `query` is
+        an internal SQLQuerySpec produced by the mapper.
 
         The where condition is added to all kind of statements through the .where() method,
         the join conditions, instead, works different based on the statement type.
@@ -87,11 +76,12 @@ class QuerySpec:
         Returns:
             The original statement (possibly) enriched with the clauses.
         """
-        if not self.where and not self.order_by:
+        where = self._where_clause()
+        if not where and not self.order_by:
             return stmt
 
-        if self.where:
-            stmt = stmt.where(self.where.condition)
+        if where:
+            stmt = stmt.where(where.condition)
 
         if isinstance(stmt, Select):
             stmt = self._enrich_select_stmt(stmt)
@@ -100,36 +90,62 @@ class QuerySpec:
 
         return stmt
 
+    def _where_clause(self) -> Clause | None:
+        if self.where is None or isinstance(self.where, Clause):
+            return self.where
+        raise TypeError(
+            "Filters must be translated into a Clause by the repository "
+            "mapper before building a statement."
+        )
+
     def _enrich_select_stmt(self, stmt: Select) -> Select:
         already_joined = self._get_already_joined(stmt)
+        where = self._where_clause()
         joins = []
-        joins.extend(self.where.joins if self.where else [])
+        joins.extend(where.joins if where else [])
 
         if self.order_by:
             # Reset the already present order by
             stmt = stmt.order_by(None)
 
             stmt = stmt.order_by(*[clause.column for clause in self.order_by])
+            for clause in self.order_by:
+                joins.extend(clause.joins)
 
         for join in joins:
             left_in_joined = join.left in already_joined
             right_in_joined = join.right in already_joined
 
             if not left_in_joined and not right_in_joined:
-                stmt = stmt.join_from(join.left, join.right, join.onclause)
+                stmt = stmt.join_from(
+                    join.left,
+                    join.right,
+                    join.onclause,
+                    isouter=join.isouter,
+                )
                 already_joined.update([join.left, join.right])
             elif not left_in_joined:
+                # Joining the left side onto the right one would flip
+                # which side an outer join preserves.
+                if join.isouter:
+                    raise ValueError(
+                        "An outer join can't be added when only its right "
+                        "side is already part of the statement."
+                    )
                 stmt = stmt.join(join.left, join.onclause)
                 already_joined.add(join.left)
             elif not right_in_joined:
-                stmt = stmt.join(join.right, join.onclause)
+                stmt = stmt.join(
+                    join.right, join.onclause, isouter=join.isouter
+                )
                 already_joined.add(join.right)
 
         return stmt
 
     def _enrich_update_delete_stmt(self, stmt: UD) -> UD:
         # Order by won't be applied to update/delete statements.
-        joins = self.where.joins if self.where else []
+        where = self._where_clause()
+        joins = where.joins if where else []
         for join in joins:
             assert join.onclause is not None, "Join onclause must be defined."
             if all(
@@ -144,6 +160,15 @@ class QuerySpec:
             item for join in stmt._setup_joins for item in (join[0], join[2])
         }
         already_joined.update(stmt.columns_clause_froms)
+        # A SELECT can project another table while its explicit root is
+        # already joined. WHERE-only references are not joined tables.
+        froms = list(stmt._from_obj)
+        while froms:
+            source = froms.pop()
+            if isinstance(source, Join):
+                froms.extend((source.left, source.right))
+            else:
+                already_joined.add(source)
         return already_joined
 
 
@@ -169,19 +194,3 @@ class ClauseFactory:
             condition=and_(*[clause.condition for clause in clauses]),
             joins=cls._combine_joins(clauses),
         )
-
-    @classmethod
-    def not_clause(cls, clause: Clause) -> Clause:
-        return Clause(condition=not_(clause.condition), joins=clause.joins)
-
-
-class OrderByClauseFactory:
-    @staticmethod
-    def asc_clause(clause: OrderByClause) -> OrderByClause:
-        clause.column = asc(clause.column)
-        return clause
-
-    @staticmethod
-    def desc_clause(clause: OrderByClause) -> OrderByClause:
-        clause.column = desc(clause.column)
-        return clause

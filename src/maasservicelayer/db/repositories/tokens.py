@@ -7,7 +7,6 @@ from sqlalchemy import func, select, Table
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.token import TokenType
-from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     ConsumerTable,
@@ -21,24 +20,6 @@ from maasservicelayer.models.tokens import (
     RefreshToken,
     Token,
 )
-
-
-class TokenClauseFactory(ClauseFactory):
-    @classmethod
-    def with_consumer_id(cls, consumer_id: int) -> Clause:
-        return Clause(condition=eq(TokenTable.c.consumer_id, consumer_id))
-
-    @classmethod
-    def with_consumer_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=TokenTable.c.consumer_id.in_(ids))
-
-    @classmethod
-    def with_secret(cls, secret: str) -> Clause:
-        return Clause(condition=eq(TokenTable.c.secret, secret))
-
-    @classmethod
-    def with_key(cls, key: str) -> Clause:
-        return Clause(condition=eq(TokenTable.c.key, key))
 
 
 class TokensRepository(BaseRepository[Token]):
@@ -84,26 +65,12 @@ class TokensRepository(BaseRepository[Token]):
         return [str(row[0]) for row in result]
 
 
-class RefreshTokenClauseFactory(ClauseFactory):
-    @classmethod
-    def with_token(cls, token: str) -> Clause:
-        return Clause(condition=eq(RefreshTokenTable.c.token, token))
-
-
 class RefreshTokenRepository(BaseRepository[RefreshToken]):
     def get_repository_table(self) -> Table:
         return RefreshTokenTable
 
     def get_model_factory(self) -> type[RefreshToken]:
         return RefreshToken
-
-
-class OIDCRevokedTokenClauseFactory(ClauseFactory):
-    @classmethod
-    def with_token_hash(cls, token_hash: str) -> Clause:
-        return Clause(
-            condition=eq(OIDCRevokedTokenTable.c.token_hash, token_hash)
-        )
 
 
 class OIDCRevokedTokenRepository(BaseRepository[OIDCRevokedToken]):

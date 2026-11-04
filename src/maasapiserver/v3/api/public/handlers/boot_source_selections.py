@@ -38,11 +38,11 @@ from maascommon.workflows.bootresource import (
     SYNC_SELECTION_WORKFLOW_NAME,
     SyncSelectionParam,
 )
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.configurations import BootImagesAutoImportConfig
 from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.services import ServiceCollectionV3
@@ -229,9 +229,7 @@ class BootSourceSelectionsHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         deleted = await services.boot_source_selections.delete_many(
-            query=QuerySpec(
-                where=BootSourceSelectionClauseFactory.with_ids(ids)
-            )
+            query=QuerySpec(where=BootSourceSelectionFilters.with_ids(ids))
         )
         with suppress(TemporalServiceException):
             for selection in deleted:
@@ -269,7 +267,7 @@ class BootSourceSelectionsHandler(Handler):
         statuses = await services.boot_source_selection_status.list(
             page=pagination_params.page,
             size=pagination_params.size,
-            query=QuerySpec(where=filters.to_clause()),
+            query=QuerySpec(where=filters.to_filter()),
         )
 
         next_link = None
@@ -350,7 +348,7 @@ class BootSourceSelectionsHandler(Handler):
             await services.boot_source_selections.list_selections_statistics(
                 page=pagination_params.page,
                 size=pagination_params.size,
-                query=QuerySpec(where=filters.to_clause()),
+                query=QuerySpec(where=filters.to_filter()),
             )
         )
 

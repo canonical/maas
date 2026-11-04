@@ -2,19 +2,15 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from abc import ABC, abstractmethod
-from copy import deepcopy
 from re import compile
 from typing import ClassVar
 
 from fastapi import Query
 from pydantic import BaseModel, Field, field_validator
 
-from maasservicelayer.db.filters import (
-    Clause,
-    OrderByClause,
-    OrderByClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.query import OrderByFactory, Ordering
 
 # from src/maasserver/fields.py:31
 MODEL_NAME_VALIDATOR = compile(r"^\w[ \w-]*$")
@@ -53,7 +49,7 @@ class OrderByQueryFilter(BaseModel):
         )
     )
 
-    order_by_columns: ClassVar[dict[str, OrderByClause]] = {}
+    order_by_fields: ClassVar[dict[str, Ordering]] = {}
 
     @classmethod
     def _clean_field(cls, field: str) -> str:
@@ -70,7 +66,7 @@ class OrderByQueryFilter(BaseModel):
             return None
         for elem in v:
             field = cls._clean_field(elem)
-            if field not in cls.order_by_columns:
+            if field not in cls.order_by_fields:
                 raise ValidationException.build_for_field(
                     "order_by",
                     f"'{elem}' is not an allowed property.",
@@ -86,23 +82,16 @@ class OrderByQueryFilter(BaseModel):
 
         return v
 
-    def to_clauses(self) -> list[OrderByClause]:
-        clauses = []
-        if not self.order_by:
-            return []
-        for field in self.order_by:
-            orig_clause = self.order_by_columns.get(self._clean_field(field))
-            assert orig_clause is not None
-
-            clause = deepcopy(orig_clause)
-
+    def to_order_by(self) -> tuple[Ordering, ...]:
+        ordering = []
+        for field in self.order_by or ():
+            order = self.order_by_fields[self._clean_field(field)]
             if field.startswith("asc("):
-                clause = OrderByClauseFactory.asc_clause(clause)
+                order = OrderByFactory.asc(order)
             else:
-                clause = OrderByClauseFactory.desc_clause(clause)
-            clauses.append(clause)
-
-        return clauses
+                order = OrderByFactory.desc(order)
+            ordering.append(order)
+        return tuple(ordering)
 
     def to_href_format(self) -> str:
         if not self.order_by:
@@ -117,7 +106,7 @@ class FreeTextSearchQueryParam(BaseModel, ABC):
     q: str | None = Field(Query(default=None, title="Free text search query"))
 
     @abstractmethod
-    def to_clause(self) -> Clause | None:
+    def to_filter(self) -> Filter | None:
         raise NotImplementedError()
 
     def to_href_format(self) -> str:

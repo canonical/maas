@@ -4,10 +4,6 @@
 from pydantic import BaseModel, Field, IPvAnyAddress
 
 from maasservicelayer.builders.reservedips import ReservedIPBuilder
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ValidationException,
@@ -15,6 +11,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.reservedips import ReservedIP
 from maasservicelayer.models.subnets import Subnet
@@ -38,13 +36,13 @@ class ReservedIPCreateRequest(ReservedIPBaseRequest):
         # TODO: move this logic to service layer
         existing_ip = await services.staticipaddress.get_one(
             QuerySpec(
-                where=StaticIPAddressClauseFactory.with_ip(self.ip)  # pyright: ignore [reportArgumentType]
+                where=StaticIPAddressFilters.with_ip(self.ip)  # pyright: ignore [reportArgumentType]
             )
         )
         if existing_ip is not None:
             mac_addresses = await services.staticipaddress.get_mac_addresses(
                 query=QuerySpec(
-                    where=StaticIPAddressClauseFactory.with_id(existing_ip.id)
+                    where=StaticIPAddressFilters.with_id(existing_ip.id)
                 )
             )
             if self.mac_address not in mac_addresses:

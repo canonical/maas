@@ -3,7 +3,7 @@
 
 from abc import ABC
 from dataclasses import dataclass
-from typing import Generic, List, Tuple, TypeVar
+from typing import Any, Generic, List, Tuple, TypeVar
 
 import structlog
 
@@ -15,7 +15,6 @@ from maascommon.logging.security import (
     UPDATED,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     ReadOnlyRepository,
@@ -29,6 +28,7 @@ from maasservicelayer.exceptions.constants import (
     ETAG_PRECONDITION_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import (
     ListResult,
     MaasBaseModel,
@@ -116,10 +116,10 @@ class Service(ABC):  # noqa: B024
 M = TypeVar("M", bound=MaasBaseModel)
 
 # ROR ReadOnlyRepository
-ROR = TypeVar("ROR", bound=ReadOnlyRepository)
+ROR = TypeVar("ROR", bound=ReadOnlyRepository[Any])
 
 # BR BaseRepository
-BR = TypeVar("BR", bound=BaseRepository)
+BR = TypeVar("BR", bound=BaseRepository[Any])
 
 # B Builder
 B = TypeVar("B", bound=ResourceBuilder)

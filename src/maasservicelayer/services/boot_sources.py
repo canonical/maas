@@ -14,18 +14,14 @@ from maascommon.workflows.bootresource import (
 )
 from maasservicelayer.builders.bootsources import BootSourceBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootsourcecache import (
-    BootSourceCacheClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsources import (
-    BootSourcesClauseFactory,
-    BootSourcesRepository,
-)
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-)
+from maasservicelayer.db.repositories.bootsources import BootSourcesRepository
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.bootsourcecache import BootSourceCacheFilters
+from maasservicelayer.filters.bootsources import BootSourcesFilters
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.bootsourcecache import BootSourceCacheService
@@ -70,14 +66,14 @@ class BootSourcesService(
 
         await self.boot_source_cache_service.delete_many(
             query=QuerySpec(
-                where=BootSourceCacheClauseFactory.with_boot_source_ids(
+                where=BootSourceCacheFilters.with_boot_source_ids(
                     boot_source_ids
                 )
             )
         )
         await self.boot_source_selections_service.delete_many(
             query=QuerySpec(
-                where=BootSourceSelectionClauseFactory.with_boot_source_ids(
+                where=BootSourceSelectionFilters.with_boot_source_ids(
                     boot_source_ids
                 )
             )
@@ -134,9 +130,7 @@ class BootSourcesService(
         with suppress(NotFoundException):
             await self.update_one(
                 query=QuerySpec(
-                    where=BootSourcesClauseFactory.with_url(
-                        STABLE_IMAGES_STREAM_URL
-                    )
+                    where=BootSourcesFilters.with_url(STABLE_IMAGES_STREAM_URL)
                 ),
                 builder=BootSourceBuilder(enabled=True),
             )

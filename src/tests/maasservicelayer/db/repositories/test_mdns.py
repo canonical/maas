@@ -1,17 +1,16 @@
 # Copyright 2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from ipaddress import IPv4Address
+from ipaddress import ip_address
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.mdns import MDNSBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.mdns import (
-    MDNSClauseFactory,
-    MDNSRepository,
-)
+from maasservicelayer.db.repositories.mdns import MDNSRepository
+from maasservicelayer.filters.mdns import MDNSFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.mdns import MDNS
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.mdns import create_test_mdns_entry
@@ -19,15 +18,25 @@ from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
-class TestMDNSClauseFactory:
-    def test_with_ip(self) -> None:
-        clause = MDNSClauseFactory.with_ip(IPv4Address("10.0.0.1"))
-        # We can't compile the statement with literal binds because they don't
-        # exist for INET
-        assert str(clause.condition.compile()) == "maasserver_mdns.ip = :ip_1"
-
-
 class TestMDNSRepository(RepositoryCommonTests[MDNS]):
+    @pytest.mark.parametrize("ip", ["10.0.0.1", "2001:db8::1"])
+    async def test_get_by_ip(
+        self, repository_instance: MDNSRepository, fixture: Fixture, ip: str
+    ) -> None:
+        interface = await create_test_interface_entry(fixture)
+        expected = await create_test_mdns_entry(
+            fixture, hostname="matching", ip=ip, interface_id=interface.id
+        )
+        await create_test_mdns_entry(
+            fixture, hostname="other", ip="10.0.0.2", interface_id=interface.id
+        )
+
+        result = await repository_instance.get_many(
+            QuerySpec(where=MDNSFilters.with_ip(ip_address(ip)))
+        )
+
+        assert result == [expected]
+
     @pytest.fixture
     def repository_instance(
         self, db_connection: AsyncConnection

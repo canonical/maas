@@ -11,11 +11,11 @@ from maasservicelayer.builders.configurations import (
     DatabaseConfigurationBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.database_configurations import (
-    DatabaseConfigurationsClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.database_configurations import (
+    DatabaseConfigurationsFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models import configurations
 from maasservicelayer.models.configurations import (
     MAASAutoIPMICipherSuiteIDConfig,
@@ -317,9 +317,7 @@ class TestConfigurationsService:
         )
         service.database_configurations_service.get_many.assert_called_once_with(
             query=QuerySpec(
-                DatabaseConfigurationsClauseFactory.with_names(
-                    [ThemeConfig.name]
-                )
+                DatabaseConfigurationsFilters.with_names([ThemeConfig.name])
             )
         )
 

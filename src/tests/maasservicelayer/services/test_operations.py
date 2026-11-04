@@ -19,19 +19,17 @@ from maascommon.enums.operations import (
 from maascommon.workflows.operation import OPERATION_UUID_SEARCH_ATTRIBUTE
 from maasservicelayer.builders.operations import OperationBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.operation_tasks import (
     OperationTasksRepository,
 )
-from maasservicelayer.db.repositories.operations import (
-    OperationsClauseFactory,
-    OperationsRepository,
-)
+from maasservicelayer.db.repositories.operations import OperationsRepository
 from maasservicelayer.exceptions.catalog import (
     ConflictException,
     ForbiddenException,
     NotFoundException,
 )
+from maasservicelayer.filters.operations import OperationsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import (
     ListResult,
     MaasBaseModel,
@@ -376,12 +374,10 @@ class TestOperationsService:
         assert operations == [TEST_OPERATION]
         query = repository.get_many.call_args.kwargs["query"]
         assert query == QuerySpec(
-            where=OperationsClauseFactory.and_clauses(
+            where=OperationsFilters.and_filters(
                 [
-                    OperationsClauseFactory.with_status(
-                        OperationStatus.ACCEPTED
-                    ),
-                    OperationsClauseFactory.created_before(cutoff),
+                    OperationsFilters.with_status(OperationStatus.ACCEPTED),
+                    OperationsFilters.created_before(cutoff),
                 ]
             )
         )
@@ -396,7 +392,7 @@ class TestOperationsService:
         assert operations == [TEST_OPERATION]
         query = repository.get_many.call_args.kwargs["query"]
         assert query == QuerySpec(
-            where=OperationsClauseFactory.with_statuses(
+            where=OperationsFilters.with_statuses(
                 [OperationStatus.RUNNING, OperationStatus.CANCELLING]
             )
         )
@@ -411,13 +407,13 @@ class TestOperationsService:
         )
         query = repository.exists.call_args.kwargs["query"]
         assert query == QuerySpec(
-            where=OperationsClauseFactory.and_clauses(
+            where=OperationsFilters.and_filters(
                 [
-                    OperationsClauseFactory.with_resource_type(
+                    OperationsFilters.with_resource_type(
                         OperationResourceType.MACHINE
                     ),
-                    OperationsClauseFactory.with_resource_id(1),
-                    OperationsClauseFactory.with_statuses(
+                    OperationsFilters.with_resource_id(1),
+                    OperationsFilters.with_statuses(
                         [
                             OperationStatus.ACCEPTED,
                             OperationStatus.RUNNING,
@@ -439,9 +435,7 @@ class TestOperationsService:
         await service.update_status("op-uuid", OperationStatus.RUNNING)
 
         query = repository.get_one.call_args.kwargs["query"]
-        assert query == QuerySpec(
-            where=OperationsClauseFactory.with_uuid("op-uuid")
-        )
+        assert query == QuerySpec(where=OperationsFilters.with_uuid("op-uuid"))
         builder = repository.update_by_id.call_args.kwargs["builder"]
         populated = builder.populated_fields()
         assert populated["status"] == OperationStatus.RUNNING
@@ -518,9 +512,7 @@ class TestOperationsService:
         await service.set_current_task("op-uuid", "task1")
 
         query = repository.get_one.call_args.kwargs["query"]
-        assert query == QuerySpec(
-            where=OperationsClauseFactory.with_uuid("op-uuid")
-        )
+        assert query == QuerySpec(where=OperationsFilters.with_uuid("op-uuid"))
         builder = repository.update_by_id.call_args.kwargs["builder"]
         assert builder.populated_fields()["current_task"] == "task1"
 
@@ -558,7 +550,7 @@ class TestOperationsService:
         assert result.total == 1
         operations_repo_mock.list.assert_awaited_once()
         call_query = operations_repo_mock.list.call_args.kwargs["query"]
-        assert call_query.where == OperationsClauseFactory.with_user_id(1)
+        assert call_query.where == OperationsFilters.with_user_id(1)
 
     async def test_list_for_user_cannot_view_all_with_filters(
         self,
@@ -570,7 +562,7 @@ class TestOperationsService:
         )
 
         filter_query = QuerySpec(
-            where=OperationsClauseFactory.with_status(OperationStatus.RUNNING)
+            where=OperationsFilters.with_status(OperationStatus.RUNNING)
         )
         result = await operations_service.list_for_user(
             1, 20, user_id=1, can_view_all=False, query=filter_query
@@ -579,10 +571,10 @@ class TestOperationsService:
         assert result.total == 1
         operations_repo_mock.list.assert_awaited_once()
         call_query = operations_repo_mock.list.call_args.kwargs["query"]
-        assert call_query.where == OperationsClauseFactory.and_clauses(
+        assert call_query.where == OperationsFilters.and_filters(
             [
-                OperationsClauseFactory.with_status(OperationStatus.RUNNING),
-                OperationsClauseFactory.with_user_id(1),
+                OperationsFilters.with_status(OperationStatus.RUNNING),
+                OperationsFilters.with_user_id(1),
             ]
         )
 

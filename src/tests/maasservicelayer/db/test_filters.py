@@ -3,10 +3,12 @@
 
 from operator import eq
 
+import pytest
 from sqlalchemy import (
     asc,
     BigInteger,
     Column,
+    create_engine,
     delete,
     ForeignKey,
     join,
@@ -23,8 +25,9 @@ from maasservicelayer.db.filters import (
     Clause,
     ClauseFactory,
     OrderByClause,
-    QuerySpec,
+    SQLQuerySpec,
 )
+from maasservicelayer.filters.sshkeys import SshKeyFilters
 
 METADATA = MetaData()
 
@@ -203,23 +206,45 @@ class TestClauseFactory:
 
         assert joins == [join1, join2]
 
-    def test_not_clause(self):
-        clause = Clause(condition=eq(A.c.id, 1))
-        not_clause = ClauseFactory.not_clause(clause)
-        assert (
-            str(
-                not_clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "test_table_a.id != 1"
-        )
-
 
 class TestQuerySpec:
+    @pytest.mark.parametrize(
+        "statement, expected",
+        [
+            (select(B.c.id).select_from(A).join(B, A.c.b_id == B.c.id), [2]),
+            (select(B.c.id).select_from(A.join(B, A.c.b_id == B.c.id)), [2]),
+            (select(A.c.id), [1]),
+        ],
+    )
+    def test_existing_roots_are_not_confused_with_where_references(
+        self, statement, expected
+    ):
+        query = SQLQuerySpec(
+            where=Clause(
+                condition=B.c.id == 2,
+                joins=[A.join(B, A.c.b_id == B.c.id)],
+            )
+        )
+        engine = create_engine("sqlite://")
+        try:
+            with engine.begin() as connection:
+                METADATA.create_all(connection)
+                connection.execute(B.insert(), [{"id": 2}])
+                connection.execute(A.insert(), [{"id": 1, "b_id": 2}])
+                assert (
+                    list(
+                        connection.execute(
+                            query.enrich_stmt(statement)
+                        ).scalars()
+                    )
+                    == expected
+                )
+        finally:
+            engine.dispose()
+
     def test_enrich_stmt_select_where(self):
         stmt = select(A.c.id)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             where=Clause(
                 condition=eq(B.c.id, 1),
                 joins=[join(A, B, eq(A.c.b_id, B.c.id))],
@@ -238,7 +263,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_select_order_by(self):
         stmt = select(A.c.id)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             order_by=[
                 OrderByClause(
                     column=asc(A.c.id),
@@ -258,7 +283,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_select_combined(self):
         stmt = select(A.c.id)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             where=Clause(
                 condition=eq(B.c.id, 1),
                 joins=[join(A, B, eq(A.c.b_id, B.c.id))],
@@ -282,7 +307,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_update(self):
         stmt = update(A).values(id=100)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             where=Clause(
                 condition=eq(B.c.id, 1),
                 joins=[join(A, B, eq(A.c.b_id, B.c.id))],
@@ -301,7 +326,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_update_order_by(self):
         stmt = update(A).values(id=100)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             order_by=[
                 OrderByClause(
                     column=asc(A.c.id),
@@ -321,7 +346,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_delete(self):
         stmt = delete(A).where(A.c.id < 3)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             where=Clause(
                 condition=eq(B.c.id, 1),
                 joins=[join(A, B, eq(A.c.b_id, B.c.id))],
@@ -340,7 +365,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_delete_order_by(self):
         stmt = delete(A).where(A.c.id < 3)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             order_by=[
                 OrderByClause(
                     column=asc(A.c.id),
@@ -360,7 +385,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_select_multiple_joins(self):
         stmt = select(A.c.id)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             ClauseFactory.and_clauses(
                 [
                     Clause(
@@ -387,7 +412,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_update_multiple_joins(self):
         stmt = update(A).values(id=100)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             ClauseFactory.and_clauses(
                 [
                     Clause(
@@ -414,7 +439,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_delete_multiple_joins(self):
         stmt = delete(A).where(A.c.id < 3)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             ClauseFactory.and_clauses(
                 [
                     Clause(
@@ -441,7 +466,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_select_multiple_redundant_joins(self):
         stmt = select(A.c.id)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             ClauseFactory.and_clauses(
                 [
                     Clause(
@@ -471,7 +496,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_select_with_initial_joins(self):
         stmt = select(A.c.id).join_from(A, B, eq(A.c.b_id, B.c.id))
-        query = QuerySpec(
+        query = SQLQuerySpec(
             ClauseFactory.and_clauses(
                 [
                     Clause(
@@ -501,7 +526,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_update_redundant_joins(self):
         stmt = update(A).values(id=100)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             ClauseFactory.and_clauses(
                 [
                     Clause(
@@ -528,7 +553,7 @@ class TestQuerySpec:
 
     def test_enrich_stmt_delete_redundant_joins(self):
         stmt = delete(A).where(A.c.id < 3)
-        query = QuerySpec(
+        query = SQLQuerySpec(
             ClauseFactory.and_clauses(
                 [
                     Clause(
@@ -552,6 +577,44 @@ class TestQuerySpec:
             ).replace("\n", "")
             == "DELETE FROM test_table_a USING test_table_b WHERE test_table_a.id < 3 AND test_table_b.id = 1 AND test_table_b.id = 2 AND test_table_a.b_id = test_table_b.id"
         )
+
+    def test_enrich_stmt_select_keeps_outer_join(self):
+        stmt = select(A.c.id)
+        query = SQLQuerySpec(
+            Clause(
+                condition=eq(B.c.id, 1),
+                joins=[join(A, B, eq(A.c.b_id, B.c.id), isouter=True)],
+            )
+        )
+        stmt = query.enrich_stmt(stmt)
+        assert (
+            str(
+                stmt.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            ).replace("\n", "")
+            == "SELECT test_table_a.id FROM test_table_a LEFT OUTER JOIN test_table_b ON test_table_a.b_id = test_table_b.id WHERE test_table_b.id = 1"
+        )
+
+    def test_enrich_stmt_select_rejects_outer_join_from_right_side(self):
+        stmt = select(B.c.id)
+        query = SQLQuerySpec(
+            Clause(
+                condition=eq(A.c.id, 1),
+                joins=[join(A, B, eq(A.c.b_id, B.c.id), isouter=True)],
+            )
+        )
+        with pytest.raises(ValueError):
+            query.enrich_stmt(stmt)
+
+    @pytest.mark.parametrize(
+        "statement", [select(A.c.id), update(A), delete(A)]
+    )
+    def test_enrich_stmt_rejects_untranslated_filter(self, statement):
+        with pytest.raises(TypeError):
+            query = SQLQuerySpec(where=SshKeyFilters.with_user_id(1))
+            query.enrich_stmt(statement)
 
     def test_sqlalchemy_setup_joins(self):
         stmt = select(A)

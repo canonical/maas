@@ -10,11 +10,7 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.vlans import (
-    VlansClauseFactory,
-    VlansRepository,
-)
+from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -22,6 +18,8 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_FABRIC_VLAN_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.models.vlans import Vlan
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.nodes import NodesService
@@ -137,7 +135,7 @@ class VlansService(BaseService[Vlan, VlansRepository, VlanBuilder]):
 
     async def reconfigure_all_active_dhcp(self):
         vlans = await self.repository.get_many(
-            QuerySpec(where=VlansClauseFactory.with_dhcp_on(on=True))
+            QuerySpec(where=VlansFilters.with_dhcp_on(on=True))
         )
         self.temporal_service.register_or_update_workflow_call(
             CONFIGURE_DHCP_WORKFLOW_NAME,

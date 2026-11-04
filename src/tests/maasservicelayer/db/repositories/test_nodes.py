@@ -6,52 +6,53 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
-from maascommon.enums.node import NodeStatus, NodeTypeEnum
+from maascommon.enums.node import NodeStatus
 from maasservicelayer.builders.nodes import NodeBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.nodes import (
-    NodeClauseFactory,
-    NodesRepository,
-)
+from maasservicelayer.db.repositories.nodes import NodesRepository
 from maasservicelayer.db.tables import NodeTable, ZoneTable
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.zones import Zone
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.machines import create_test_machine
 from tests.fixtures.factories.node import create_test_machine_entry
+from tests.fixtures.factories.node_config import create_test_node_config_entry
 from tests.fixtures.factories.user import create_test_user
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
 
 
-class TestNodeClauseFactory:
-    def test_builder(self) -> None:
-        clause = NodeClauseFactory.with_system_id(system_id="abc")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_node.system_id = 'abc'")
-
-        clause = NodeClauseFactory.with_id(0)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_node.id = 0")
-
-        clause = NodeClauseFactory.with_ids([0, 1])
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_node.id IN (0, 1)")
-
-        clause = NodeClauseFactory.with_type(NodeTypeEnum.RACK_CONTROLLER)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_node.node_type = 2")
-
-
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestNodesRepository:
+    async def test_get_many_with_current_node_configuration(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        node = await create_test_machine_entry(fixture)
+        old_config = await create_test_node_config_entry(fixture, node=node)
+        current_config = await create_test_node_config_entry(
+            fixture, node=node
+        )
+        repository = NodesRepository(Context(connection=db_connection))
+
+        assert (
+            await repository.get_many(
+                QuerySpec(
+                    where=NodeFilters.with_node_config_id(old_config["id"])
+                )
+            )
+            == []
+        )
+        nodes = await repository.get_many(
+            QuerySpec(
+                where=NodeFilters.with_node_config_id(current_config["id"])
+            )
+        )
+        assert [result.id for result in nodes] == [node["id"]]
+
     @pytest.mark.parametrize("url", ["", "http://region:5240/MAAS"])
     async def test_get_url(
         self, db_connection: AsyncConnection, fixture: Fixture, url: str
@@ -130,7 +131,7 @@ class TestNodesRepository:
         builder = NodeBuilder(status=NodeStatus.DEPLOYED)
         await nodes_repository.update_one(
             query=QuerySpec(
-                where=NodeClauseFactory.with_system_id(machine.system_id)
+                where=NodeFilters.with_system_id(machine.system_id)
             ),
             builder=builder,
         )
@@ -153,7 +154,7 @@ class TestNodesRepository:
         builder = NodeBuilder(status=NodeStatus.DEPLOYED)
         with pytest.raises(NotFoundException):
             await nodes_repository.update_one(
-                query=QuerySpec(NodeClauseFactory.with_system_id("mario")),
+                query=QuerySpec(NodeFilters.with_system_id("mario")),
                 builder=builder,
             )
 

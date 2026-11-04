@@ -1,11 +1,9 @@
 #  Copyright 2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from operator import eq
-
 from sqlalchemy import func, Select, select, Table
 
-from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     BootResourceTable,
@@ -16,20 +14,12 @@ from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.switches import Switch, SwitchWithTargetImage
 
 
-class SwitchClauseFactory(ClauseFactory):
-    """Factory for creating query clauses for Switch queries."""
-
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(SwitchTable.c.id, id))
-
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=SwitchTable.c.id.in_(ids))
-
-
 class SwitchesRepository(BaseRepository[Switch]):
     """Repository for managing Switch entities in the database."""
+
+    details_mapper = DefaultDomainDataMapper[SwitchWithTargetImage](
+        SwitchWithTargetImage, SwitchTable
+    )
 
     def get_repository_table(self) -> Table:
         return SwitchTable
@@ -66,7 +56,9 @@ class SwitchesRepository(BaseRepository[Switch]):
         stmt = self.select_all_with_details.where(SwitchTable.c.id == id)
         row = (await self.execute_stmt(stmt)).one_or_none()
         return (
-            SwitchWithTargetImage(**row._asdict()) if row is not None else None
+            self.details_mapper.to_domain(row._mapping)
+            if row is not None
+            else None
         )
 
     async def list_with_details(
@@ -80,6 +72,8 @@ class SwitchesRepository(BaseRepository[Switch]):
         )
         result = (await self.execute_stmt(stmt)).all()
         return ListResult(
-            items=[SwitchWithTargetImage(**row._asdict()) for row in result],
+            items=[
+                self.details_mapper.to_domain(row._mapping) for row in result
+            ],
             total=total,
         )

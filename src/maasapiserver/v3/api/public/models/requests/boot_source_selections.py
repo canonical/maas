@@ -8,10 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
 )
-from maasservicelayer.db.filters import Clause
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-    BootSourceSelectionStatusClauseFactory,
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+    BootSourceSelectionStatusFilters,
 )
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.fields import UniqueList
@@ -85,17 +85,13 @@ class BootSourceSelectionStatusFilterParams(BaseModel):
         )
     )
 
-    def to_clause(self) -> Clause | None:
+    def to_filter(self) -> Filter | None:
         clauses = []
         if self.ids is not None:
-            clauses.append(
-                BootSourceSelectionStatusClauseFactory.with_ids(self.ids)
-            )
+            clauses.append(BootSourceSelectionStatusFilters.with_ids(self.ids))
         if self.selected is not None:
             clauses.append(
-                BootSourceSelectionStatusClauseFactory.with_selected(
-                    self.selected
-                )
+                BootSourceSelectionStatusFilters.with_selected(self.selected)
             )
 
         if not clauses:
@@ -103,7 +99,7 @@ class BootSourceSelectionStatusFilterParams(BaseModel):
         elif len(clauses) == 1:
             return clauses[0]
         else:
-            return BootSourceSelectionStatusClauseFactory.and_clauses(clauses)
+            return BootSourceSelectionStatusFilters.and_filters(clauses)
 
     def to_href_format(self) -> str:
         tokens = []
@@ -127,9 +123,9 @@ class BootSourceSelectionStatisticFilterParams(BaseModel):
         )
     )
 
-    def to_clause(self) -> Clause | None:
+    def to_filter(self) -> Filter | None:
         if self.ids is not None:
-            return BootSourceSelectionClauseFactory.with_ids(self.ids)
+            return BootSourceSelectionFilters.with_ids(self.ids)
         return None
 
     def to_href_format(self) -> str | None:

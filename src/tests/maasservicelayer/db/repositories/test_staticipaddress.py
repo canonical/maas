@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections.abc import Sequence
+from datetime import datetime, timezone
 from ipaddress import IPv4Address
 
 import pytest
@@ -11,11 +12,11 @@ from maascommon.enums.ipaddress import IpAddressFamily, IpAddressType
 from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
     StaticIPAddressRepository,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from tests.fixtures.factories.interface import create_test_interface_entry
@@ -27,84 +28,6 @@ from tests.fixtures.factories.staticipaddress import (
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestStaticIPAddressClauseFactory:
-    def test_with_alloc_type_in(self) -> None:
-        clause = StaticIPAddressClauseFactory.with_alloc_type_in(
-            [IpAddressType.AUTO, IpAddressType.STICKY]
-        )
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_staticipaddress.alloc_type IN (0, 1)"
-        )
-
-    def test_with_temp_expires_on_is_null(self) -> None:
-        clause = StaticIPAddressClauseFactory.with_temp_expires_on_is_null()
-        assert str(clause.condition) == (
-            "maasserver_staticipaddress.temp_expires_on IS NULL"
-        )
-
-    def test_with_interface_enabled(self) -> None:
-        clause = StaticIPAddressClauseFactory.with_interface_enabled(True)
-        assert str(clause.condition) == "maasserver_interface.enabled = true"
-
-    def test_with_id(self) -> None:
-        clause = StaticIPAddressClauseFactory.with_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_staticipaddress.id = 1")
-
-    def test_with_node_type(self) -> None:
-        clause = StaticIPAddressClauseFactory.with_node_type(
-            type=NodeTypeEnum.RACK_CONTROLLER
-        )
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_node.node_type = 2")
-
-    def test_with_subnet_id(self) -> None:
-        clause = StaticIPAddressClauseFactory.with_subnet_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_staticipaddress.subnet_id = 1")
-
-    def test_with_ip(self) -> None:
-        clause = StaticIPAddressClauseFactory.with_ip(IPv4Address("10.10.0.2"))
-        # NOTE: compile with literal_binds can't render IPv4Address
-        assert str(clause.condition.compile()) == (
-            "maasserver_staticipaddress.ip = :ip_1"
-        )
-
-    def test_with_alloc_type(self) -> None:
-        clause = StaticIPAddressClauseFactory.with_alloc_type(
-            alloc_type=IpAddressType.DISCOVERED
-        )
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_staticipaddress.alloc_type = 6")
-
-    def test_with_interface_ids(self) -> None:
-        clause = StaticIPAddressClauseFactory.with_interface_ids(
-            interface_ids=[1]
-        )
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_interface.id IN (1)")
-        assert str(
-            clause.joins[0].compile(compile_kwargs={"literal_binds": True})
-        ) == (
-            "maasserver_staticipaddress JOIN maasserver_interface_ip_addresses ON maasserver_staticipaddress.id = maasserver_interface_ip_addresses.staticipaddress_id"
-        )
-        assert str(
-            clause.joins[1].compile(compile_kwargs={"literal_binds": True})
-        ) == (
-            "maasserver_interface_ip_addresses JOIN maasserver_interface ON maasserver_interface_ip_addresses.interface_id = maasserver_interface.id"
-        )
 
 
 @pytest.mark.asyncio
@@ -286,7 +209,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
 
         result = await repository_instance.get_for_nodes(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory().with_node_type(
+                where=StaticIPAddressFilters().with_node_type(
                     NodeTypeEnum.RACK_CONTROLLER
                 )
             )
@@ -318,7 +241,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
 
         result = await repository_instance.get_for_nodes(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory().with_node_type(
+                where=StaticIPAddressFilters().with_node_type(
                     NodeTypeEnum.REGION_CONTROLLER
                 )
             )
@@ -344,7 +267,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
             for _ in range(3)
         ]
         result = await repository_instance.get_mac_addresses(
-            query=QuerySpec(where=StaticIPAddressClauseFactory.with_ip(ipv4))
+            query=QuerySpec(where=StaticIPAddressFilters.with_ip(ipv4))
         )
         expected_mac_addresses = sorted(
             [MacAddress(i.mac_address) for i in interfaces]
@@ -375,7 +298,7 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
 
         results = await repository_instance.get_many(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_interface_ids(
+                where=StaticIPAddressFilters.with_interface_ids(
                     interface_ids=[interface.id, interface2.id]
                 )
             )
@@ -469,3 +392,110 @@ class TestStaticIPAddressRepository(RepositoryCommonTests[StaticIPAddress]):
         )
 
         assert result == []
+
+    @pytest.mark.parametrize("select_null", [True, False])
+    async def test_null_ip_selection(
+        self, repository_instance, fixture, select_null
+    ):
+        [null_ip] = await create_test_staticipaddress_entry(fixture, ip=None)
+        [assigned_ip] = await create_test_staticipaddress_entry(
+            fixture, ip="10.0.0.1"
+        )
+        filter = (
+            StaticIPAddressFilters.with_ip(None)
+            if select_null
+            else StaticIPAddressFilters.with_ip_not_null()
+        )
+        result = await repository_instance.get_many(QuerySpec(where=filter))
+        expected = null_ip if select_null else assigned_ip
+        assert [ip.id for ip in result] == [expected["id"]]
+
+    @pytest.mark.parametrize("enabled", [True, False])
+    async def test_interface_enabled_filter(
+        self, repository_instance, fixture, enabled
+    ):
+        [enabled_ip] = await create_test_staticipaddress_entry(
+            fixture, ip="10.0.0.1"
+        )
+        [disabled_ip] = await create_test_staticipaddress_entry(
+            fixture, ip="10.0.0.2"
+        )
+        await create_test_staticipaddress_entry(fixture, ip="10.0.0.3")
+        await create_test_interface_entry(
+            fixture, ips=[enabled_ip], enabled=True
+        )
+        await create_test_interface_entry(
+            fixture, ips=[disabled_ip], enabled=False
+        )
+        result = await repository_instance.get_many(
+            QuerySpec(
+                where=StaticIPAddressFilters.and_filters(
+                    [
+                        StaticIPAddressFilters.with_linked_to_interface(),
+                        StaticIPAddressFilters.with_interface_enabled(enabled),
+                    ]
+                )
+            )
+        )
+        expected = enabled_ip if enabled else disabled_ip
+        assert [ip.id for ip in result] == [expected["id"]]
+
+    async def test_node_system_id_filter_on_base_query(
+        self, repository_instance, fixture
+    ):
+        node = await create_test_region_controller_entry(fixture)
+        config = await create_test_node_config_entry(fixture, node=node)
+        node["current_config_id"] = config["id"]
+        [linked_ip] = await create_test_staticipaddress_entry(
+            fixture, ip="10.0.0.1"
+        )
+        await create_test_interface_entry(fixture, node=node, ips=[linked_ip])
+        await create_test_staticipaddress_entry(fixture, ip="10.0.0.2")
+        result = await repository_instance.get_many(
+            QuerySpec(
+                where=StaticIPAddressFilters.with_node_system_id(
+                    node["system_id"]
+                )
+            )
+        )
+        assert [ip.id for ip in result] == [linked_ip["id"]]
+
+    @pytest.mark.parametrize(
+        "filter_kind, expected_indexes",
+        [("in", {0, 1}), ("not_in", {2}), ("no_expiration", {0, 2})],
+    )
+    async def test_allocation_and_expiration_filters(
+        self, repository_instance, fixture, filter_kind, expected_indexes
+    ):
+        ips = []
+        for index, alloc_type in enumerate(
+            [
+                IpAddressType.AUTO,
+                IpAddressType.STICKY,
+                IpAddressType.DISCOVERED,
+            ]
+        ):
+            [ip] = await create_test_staticipaddress_entry(
+                fixture,
+                ip=f"10.0.0.{index + 1}",
+                alloc_type=alloc_type,
+                temp_expires_on=datetime.now(timezone.utc)
+                if index == 1
+                else None,
+            )
+            ips.append(ip)
+        filters = {
+            "in": StaticIPAddressFilters.with_alloc_type_in(
+                [IpAddressType.AUTO, IpAddressType.STICKY]
+            ),
+            "not_in": StaticIPAddressFilters.with_alloc_type_not_in(
+                [IpAddressType.AUTO, IpAddressType.STICKY]
+            ),
+            "no_expiration": StaticIPAddressFilters.with_temp_expires_on_is_null(),
+        }
+        result = await repository_instance.get_many(
+            QuerySpec(where=filters[filter_kind])
+        )
+        assert {ip.id for ip in result} == {
+            ips[index]["id"] for index in expected_indexes
+        }

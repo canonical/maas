@@ -9,14 +9,12 @@ import pytest
 
 from maascommon.enums.boot_resources import BootResourceFileType
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootresourcefiles import (
-    BootResourceFileClauseFactory,
-)
 from maasservicelayer.db.repositories.bootresourcesets import (
-    BootResourceSetClauseFactory,
     BootResourceSetsRepository,
 )
+from maasservicelayer.filters.bootresourcefiles import BootResourceFileFilters
+from maasservicelayer.filters.bootresourcesets import BootResourceSetFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootresourcefiles import BootResourceFile
 from maasservicelayer.models.bootresourcesets import BootResourceSet
 from maasservicelayer.services.bootresourcefiles import (
@@ -144,7 +142,7 @@ class TestBootResourceSetsService:
 
         mock_boot_resource_files_service.delete_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.with_resource_set_id(
+                where=BootResourceFileFilters.with_resource_set_id(
                     TEST_BOOT_RESOURCE_SET.id
                 )
             )
@@ -162,7 +160,7 @@ class TestBootResourceSetsService:
 
         mock_boot_resource_files_service.delete_many.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.with_resource_set_ids(
+                where=BootResourceFileFilters.with_resource_set_ids(
                     [TEST_BOOT_RESOURCE_SET.id]
                 )
             )
@@ -204,10 +202,10 @@ class TestBootResourceSetsService:
 
         mock_repository.get_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceSetClauseFactory.and_clauses(
+                where=BootResourceSetFilters.and_filters(
                     [
-                        BootResourceSetClauseFactory.with_resource_id(1),
-                        BootResourceSetClauseFactory.with_version("foo"),
+                        BootResourceSetFilters.with_resource_id(1),
+                        BootResourceSetFilters.with_version("foo"),
                     ]
                 )
             ),
@@ -238,10 +236,10 @@ class TestBootResourceSetsService:
 
         mock_repository.get_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceSetClauseFactory.and_clauses(
+                where=BootResourceSetFilters.and_filters(
                     [
-                        BootResourceSetClauseFactory.with_resource_id(1),
-                        BootResourceSetClauseFactory.with_version("foo"),
+                        BootResourceSetFilters.with_resource_id(1),
+                        BootResourceSetFilters.with_version("foo"),
                     ]
                 )
             ),

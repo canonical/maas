@@ -40,13 +40,6 @@ from maascommon.workflows.bootresource import (
     SYNC_SELECTION_WORKFLOW_NAME,
     SyncSelectionParam,
 )
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -56,6 +49,11 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.bootresources import BootResourceFilters
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsources import (
@@ -957,12 +955,12 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
 
         services_mock.boot_source_selections.delete_one.assert_called_once_with(
             query=QuerySpec(
-                where=BootSourceSelectionClauseFactory.and_clauses(
+                where=BootSourceSelectionFilters.and_filters(
                     [
-                        BootSourceSelectionClauseFactory.with_id(
+                        BootSourceSelectionFilters.with_id(
                             boot_source_selection_id
                         ),
-                        BootSourceSelectionClauseFactory.with_boot_source_id(
+                        BootSourceSelectionFilters.with_boot_source_id(
                             boot_source_id
                         ),
                     ]
@@ -1284,12 +1282,10 @@ class TestBootSourceSelectionResourcesApi(ApiCommonTests):
 
         services_mock.boot_source_selections.get_one.assert_awaited_once_with(
             QuerySpec(
-                where=BootSourceSelectionClauseFactory.and_clauses(
+                where=BootSourceSelectionFilters.and_filters(
                     [
-                        BootSourceSelectionClauseFactory.with_id(2),
-                        BootSourceSelectionClauseFactory.with_boot_source_id(
-                            1
-                        ),
+                        BootSourceSelectionFilters.with_id(2),
+                        BootSourceSelectionFilters.with_boot_source_id(1),
                     ]
                 )
             )
@@ -1297,9 +1293,7 @@ class TestBootSourceSelectionResourcesApi(ApiCommonTests):
         services_mock.boot_resources.list.assert_awaited_once_with(
             page=1,
             size=1,
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_selection_id(2)
-            ),
+            query=QuerySpec(where=BootResourceFilters.with_selection_id(2)),
         )
 
     async def test_list_resources_other_page(
@@ -1327,12 +1321,10 @@ class TestBootSourceSelectionResourcesApi(ApiCommonTests):
 
         services_mock.boot_source_selections.get_one.assert_awaited_once_with(
             QuerySpec(
-                where=BootSourceSelectionClauseFactory.and_clauses(
+                where=BootSourceSelectionFilters.and_filters(
                     [
-                        BootSourceSelectionClauseFactory.with_id(2),
-                        BootSourceSelectionClauseFactory.with_boot_source_id(
-                            1
-                        ),
+                        BootSourceSelectionFilters.with_id(2),
+                        BootSourceSelectionFilters.with_boot_source_id(1),
                     ]
                 )
             )
@@ -1340,9 +1332,7 @@ class TestBootSourceSelectionResourcesApi(ApiCommonTests):
         services_mock.boot_resources.list.assert_awaited_once_with(
             page=1,
             size=1,
-            query=QuerySpec(
-                where=BootResourceClauseFactory.with_selection_id(2)
-            ),
+            query=QuerySpec(where=BootResourceFilters.with_selection_id(2)),
         )
 
     async def test_get_resource_200(
@@ -1368,13 +1358,11 @@ class TestBootSourceSelectionResourcesApi(ApiCommonTests):
 
         services_mock.boot_resources.get_one.assert_awaited_once_with(
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_selection_boot_source_id(
-                            1
-                        ),
-                        BootResourceClauseFactory.with_selection_id(2),
-                        BootResourceClauseFactory.with_id(3),
+                        BootResourceFilters.with_selection_boot_source_id(1),
+                        BootResourceFilters.with_selection_id(2),
+                        BootResourceFilters.with_id(3),
                     ]
                 )
             ),

@@ -7,7 +7,6 @@ import uuid as uuid_module
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
-from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.operations import (
     OperationStatus,
@@ -19,14 +18,15 @@ from maasservicelayer.builders.operations import (
     OperationTaskBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import Clause, QuerySpec
 from maasservicelayer.db.repositories.base import MultipleResultsException
 from maasservicelayer.db.repositories.operations import (
-    OperationsClauseFactory,
     OperationsRepository,
     OperationTasksRepository,
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.base import FieldFilter, Operator
+from maasservicelayer.filters.operations import OperationsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.operations import Operation, OperationTask
 from maasservicelayer.utils.date import utcnow
@@ -38,99 +38,19 @@ from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
-class TestOperationsClauseFactory:
-    def test_with_uuid(self) -> None:
-        clause = OperationsClauseFactory.with_uuid("op-uuid")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_operation.uuid = 'op-uuid'"
-        )
-
-    def test_with_uuids(self) -> None:
-        clause = OperationsClauseFactory.with_uuids(["uuid-1", "uuid-2"])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_operation.uuid IN ('uuid-1', 'uuid-2')"
-        )
-
-    def test_with_status(self) -> None:
-        clause = OperationsClauseFactory.with_status(OperationStatus.RUNNING)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_operation.status = 'RUNNING'"
-        )
-
-    def test_with_op_type(self) -> None:
-        clause = OperationsClauseFactory.with_op_type(
-            OperationType.MACHINE_DEPLOY
-        )
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_operation.op_type = 'machine.deploy'"
-        )
-
-    def test_with_is_bulk(self) -> None:
-        clause = OperationsClauseFactory.with_is_bulk(True)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_operation.is_bulk = true"
-        )
-
-    def test_with_resource_type(self) -> None:
-        clause = OperationsClauseFactory.with_resource_type("machine")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_operation.resource_type = 'machine'"
-        )
-
-    def test_with_resource_id(self) -> None:
-        clause = OperationsClauseFactory.with_resource_id(42)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_operation.resource_id = 42"
-        )
-
-    def test_with_user_id(self) -> None:
-        clause = OperationsClauseFactory.with_user_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_operation.user_id = 1"
-        )
-
-
 class TestOperationsRepository(RepositoryCommonTests[Operation]):
+    async def test_created_before_includes_boundary(
+        self, repository_instance: OperationsRepository, fixture: Fixture
+    ) -> None:
+        earlier = await create_test_operation_entry(fixture, uuid="earlier")
+        await create_test_operation_entry(fixture, uuid="later")
+
+        results = await repository_instance.get_many(
+            QuerySpec(where=OperationsFilters.created_before(earlier.created))
+        )
+
+        assert results == [earlier]
+
     @pytest.fixture
     def repository_instance(
         self, db_connection: AsyncConnection
@@ -170,9 +90,7 @@ class TestOperationsRepository(RepositoryCommonTests[Operation]):
         started = utcnow()
 
         updated = await repository_instance.update_one(
-            query=QuerySpec(
-                where=OperationsClauseFactory.with_uuid(created.uuid)
-            ),
+            query=QuerySpec(where=OperationsFilters.with_uuid(created.uuid)),
             builder=OperationBuilder(
                 status=OperationStatus.RUNNING, started=started
             ),
@@ -188,9 +106,7 @@ class TestOperationsRepository(RepositoryCommonTests[Operation]):
         with pytest.raises(NotFoundException):
             await repository_instance.update_one(
                 query=QuerySpec(
-                    where=OperationsClauseFactory.with_uuid(
-                        str(uuid_module.uuid4())
-                    )
+                    where=OperationsFilters.with_uuid(str(uuid_module.uuid4()))
                 ),
                 builder=OperationBuilder(status=OperationStatus.RUNNING),
             )
@@ -322,12 +238,7 @@ class TestOperationTasksRepository(RepositoryCommonTests[OperationTask]):
         created = await repository_instance.create(instance_builder)
         updated = await repository_instance.update_one(
             QuerySpec(
-                where=Clause(
-                    eq(
-                        repository_instance.get_repository_table().c.id,
-                        created.id,
-                    )
-                )
+                where=FieldFilter(OperationTask, "id", Operator.EQ, created.id)
             ),
             OperationTaskBuilder(status=OperationTaskStatus.COMPLETED),
         )

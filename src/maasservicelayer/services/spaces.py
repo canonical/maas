@@ -5,9 +5,9 @@ from typing import List
 from maasservicelayer.builders.spaces import SpaceBuilder
 from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.spaces import SpacesRepository
-from maasservicelayer.db.repositories.vlans import VlansClauseFactory
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.models.spaces import Space
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.vlans import VlansService
@@ -28,9 +28,7 @@ class SpacesService(BaseService[Space, SpacesRepository, SpaceBuilder]):
     async def post_delete_hook(self, resource: Space) -> None:
         # Remove this space's id from all related VLANs
         await self.vlans_service.update_many(
-            query=QuerySpec(
-                where=VlansClauseFactory.with_space_id(resource.id)
-            ),
+            query=QuerySpec(where=VlansFilters.with_space_id(resource.id)),
             builder=VlanBuilder(space_id=None),
         )
 

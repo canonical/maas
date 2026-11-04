@@ -6,7 +6,6 @@ from typing import Sequence
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
-from sqlalchemy.sql.operators import eq
 
 from maasservicelayer.builders.tokens import (
     OIDCRevokedTokenBuilder,
@@ -14,19 +13,17 @@ from maasservicelayer.builders.tokens import (
     TokenBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import Clause, QuerySpec
 from maasservicelayer.db.repositories.base import (
     AlreadyExistsException,
     MultipleResultsException,
 )
 from maasservicelayer.db.repositories.tokens import (
-    OIDCRevokedTokenClauseFactory,
     OIDCRevokedTokenRepository,
-    RefreshTokenClauseFactory,
     RefreshTokenRepository,
-    TokenClauseFactory,
     TokensRepository,
 )
+from maasservicelayer.filters.base import FieldFilter, Operator
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.tokens import (
     OIDCRevokedToken,
     RefreshToken,
@@ -42,45 +39,6 @@ from tests.fixtures.factories.token import (
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestTokenClauseFactory:
-    def test_with_key(self) -> None:
-        clause = TokenClauseFactory.with_key("key")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("piston3_token.key = 'key'")
-
-    def test_with_secret(self) -> None:
-        clause = TokenClauseFactory.with_secret("secret")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("piston3_token.secret = 'secret'")
-
-    def test_with_consumer_id(self) -> None:
-        clause = TokenClauseFactory.with_consumer_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("piston3_token.consumer_id = 1")
-
-    def test_with_consumer_ids(self) -> None:
-        clause = TokenClauseFactory.with_consumer_ids([1, 2])
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("piston3_token.consumer_id IN (1, 2)")
-
-
-class TestRefreshTokenClauseFactory:
-    def test_with_token(self) -> None:
-        clause = RefreshTokenClauseFactory.with_token("refresh-token")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_refreshtoken.token = 'refresh-token'"
-        )
 
 
 class TestConsumersRepository(RepositoryCommonTests[Token]):
@@ -156,11 +114,8 @@ class TestConsumersRepository(RepositoryCommonTests[Token]):
         created_resource = await repository_instance.create(instance_builder)
         updated_resource = await repository_instance.update_one(
             QuerySpec(
-                where=Clause(
-                    eq(
-                        repository_instance.get_repository_table().c.id,
-                        created_resource.id,
-                    )
+                where=FieldFilter(
+                    Token, "id", Operator.EQ, created_resource.id
                 )
             ),
             TokenBuilder(key="newkey"),
@@ -249,14 +204,6 @@ class TestRefreshTokenRepository(RepositoryCommonTests[RefreshToken]):
         return await create_test_refresh_token(fixture)
 
 
-class TestOIDCRevokedTokenClauseFactory:
-    def test_with_token_hash(self):
-        clause = OIDCRevokedTokenClauseFactory.with_token_hash("xxx")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_oidcrevokedtoken.token_hash = 'xxx'")
-
-
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestOIDCRevokedTokenRepository(RepositoryCommonTests[OIDCRevokedToken]):
@@ -313,11 +260,8 @@ class TestOIDCRevokedTokenRepository(RepositoryCommonTests[OIDCRevokedToken]):
         created_resource = await repository_instance.create(instance_builder)
         updated_resource = await repository_instance.update_one(
             QuerySpec(
-                where=Clause(
-                    eq(
-                        repository_instance.get_repository_table().c.id,
-                        created_resource.id,
-                    )
+                where=FieldFilter(
+                    OIDCRevokedToken, "id", Operator.EQ, created_resource.id
                 )
             ),
             OIDCRevokedTokenBuilder(token_hash="new_hash"),

@@ -13,15 +13,14 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import ClauseFactory, QuerySpec
-from maasservicelayer.db.repositories.vlans import (
-    VlansClauseFactory,
-    VlansRepository,
-)
+from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     PreconditionFailedException,
 )
+from maasservicelayer.filters.base import FilterFactory
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.vlans import Vlan
@@ -313,10 +312,10 @@ class TestVlansService:
         )
 
         query = QuerySpec(
-            where=ClauseFactory.and_clauses(
+            where=FilterFactory.and_filters(
                 [
-                    VlansClauseFactory.with_id(vlan.id),
-                    VlansClauseFactory.with_fabric_id(vlan.fabric_id),
+                    VlansFilters.with_id(vlan.id),
+                    VlansFilters.with_fabric_id(vlan.fabric_id),
                 ]
             )
         )

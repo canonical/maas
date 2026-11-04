@@ -11,12 +11,10 @@ import aiofiles
 from maasservicelayer.builders.bootstraptokens import BootstrapTokenBuilder
 from maasservicelayer.builders.racks import RackBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.agents import AgentsClauseFactory
-from maasservicelayer.db.repositories.bootstraptokens import (
-    BootstrapTokensClauseFactory,
-)
 from maasservicelayer.db.repositories.racks import RacksRepository
+from maasservicelayer.filters.agents import AgentsFilters
+from maasservicelayer.filters.bootstraptokens import BootstrapTokensFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.configurations import MAASUrlConfig
 from maasservicelayer.models.racks import Rack, RackWithSummary
@@ -57,13 +55,11 @@ class RacksService(BaseService[Rack, RacksRepository, RackBuilder]):
         # cascade delete for a single resource
         await self.bootstraptokens_service.delete_many(
             query=QuerySpec(
-                where=BootstrapTokensClauseFactory.with_rack_id(resource.id)
+                where=BootstrapTokensFilters.with_rack_id(resource.id)
             )
         )
         await self.agents_service.delete_many(
-            query=QuerySpec(
-                where=AgentsClauseFactory.with_rack_id(resource.id)
-            )
+            query=QuerySpec(where=AgentsFilters.with_rack_id(resource.id))
         )
 
     async def post_delete_many_hook(self, resources: List[Rack]) -> None:
@@ -72,13 +68,11 @@ class RacksService(BaseService[Rack, RacksRepository, RackBuilder]):
 
         await self.bootstraptokens_service.delete_many(
             query=QuerySpec(
-                where=BootstrapTokensClauseFactory.with_rack_id_in(rack_ids)
+                where=BootstrapTokensFilters.with_rack_id_in(rack_ids)
             )
         )
         await self.agents_service.delete_many(
-            query=QuerySpec(
-                where=AgentsClauseFactory.with_rack_id_in(rack_ids)
-            )
+            query=QuerySpec(where=AgentsFilters.with_rack_id_in(rack_ids))
         )
 
     async def generate_bootstrap_token(self, resource: Rack) -> dict:
@@ -123,7 +117,7 @@ class RacksService(BaseService[Rack, RacksRepository, RackBuilder]):
                         cacerts_path, "r"
                     ) as cacerts_file:
                         cacerts = await cacerts_file.read()
-                except (FileNotFoundError, IOError):
+                except FileNotFoundError, IOError:
                     pass
 
                 certificate = Certificate.from_pem(
@@ -132,7 +126,7 @@ class RacksService(BaseService[Rack, RacksRepository, RackBuilder]):
                     ca_certs_material=cacerts,
                 )
                 fingerprint = certificate.cert_hash()
-            except (FileNotFoundError, IOError):
+            except FileNotFoundError, IOError:
                 pass
 
         # url: internal API

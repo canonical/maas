@@ -6,10 +6,7 @@ from typing import List
 from maasservicelayer.builders.fabrics import FabricBuilder
 from maasservicelayer.builders.vlans import VlanBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
-from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
-from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -19,6 +16,9 @@ from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_FABRIC_WITH_CONNECTED_INTERFACE_VIOLATION_TYPE,
     CANNOT_DELETE_FABRIC_WITH_SUBNETS_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.subnets import SubnetFilters
+from maasservicelayer.filters.vlans import VlansFilters
 from maasservicelayer.models.fabrics import Fabric
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.interfaces import InterfacesService
@@ -73,9 +73,7 @@ class FabricsService(BaseService[Fabric, FabricsRepository, FabricBuilder]):
         # Can't delete the Fabric if it still has any Subnets
         subnets_in_fabric = await self.subnets_service.exists(
             query=QuerySpec(
-                where=SubnetClauseFactory.with_fabric_id(
-                    resource_to_be_deleted.id
-                )
+                where=SubnetFilters.with_fabric_id(resource_to_be_deleted.id)
             )
         )
         if subnets_in_fabric:
@@ -113,9 +111,7 @@ class FabricsService(BaseService[Fabric, FabricsRepository, FabricBuilder]):
         # TODO: Replace this with VlansService.delete_many once
         #       VlansService.post_delete_many_hook is implemented.
         vlans_to_delete = await self.vlans_service.get_many(
-            query=QuerySpec(
-                where=VlansClauseFactory.with_fabric_id(resource.id)
-            )
+            query=QuerySpec(where=VlansFilters.with_fabric_id(resource.id))
         )
         for vlan in vlans_to_delete:
             await self.vlans_service.delete_by_id(

@@ -16,12 +16,12 @@ from maascommon.logging.security import (
     UPDATED,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.exceptions.catalog import (
     NotFoundException,
     PreconditionFailedException,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import (
     ListResult,
     MaasBaseModel,

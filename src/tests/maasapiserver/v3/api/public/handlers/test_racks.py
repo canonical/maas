@@ -23,8 +23,6 @@ from maasapiserver.v3.api.public.models.responses.racks import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.agents import AgentsClauseFactory
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -34,6 +32,8 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.agents import AgentsFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.agents import Agent
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.racks import Rack, RackWithSummary
@@ -547,10 +547,10 @@ class TestRackAgentApi(ApiCommonTests):
 
         services_mock.agents.delete_one.assert_called_once_with(
             query=QuerySpec(
-                where=AgentsClauseFactory.and_clauses(
+                where=AgentsFilters.and_filters(
                     [
-                        AgentsClauseFactory.with_id(agent_id),
-                        AgentsClauseFactory.with_rack_id(rack_id),
+                        AgentsFilters.with_id(agent_id),
+                        AgentsFilters.with_rack_id(rack_id),
                     ]
                 )
             ),

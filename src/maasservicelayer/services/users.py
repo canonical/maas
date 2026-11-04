@@ -33,25 +33,7 @@ from maasservicelayer.builders.tokens import TokenBuilder
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.constants import SYSTEM_USERS
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.consumers import ConsumerClauseFactory
-from maasservicelayer.db.repositories.filestorage import (
-    FileStorageClauseFactory,
-)
-from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
-from maasservicelayer.db.repositories.notifications import (
-    NotificationsClauseFactory,
-)
-from maasservicelayer.db.repositories.sshkeys import SshKeyClauseFactory
-from maasservicelayer.db.repositories.sslkeys import SSLKeyClauseFactory
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
-from maasservicelayer.db.repositories.users import (
-    UserClauseFactory,
-    UsersRepository,
-)
+from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -62,6 +44,16 @@ from maasservicelayer.exceptions.constants import (
     INVALID_ARGUMENT_VIOLATION_TYPE,
     PRECONDITION_FAILED,
 )
+from maasservicelayer.filters.consumers import ConsumerFilters
+from maasservicelayer.filters.filestorage import FileStorageFilters
+from maasservicelayer.filters.ipranges import IPRangeFilters
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.notifications import NotificationsFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.sshkeys import SshKeyFilters
+from maasservicelayer.filters.sslkeys import SSLKeyFilters
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
+from maasservicelayer.filters.users import UserFilters
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.usergroups import UserGroupsByUser
 from maasservicelayer.models.users import User, UserProfile, UserStatistics
@@ -116,7 +108,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         # DO NOT create a profile for the MAAS technical users.
         user = await self.get_one(
             query=QuerySpec(
-                where=UserClauseFactory.with_username(MAAS_USER_USERNAME)
+                where=UserFilters.with_username(MAAS_USER_USERNAME)
             )
         )
         if not user:
@@ -230,23 +222,19 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
     async def pre_delete_hook(self, resource_to_be_deleted: User) -> None:
         has_ipranges = await self.ipranges_service.exists(
             query=QuerySpec(
-                where=IPRangeClauseFactory.with_user_id(
-                    resource_to_be_deleted.id
-                )
+                where=IPRangeFilters.with_user_id(resource_to_be_deleted.id)
             )
         )
         has_staticips = await self.staticipaddress_service.exists(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_user_id(
+                where=StaticIPAddressFilters.with_user_id(
                     resource_to_be_deleted.id
                 )
             )
         )
         has_nodes = await self.nodes_service.exists(
             query=QuerySpec(
-                where=NodeClauseFactory.with_owner_id(
-                    resource_to_be_deleted.id
-                )
+                where=NodeFilters.with_owner_id(resource_to_be_deleted.id)
             )
         )
 
@@ -270,28 +258,22 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         # Cascade
         await self.delete_profile(resource.id)
         await self.consumers_service.delete_many(
-            query=QuerySpec(
-                where=ConsumerClauseFactory.with_user_id(resource.id)
-            )
+            query=QuerySpec(where=ConsumerFilters.with_user_id(resource.id))
         )
         await self.sshkey_service.delete_many(
-            query=QuerySpec(
-                where=SshKeyClauseFactory.with_user_id(resource.id)
-            )
+            query=QuerySpec(where=SshKeyFilters.with_user_id(resource.id))
         )
         await self.sslkey_service.delete_many(
-            query=QuerySpec(
-                where=SSLKeyClauseFactory.with_user_id(resource.id)
-            )
+            query=QuerySpec(where=SSLKeyFilters.with_user_id(resource.id))
         )
         await self.notification_service.delete_many(
             query=QuerySpec(
-                where=NotificationsClauseFactory.with_user_id(resource.id)
+                where=NotificationsFilters.with_user_id(resource.id)
             )
         )
         await self.filestorage_service.delete_many(
             query=QuerySpec(
-                where=FileStorageClauseFactory.with_owner_id(resource.id)
+                where=FileStorageFilters.with_owner_id(resource.id)
             )
         )
         await self.openfga_tuple_service.delete_user(resource.id)
@@ -307,7 +289,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
         self, from_user_id: int, to_user_id: int
     ) -> None:
         to_user_exists = await self.exists(
-            query=QuerySpec(where=UserClauseFactory.with_id(id=to_user_id))
+            query=QuerySpec(where=UserFilters.with_id(id=to_user_id))
         )
         if not to_user_exists:
             raise BadRequestException(
@@ -320,20 +302,16 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
             )
         await self.staticipaddress_service.update_many(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_user_id(from_user_id)
+                where=StaticIPAddressFilters.with_user_id(from_user_id)
             ),
             builder=StaticIPAddressBuilder(user_id=to_user_id),
         )
         await self.ipranges_service.update_many(
-            query=QuerySpec(
-                where=IPRangeClauseFactory.with_user_id(from_user_id)
-            ),
+            query=QuerySpec(where=IPRangeFilters.with_user_id(from_user_id)),
             builder=IPRangeBuilder(user_id=to_user_id),
         )
         await self.nodes_service.update_many(
-            query=QuerySpec(
-                where=NodeClauseFactory.with_owner_id(from_user_id)
-            ),
+            query=QuerySpec(where=NodeFilters.with_owner_id(from_user_id)),
             builder=NodeBuilder(owner_id=to_user_id),
         )
 
@@ -342,7 +320,7 @@ class UsersService(BaseService[User, UsersRepository, UserBuilder]):
 
     async def get_by_username(self, username: str) -> User | None:
         return await self.repository.get_one(
-            query=QuerySpec(where=UserClauseFactory.with_username(username))
+            query=QuerySpec(where=UserFilters.with_username(username))
         )
 
     async def list_statistics(

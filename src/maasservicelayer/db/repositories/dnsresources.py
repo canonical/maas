@@ -4,10 +4,12 @@
 from typing import Type
 
 from sqlalchemy import delete, insert, select, Table
-from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.ipaddress import IpAddressType
-from maasservicelayer.db.filters import Clause, ClauseFactory
+from maasservicelayer.db.mappers.dnsdata import DNSDataDomainDataMapper
+from maasservicelayer.db.mappers.staticipaddress import (
+    StaticIPAddressDomainDataMapper,
+)
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     DNSDataTable,
@@ -21,25 +23,12 @@ from maasservicelayer.models.domains import Domain
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 
 
-class DNSResourceClauseFactory(ClauseFactory):
-    @classmethod
-    def with_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(DNSResourceTable.c.id, id))
-
-    @classmethod
-    def with_ids(cls, ids: list[int]) -> Clause:
-        return Clause(condition=DNSResourceTable.c.id.in_(ids))
-
-    @classmethod
-    def with_name(cls, name: str) -> Clause:
-        return Clause(condition=eq(DNSResourceTable.c.name, name))
-
-    @classmethod
-    def with_domain_id(cls, id: int) -> Clause:
-        return Clause(condition=eq(DNSResourceTable.c.domain_id, id))
-
-
 class DNSResourceRepository(BaseRepository[DNSResource]):
+    dnsdata_mapper = DNSDataDomainDataMapper(DNSData, DNSDataTable)
+    static_ip_address_mapper = StaticIPAddressDomainDataMapper(
+        StaticIPAddress, StaticIPAddressTable
+    )
+
     def get_repository_table(self) -> Table:
         return DNSResourceTable
 
@@ -70,7 +59,7 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
             stmt = stmt.filter(DNSResourceTable.c.id != but_not_for.id)
 
         result = (await self.execute_stmt(stmt)).all()
-        return [DNSResource(**row._asdict()) for row in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
     async def get_ips_for_dnsresource(
         self,
@@ -106,7 +95,10 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
 
         result = (await self.execute_stmt(stmt)).all()
 
-        return [StaticIPAddress(**row._asdict()) for row in result]
+        return [
+            self.static_ip_address_mapper.to_domain(row._mapping)
+            for row in result
+        ]
 
     async def remove_ip_relation(
         self, dnsrr: DNSResource, ip: StaticIPAddress
@@ -149,7 +141,7 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
 
         result = (await self.execute_stmt(stmt)).all()
 
-        return [DNSData(**r._asdict()) for r in result]
+        return [self.dnsdata_mapper.to_domain(row._mapping) for row in result]
 
     async def get_dnsresources_for_ip(
         self, ip: StaticIPAddress
@@ -176,7 +168,7 @@ class DNSResourceRepository(BaseRepository[DNSResource]):
         )
 
         result = (await self.execute_stmt(stmt)).all()
-        return [DNSResource(**row._asdict()) for row in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
     async def get_dnsresources_without_ips(
         self, dnsresource_ids: list[int]

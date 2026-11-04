@@ -14,23 +14,6 @@ from maascommon.workflows.dhcp import (
 )
 from maasservicelayer.builders.subnets import SubnetBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dhcpsnippets import (
-    DhcpSnippetsClauseFactory,
-)
-from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
-from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
-    NodeGroupToRackControllersClauseFactory,
-)
-from maasservicelayer.db.repositories.reservedips import (
-    ReservedIPsClauseFactory,
-)
-from maasservicelayer.db.repositories.staticipaddress import (
-    StaticIPAddressClauseFactory,
-)
-from maasservicelayer.db.repositories.staticroutes import (
-    StaticRoutesClauseFactory,
-)
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.exceptions.catalog import (
     PreconditionFailedException,
@@ -39,6 +22,15 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_SUBNET_WITH_IPS_IN_USE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.dhcpsnippets import DhcpSnippetsFilters
+from maasservicelayer.filters.ipranges import IPRangeFilters
+from maasservicelayer.filters.nodegrouptorackcontrollers import (
+    NodeGroupToRackControllersFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.reservedips import ReservedIPsFilters
+from maasservicelayer.filters.staticipaddress import StaticIPAddressFilters
+from maasservicelayer.filters.staticroutes import StaticRoutesFilters
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
@@ -438,39 +430,33 @@ class TestSubnetsService:
         )
         staticipaddress_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_subnet_id(subnet.id)
+                where=StaticIPAddressFilters.with_subnet_id(subnet.id)
             )
         )
         ipranges_service_mock.delete_many.assert_called_once_with(
-            query=QuerySpec(
-                where=IPRangeClauseFactory.with_subnet_id(subnet.id)
-            )
+            query=QuerySpec(where=IPRangeFilters.with_subnet_id(subnet.id))
         )
         staticroutes_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.or_clauses(
+                where=StaticRoutesFilters.or_filters(
                     [
-                        StaticRoutesClauseFactory.with_source_id(subnet.id),
-                        StaticRoutesClauseFactory.with_destination_id(
-                            subnet.id
-                        ),
+                        StaticRoutesFilters.with_source_id(subnet.id),
+                        StaticRoutesFilters.with_destination_id(subnet.id),
                     ]
                 )
             )
         )
         reservedips_service_mock.delete_many.assert_called_once_with(
-            query=QuerySpec(
-                where=ReservedIPsClauseFactory.with_subnet_id(subnet.id)
-            )
+            query=QuerySpec(where=ReservedIPsFilters.with_subnet_id(subnet.id))
         )
         dhcpsnippets_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=DhcpSnippetsClauseFactory.with_subnet_id(subnet.id)
+                where=DhcpSnippetsFilters.with_subnet_id(subnet.id)
             )
         )
         nodegrouptorackcontrollers_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=NodeGroupToRackControllersClauseFactory.with_subnet_id(
+                where=NodeGroupToRackControllersFilters.with_subnet_id(
                     subnet.id
                 )
             )
@@ -546,39 +532,33 @@ class TestSubnetsService:
         )
         staticipaddress_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=StaticIPAddressClauseFactory.with_subnet_id(subnet.id)
+                where=StaticIPAddressFilters.with_subnet_id(subnet.id)
             )
         )
         ipranges_service_mock.delete_many.assert_called_once_with(
-            query=QuerySpec(
-                where=IPRangeClauseFactory.with_subnet_id(subnet.id)
-            )
+            query=QuerySpec(where=IPRangeFilters.with_subnet_id(subnet.id))
         )
         staticroutes_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=StaticRoutesClauseFactory.or_clauses(
+                where=StaticRoutesFilters.or_filters(
                     [
-                        StaticRoutesClauseFactory.with_source_id(subnet.id),
-                        StaticRoutesClauseFactory.with_destination_id(
-                            subnet.id
-                        ),
+                        StaticRoutesFilters.with_source_id(subnet.id),
+                        StaticRoutesFilters.with_destination_id(subnet.id),
                     ]
                 )
             )
         )
         reservedips_service_mock.delete_many.assert_called_once_with(
-            query=QuerySpec(
-                where=ReservedIPsClauseFactory.with_subnet_id(subnet.id)
-            )
+            query=QuerySpec(where=ReservedIPsFilters.with_subnet_id(subnet.id))
         )
         dhcpsnippets_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=DhcpSnippetsClauseFactory.with_subnet_id(subnet.id)
+                where=DhcpSnippetsFilters.with_subnet_id(subnet.id)
             )
         )
         nodegrouptorackcontrollers_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
-                where=NodeGroupToRackControllersClauseFactory.with_subnet_id(
+                where=NodeGroupToRackControllersFilters.with_subnet_id(
                     subnet.id
                 )
             )

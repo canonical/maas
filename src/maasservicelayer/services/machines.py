@@ -3,8 +3,8 @@
 
 from maascommon.workflows.msm import MachinesCountByStatus
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachinesRepository
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.services.dnspublications import DNSPublicationsService
