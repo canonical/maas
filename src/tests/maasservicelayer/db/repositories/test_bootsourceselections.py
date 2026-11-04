@@ -47,6 +47,9 @@ from tests.fixtures.factories.bootresources import (
 from tests.fixtures.factories.bootresourcesets import (
     create_test_bootresourceset_entry,
 )
+from tests.fixtures.factories.bootsourcecache import (
+    create_test_bootsourcecache_entry,
+)
 from tests.fixtures.factories.bootsourceselections import (
     create_test_bootsourceselection_entry,
 )
@@ -512,7 +515,7 @@ class TestBootSourceSelectionStatusRepository:
             filename_on_disk="file",
             resource_set_id=boot_resource_set.id,
         )
-        # currently downloading as the size is less than the file size
+        # currently downloading as the sync size is less than the file size
         await create_test_bootresourcefilesync_entry(
             fixture,
             size=512,
@@ -525,6 +528,81 @@ class TestBootSourceSelectionStatusRepository:
         assert fetched is not None
         assert fetched.status == ImageStatus.READY
         assert fetched.update_status == ImageUpdateStatus.DOWNLOADING
+        assert fetched.sync_percentage == 50.0
+
+    async def test_file_without_sync_record_is_not_ignored(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        os, release, arch, subarch = "ubuntu", "noble", "amd64", "generic"
+        region = await create_test_region_controller_entry(fixture)
+        boot_source = await create_test_bootsource_entry(
+            fixture,
+            name="test-boot_source",
+            url="http://example.com",
+            priority=100,
+        )
+        await create_test_bootsourcecache_entry(
+            fixture,
+            boot_source_id=boot_source.id,
+            os=os,
+            arch=arch,
+            subarch=subarch,
+            release=release,
+            latest_version="1",
+            kflavor="generic",
+        )
+        selection = await create_test_bootsourceselection_entry(
+            fixture,
+            os=os,
+            release=release,
+            arch=arch,
+            boot_source_id=boot_source.id,
+        )
+        boot_resource = await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.SYNCED,
+            name=f"{os}/{release}",
+            architecture=f"{arch}/{subarch}",
+            selection_id=selection.id,
+            kflavor="generic",
+        )
+
+        boot_resource_set = await create_test_bootresourceset_entry(
+            fixture,
+            version="1",
+            label="stable",
+            resource_id=boot_resource.id,
+        )
+        first_file = await create_test_bootresourcefile_entry(
+            fixture,
+            filename="first-file",
+            filetype=BootResourceFileType.SQUASHFS_IMAGE,
+            sha256="first-file-hash",
+            size=1024,
+            filename_on_disk="first-file",
+            resource_set_id=boot_resource_set.id,
+        )
+        await create_test_bootresourcefilesync_entry(
+            fixture,
+            size=1024,
+            file_id=first_file.id,
+            region_id=region["id"],
+        )
+        await create_test_bootresourcefile_entry(
+            fixture,
+            filename="second-file",
+            filetype=BootResourceFileType.SQUASHFS_IMAGE,
+            sha256="second-file-hash",
+            size=1024,
+            filename_on_disk="second-file",
+            resource_set_id=boot_resource_set.id,
+        )
+
+        fetched = await repository.get_by_id(selection.id)
+
+        assert fetched is not None
+        assert fetched.status == ImageStatus.DOWNLOADING
+        assert fetched.update_status == ImageUpdateStatus.NO_UPDATES_AVAILABLE
         assert fetched.sync_percentage == 50.0
 
     async def test_selected(
@@ -544,6 +622,57 @@ class TestBootSourceSelectionStatusRepository:
         )
         not_selected = await repository.get_by_id(s1.id)
         selected = await repository.get_by_id(s2.id)
+
+        assert selected is not None
+        assert not_selected is not None
+
+        assert selected.selected is True
+        assert not_selected.selected is False
+
+    async def test_selected_disabled_source(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        boot_source_1 = await create_test_bootsource_entry(
+            fixture,
+            name="source-1",
+            url="http://example.com/1",
+            priority=100,
+            enabled=False,
+        )
+        s1 = await create_test_selection_status_entry(
+            fixture, boot_source=boot_source_1
+        )
+        # The selection tied to the disabled boot source should not be shown as 'selected'
+        not_selected = await repository.get_by_id(s1.id)
+
+        assert not_selected is not None
+
+        assert not_selected.selected is False
+
+    async def test_selected_disabled_source_multiple_sources(
+        self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
+    ):
+        boot_source_1 = await create_test_bootsource_entry(
+            fixture, name="source-1", url="http://example.com/1", priority=100
+        )
+        boot_source_2 = await create_test_bootsource_entry(
+            fixture,
+            name="source-2",
+            url="http://example.com/2",
+            priority=101,
+            enabled=False,
+        )
+        s1 = await create_test_selection_status_entry(
+            fixture, boot_source=boot_source_1
+        )
+        s2 = await create_test_selection_status_entry(
+            fixture, boot_source=boot_source_2
+        )
+        # The selection should show as selected since it's tied to the boot source
+        # with the highest priority among the enabled sources
+        selected = await repository.get_by_id(s1.id)
+        # The selection tied to the disabled boot source should not be shown as 'selected'
+        not_selected = await repository.get_by_id(s2.id)
 
         assert selected is not None
         assert not_selected is not None
