@@ -1,7 +1,7 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Callable
+from typing import Awaitable, Callable
 
 from fastapi import Depends
 from starlette.requests import Request
@@ -38,7 +38,7 @@ def get_authenticated_user(request: Request) -> AuthenticatedUser | None:
     return request.state.authenticated_user
 
 
-def check_authentication() -> Callable:
+def check_authentication() -> Callable[..., Awaitable[AuthenticatedUser]]:
     """
     Decorator to check if the request is authenticated.
 
@@ -49,7 +49,7 @@ def check_authentication() -> Callable:
     async def wrapper(
         request: Request,
         openapi_security_generator: None = Depends(oauth2_bearer_openapi),
-    ) -> None:
+    ) -> AuthenticatedUser:
         authenticated_user = get_authenticated_user(request)
         if not authenticated_user:
             raise UnauthorizedException(
@@ -60,13 +60,14 @@ def check_authentication() -> Callable:
                     )
                 ]
             )
+        return authenticated_user
 
     return wrapper
 
 
 def check_permissions(
     openfga_permission: MAASResourceEntitlement | None = None,
-) -> Callable:
+) -> Callable[..., Awaitable[AuthenticatedUser]]:
     """
     Decorator to check if the authenticated user has the required permission to access an endpoint.
 
