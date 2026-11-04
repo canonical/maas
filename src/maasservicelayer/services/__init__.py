@@ -5,6 +5,7 @@ from typing import Callable, Self
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.agents import AgentsRepository
+from maasservicelayer.db.repositories.api_tokens import ApiTokenRepository
 from maasservicelayer.db.repositories.bootresourcefiles import (
     BootResourceFilesRepository,
 )
@@ -131,6 +132,7 @@ from maasservicelayer.db.repositories.users import UsersRepository
 from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.services.agents import AgentsService
+from maasservicelayer.services.api_tokens import ApiTokenService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.base import ServiceCache
 from maasservicelayer.services.boot_sources import BootSourcesService
@@ -272,6 +274,7 @@ class ServiceCollectionV3:
     boot_source_cache: BootSourceCacheService
     boot_source_selections: BootSourceSelectionsService
     boot_source_selection_status: BootSourceSelectionStatusService
+    api_tokens: ApiTokenService
     bootstraptokens: BootstrapTokensService
     database_configurations: DatabaseConfigurationsService
     configurations: ConfigurationsService
@@ -580,6 +583,9 @@ class ServiceCollectionV3:
         )
         services.tokens = TokensService(
             context=context, repository=TokensRepository(context)
+        )
+        services.api_tokens = ApiTokenService(
+            context=context, repository=ApiTokenRepository(context)
         )
         services.refresh_tokens = RefreshTokenService(
             context=context,

@@ -1848,6 +1848,33 @@ RDNSTable = Table(
     Index("maasserver_rdns_observer_id_85a64c6b", "observer_id"),
 )
 
+ApiTokenTable = Table(
+    "maasserver_apitoken",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("name", String(255), nullable=False),
+    Column("public_id", String(32), nullable=False, unique=True),
+    Column("secret_hash", String(64), nullable=False),
+    Column("expires_at", DateTime(timezone=True), nullable=False),
+    Column("last_used_at", DateTime(timezone=True), nullable=True),
+    Column("revoked_at", DateTime(timezone=True), nullable=True),
+    Column(
+        "user_id",
+        Integer,
+        ForeignKey(
+            "auth_user.id",
+            deferrable=True,
+            initially="DEFERRED",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    ),
+    Index("maasserver_apitoken_user_id_idx", "user_id"),
+    Index("maasserver_apitoken_expires_at_idx", "expires_at"),
+)
+
 RefreshTokenTable = Table(
     "maasserver_refreshtoken",
     METADATA,

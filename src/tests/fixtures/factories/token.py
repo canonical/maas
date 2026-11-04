@@ -5,6 +5,7 @@ from datetime import timedelta
 from typing import Any
 
 from maasservicelayer.models.tokens import (
+    ApiToken,
     OIDCRevokedToken,
     RefreshToken,
     Token,
@@ -66,3 +67,23 @@ async def create_test_revoked_token(
         "maasserver_oidcrevokedtoken", [revoked_token]
     )
     return OIDCRevokedToken(**created_revoked_token)
+
+
+async def create_test_api_token(
+    fixture: Fixture, **extra_details: Any
+) -> ApiToken:
+    now = utcnow()
+    api_token = {
+        "name": "ci",
+        "public_id": "e623c3c3b9b63c3b",
+        "secret_hash": "0" * 64,
+        "expires_at": now + timedelta(days=1),
+        "user_id": 1,
+        "created": now,
+        "updated": now,
+    }
+    api_token.update(extra_details)
+    [created_api_token] = await fixture.create(
+        "maasserver_apitoken", [api_token]
+    )
+    return ApiToken(**created_api_token)

@@ -40,6 +40,7 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
+from maasservicelayer.utils.api_tokens import is_api_token
 
 logger = structlog.getLogger()
 
@@ -150,6 +151,31 @@ class LocalAuthenticationProvider(JWTAuthenticationProvider):
     @classmethod
     def get_issuer(cls):
         return JWT.ISSUER
+
+
+class PATAuthenticationProvider(AuthenticationProvider):
+    """Authenticates long-lived personal access tokens (`maas_pat_...`)."""
+
+    async def authenticate(
+        self, request: Request, token: str
+    ) -> AuthenticatedUser:
+        services = request.state.services
+        api_token = await services.api_tokens.authenticate(token)
+        user = (
+            await services.users.get_by_id(api_token.user_id)
+            if api_token
+            else None
+        )
+        if api_token is None or user is None or not user.is_active:
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="The token is invalid, expired or revoked.",
+                    )
+                ]
+            )
+        return AuthenticatedUser(id=user.id, username=user.username)
 
 
 class OIDCAuthenticationProvider(AuthenticationProvider):
@@ -281,6 +307,7 @@ class AuthenticationProvidersCache:
             JWTAuthenticationProvider
         ] = None,  # pyright: ignore [reportArgumentType]
         oidc_authentication_provider: OIDCAuthenticationProvider = None,  # pyright: ignore [reportArgumentType]
+        pat_authentication_provider: PATAuthenticationProvider | None = None,
     ):
         self.jwt_authentication_providers_cache: Dict[
             str, JWTAuthenticationProvider
@@ -293,12 +320,18 @@ class AuthenticationProvidersCache:
             }
         )
         self.oidc_authentication_provider = oidc_authentication_provider
+        self.pat_authentication_provider = (
+            pat_authentication_provider or PATAuthenticationProvider()
+        )
 
     def get(self, key: str) -> JWTAuthenticationProvider | None:
         return self.jwt_authentication_providers_cache.get(key, None)
 
     def get_oidc_provider(self) -> OIDCAuthenticationProvider:
         return self.oidc_authentication_provider
+
+    def get_pat_provider(self) -> PATAuthenticationProvider:
+        return self.pat_authentication_provider
 
     def add(self, provider: JWTAuthenticationProvider) -> None:
         self.jwt_authentication_providers_cache[provider.get_issuer()] = (
@@ -369,6 +402,10 @@ class V3AuthenticationMiddleware(BaseHTTPMiddleware):
         self, request: Request, auth_header: str
     ) -> AuthenticatedUser:
         token = auth_header.split(" ")[1]
+        if is_api_token(token):
+            return await self.providers_cache.get_pat_provider().authenticate(
+                request, token
+            )
         try:
             header = decode_unverified_jwt(token, check_expiration=False)
         except JWTDecodeError:
