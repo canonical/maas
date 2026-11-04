@@ -84,9 +84,7 @@ LXD_BYTE_SUFFIXES = {
     "EiB": 1024**6,
 }
 
-LXD_REQUIRED_EXTENSIONS = frozenset(
-    ("projects", "virtual-machines", "custom_block_volumes")
-)
+LXD_REQUIRED_EXTENSIONS = frozenset(("projects", "custom_block_volumes"))
 
 LXD_MIN_VERSION = "4.16"
 
