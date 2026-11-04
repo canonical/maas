@@ -3,11 +3,11 @@
 
 from maasservicelayer.builders.bootsourcecache import BootSourceCacheBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourcecache import (
-    BootSourceCacheClauseFactory,
     BootSourceCacheRepository,
 )
+from maasservicelayer.filters.bootsourcecache import BootSourceCacheFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourcecache import BootSourceCache
 from maasservicelayer.models.bootsources import (
@@ -36,27 +36,27 @@ class BootSourceCacheService(
     ) -> BootSourceCache:
         existing = await self.get_one(
             query=QuerySpec(
-                where=BootSourceCacheClauseFactory.and_clauses(
+                where=BootSourceCacheFilters.and_filters(
                     [
-                        BootSourceCacheClauseFactory.with_boot_source_id(
+                        BootSourceCacheFilters.with_boot_source_id(
                             builder.ensure_set(builder.boot_source_id)
                         ),
-                        BootSourceCacheClauseFactory.with_os(
+                        BootSourceCacheFilters.with_os(
                             builder.ensure_set(builder.os)
                         ),
-                        BootSourceCacheClauseFactory.with_arch(
+                        BootSourceCacheFilters.with_arch(
                             builder.ensure_set(builder.arch)
                         ),
-                        BootSourceCacheClauseFactory.with_subarch(
+                        BootSourceCacheFilters.with_subarch(
                             builder.ensure_set(builder.subarch)
                         ),
-                        BootSourceCacheClauseFactory.with_release(
+                        BootSourceCacheFilters.with_release(
                             builder.ensure_set(builder.release)
                         ),
-                        BootSourceCacheClauseFactory.with_label(
+                        BootSourceCacheFilters.with_label(
                             builder.ensure_set(builder.label)
                         ),
-                        BootSourceCacheClauseFactory.with_kflavor(
+                        BootSourceCacheFilters.with_kflavor(
                             builder.ensure_set(builder.kflavor)
                         ),
                     ]
@@ -94,13 +94,13 @@ class BootSourceCacheService(
         # or updated.
         await self.delete_many(
             query=QuerySpec(
-                where=BootSourceCacheClauseFactory.and_clauses(
+                where=BootSourceCacheFilters.and_filters(
                     [
-                        BootSourceCacheClauseFactory.with_boot_source_id(
+                        BootSourceCacheFilters.with_boot_source_id(
                             image_manifest.boot_source_id
                         ),
-                        BootSourceCacheClauseFactory.not_clause(
-                            BootSourceCacheClauseFactory.with_ids(
+                        BootSourceCacheFilters.not_filter(
+                            BootSourceCacheFilters.with_ids(
                                 {cache.id for cache in boot_source_caches}
                             )
                         ),

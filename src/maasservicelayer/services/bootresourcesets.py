@@ -6,15 +6,13 @@ from typing import List
 from maascommon.enums.boot_resources import BootResourceFileType
 from maasservicelayer.builders.bootresourcesets import BootResourceSetBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootresourcefiles import (
-    BootResourceFileClauseFactory,
-)
 from maasservicelayer.db.repositories.bootresourcesets import (
-    BootResourceSetClauseFactory,
     BootResourceSetsRepository,
 )
 from maasservicelayer.exceptions.catalog import NotFoundException
+from maasservicelayer.filters.bootresourcefiles import BootResourceFileFilters
+from maasservicelayer.filters.bootresourcesets import BootResourceSetFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootresourcesets import BootResourceSet
 from maasservicelayer.services.base import BaseService, ServiceCache
 from maasservicelayer.services.bootresourcefiles import (
@@ -60,7 +58,7 @@ class BootResourceSetsService(
     ) -> None:
         await self.boot_resource_files_service.delete_many(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.with_resource_set_id(
+                where=BootResourceFileFilters.with_resource_set_id(
                     resource_to_be_deleted.id
                 )
             )
@@ -71,7 +69,7 @@ class BootResourceSetsService(
     ) -> None:
         await self.boot_resource_files_service.delete_many(
             query=QuerySpec(
-                where=BootResourceFileClauseFactory.with_resource_set_ids(
+                where=BootResourceFileFilters.with_resource_set_ids(
                     [r.id for r in resources]
                 )
             )
@@ -127,14 +125,12 @@ class BootResourceSetsService(
         )
         resource_set, _ = await self.get_or_create(
             query=QuerySpec(
-                where=BootResourceSetClauseFactory.and_clauses(
+                where=BootResourceSetFilters.and_filters(
                     [
-                        BootResourceSetClauseFactory.with_resource_id(
+                        BootResourceSetFilters.with_resource_id(
                             boot_resource_id
                         ),
-                        BootResourceSetClauseFactory.with_version(
-                            latest_version
-                        ),
+                        BootResourceSetFilters.with_version(latest_version),
                     ]
                 )
             ),

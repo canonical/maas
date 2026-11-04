@@ -8,12 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.builders.bootsourcecache import BootSourceCacheBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.repositories.bootsourcecache import (
-    BootSourceCacheClauseFactory,
     BootSourceCacheRepository,
 )
+from maasservicelayer.filters.bootsourcecache import BootSourceCacheFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootsourcecache import BootSourceCache
 from maasservicelayer.models.bootsources import (
     BootSourceAvailableImage,
@@ -25,107 +25,6 @@ from tests.fixtures.factories.bootsourcecache import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestBootSourceCacheClauseFactory:
-    def test_with_os(self) -> None:
-        clause = BootSourceCacheClauseFactory.with_os("ubuntu")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootsourcecache.os = 'ubuntu'"
-        )
-
-    def test_with_arch(self) -> None:
-        clause = BootSourceCacheClauseFactory.with_arch("amd64")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootsourcecache.arch = 'amd64'"
-        )
-
-    def test_with_subarch(self) -> None:
-        clause = BootSourceCacheClauseFactory.with_subarch("generic")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootsourcecache.subarch = 'generic'"
-        )
-
-    def test_with_release(self) -> None:
-        clause = BootSourceCacheClauseFactory.with_release("noble")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootsourcecache.release = 'noble'"
-        )
-
-    def test_with_label(self) -> None:
-        clause = BootSourceCacheClauseFactory.with_label("candidate")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootsourcecache.label = 'candidate'"
-        )
-
-    def test_with_kflavor(self) -> None:
-        clause = BootSourceCacheClauseFactory.with_kflavor("lowlatency")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootsourcecache.kflavor = 'lowlatency'"
-        )
-
-    def test_with_boot_source_id(self) -> None:
-        clause = BootSourceCacheClauseFactory.with_boot_source_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootsourcecache.boot_source_id = 1"
-        )
-
-    def test_with_boot_source_ids(self) -> None:
-        clause = BootSourceCacheClauseFactory.with_boot_source_ids([1, 2])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootsourcecache.boot_source_id IN (1, 2)"
-        )
-
-    def test_with_ids(self) -> None:
-        clause = BootSourceCacheClauseFactory.with_ids({1, 2})
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_bootsourcecache.id IN (1, 2)"
-        )
 
 
 class TestCommonBootSourceCacheRepository(
@@ -764,10 +663,10 @@ class TestBootSourceCacheRepository:
 
         result = await repository.get_supported_arches(
             query=QuerySpec(
-                where=BootSourceCacheClauseFactory.and_clauses(
+                where=BootSourceCacheFilters.and_filters(
                     [
-                        BootSourceCacheClauseFactory.with_os("ubuntu"),
-                        BootSourceCacheClauseFactory.with_release("focal"),
+                        BootSourceCacheFilters.with_os("ubuntu"),
+                        BootSourceCacheFilters.with_release("focal"),
                     ]
                 )
             )

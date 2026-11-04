@@ -13,11 +13,14 @@ from maascommon.enums.boot_resources import (
 from maascommon.enums.node import NodeStatus
 from maasservicelayer.builders.bootresources import BootResourceBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresources import (
-    BootResourceClauseFactory,
     BootResourcesRepository,
 )
+from maasservicelayer.filters.bootresources import (
+    BootResourceFilters,
+    BootResourceOrdering,
+)
+from maasservicelayer.filters.query import OrderBy, QuerySpec
 from maasservicelayer.models.bootresources import BootResource
 from tests.fixtures.factories.bootresourcefiles import (
     create_test_bootresourcefile_entry,
@@ -29,97 +32,15 @@ from tests.fixtures.factories.bootresources import (
 from tests.fixtures.factories.bootresourcesets import (
     create_test_bootresourceset_entry,
 )
+from tests.fixtures.factories.bootsourceselections import (
+    create_test_bootsourceselection_entry,
+)
 from tests.fixtures.factories.node import (
     create_test_machine_entry,
     create_test_region_controller_entry,
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestBootResourceClauseFactory:
-    def test_with_name(self) -> None:
-        clause = BootResourceClauseFactory.with_name("ubuntu/noble")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootresource.name = 'ubuntu/noble'")
-
-    def test_with_architecture(self) -> None:
-        clause = BootResourceClauseFactory.with_architecture("amd64/generic")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootresource.architecture = 'amd64/generic'")
-
-    def test_with_architecture_starting_with(self) -> None:
-        clause = BootResourceClauseFactory.with_architecture_starting_with(
-            "amd64"
-        )
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootresource.architecture LIKE 'amd64' || '%'")
-
-    def test_with_alias(self) -> None:
-        clause = BootResourceClauseFactory.with_alias("ubuntu/24.04")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootresource.alias = 'ubuntu/24.04'")
-
-    def test_with_rtype(self) -> None:
-        clause = BootResourceClauseFactory.with_rtype(BootResourceType.SYNCED)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootresource.rtype = 0")
-
-    def test_with_ids(self) -> None:
-        clause = BootResourceClauseFactory.with_ids({1, 2, 3})
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootresource.id IN (1, 2, 3)")
-
-    def test_with_selection_id(self) -> None:
-        clause = BootResourceClauseFactory.with_selection_id(5)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootresource.selection_id = 5")
-
-    def test_with_selection_ids(self) -> None:
-        clause = BootResourceClauseFactory.with_selection_ids([1, 2])
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootresource.selection_id IN (1, 2)")
-
-    def test_with_bootloader_type(self) -> None:
-        clause = BootResourceClauseFactory.with_bootloader_type(None)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootresource.bootloader_type IS NULL")
-
-    def test_with_selection_boot_source_id(self) -> None:
-        clause = BootResourceClauseFactory.with_selection_boot_source_id(5)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsourceselection.boot_source_id = 5")
-        compiled_joins = [
-            str(_join.compile(compile_kwargs={"literal_binds": True}))
-            for _join in clause.joins
-        ]
-        assert len(compiled_joins) == 1
-        assert (
-            "maasserver_bootsourceselection JOIN maasserver_bootresource ON maasserver_bootsourceselection.id = maasserver_bootresource.selection_id"
-            in compiled_joins
-        )
-
-    def test_with_filetype(self) -> None:
-        clause = BootResourceClauseFactory.with_filetype(
-            BootResourceFileType.SELF_EXTRACTING
-        )
-        compiled = str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        )
-        assert (
-            compiled
-            == "maasserver_bootresource.id IN (SELECT DISTINCT maasserver_bootresourceset.resource_id \nFROM maasserver_bootresourceset JOIN maasserver_bootresourcefile ON maasserver_bootresourcefile.resource_set_id = maasserver_bootresourceset.id \nWHERE maasserver_bootresourcefile.filetype = 'self-extracting')"
-        )
 
 
 class TestCommonBootResourceRepository(RepositoryCommonTests[BootResource]):
@@ -439,12 +360,12 @@ class TestBootResourceRepository:
             page=1,
             size=10,
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
-                        BootResourceClauseFactory.with_filetype(
+                        BootResourceFilters.with_filetype(
                             BootResourceFileType.SELF_EXTRACTING
                         ),
                     ]
@@ -461,12 +382,12 @@ class TestBootResourceRepository:
             page=1,
             size=10,
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
-                        BootResourceClauseFactory.with_filetype(
+                        BootResourceFilters.with_filetype(
                             BootResourceFileType.ROOT_TGZ
                         ),
                     ]
@@ -478,6 +399,97 @@ class TestBootResourceRepository:
         assert len(result_tgz.items) == 1
         assert result_tgz.items[0].id == regular_resource.id
         assert result_tgz.items[0].name == "custom/noble"
+
+    async def test_domain_architecture_and_source_filters(
+        self, repository, fixture
+    ):
+        selection = await create_test_bootsourceselection_entry(
+            fixture,
+            os="ubuntu",
+            release="jammy",
+            arch="amd64",
+            boot_source_id=1,
+        )
+        selected = await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.SYNCED,
+            name="ubuntu/jammy",
+            architecture="amd64/generic",
+            selection_id=selection.id,
+        )
+        await create_test_bootresource_entry(
+            fixture,
+            rtype=BootResourceType.SYNCED,
+            name="ubuntu/jammy",
+            architecture="arm64/generic",
+            selection_id=selection.id,
+        )
+        result = await repository.get_many(
+            QuerySpec(
+                where=BootResourceFilters.and_filters(
+                    [
+                        BootResourceFilters.with_selection_id(selection.id),
+                        BootResourceFilters.with_architecture_starting_with(
+                            "amd64"
+                        ),
+                        BootResourceFilters.with_selection_boot_source_id(1),
+                    ]
+                ),
+            )
+        )
+        assert result == [selected]
+
+    @pytest.mark.parametrize("descending", [False, True])
+    async def test_domain_name_priority_ordering(
+        self, repository, fixture, descending
+    ):
+        names = ["custom/first", "custom/second", "custom/unlisted"]
+        for name in names:
+            await create_test_bootresource_entry(
+                fixture,
+                rtype=BootResourceType.UPLOADED,
+                name=name,
+                architecture="amd64/generic",
+            )
+        order = BootResourceOrdering.by_name_with_priority(names[:2])
+        if descending:
+            order = BootResourceOrdering.desc(order)
+        result = await repository.get_many(
+            QuerySpec(
+                where=BootResourceFilters.with_names(names),
+                order_by=(order,),
+            )
+        )
+        expected = list(reversed(names)) if descending else names
+        assert [resource.name for resource in result] == expected
+
+    @pytest.mark.parametrize(
+        "method",
+        ["list_custom_images_status", "list_custom_images_statistics"],
+    )
+    async def test_custom_image_lists_accept_domain_filters(
+        self, repository, fixture, method
+    ):
+        selected = await create_test_custom_bootresource_status_entry(
+            fixture,
+            name="custom/selected",
+            architecture="amd64/generic",
+        )
+        await create_test_custom_bootresource_status_entry(
+            fixture,
+            name="custom/other",
+            architecture="amd64/generic",
+        )
+        result = await getattr(repository, method)(
+            page=1,
+            size=10,
+            query=QuerySpec(
+                where=BootResourceFilters.with_id(selected.id),
+                order_by=(OrderBy(BootResource, "name"),),
+            ),
+        )
+        assert result.total == 1
+        assert [image.id for image in result.items] == [selected.id]
 
     async def test_list_with_filetype_filter_no_duplicates(
         self,
@@ -528,12 +540,12 @@ class TestBootResourceRepository:
             page=1,
             size=10,
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
-                        BootResourceClauseFactory.with_filetype(
+                        BootResourceFilters.with_filetype(
                             BootResourceFileType.SELF_EXTRACTING
                         ),
                     ]
@@ -584,13 +596,13 @@ class TestBootResourceRepository:
             page=1,
             size=10,
             query=QuerySpec(
-                where=BootResourceClauseFactory.and_clauses(
+                where=BootResourceFilters.and_filters(
                     [
-                        BootResourceClauseFactory.with_rtype(
+                        BootResourceFilters.with_rtype(
                             BootResourceType.UPLOADED
                         ),
-                        BootResourceClauseFactory.with_ids(target_ids),
-                        BootResourceClauseFactory.with_filetype(
+                        BootResourceFilters.with_ids(target_ids),
+                        BootResourceFilters.with_filetype(
                             BootResourceFileType.SELF_EXTRACTING
                         ),
                     ]

@@ -7,11 +7,11 @@ import pytest
 
 from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootresourcefilesync import (
     BootResourceFileSyncRepository,
 )
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootresourcefilesync import BootResourceFileSync
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.services.bootresourcefilesync import (
@@ -77,12 +77,10 @@ class TestBootResourceFileSyncService:
         assert n_regions == 1
         nodes_service_mock.get_many.assert_called_once_with(
             query=QuerySpec(
-                where=NodeClauseFactory.or_clauses(
+                where=NodeFilters.or_filters(
                     [
-                        NodeClauseFactory.with_type(
-                            NodeTypeEnum.REGION_CONTROLLER
-                        ),
-                        NodeClauseFactory.with_type(
+                        NodeFilters.with_type(NodeTypeEnum.REGION_CONTROLLER),
+                        NodeFilters.with_type(
                             NodeTypeEnum.REGION_AND_RACK_CONTROLLER
                         ),
                     ]

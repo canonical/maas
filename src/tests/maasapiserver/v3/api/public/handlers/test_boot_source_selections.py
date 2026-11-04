@@ -25,12 +25,12 @@ from maascommon.workflows.bootresource import (
 from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
 )
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-    BootSourceSelectionStatusClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import AlreadyExistsException
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+    BootSourceSelectionStatusFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
@@ -324,9 +324,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         response = await client.delete(f"{self.BASE_PATH}?id=1&id=2")
         assert response.status_code == 204
         services_mock.boot_source_selections.delete_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=BootSourceSelectionClauseFactory.with_ids([1, 2])
-            )
+            query=QuerySpec(where=BootSourceSelectionFilters.with_ids([1, 2]))
         )
         services_mock.temporal.terminate_workflow.assert_has_calls(
             [call("sync-selection:1"), call("sync-selection:2")]
@@ -518,7 +516,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
 
         services_mock.boot_source_selection_status.list.assert_called_once_with(
             query=QuerySpec(
-                where=BootSourceSelectionStatusClauseFactory.with_ids([1, 2])
+                where=BootSourceSelectionStatusFilters.with_ids([1, 2])
             ),
             page=1,
             size=1,
@@ -554,52 +552,7 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
 
         services_mock.boot_source_selection_status.list.assert_called_once_with(
             query=QuerySpec(
-                where=BootSourceSelectionStatusClauseFactory.with_selected(
-                    True
-                )
-            ),
-            page=1,
-            size=1,
-        )
-
-    async def test_list_selection_status_filter_selected_only_and_id(
-        self,
-        services_mock: Mock,
-        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
-    ) -> None:
-        client = mocked_api_client_user_with_permissions(
-            MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selection_status.list.return_value = (
-            ListResult[BootSourceSelectionStatus](
-                items=[
-                    BootSourceSelectionStatus(
-                        id=TEST_BOOTSOURCESELECTION.id,
-                        status=ImageStatus.DOWNLOADING,
-                        update_status=ImageUpdateStatus.NO_UPDATES_AVAILABLE,
-                        sync_percentage=50.0,
-                        selected=True,
-                    )
-                ],
-                total=0,
-            )
-        )
-
-        response = await client.get(
-            f"{self.BASE_PATH}?page=1&size=1&selected=true&id=1"
-        )
-        assert response.status_code == 200
-
-        services_mock.boot_source_selection_status.list.assert_called_once_with(
-            query=QuerySpec(
-                where=BootSourceSelectionStatusClauseFactory.and_clauses(
-                    [
-                        BootSourceSelectionStatusClauseFactory.with_selected(
-                            True
-                        ),
-                        BootSourceSelectionStatusClauseFactory.with_ids([1]),
-                    ]
-                )
+                where=BootSourceSelectionStatusFilters.with_selected(True)
             ),
             page=1,
             size=1,

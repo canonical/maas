@@ -8,11 +8,9 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from maasservicelayer.builders.bootsources import BootSourceBuilder
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootsources import (
-    BootSourcesClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.bootsources import BootSourcesFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -36,7 +34,7 @@ async def validate_priority(value: int, services: ServiceCollectionV3) -> int:
         )
 
     if await services.boot_sources.exists(
-        query=QuerySpec(where=BootSourcesClauseFactory.with_priority(value))
+        query=QuerySpec(where=BootSourcesFilters.with_priority(value))
     ):
         raise ValidationException.build_for_field(
             field="priority",

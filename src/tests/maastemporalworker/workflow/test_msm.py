@@ -35,14 +35,12 @@ from maasservicelayer.builders.bootsourceselections import (
 )
 from maasservicelayer.context import Context
 from maasservicelayer.db import Database
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.bootsources import (
-    BootSourcesClauseFactory,
-)
-from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
-)
 from maasservicelayer.exceptions.catalog import ValidationException
+from maasservicelayer.filters.bootsources import BootSourcesFilters
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+)
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.bootsources import BootSource
 from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.secrets import MSMConnectorSecret
@@ -622,9 +620,7 @@ class TestMSMActivities:
             ),
         )
         services_mock.boot_source_selections.delete_many.assert_called_once_with(
-            QuerySpec(
-                where=BootSourceSelectionClauseFactory.with_boot_source_id(1)
-            )
+            QuerySpec(where=BootSourceSelectionFilters.with_boot_source_id(1))
         )
         # order of builders is not guaranteed, so cant do assert_called_with
         builders_arg = (
@@ -782,9 +778,7 @@ class TestMSMActivities:
         await env.run(msm_act.delete_msm_bootsource, input)
         services_mock.boot_sources.delete_one.assert_called_once_with(
             QuerySpec(
-                where=BootSourcesClauseFactory.with_url(
-                    input.sm_url + MSM_SS_EP
-                )
+                where=BootSourcesFilters.with_url(input.sm_url + MSM_SS_EP)
             )
         )
 

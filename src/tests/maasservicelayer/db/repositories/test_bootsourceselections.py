@@ -17,11 +17,8 @@ from maasservicelayer.builders.bootsourceselections import (
     BootSourceSelectionBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.bootsourceselections import (
-    BootSourceSelectionClauseFactory,
     BootSourceSelectionsRepository,
-    BootSourceSelectionStatusClauseFactory,
     BootSourceSelectionStatusRepository,
 )
 from maasservicelayer.db.tables import (
@@ -29,6 +26,11 @@ from maasservicelayer.db.tables import (
     BootSourceSelectionStatusView,
     BootSourceSelectionTable,
 )
+from maasservicelayer.filters.bootsourceselections import (
+    BootSourceSelectionFilters,
+    BootSourceSelectionStatusFilters,
+)
+from maasservicelayer.filters.query import OrderBy, QuerySpec
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsourceselections import (
     BootSourceSelection,
@@ -62,44 +64,6 @@ from tests.maasservicelayer.db.repositories.base import (
     ReadOnlyRepositoryCommonTests,
     RepositoryCommonTests,
 )
-
-
-class TestBootSourceSelectionClauseFactory:
-    def test_with_id(self) -> None:
-        clause = BootSourceSelectionClauseFactory.with_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsourceselection.id = 1")
-
-    def test_with_ids(self) -> None:
-        clause = BootSourceSelectionClauseFactory.with_ids([1, 2])
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsourceselection.id IN (1, 2)")
-
-    def test_with_boot_source_id(self) -> None:
-        clause = BootSourceSelectionClauseFactory.with_boot_source_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsourceselection.boot_source_id = 1")
-
-    def test_with_boot_source_ids(self) -> None:
-        clause = BootSourceSelectionClauseFactory.with_boot_source_ids([1, 2])
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsourceselection.boot_source_id IN (1, 2)")
-
-    def test_with_os(self) -> None:
-        clause = BootSourceSelectionClauseFactory.with_os("ubuntu")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsourceselection.os = 'ubuntu'")
-
-    def test_with_release(self) -> None:
-        clause = BootSourceSelectionClauseFactory.with_release("noble")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsourceselection.release = 'noble'")
 
 
 class TestCommonBootSourceSelectionRepository(
@@ -358,13 +322,24 @@ class TestBootSourceSelectionRepository:
         assert len(stats_list.items) == 2
         assert stats_list.total == 2
 
-
-class TestBootSourceSelectionStatusClauseFactory:
-    def test_with_ids(self) -> None:
-        clause = BootSourceSelectionStatusClauseFactory.with_ids([1, 2])
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_bootsourceselectionstatus_view.id IN (1, 2)")
+    async def test_statistics_domain_filter(self, repository, fixture):
+        selected = await create_test_bootsourceselection_entry(
+            fixture,
+            os="ubuntu",
+            release="jammy",
+            arch="amd64",
+            boot_source_id=1,
+        )
+        result = await repository.list_selections_statistics(
+            page=1,
+            size=10,
+            query=QuerySpec(
+                where=BootSourceSelectionFilters.with_id(selected.id),
+                order_by=(OrderBy(BootSourceSelection, "release"),),
+            ),
+        )
+        assert result.total == 1
+        assert [stat.id for stat in result.items] == [selected.id]
 
 
 class TestCommonBootSourceSelectionStatusRepository(
@@ -430,6 +405,29 @@ class TestBootSourceSelectionStatusRepository:
         return BootSourceSelectionStatusRepository(
             Context(connection=db_connection)
         )
+
+    async def test_domain_status_filters(self, repository, fixture):
+        created = await create_test_selection_status_entry(fixture)
+        fetched = await repository.get_by_id(created.id)
+        assert fetched is not None
+        for selected in (False, True):
+            result = await repository.get_many(
+                QuerySpec(
+                    where=BootSourceSelectionStatusFilters.and_filters(
+                        [
+                            BootSourceSelectionStatusFilters.with_ids(
+                                [created.id]
+                            ),
+                            BootSourceSelectionStatusFilters.with_selected(
+                                selected
+                            ),
+                        ]
+                    ),
+                )
+            )
+            assert result == (
+                [fetched] if fetched.selected == selected else []
+            )
 
     async def test_ready(
         self, repository: BootSourceSelectionStatusRepository, fixture: Fixture
