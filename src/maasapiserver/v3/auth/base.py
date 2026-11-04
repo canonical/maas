@@ -67,7 +67,7 @@ def check_authentication() -> Callable[..., Awaitable[AuthenticatedUser]]:
 
 def check_permissions(
     openfga_permission: MAASResourceEntitlement | None = None,
-) -> Callable:
+) -> Callable[..., Awaitable[AuthenticatedUser]]:
     """
     Decorator to check if the authenticated user has the required permission to access an endpoint.
 
