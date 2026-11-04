@@ -10,11 +10,9 @@ from maascommon.enums.node import HardwareDeviceTypeEnum
 from maascommon.enums.script import ScriptParallel, ScriptType
 from maasservicelayer.builders.script import ScriptBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.scripts import (
-    ScriptsClauseFactory,
-    ScriptsRepository,
-)
+from maasservicelayer.db.repositories.scripts import ScriptsRepository
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.scripts import ScriptsFilters
 from maasservicelayer.models.base import ResourceBuilder
 from maasservicelayer.models.script import Script
 from tests.fixtures.factories.script import (
@@ -23,134 +21,6 @@ from tests.fixtures.factories.script import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestScriptsClauseFactory:
-    def test_with_id(self) -> None:
-        clause = ScriptsClauseFactory.with_id(1)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_script.id = 1"
-        )
-
-    def test_with_ids(self) -> None:
-        clause = ScriptsClauseFactory.with_ids([1, 2, 3])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_script.id IN (1, 2, 3)"
-        )
-
-    def test_with_name(self) -> None:
-        clause = ScriptsClauseFactory.with_name("smartctl")
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_script.name = 'smartctl'"
-        )
-
-    def test_with_names(self) -> None:
-        clause = ScriptsClauseFactory.with_names(["smartctl", "memtester"])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_script.name IN ('smartctl', 'memtester')"
-        )
-
-    def test_with_script_type(self) -> None:
-        clause = ScriptsClauseFactory.with_script_type(
-            ScriptType.COMMISSIONING
-        )
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == f"maasserver_script.script_type = {ScriptType.COMMISSIONING}"
-        )
-
-    def test_with_default(self) -> None:
-        clause = ScriptsClauseFactory.with_default(True)
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == 'maasserver_script."default" = true'
-        )
-
-    def test_with_tags_contains(self) -> None:
-        clause = ScriptsClauseFactory.with_tags_contains(["noauto"])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_script.tags @> ARRAY['noauto']"
-        )
-
-    def test_with_tags_overlap(self) -> None:
-        clause = ScriptsClauseFactory.with_tags_overlap(
-            ["enlisting", "deploy-info"]
-        )
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_script.tags && ARRAY['enlisting', 'deploy-info']"
-        )
-
-    def test_without_tags_contains(self) -> None:
-        clause = ScriptsClauseFactory.without_tags_contains(["noauto"])
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_script.tags IS NULL "
-            "OR NOT ((maasserver_script.tags @> ARRAY['noauto']))"
-        )
-
-    def test_with_empty_for_hardware(self) -> None:
-        clause = ScriptsClauseFactory.with_empty_for_hardware()
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_script.for_hardware = ARRAY[]"
-        )
-
-    def test_with_nonempty_for_hardware(self) -> None:
-        clause = ScriptsClauseFactory.with_nonempty_for_hardware()
-        assert (
-            str(
-                clause.condition.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-            == "maasserver_script.for_hardware != ARRAY[]"
-        )
 
 
 class TestScriptsRepository(RepositoryCommonTests[Script]):
@@ -217,9 +87,7 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
 
         scripts = await repository_instance.get_many(
             QuerySpec(
-                where=ScriptsClauseFactory.with_script_type(
-                    ScriptType.COMMISSIONING
-                )
+                where=ScriptsFilters.with_script_type(ScriptType.COMMISSIONING)
             )
         )
         assert len(scripts) == 1
@@ -236,7 +104,7 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
         )
 
         scripts = await repository_instance.get_many(
-            QuerySpec(where=ScriptsClauseFactory.with_default(True))
+            QuerySpec(where=ScriptsFilters.with_default(True))
         )
         assert len(scripts) == 1
         assert scripts[0].name == "builtin-script"
@@ -252,9 +120,7 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
         )
 
         scripts = await repository_instance.get_many(
-            QuerySpec(
-                where=ScriptsClauseFactory.with_tags_contains(["noauto"])
-            )
+            QuerySpec(where=ScriptsFilters.with_tags_contains(["noauto"]))
         )
         assert len(scripts) == 1
         assert scripts[0].name == "noauto-script"
@@ -274,7 +140,7 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
 
         scripts = await repository_instance.get_many(
             QuerySpec(
-                where=ScriptsClauseFactory.with_tags_overlap(
+                where=ScriptsFilters.with_tags_overlap(
                     ["enlisting", "deploy-info"]
                 )
             )
@@ -298,9 +164,7 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
         )
 
         scripts = await repository_instance.get_many(
-            QuerySpec(
-                where=ScriptsClauseFactory.without_tags_contains(["noauto"])
-            )
+            QuerySpec(where=ScriptsFilters.without_tags_contains(["noauto"]))
         )
         assert {script.name for script in scripts} == {
             "auto-script",
@@ -320,10 +184,26 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
         )
 
         scripts = await repository_instance.get_many(
-            QuerySpec(where=ScriptsClauseFactory.with_empty_for_hardware())
+            QuerySpec(where=ScriptsFilters.with_empty_for_hardware())
         )
         assert len(scripts) == 1
         assert scripts[0].name == "generic-script"
+
+    async def test_get_many_filter_by_nonempty_for_hardware(
+        self, repository_instance: ScriptsRepository, fixture: Fixture
+    ) -> None:
+        await create_test_script_entry(
+            fixture, name="generic-script", for_hardware=[]
+        )
+        hardware_script = await create_test_script_entry(
+            fixture, name="hardware-script", for_hardware=["pci:8086:1918"]
+        )
+
+        scripts = await repository_instance.get_many(
+            QuerySpec(where=ScriptsFilters.with_nonempty_for_hardware())
+        )
+
+        assert scripts == [hardware_script]
 
     async def test_get_many_filter_default_commissioning_selection(
         self, repository_instance: ScriptsRepository, fixture: Fixture
@@ -359,13 +239,13 @@ class TestScriptsRepository(RepositoryCommonTests[Script]):
 
         scripts = await repository_instance.get_many(
             QuerySpec(
-                where=ScriptsClauseFactory.and_clauses(
+                where=ScriptsFilters.and_filters(
                     [
-                        ScriptsClauseFactory.with_script_type(
+                        ScriptsFilters.with_script_type(
                             ScriptType.COMMISSIONING
                         ),
-                        ScriptsClauseFactory.with_empty_for_hardware(),
-                        ScriptsClauseFactory.without_tags_contains(["noauto"]),
+                        ScriptsFilters.with_empty_for_hardware(),
+                        ScriptsFilters.without_tags_contains(["noauto"]),
                     ]
                 )
             )

@@ -2,14 +2,13 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64decode
-from operator import eq
 from typing import Any, List
 
 from sqlalchemy import delete, Table
 from sqlalchemy.dialects.postgresql import insert
 
 from maasservicelayer.builders.nodeuserdata import NodeUserDataBuilder
-from maasservicelayer.db.filters import AnyQuerySpec, Clause, ClauseFactory
+from maasservicelayer.db.filters import AnyQuerySpec
 from maasservicelayer.db.mappers.base import BaseDomainDataMapper
 from maasservicelayer.db.mappers.nodeuserdata import (
     NodeUserDataDomainDataMapper,
@@ -17,20 +16,6 @@ from maasservicelayer.db.mappers.nodeuserdata import (
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import NodeUserDataTable
 from maasservicelayer.models.nodeuserdata import NodeUserData
-
-
-class NodeUserDataClauseFactory(ClauseFactory):
-    @classmethod
-    def with_node_id(cls, node_id: int) -> Clause:
-        return Clause(condition=eq(NodeUserDataTable.c.node_id, node_id))
-
-    @classmethod
-    def with_for_ephemeral_environment(cls, for_ephemeral: bool) -> Clause:
-        return Clause(
-            condition=eq(
-                NodeUserDataTable.c.for_ephemeral_environment, for_ephemeral
-            )
-        )
 
 
 class NodeUserDataRepository(BaseRepository[NodeUserData]):

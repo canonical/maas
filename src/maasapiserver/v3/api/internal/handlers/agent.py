@@ -35,13 +35,6 @@ from maascommon.logging.security import (
     SECURITY,
 )
 from maasservicelayer.builders.agents import AgentBuilder
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.agents import AgentsClauseFactory
-from maasservicelayer.db.repositories.bootstraptokens import (
-    BootstrapTokensClauseFactory,
-)
-from maasservicelayer.db.repositories.nodes import NodeClauseFactory
-from maasservicelayer.db.repositories.racks import RacksClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -53,6 +46,11 @@ from maasservicelayer.exceptions.constants import (
     PRECONDITION_FAILED,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.agents import AgentsFilters
+from maasservicelayer.filters.bootstraptokens import BootstrapTokensFilters
+from maasservicelayer.filters.nodes import NodeFilters
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.racks import RacksFilters
 from maasservicelayer.models.secrets import (
     MAASCACertificateSecret,
     RPCSharedSecret,
@@ -143,7 +141,7 @@ class AgentHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> AgentConfigResponse:
         agent = await services.agents.get_one(
-            QuerySpec(where=AgentsClauseFactory.with_uuid(uuid))
+            QuerySpec(where=AgentsFilters.with_uuid(uuid))
         )
         if not agent:
             raise NotFoundException(
@@ -175,9 +173,7 @@ class AgentHandler(Handler):
         system_id = ""
         if agent.rackcontroller_id:
             node = await services.nodes.get_one(
-                QuerySpec(
-                    where=NodeClauseFactory.with_id(agent.rackcontroller_id)
-                )
+                QuerySpec(where=NodeFilters.with_id(agent.rackcontroller_id))
             )
             if node:
                 system_id = node.system_id
@@ -235,7 +231,7 @@ class AgentHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> AgentSignedCertificateResponse:
         query_bootstraptoken = QuerySpec(
-            where=BootstrapTokensClauseFactory.with_secret(
+            where=BootstrapTokensFilters.with_secret(
                 agent_enroll_request.secret
             )
         )
@@ -260,9 +256,7 @@ class AgentHandler(Handler):
                 ]
             )
         rack = await services.racks.get_one(
-            QuerySpec(
-                where=RacksClauseFactory.with_rack_id(bootstraptoken.rack_id)
-            )
+            QuerySpec(where=RacksFilters.with_rack_id(bootstraptoken.rack_id))
         )
         if rack is None:
             raise UnauthorizedException(
