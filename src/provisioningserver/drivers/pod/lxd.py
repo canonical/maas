@@ -85,9 +85,7 @@ LXD_BYTE_SUFFIXES = {
     "EiB": 1024**6,
 }
 
-LXD_REQUIRED_EXTENSIONS = frozenset(
-    ("projects", "virtual-machines", "custom_block_volumes")
-)
+LXD_REQUIRED_EXTENSIONS = frozenset(("projects", "custom_block_volumes"))
 
 LXD_MIN_VERSION = "4.16"
 
@@ -151,12 +149,11 @@ def get_lxd_machine_definition(request, include_profile=False):
             "limits.memory.hugepages": (
                 "true" if request.hugepages_backed else "false"
             ),
-            # LP: 1867387 - Disable secure boot until its fixed in MAAS
-            "security.secureboot": "false",
         },
         "profiles": profiles,
         # Image source is empty as we get images from MAAS when netbooting.
         "source": {"type": "none"},
+        "type": "virtual-machine",
     }
 
 
@@ -392,7 +389,7 @@ class LXDPodDriver(PodDriver):
             with self._get_client(
                 pod_id, context, project=project
             ) as project_cli:
-                for virtual_machine in project_cli.virtual_machines.all():
+                for virtual_machine in project_cli.instances.all():
                     discovered_machine = self._get_discovered_machine(
                         project_cli,
                         virtual_machine,
@@ -451,9 +448,7 @@ class LXDPodDriver(PodDriver):
                     "server_name"
                 ]
 
-            machine = client.virtual_machines.create(
-                definition, **create_kwargs
-            )
+            machine = client.instances.create(definition, **create_kwargs)
             # Pod hints are updated on the region after the machine is composed.
             discovered_machine = self._get_discovered_machine(
                 client, machine, storage_pools, request=request
@@ -820,7 +815,10 @@ class LXDPodDriver(PodDriver):
         instance_name = context.get("instance_name")
         with self._get_client(pod_id, context) as client:
             try:
-                yield client.virtual_machines.get(instance_name)
+                # Use the /1.0/instances endpoint rather than
+                # /1.0/virtual-machines, which was removed in LXD 6.7.
+                # The instances endpoint is available since LXD 4.0.
+                yield client.instances.get(instance_name)
             except NotFound:
                 if fail:
                     raise LXDPodError(
