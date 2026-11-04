@@ -384,10 +384,10 @@ class TestClusteredLXDPodDriver(MAASTestCase):
                 "limits.cpu": str(request.cores),
                 "limits.memory": str(request.memory * 1024**2),
                 "limits.memory.hugepages": "false",
-                "security.secureboot": "false",
             },
             "profiles": ["maas"],
             "source": {"type": "none"},
+            "type": "virtual-machine",
             "devices": {
                 "root": {
                     "path": "/",
@@ -762,16 +762,6 @@ class TestLXDPodDriver(MAASTestCase):
             name=project_name,
             description="Project managed by MAAS",
         )
-
-    @inlineCallbacks
-    def test_discover_projects_checks_required_extensions(self):
-        self.fake_lxd.host_info["api_extensions"].remove("virtual-machines")
-        error_msg = (
-            "Please upgrade your LXD host to 4.16 or higher "
-            "to support the following extensions: virtual-machines"
-        )
-        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
-            yield self.driver.discover_projects(None, self.make_context())
 
     @inlineCallbacks
     def test_discover_new_vmhost_untrusted_cert(self):
@@ -1525,10 +1515,10 @@ class TestLXDPodDriver(MAASTestCase):
                 "limits.cpu": str(request.cores),
                 "limits.memory": str(request.memory * 1024**2),
                 "limits.memory.hugepages": "false",
-                "security.secureboot": "false",
             },
             "profiles": [],
             "source": {"type": "none"},
+            "type": "virtual-machine",
             "devices": {
                 "root": {
                     "path": "/",
@@ -1668,10 +1658,10 @@ class TestLXDPodDriver(MAASTestCase):
                 "limits.cpu": str(request.cores),
                 "limits.memory": str(request.memory * 1024**2),
                 "limits.memory.hugepages": "false",
-                "security.secureboot": "false",
             },
             "profiles": [],
             "source": {"type": "none"},
+            "type": "virtual-machine",
             "devices": {
                 "root": {
                     "path": "/",
@@ -1773,10 +1763,10 @@ class TestLXDPodDriver(MAASTestCase):
                 "limits.cpu": str(request.cores),
                 "limits.memory": str(request.memory * 1024**2),
                 "limits.memory.hugepages": "false",
-                "security.secureboot": "false",
             },
             "profiles": [],
             "source": {"type": "none"},
+            "type": "virtual-machine",
             "devices": {
                 "root": {
                     "path": "/",
@@ -1824,10 +1814,10 @@ class TestLXDPodDriver(MAASTestCase):
                 "limits.cpu": str(request.cores),
                 "limits.memory": str(request.memory * 1024**2),
                 "limits.memory.hugepages": "false",
-                "security.secureboot": "false",
             },
             "profiles": ["maas"],
             "source": {"type": "none"},
+            "type": "virtual-machine",
             "devices": {
                 "root": {
                     "path": "/",
