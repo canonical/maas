@@ -6,6 +6,10 @@ from operator import eq
 from sqlalchemy import desc, not_, select, Table
 from sqlalchemy.sql.functions import count
 
+from maasservicelayer.db.mappers.bootsourcecache import (
+    BootSourceAvailableImageDataMapper,
+    BootSourceCacheOSReleaseDataMapper,
+)
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import BootSourceCacheTable
 from maasservicelayer.filters.query import QuerySpec
@@ -18,6 +22,9 @@ from maasservicelayer.models.bootsources import (
 
 
 class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
+    _available_image_mapper = BootSourceAvailableImageDataMapper()
+    _os_release_mapper = BootSourceCacheOSReleaseDataMapper()
+
     def get_repository_table(self) -> Table:
         return BootSourceCacheTable
 
@@ -73,7 +80,10 @@ class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
             )
         )
         result = (await self.execute_stmt(stmt)).all()
-        return [BootSourceAvailableImage(**row._asdict()) for row in result]
+        return [
+            self._available_image_mapper.to_domain(row._mapping)
+            for row in result
+        ]
 
     async def list_boot_source_cache_available_images(
         self,
@@ -132,9 +142,8 @@ class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
         result = (await self.execute_stmt(stmt)).all()
         return ListResult[BootSourceAvailableImage](
             items=[
-                BootSourceAvailableImage(
-                    boot_source_id=boot_source_id,
-                    **row._asdict(),
+                self._available_image_mapper.to_domain_for_boot_source(
+                    row._mapping, boot_source_id
                 )
                 for row in result
             ],
@@ -152,8 +161,7 @@ class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
         )
         result = (await self.execute_stmt(stmt)).all()
         return [
-            BootSourceCacheOSRelease(os=row[0], release=row[1])
-            for row in result
+            self._os_release_mapper.to_domain(row._mapping) for row in result
         ]
 
     async def get_supported_arches(

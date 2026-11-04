@@ -1,17 +1,23 @@
-#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any, List, Type
+from typing import List, Type
 
-from sqlalchemy import delete, desc, insert, Select, select, Table
+from sqlalchemy import delete, desc, insert, select, Table
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.interface import InterfaceType
 from maascommon.enums.ipaddress import IpAddressType
 from maascommon.fields import normalise_macaddress
+from maasservicelayer.context import Context
+from maasservicelayer.db.mappers.interfaces import (
+    DiscoveredInterfaceIP,
+    DiscoveredInterfaceIPDomainDataMapper,
+    InterfaceDetailsDomainDataMapper,
+    InterfaceDomainDataMapper,
+)
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
@@ -23,32 +29,30 @@ from maasservicelayer.db.tables import (
     VlanTable,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.interfaces import Interface, Link
+from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.utils.date import utcnow
 
 UNKNOWN_INTERFACE_NAME = "eth0"
 
 
-def build_interface_links(
-    interface: dict[str, list[dict[str, Any]]], reverse=True
-) -> dict[str, list[Link]]:
-    if links := interface.pop("links"):
-        one_link_per_id = {
-            link["id"]: Link(**link) for link in links if any(link.values())
-        }
-        sorted_links = sorted(
-            one_link_per_id.values(), key=lambda link: link.id, reverse=reverse
-        )
-        interface["links"] = sorted_links  # type: ignore
-    return interface  # type: ignore
-
-
 class InterfaceRepository(BaseRepository[Interface]):
+    def __init__(self, context: Context):
+        super().__init__(context)
+        self.details_mapper = InterfaceDetailsDomainDataMapper(
+            Interface, InterfaceTable
+        )
+        self.discovered_ip_mapper = DiscoveredInterfaceIPDomainDataMapper(
+            DiscoveredInterfaceIP, StaticIPAddressTable
+        )
+
     def get_repository_table(self) -> Table:
         return InterfaceTable
 
     def get_model_factory(self) -> Type[Interface]:
         return Interface
+
+    def get_mapper(self) -> InterfaceDomainDataMapper:
+        return InterfaceDomainDataMapper(Interface, InterfaceTable)
 
     async def list_for_node(
         self, node_id: int, page: int, size: int
@@ -71,7 +75,7 @@ class InterfaceRepository(BaseRepository[Interface]):
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
         stmt = (
-            self._select_all_statement()
+            self.details_mapper.select_statement()
             .where(eq(NodeTable.c.id, node_id))
             .order_by(desc(InterfaceTable.c.id))
             .offset((page - 1) * size)
@@ -80,49 +84,36 @@ class InterfaceRepository(BaseRepository[Interface]):
 
         result = (await self.execute_stmt(stmt)).all()
 
-        interfaces = [build_interface_links(row._asdict()) for row in result]
+        interfaces = [self.mapper.to_domain(row._mapping) for row in result]
         await self._find_discovered_ip_for_dhcp_links(interfaces, node_id)
 
-        return ListResult[Interface](
-            items=[Interface(**iface) for iface in interfaces],  # pyright: ignore [reportArgumentType]
-            total=total,
-        )
+        return ListResult[Interface](items=interfaces, total=total)
 
     async def get_interfaces_for_mac(self, mac: str) -> List[Interface]:
-        stmt = self._select_all_statement().filter(
+        stmt = self.details_mapper.select_statement().filter(
             InterfaceTable.c.mac_address == normalise_macaddress(mac)
         )
 
         result = (await self.execute_stmt(stmt)).all()
-        return [
-            Interface(**data)  # pyright: ignore [reportArgumentType]
-            for data in [
-                build_interface_links(row._asdict()) for row in result
-            ]
-        ]
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
     async def get_parents(self, interface_id: int) -> list[Interface]:
         parent_ids = select(InterfaceRelationshipTable.c.parent_id).where(
             InterfaceRelationshipTable.c.child_id == interface_id
         )
-        stmt = self._select_all_statement().where(
+        stmt = self.details_mapper.select_statement().where(
             InterfaceTable.c.id.in_(parent_ids)
         )
         rows = (await self.execute_stmt(stmt)).all()
-        return [
-            Interface(**build_interface_links(row._asdict()))  # pyright: ignore [reportArgumentType]
-            for row in rows
-        ]
+        return [self.mapper.to_domain(row._mapping) for row in rows]
 
     async def get_interfaces_in_fabric(
         self, fabric_id: int
     ) -> List[Interface]:
         # Pair the retrieved interfaces with their respective VLAN and filter
         # out the ones corresponding to this fabric
-        # TODO: If _select_all_statement ever joins with VlanTable, remove the
-        #       join below.
         stmt = (
-            self._select_all_statement()
+            self.details_mapper.select_statement()
             .join(
                 VlanTable,
                 eq(VlanTable.c.id, InterfaceTable.c.vlan_id),
@@ -132,12 +123,7 @@ class InterfaceRepository(BaseRepository[Interface]):
         )
 
         result = (await self.execute_stmt(stmt)).all()
-        return [
-            Interface(**data)  # pyright: ignore [reportArgumentType]
-            for data in [
-                build_interface_links(row._asdict()) for row in result
-            ]
-        ]
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
     async def add_ip(self, interface: Interface, ip_id: int) -> None:
         stmt = (
@@ -217,169 +203,41 @@ class InterfaceRepository(BaseRepository[Interface]):
         )
         result = (await self.execute_stmt(stmt)).one()
 
-        get_instance = self._select_all_statement().where(
+        get_instance = self.details_mapper.select_statement().where(
             eq(InterfaceTable.c.id, result[0])
         )
         created_instance = (await self.execute_stmt(get_instance)).one()
-        return Interface(**build_interface_links(created_instance._asdict()))  # pyright: ignore [reportArgumentType]
+        return self.mapper.to_domain(created_instance._mapping)
 
     async def _find_discovered_ip_for_dhcp_links(
-        self, interfaces, node_id
+        self, interfaces: list[Interface], node_id: int
     ) -> None:
         if any(
             link.ip_type == IpAddressType.DHCP
             for iface in interfaces
-            for link in iface["links"]
+            for link in iface.links
         ):
             discovered_ips = [
-                discovered._asdict()
+                self.discovered_ip_mapper.to_domain(discovered._mapping)
                 for discovered in (
                     await self.execute_stmt(
-                        self._discovered_ip_statement().where(
+                        self.discovered_ip_mapper.select_statement().where(
                             eq(NodeTable.c.id, node_id)
                         )
                     )
                 ).all()
             ]
             for iface in interfaces:
-                for link in iface["links"]:
+                for link in iface.links:
                     if link.ip_type == IpAddressType.DHCP:
                         if ip := next(
                             filter(
-                                lambda ip: ip["ip_subnet"] == link.ip_subnet,
+                                lambda ip: ip.ip_subnet == link.ip_subnet,
                                 discovered_ips,
                             ),
                             None,
                         ):
-                            link.ip_address = ip["ip_address"]
-
-    def _discovered_ip_statement(self) -> Select[Any]:
-        return (
-            select(
-                StaticIPAddressTable.c.subnet_id.label("ip_subnet"),
-                StaticIPAddressTable.c.ip.label("ip_address"),
-            )
-            .select_from(NodeTable)
-            .where(
-                eq(
-                    StaticIPAddressTable.c.alloc_type,
-                    IpAddressType.DISCOVERED,
-                )
-            )
-            .join(
-                NodeConfigTable,
-                eq(NodeTable.c.current_config_id, NodeConfigTable.c.id),
-                isouter=True,
-            )
-            .join(
-                InterfaceTable,
-                eq(NodeConfigTable.c.id, InterfaceTable.c.node_config_id),
-                isouter=True,
-            )
-            .join(
-                InterfaceIPAddressTable,
-                eq(
-                    InterfaceTable.c.id, InterfaceIPAddressTable.c.interface_id
-                ),
-                isouter=True,
-            )
-            .join(
-                StaticIPAddressTable,
-                eq(
-                    InterfaceIPAddressTable.c.staticipaddress_id,
-                    StaticIPAddressTable.c.id,
-                ),
-                isouter=True,
-            )
-            .distinct(StaticIPAddressTable.c.subnet_id)
-        )
-
-    def _select_all_statement(self) -> Select[Any]:
-        ip_subquery = (
-            select(
-                InterfaceIPAddressTable.c.interface_id.label("interface_id"),
-                StaticIPAddressTable.c.subnet_id.label("ip_subnet"),
-                StaticIPAddressTable.c.id.label("ip_id"),
-                StaticIPAddressTable.c.alloc_type.label("ip_type"),
-                StaticIPAddressTable.c.ip.label("ip_address"),
-            )
-            .where(
-                eq(
-                    InterfaceIPAddressTable.c.staticipaddress_id,
-                    StaticIPAddressTable.c.id,
-                ),
-                StaticIPAddressTable.c.alloc_type != IpAddressType.DISCOVERED,
-            )
-            .order_by(desc(StaticIPAddressTable.c.id))
-            .alias("ip_subquery")
-        )
-
-        return (
-            select(
-                NodeTable.c.id.label("node_id"),
-                InterfaceTable.c.id,
-                InterfaceTable.c.created,
-                InterfaceTable.c.updated,
-                InterfaceTable.c.name,
-                InterfaceTable.c.type,
-                InterfaceTable.c.mac_address,
-                InterfaceTable.c.node_config_id,
-                # TODO
-                # VlanTable.c.mtu.label("effective_mtu"),
-                InterfaceTable.c.link_connected,
-                InterfaceTable.c.interface_speed,
-                InterfaceTable.c.enabled,
-                InterfaceTable.c.link_speed,
-                InterfaceTable.c.sriov_max_vf,
-                InterfaceTable.c.vlan_id,
-                func.array_agg(
-                    func.json_build_object(
-                        "id",
-                        ip_subquery.c.ip_id,
-                        "ip_type",
-                        ip_subquery.c.ip_type,
-                        "ip_address",
-                        ip_subquery.c.ip_address,
-                        "ip_subnet",
-                        ip_subquery.c.ip_subnet,
-                    )
-                ).label("links"),
-            )
-            .select_from(InterfaceTable)
-            .join(
-                NodeConfigTable,
-                eq(NodeConfigTable.c.id, InterfaceTable.c.node_config_id),
-                isouter=True,
-            )
-            .join(
-                NodeTable,
-                eq(NodeTable.c.current_config_id, NodeConfigTable.c.id),
-                isouter=True,
-            )
-            # TODO
-            # .join(
-            #     VlanTable,
-            #     eq(VlanTable.c.id, InterfaceTable.c.vlan_id),
-            #     isouter=True,
-            # )
-            .join(
-                InterfaceIPAddressTable,
-                eq(
-                    InterfaceTable.c.id, InterfaceIPAddressTable.c.interface_id
-                ),
-                isouter=True,
-            )
-            .join(
-                ip_subquery,
-                eq(ip_subquery.c.interface_id, InterfaceTable.c.id),
-                isouter=True,
-            )
-            .group_by(
-                NodeTable.c.id,
-                InterfaceTable.c.id,
-                # VlanTable.c.mtu,
-            )
-        )
+                            link.ip_address = ip.ip_address
 
     async def get_for_ip(self, ip_id: int) -> list[Interface] | None:
         stmt = (
@@ -406,7 +264,7 @@ class InterfaceRepository(BaseRepository[Interface]):
         if not result:
             return None
 
-        return [Interface(**r._asdict()) for r in result]
+        return [self.mapper.to_domain(row._mapping) for row in result]
 
     async def get_for_ips(
         self, ip_ids: list[int]
@@ -438,9 +296,10 @@ class InterfaceRepository(BaseRepository[Interface]):
         )
         result = (await self.execute_stmt(stmt)).all()
         for row in result:
-            data = row._asdict()
-            ip_id = data.pop("staticipaddress_id")
-            interfaces_by_ip.setdefault(ip_id, []).append(Interface(**data))
+            ip_id = row._mapping["staticipaddress_id"]
+            interfaces_by_ip.setdefault(ip_id, []).append(
+                self.mapper.to_domain(row._mapping)
+            )
         return interfaces_by_ip
 
     async def unlink_interfaces_from_ips(
