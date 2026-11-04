@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Awaitable, Callable, Optional
 
 from fastapi import Depends
 from starlette.requests import Request
@@ -44,7 +44,7 @@ def get_authenticated_user(request: Request) -> AuthenticatedUser | None:
 def check_permissions(
     required_roles: set[UserRole],
     rbac_permissions: Optional[set[RbacPermission]] = None,
-) -> Callable:
+) -> Callable[..., Awaitable[AuthenticatedUser]]:
     """
     Decorator to check if the authenticated user has the required roles to access an endpoint.
 
