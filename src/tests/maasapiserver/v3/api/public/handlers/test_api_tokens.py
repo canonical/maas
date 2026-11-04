@@ -93,7 +93,7 @@ class TestApiTokensApi(ApiCommonTests):
     @pytest.mark.parametrize(
         "expires_at",
         [
-            (utcnow() - timedelta(days=1)).isoformat(),
+            "2020-01-01T00:00:00+00:00",
             "2999-01-01T00:00:00",
         ],
     )

@@ -1,7 +1,7 @@
 #  Copyright 2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -92,8 +92,8 @@ class TestApiTokenService:
     @pytest.mark.parametrize(
         "overrides",
         [
-            {"revoked_at": utcnow()},
-            {"expires_at": utcnow() - timedelta(seconds=1)},
+            {"revoked_at": datetime(2020, 1, 1, tzinfo=timezone.utc)},
+            {"expires_at": datetime(2020, 1, 1, tzinfo=timezone.utc)},
         ],
     )
     async def test_authenticate_rejects_revoked_or_expired(
