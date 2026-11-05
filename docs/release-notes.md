@@ -32,7 +32,77 @@ We support two releases of MAAS plus one Beta release (when available).  The two
 
 ### MAAS 3.8.0 has been released
 
-We are happy to announce that MAAS 3.8.0 has been released, with the following bug fixes:
+We are happy to announce that MAAS 3.8.0 has been released, with the following
+main highlights:
+
+#### LTS and FIPS STIG/CIS Readiness
+
+MAAS 3.8.0 is the first LTS release of MAAS, and MAAS as a project will from now
+on follow the usual cadence that is expected from the LTS releases of Ubuntu.
+
+We incorporated the changes made in our 3.7.4 release regarding FIPS compliance.
+This is not a strict compliance for MAAS 3.8.0 since there is no FIPS-compliant kernel
+for Resolute yet, but this effort should make it easier to make MAAS 3.8.0 FIPS-compliant
+when the time comes.
+
+#### Ubuntu 26.04 Resolute Racoon
+
+As part of the LTS commitment, we are using Resolute (26.04, Ubuntu LTS) as our base image.
+
+#### Built-in Authorization framework (ReBAC)
+
+We are moving away from our previous duality of admin/users with specific pre-defined
+permissions, and enabling _relationship-based access control_ (ReBAC)
+for users, groups, and entitlements, enabled by OpenFGA.
+
+This is also intended to replace the need for things like RBAC as an alternative
+to the duality mentioned above. Everything that you were able to do with it, you should
+be able to do now with these new features.
+
+More information can be found here: <https://canonical.com/maas/docs/3.8/how-to-guides/user-groups-and-entitlements/>
+
+#### OIDC integration
+
+Single Sign-On with an external OpenID Connect identity provider. Providers are
+configured under Settings > User Management > OIDC/Single sign-on.
+
+You can find more details in: <https://canonical.com/maas/docs/3.8/how-to-guides/sso/>
+
+#### (Experimental) Switch provisioning
+
+We have endpoints available that allows using [ONIE](https://opencomputeproject.github.io/onie/overview/index.html)
+as an enabler for switch provisioning, providing a chosen NOS to be installed
+by switches that are discovered by MAAS.
+
+Check the docs here: <https://canonical.com/maas/docs/3.8/how-to-guides/manage-switches/>
+
+#### Deployment scripts
+
+Deployment scripts are the deployment-time counterpart to [commissioning
+scripts](https://canonical.com/maas/docs/3.8/explanation/commissioning-scripts/):
+they share the same script format, upload mechanism, and result
+storage, but they run during deployment rather than during commissioning.
+
+For more information, see: <https://canonical.com/maas/docs/3.8/explanation/deployment-scripts/>
+
+#### Logging
+
+New security audit events for authentication (login success/failure,
+token created/deleted/revoked/reused), authorization (denials and administrative
+actions), and user management (created, updated, deleted). Contextual logging
+adds trace IDs: clients can send a `MAAS-trace-id` header to correlate their
+logs with MAAS logs.
+
+More information about logging can be found at: <https://canonical.com/maas/docs/3.8/explanation/logging/>
+
+#### UI Improvements
+
+#### Offline documentation
+
+Note that every documentation page that is linked above exists in MAAS's offline
+documentation, available at /MAAS/docs in the region controller.
+
+#### Bug fixes
 
 - [2132663](https://launchpad.net/maas/+bug/2132663): Custom images fail to deploy in memory
 - [2133828](https://launchpad.net/maas/+bug/2133828): MAAS 3.5.9: Uploaded images fail with 404 on /images/<blobid>/custom/.../uploaded/root.tgz (3.5.8 OK)
