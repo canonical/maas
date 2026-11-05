@@ -97,6 +97,17 @@ More information about logging can be found at: <https://canonical.com/maas/docs
 
 #### UI Improvements
 
+We improved the notifications back-end, and the UI now shows dismissible
+toast notifications.
+
+We also refined how errors are displayed when the back-end validates a
+form submission. Errors related to specific fields now appear next to the
+field instead of at the top of the form.
+
+Furthermore, we made better use of screen space across several screens by
+re-organizing information into otherwise empty areas. Destructive actions
+were moved from side panels to modals so they are easier to distinguish.
+
 #### Offline documentation
 
 Note that every documentation page that is linked above exists in MAAS's offline
