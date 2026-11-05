@@ -33,12 +33,13 @@ class GeneratedApiToken:
 
 
 def _base62_encode(data: bytes) -> str:
+    """Encode `data` as base62. The output is fixed-size: always `_SECRET_LENGTH` digits."""
     number = int.from_bytes(data, "big")
     digits = []
-    while number:
-        number, remainder = divmod(number, 62)
+    for _ in range(_SECRET_LENGTH):
+        number, remainder = divmod(number, len(_BASE62_ALPHABET))
         digits.append(_BASE62_ALPHABET[remainder])
-    return "".join(reversed(digits)).rjust(_SECRET_LENGTH, "0")
+    return "".join(reversed(digits))
 
 
 def hash_secret(secret: str) -> str:
