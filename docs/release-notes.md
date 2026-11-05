@@ -45,7 +45,7 @@ This is not a strict compliance for MAAS 3.8.0 since there is no FIPS-compliant 
 for Resolute yet, but this effort should make it easier to make MAAS 3.8.0 FIPS-compliant
 when the time comes.
 
-#### Ubuntu 26.04 Resolute Racoon
+#### Ubuntu 26.04 Resolute Raccoon
 
 As part of the LTS commitment, we are using Resolute (26.04, Ubuntu LTS) as our base image.
 
@@ -70,7 +70,7 @@ You can find more details in: <https://canonical.com/maas/docs/3.8/how-to-guides
 
 #### (Experimental) Switch provisioning
 
-We have endpoints available that allows using [ONIE](https://opencomputeproject.github.io/onie/overview/index.html)
+We have endpoints available that allow using [ONIE](https://opencomputeproject.github.io/onie/overview/index.html)
 as an enabler for switch provisioning, providing a chosen NOS to be installed
 by switches that are discovered by MAAS.
 
