@@ -25,7 +25,9 @@ def write_keyring(keyring_path, keyring_data: bytes):
 
 def calculate_keyring_name(source_url):
     """Return a name for a keyring based on a URL."""
-    return hashlib.md5(source_url.encode("utf8")).hexdigest()
+    return hashlib.md5(
+        source_url.encode("utf8"), usedforsecurity=False
+    ).hexdigest()
 
 
 def write_all_keyrings(directory, sources):
