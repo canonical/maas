@@ -9,13 +9,6 @@ class DriverFIPSStatus(Enum):
     UNSUPPORTED = "unsupported"
 
 
-# FIPS-approved IPMI cipher suites. Cipher 17 is the only suite with
-# FIPS-approved integrity, authentication, and confidentiality algorithms
-# (HMAC-SHA256 + AES-CBC-128). Per the IPMI spec, cipher 0 disables all
-# encryption; any cipher that uses SHA-1, MD5, or weak RSA is non-FIPS.
-FIPS_ALLOWED_IPMI_CIPHERS: frozenset[str] = frozenset({"17"})
-
-
 DRIVER_FIPS_REGISTRY = {
     "amt": (DriverFIPSStatus.COMPLIANT, None),
     "hmc": (DriverFIPSStatus.COMPLIANT, None),
