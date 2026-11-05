@@ -154,9 +154,11 @@ Learn more at: <https://maas.io>
 ## More tutorials
 
 - [Harden a MAAS test controller](/tutorials/harden-a-maas-test-controller.md): turn on security hardening and fix the issues that MAAS reports.
+- [Replace a power driver with a webhook](/tutorials/write-a-webhook-power-driver.md): write an Eaton PDU webhook and use it to power a server through MAAS.
 
 ```{toctree}
 :hidden:
 
 tutorials/harden-a-maas-test-controller
+tutorials/write-a-webhook-power-driver
 ```

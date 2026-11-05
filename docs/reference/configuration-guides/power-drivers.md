@@ -33,6 +33,9 @@ use the Webhook driver with a compatible external service. See
 [Creating a web service for the MAAS Webhook power driver](https://discourse.maas.io/t/creating-a-web-service-for-the-maas-webhook-power-driver/3756)
 for a sample implementation; it is an example, not a driver-specific replacement.
 
+For a worked Eaton PDU example, follow
+[Replace a power driver with a webhook](/tutorials/write-a-webhook-power-driver.md).
+
 ## UI parameter expressions
 
 ### Intel AMT
@@ -181,6 +184,9 @@ Consider a machine backed by VM. Below, a 'Power type' of `Virsh` has been selec
 > **Pro tip**: The machine's hostname -- according to MAAS -- is a randomly chosen string (here `dear.ant`). You should change this hostname to something descriptive, that helps you remember why this machine is in your MAAS network.
 
 ### Webhook
+
+To write and deploy your own service, follow
+[Replace a power driver with a webhook](/tutorials/write-a-webhook-power-driver.md).
 
 It's important to understand that the Webhook power driver is more generic than other drivers, so it has some flexibility that the underlying power driver may not support. For example, Webhook doesn't require a username or password for the power driver, because not all power drivers work that way. Nevertheless, the power driver you're connecting to Webhook may actually require a username and/or password. Understanding and implementing these fields correctly for the chosen back-end power driver is the user's responsibility.
 
