@@ -170,15 +170,15 @@ class BootResourceManager(Manager):
                 return None
 
         if osystem != "custom":
-            name = f"{osystem}/{series}"
+            name = [f"{osystem}/{series}"]
             rtype = (BOOT_RESOURCE_TYPE.SYNCED, BOOT_RESOURCE_TYPE.UPLOADED)
         else:
-            name = series
-            rtype = (BOOT_RESOURCE_TYPE.UPLOADED,)
+            name = [series, f"custom/{series}"]
+            rtype = (BOOT_RESOURCE_TYPE.SYNCED, BOOT_RESOURCE_TYPE.UPLOADED)
 
         resources = self.filter(
             rtype__in=rtype,
-            name=name,
+            name__in=name,
             architecture__startswith=architecture,
         ).all()
         for resource in resources:
