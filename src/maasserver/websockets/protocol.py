@@ -7,7 +7,6 @@
 from collections import deque
 from contextlib import ExitStack
 from functools import partial
-from http.cookies import SimpleCookie
 import json
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
@@ -15,7 +14,7 @@ from urllib.parse import parse_qs, urlparse
 from django.conf import settings
 from django.contrib.auth import BACKEND_SESSION_KEY, load_backend, SESSION_KEY
 from django.core.exceptions import ValidationError
-from django.http import HttpRequest
+from django.http import HttpRequest, parse_cookie
 from django.utils import timezone
 from twisted.internet.defer import fail, inlineCallbacks, returnValue, succeed
 from twisted.internet.protocol import Factory, Protocol
@@ -59,14 +58,10 @@ class RESPONSE_TYPE:
 
 
 def get_cookie(cookies: Optional[str], cookie_name: str) -> Optional[str]:
-    """Return the sessionid value from `cookies`."""
+    """Return the value of `cookie_name` from `cookies`."""
     if cookies is None:
         return None
-    cookies = SimpleCookie(cookies)
-    if cookie_name in cookies:
-        return cookies[cookie_name].value
-    else:
-        return None
+    return parse_cookie(cookies).get(cookie_name)
 
 
 class WebSocketProtocol(Protocol):
