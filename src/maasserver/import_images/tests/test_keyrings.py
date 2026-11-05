@@ -31,7 +31,7 @@ class TestCalculateKeyringName(MAASTestCase):
         path = "/".join(self.getUniqueString() for _ in range(1, 5))
         source_url = f"http://example.com/{path}"
         expected_keyring_name = hashlib.md5(
-            source_url.encode("utf8")
+            source_url.encode("utf8"), usedforsecurity=False
         ).hexdigest()
         self.assertEqual(
             expected_keyring_name, keyrings.calculate_keyring_name(source_url)
