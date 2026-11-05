@@ -68,22 +68,8 @@ class ApiTokenService(
 
     async def authenticate(self, raw_token: str) -> ApiToken | None:
         """Return the token if valid, not expired and not revoked."""
-        parsed = parse_api_token(raw_token)
-        token = None
-        if parsed:
-            public_id, secret = parsed
-            token = await self.get_one(
-                QuerySpec(
-                    where=ApiTokenClauseFactory.with_public_id(public_id)
-                )
-            )
-            if token and not secret_matches(secret, token.secret_hash):
-                token = None
-        if (
-            token is None
-            or token.revoked_at is not None
-            or token.expires_at <= utcnow()
-        ):
+        token = await self._find_matching_token(raw_token)
+        if token is None or not self._is_usable(token, utcnow()):
             logger.info(
                 f"{AUTHN_TOKEN_REUSED}:PAT",
                 type=SECURITY,
@@ -91,6 +77,22 @@ class ApiTokenService(
             )
             return None
         return await self._touch_last_used(token)
+
+    async def _find_matching_token(self, raw_token: str) -> ApiToken | None:
+        parsed = parse_api_token(raw_token)
+        if parsed is None:
+            return None
+        public_id, secret = parsed
+        token = await self.get_one(
+            QuerySpec(where=ApiTokenClauseFactory.with_public_id(public_id))
+        )
+        if token is None or not secret_matches(secret, token.secret_hash):
+            return None
+        return token
+
+    @staticmethod
+    def _is_usable(token: ApiToken, now: datetime) -> bool:
+        return token.revoked_at is None and token.expires_at > now
 
     async def _touch_last_used(self, token: ApiToken) -> ApiToken:
         window_start = floor_to_throttle_window(utcnow())
