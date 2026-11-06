@@ -51,7 +51,12 @@ if [ "$RUN_TESTS" = true ]; then
         bin/pytest -n auto --maxprocesses="${MAX_PROCESSES}" --dist=load --junit-xml=junit-pytest.xml
         res2=$?
     fi
-    exit $((res1 + res2))
+    if [ "$res1" -ne 0 ]; then
+        exit "$res1"
+    elif [ "$res2" -ne 0 ]; then
+        exit "$res2"
+    fi
+    exit 0
 else
     echo "Skipping tests because only docs/ changed."
     exit 0
