@@ -233,6 +233,52 @@ documentation, available at /MAAS/docs in the region controller.
 
 ## Version 3.7 release notes
 
+### MAAS 3.7.4 has been released
+
+#### FIPS STIG/CIS
+
+Starting with 3.7.4, MAAS can operate in FIPS mode. This mode is
+entirely opt-in: existing installations keep their current behaviour
+unless an administrator explicitly enables it. Teams responsible for
+physical infrastructure now get a clear say in which cryptographic
+standards are allowed across the machines they manage.
+
+Rather than treating security checks as a separate step that happens
+before or after provisioning, the required restrictions travel with
+MAAS itself. Policies are honoured as machines are commissioned and
+deployed, which removes much of the duplicated tooling and manual
+verification that compliance work typically demands.
+
+This is particularly relevant for regulated sectors, such as public
+sector, finance and healthcare, where STIG and CIS hardening are
+expected and validated cryptography is mandatory.
+
+#### Bug Fixes
+
+- [2152210](https://launchpad.net/maas/+bug/2152210): Deleting boot source selection does not cancel in-flight Temporal download workflows, causing worker starvation
+- [2158480](https://launchpad.net/maas/+bug/2158480): MAAS keeps an s390x LPAR config to boot from disk
+- [2160731](https://launchpad.net/maas/+bug/2160731): Redfish power driver fails on upgraded Dell iDRAC 10
+- [2158318](https://launchpad.net/maas/+bug/2158318): not able to boot s390x LPAR with FCP disk
+- [2143090](https://launchpad.net/maas/+bug/2143090): Unable to Resize Dynamic Range Reservations if any IP in the Range is Allocated
+- [2164644](https://launchpad.net/maas/+bug/2164644): DHCP: releasing and re-deploying a machine can leave a rack with an old host lease
+- [2167838](https://launchpad.net/maas/+bug/2167838): rackd DHCP socket not cleanup on stop, causing cascading dhcp and pxe boot failures in deb installations
+- [2167926](https://launchpad.net/maas/+bug/2167926): Issue deploying multiple machines at once on s390x - LPARs not in valid state (409.1)
+- [2168406](https://launchpad.net/maas/+bug/2168406): zhmc: Reboot race in MAAS/cloud-init during boot-order switch, can cause failed IPL
+- [2168998](https://launchpad.net/maas/+bug/2168998): DHCPDECLINE produces empty-MAC expiry notification, causing infinite HTTP 422 retries and eventual DHCP outage
+- [2169702](https://launchpad.net/maas/+bug/2169702): MAAS DNS is not getting any update because the zones are already frozen
+- [2169602](https://launchpad.net/maas/+bug/2169602): Attempt to create and enlist new s390 machine in MAAS fails
+- [2169714](https://launchpad.net/maas/+bug/2169714): Performance issue in Node.save() calling \_remove_orphaned_bmcs()
+- [2170207](https://launchpad.net/maas/+bug/2170207): dbupgrade fails during 3.6 -> 3.7 snap refresh when the PostgreSQL password contains "@" or "%" (alembic DSN built without escaping) and leaves the database half-migrated
+- [2171421](https://launchpad.net/maas/+bug/2171421): NGINX API rate/connection limiting enabled by default on non-hardened MAAS
+- [2161119](https://launchpad.net/maas/+bug/2161119): Virtual machines show up in wrong LXD host in UI
+- [2162993](https://launchpad.net/maas/+bug/2162993): MAAS fails to reassign machine.default_gateways when an interface's IP assignment mode is set to Unconfigured
+- [2143381](https://launchpad.net/maas/+bug/2143381): MAAS 3.6.3 ‘NoneType’ object has no attribute ‘fqdn’
+- [2167420](https://launchpad.net/maas/+bug/2167420): bcache-layout hosts crash with block device name collision
+- [1771777](https://launchpad.net/maas/+bug/1771777): Node is stuck "exiting rescue mode" from failed deployment
+- [1783889](https://launchpad.net/maas/+bug/1783889): COMMISSION S.M.A.R.T Tests fail unnecessarily on code 64 (past log entries)
+- [2143941](https://launchpad.net/maas/+bug/2143941): LXD 6.7-1f11451 power settings broken due to pylxd API schema
+- [2170206](https://launchpad.net/maas/+bug/2170206): Web UI stuck in "Trying to reconnect…": websocket rejects a valid CSRF token when the request carries an unrelated malformed cookie (http.cookies.SimpleCookie)
+
 ### MAAS 3.7.3 has been released
 
 We are happy to announce that MAAS 3.7.3 has been released, with the following bug fixes:
