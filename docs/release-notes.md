@@ -59,6 +59,9 @@ This is also intended to replace the need for things like RBAC and Candid as an 
 to the duality mentioned above. Everything that you were able to do with it, you will
 be able to do now with these new features.
 
+Furthermore, if you have an existing RBAC and Candid setup, it will still work
+with MAAS 3.8 so you can transition to the new system easily and at your own pace.
+
 More information can be found here: <https://canonical.com/maas/docs/3.8/how-to-guides/user-groups-and-entitlements/>
 
 #### OIDC integration
