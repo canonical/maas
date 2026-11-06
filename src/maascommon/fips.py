@@ -14,6 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.x509.oid import SignatureAlgorithmOID
 
+from maascommon.enums.ipmi import IPMICipherSuiteID
 from maascommon.logging.security import (
     FIPS_MODE_DETECTED,
     FIPS_MODE_UNREADABLE,
@@ -95,6 +96,14 @@ class FIPSSSHConfig(NamedTuple):
 FIPS_SSH_CONFIG = FIPSSSHConfig()
 
 FIPS_RSA_MIN_BITS = 2048
+
+FIPS_ALLOWED_IPMI_CIPHERS: frozenset[str] = frozenset({"17"})
+
+
+def default_ipmi_cipher_suite_id() -> IPMICipherSuiteID:
+    if is_fips_enabled():
+        return IPMICipherSuiteID.SUITE_17
+    return IPMICipherSuiteID.SUITE_3
 
 
 def rsa_ssh_key_bits(b64_body: str) -> int | None:
