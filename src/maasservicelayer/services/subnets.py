@@ -15,9 +15,6 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.builders.subnets import SubnetBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dhcpsnippets import (
-    DhcpSnippetsClauseFactory,
-)
 from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
 from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersClauseFactory,
@@ -46,7 +43,6 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import Unset
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService
-from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodegrouptorackcontrollers import (
@@ -69,7 +65,6 @@ class SubnetsService(BaseService[Subnet, SubnetsRepository, SubnetBuilder]):
         ipranges_service: IPRangesService,
         staticroutes_service: StaticRoutesService,
         reservedips_service: ReservedIPsService,
-        dhcpsnippets_service: DhcpSnippetsService,
         nodegrouptorackcontrollers_service: NodeGroupToRackControllersService,
         dnspublications_service: DNSPublicationsService,
         subnets_repository: SubnetsRepository,
@@ -80,7 +75,6 @@ class SubnetsService(BaseService[Subnet, SubnetsRepository, SubnetBuilder]):
         self.ipranges_service = ipranges_service
         self.staticroutes_service = staticroutes_service
         self.reservedips_service = reservedips_service
-        self.dhcpsnippets_service = dhcpsnippets_service
         self.nodegrouptorackcontrollers = nodegrouptorackcontrollers_service
         self.dnspublications_service = dnspublications_service
 
@@ -238,11 +232,6 @@ class SubnetsService(BaseService[Subnet, SubnetsRepository, SubnetBuilder]):
         await self.reservedips_service.delete_many(
             query=QuerySpec(
                 where=ReservedIPsClauseFactory.with_subnet_id(resource.id)
-            )
-        )
-        await self.dhcpsnippets_service.delete_many(
-            query=QuerySpec(
-                where=DhcpSnippetsClauseFactory.with_subnet_id(resource.id)
             )
         )
         await self.nodegrouptorackcontrollers.delete_many(
