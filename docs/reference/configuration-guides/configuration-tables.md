@@ -44,7 +44,6 @@ maas $PROFILE maas set-config ...
 | **Network Discovery**                        | Enable passive or active network discovery.                     | *Network* > *Network discovery*       | network_discovery           | Keeps discovery info accurate.                   |
 | **Commissioning Scripts**                    | Upload and manage commissioning scripts.                        | *Scripts* > *Commissioning scripts*   |                             | Scripts run during hardware setup.               |
 | **Testing Scripts**                          | Upload and manage testing scripts.                              | *Scripts* > *Testing scripts*         |                             | Scripts run to test hardware.                    |
-| **DHCP Snippets**                            | Manage DHCP configuration snippets.                             | *DHCP snippets*                       |                             | Useful for custom DHCP settings.                 |
 | **Package Repos**                            | Add and manage APT/YUM repositories.                            | *Package repos*                       |                             | Add PPAs or custom repos.                        |
 
 ### Special commands
