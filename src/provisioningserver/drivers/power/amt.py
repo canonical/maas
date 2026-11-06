@@ -184,17 +184,10 @@ class AMTPowerDriver(PowerDriver):
                 )
                 try:
                     self._run(command, power_pass, stdin=fd.read())
-                except PowerActionError as error:
+                except PowerActionError:
                     maaslog.warning(
-                        "Failed to set AMT boot order via %s, continuing "
-                        "without it. This is expected in Client Control Mode. "
-                        "Error: %s",
-                        method,
-                        (
-                            str(error).replace(power_pass, "<redacted>")
-                            if power_pass
-                            else error
-                        ),
+                        "Failed to change the boot order to PXE %s"
+                        % ip_address
                     )
 
     def _run(
