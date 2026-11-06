@@ -154,7 +154,8 @@ class SharedMockedApps:
         try:
             yield app
         finally:
-            del app.state.services_mock
+            if hasattr(app.state, "services_mock"):
+                del app.state.services_mock
             if _shared_app_fingerprint(app) != fingerprint:
                 del self._apps[with_user]
                 pytest.fail(
