@@ -19,7 +19,10 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerSettingError,
 )
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import shell, snap
+
+maaslog = get_maas_logger("drivers.power.amt")
 
 AMT_ERRORS = {
     "401 Unauthorized": {
@@ -179,7 +182,20 @@ class AMTPowerDriver(PowerDriver):
                 command = self._get_wsman_command(
                     *wsman_opts, method, schema_uri
                 )
-                self._run(command, power_pass, stdin=fd.read())
+                try:
+                    self._run(command, power_pass, stdin=fd.read())
+                except PowerActionError as error:
+                    maaslog.warning(
+                        "Failed to set AMT boot order via %s, continuing "
+                        "without it. This is expected in Client Control Mode. "
+                        "Error: %s",
+                        method,
+                        (
+                            str(error).replace(power_pass, "<redacted>")
+                            if power_pass
+                            else error
+                        ),
+                    )
 
     def _run(
         self,
