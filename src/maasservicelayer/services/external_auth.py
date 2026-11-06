@@ -573,20 +573,40 @@ class ExternalOAuthService(
         return data.tokens
 
     async def revoke_token(self, id_token: str, refresh_token: str) -> None:
+        token_hash = hash_token_for_logging(refresh_token)
         client = await self.get_client()
-        id_token_object = await client.parse_raw_id_token(id_token=id_token)
-        await self.revoked_tokens_service.create_revoked_token(
-            token=refresh_token,
-            provider_id=client.provider.id,
-            email=id_token_object.email,
-        )
-        await client.revoke_token(token=refresh_token)
+        try:
+            id_token_object = await client.parse_raw_id_token(
+                id_token=id_token
+            )
+            await self.revoked_tokens_service.create_revoked_token(
+                token=refresh_token,
+                provider_id=client.provider.id,
+                email=id_token_object.email,
+            )
+        except Exception:
+            logger.error(
+                "Failed to add token to the local revoked list",
+                type=SECURITY,
+                token_hash=token_hash,
+                exc_info=True,
+            )
+        else:
+            logger.info(
+                f"{AUTHN_TOKEN_REVOKED}:OIDC:{REFRESH_TOKEN}",
+                type=SECURITY,
+                token_hash=token_hash,
+            )
 
-        logger.info(
-            f"{AUTHN_TOKEN_REVOKED}:OIDC:{REFRESH_TOKEN}",
-            type=SECURITY,
-            token_hash=hash_token_for_logging(refresh_token),
-        )
+        try:
+            await client.revoke_token(token=refresh_token)
+        except Exception:
+            logger.error(
+                "Token revocation failed at the provider's end",
+                type=SECURITY,
+                token_hash=token_hash,
+                exc_info=True,
+            )
 
     async def validate_access_token(self, access_token: str) -> None:
         client = await self.get_client()
