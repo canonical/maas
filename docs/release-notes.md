@@ -42,7 +42,7 @@ on follow the usual cadence that is expected from the LTS releases of Ubuntu.
 
 We incorporated the changes made in our 3.7.4 release regarding FIPS compliance.
 This is not a strict compliance for MAAS 3.8.0 since there is no FIPS-compliant kernel
-for Resolute yet, but this effort should make it easier to make MAAS 3.8.0 FIPS-compliant
+for Resolute yet, but this effort will make it easier to make MAAS 3.8.0 FIPS-compliant
 when the time comes.
 
 #### Ubuntu 26.04 Resolute Raccoon
@@ -55,8 +55,8 @@ We are moving away from our previous duality of admin/users with specific pre-de
 permissions, and enabling _relationship-based access control_ (ReBAC)
 for users, groups, and entitlements, enabled by OpenFGA.
 
-This is also intended to replace the need for things like RBAC as an alternative
-to the duality mentioned above. Everything that you were able to do with it, you should
+This is also intended to replace the need for things like RBAC and Candid as an alternative
+to the duality mentioned above. Everything that you were able to do with it, you will
 be able to do now with these new features.
 
 More information can be found here: <https://canonical.com/maas/docs/3.8/how-to-guides/user-groups-and-entitlements/>
