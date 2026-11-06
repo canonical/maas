@@ -11,6 +11,7 @@ import sys
 
 from twisted import logger as twistedModern
 
+from maascommon.logging.formatter import CustomJsonFormatter
 from provisioningserver.logger._common import (
     DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_VERBOSITY_LEVELS,
@@ -80,11 +81,8 @@ def make_fips_syslog_formatter():
 
     The rendered JSON is prefixed with the logger name (`maas.fips:`) so that
     rsyslog parses a `maas`-containing syslog tag and routes the record to the
-    MAAS journal; rsyslog then strips the tag, leaving standalone JSON. The
-    import is deferred so the servicelayer isn't pulled in until logging is
-    actually configured.
+    MAAS journal; rsyslog then strips the tag, leaving standalone JSON.
     """
-    from maasservicelayer.logging.configure import CustomJsonFormatter
 
     class _FipsSyslogFormatter(CustomJsonFormatter):
         def format(self, record: logging.LogRecord) -> str:
@@ -113,7 +111,7 @@ def get_logging_config(verbosity: int):
             # Pure JSON for stdout capture (dev): journald reads stdout
             # directly, so no syslog tag is needed.
             "fips_json": {
-                "()": "maasservicelayer.logging.configure.CustomJsonFormatter",
+                "()": "maascommon.logging.formatter.CustomJsonFormatter",
             },
             # Tag-prefixed JSON for the syslog path (production): the tag lets
             # rsyslog route the record; rsyslog strips it back to pure JSON.

@@ -1238,7 +1238,7 @@ KERNEL_CMDLINE_OUTPUT = (
     "BOOT_IMAGE=http://10.245.136.6:5248/images/ubuntu/amd64/generic/bionic/"
     "daily/boot-kernel nomodeset ro root=squash:http://10.245.136.6:5248/"
     "images/ubuntu/amd64/generic/bionic/daily/squashfs "
-    "ip=::::flying-marmot:BOOTIF ip6=off overlayroot=tmpfs "
+    "ip=::::flying-marmot:BOOTIF:dhcp ip6=off overlayroot=tmpfs "
     "overlayroot_cfgdisk=disabled cc:{{'datasource_list': ['MAAS']}}"
     "end_cc cloud-config-url=http://10-245-136-0--21.maas-internal:5248/MAAS/"
     "metadata/latest/by-id/m3e8ks/?op=get_preseed apparmor=0 "
