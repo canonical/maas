@@ -1,8 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any
-
 from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
@@ -32,23 +30,24 @@ class MachineCommissionRequest(BaseModel):
     )
     commissioning_scripts: list[str] | None = Field(
         default=None,
-        description="List of commissioning script names and tags to be run. By "
-        "default all custom commissioning scripts are run. Built-in "
-        "commissioning scripts always run. Selecting 'update_firmware' or "
-        "'configure_hba' will run firmware updates or configure HBA's on "
-        "matching machines.",  # TODO: copied from v2, double check this after script behaviour is confirmed.
+        description="List of names or tags of commissioning scripts to "
+        "run. By default all commissioning scripts are run, except those "
+        "tagged 'noauto' or restricted to specific hardware. Built-in "
+        "commissioning scripts always run. Scripts restricted to specific "
+        "hardware, such as those tagged 'update_firmware' or "
+        "'configure_hba', only run on matching machines.",
     )
     testing_scripts: list[str] | None = Field(
         default=None,
-        description="List of names, tags or IDs of testing scripts to run after "
+        description="List of names or tags of testing scripts to run after "
         "commissioning. By default all tests tagged 'commissioning' are run. "
-        "Use 'none' to disable running tests.",  # TODO: mostly copied from v2, double check this after script behaviour is confirmed.
+        "Use 'none' on its own to disable running tests.",
     )
-    script_input: dict[str, dict[str, Any]] | None = Field(
+    script_input: dict[str, dict[str, str | int | bool]] | None = Field(
         default=None,
         description="Parameter values for the selected commissioning and "
         "testing scripts, keyed by script name and then by parameter name. "
-        "Input for scripts that are not selected is ignored. For example: "
+        "Input for scripts that are not selected is rejected. For example: "
         '{"smartctl-validate": {"storage": "sda,sdb"}, '
         '"internet-connectivity": {"url": "https://archive.ubuntu.com"}}',
     )

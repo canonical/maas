@@ -5,13 +5,22 @@ from datetime import timedelta
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maascommon.enums.node import HardwareDeviceTypeEnum
 from maascommon.enums.script import ScriptParallel, ScriptType
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.scripts import ScriptsRepository
 from maasservicelayer.models.script import Script
-from maasservicelayer.services.scripts import ScriptsService
+from maasservicelayer.services.scripts import (
+    get_unmatched_selection,
+    ScriptsService,
+)
+from tests.fixtures.factories.script import (
+    create_test_script_entry,
+    make_script,
+)
+from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
 
@@ -47,3 +56,197 @@ class TestCommonScriptsService(ServiceCommonTests):
             recommission=False,
             apply_configured_networking=False,
         )
+
+
+@pytest.mark.asyncio
+class TestScriptsService:
+    @pytest.mark.parametrize(
+        "selection", [None, ["none"], ["user"], ["user", "none"]]
+    )
+    async def test_commissioning_scripts_use_one_query(
+        self, selection: list[str] | None
+    ) -> None:
+        repository = Mock(ScriptsRepository)
+        repository.get_many.return_value = []
+        service = ScriptsService(context=Context(), repository=repository)
+
+        await service.get_commissioning_scripts(selection)
+
+        repository.get_many.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+class TestIntegrationScriptsService:
+    @pytest.fixture
+    def service(self, db_connection: AsyncConnection) -> ScriptsService:
+        context = Context(connection=db_connection)
+        return ScriptsService(
+            context=context, repository=ScriptsRepository(context)
+        )
+
+    @pytest.fixture
+    async def commissioning_scripts(self, fixture: Fixture) -> None:
+        for name, extra in {
+            "builtin": {"default": True},
+            "user": {"tags": ["storage"]},
+            "untagged": {"tags": None},
+            "noauto": {"tags": ["noauto"]},
+            "for-hardware": {"for_hardware": ["pci:8086:1918"]},
+            "testing": {"script_type": ScriptType.TESTING},
+        }.items():
+            await create_test_script_entry(
+                fixture,
+                name=name,
+                **{"script_type": ScriptType.COMMISSIONING, **extra},
+            )
+
+    @pytest.mark.usefixtures("commissioning_scripts")
+    @pytest.mark.parametrize("selection", [None, []])
+    async def test_commissioning_scripts_default(
+        self, service: ScriptsService, selection: list[str] | None
+    ) -> None:
+        scripts = await service.get_commissioning_scripts(selection)
+        assert {script.name for script in scripts} == {
+            "builtin",
+            "user",
+            "untagged",
+        }
+
+    @pytest.mark.usefixtures("commissioning_scripts")
+    async def test_commissioning_scripts_none_selects_builtin_only(
+        self, service: ScriptsService
+    ) -> None:
+        scripts = await service.get_commissioning_scripts(["user", "none"])
+        assert [script.name for script in scripts] == ["builtin"]
+
+    @pytest.mark.parametrize("selection", [["none"], ["user"]])
+    async def test_commissioning_scripts_selects_tagged_with_builtin_name(
+        self, service: ScriptsService, fixture: Fixture, selection: list[str]
+    ) -> None:
+        await create_test_script_entry(
+            fixture,
+            name="builtin-test",
+            default=True,
+            script_type=ScriptType.TESTING,
+        )
+        await create_test_script_entry(
+            fixture, name="tagged", tags=["builtin-test"]
+        )
+        await create_test_script_entry(fixture, name="user")
+
+        scripts = await service.get_commissioning_scripts(selection)
+        assert "tagged" in {script.name for script in scripts}
+
+    @pytest.mark.usefixtures("commissioning_scripts")
+    async def test_commissioning_scripts_selection_includes_builtin(
+        self, service: ScriptsService
+    ) -> None:
+        scripts = await service.get_commissioning_scripts(
+            ["noauto", "for-hardware", "testing"]
+        )
+        assert {script.name for script in scripts} == {
+            "builtin",
+            "noauto",
+            "for-hardware",
+        }
+
+    async def test_commissioning_scripts_selected_by_name_or_tag(
+        self, service: ScriptsService, fixture: Fixture
+    ) -> None:
+        await create_test_script_entry(fixture, name="by-tag", tags=["fw"])
+        await create_test_script_entry(fixture, name="by-name")
+        await create_test_script_entry(fixture, name="unselected")
+
+        scripts = await service.get_commissioning_scripts(["fw", "by-name"])
+        assert {script.name for script in scripts} == {"by-tag", "by-name"}
+
+    @pytest.mark.parametrize("script_type", list(ScriptType))
+    async def test_scripts_not_selected_by_id(
+        self,
+        service: ScriptsService,
+        fixture: Fixture,
+        script_type: ScriptType,
+    ) -> None:
+        script = await create_test_script_entry(
+            fixture, name="user", script_type=script_type
+        )
+
+        selection = [str(script.id)]
+        assert await service.get_commissioning_scripts(selection) == []
+        assert await service.get_testing_scripts(selection) == []
+
+    async def test_testing_scripts_default_to_commissioning_tag(
+        self, service: ScriptsService, fixture: Fixture
+    ) -> None:
+        for name, tags in {
+            "tagged": ["commissioning"],
+            "untagged": None,
+            "other": ["storage"],
+        }.items():
+            await create_test_script_entry(
+                fixture, name=name, tags=tags, script_type=ScriptType.TESTING
+            )
+        await create_test_script_entry(
+            fixture, name="commissioning", tags=["commissioning"]
+        )
+
+        scripts = await service.get_testing_scripts(None)
+        assert [script.name for script in scripts] == ["tagged"]
+
+    async def test_testing_scripts_selection(
+        self, service: ScriptsService, fixture: Fixture
+    ) -> None:
+        await create_test_script_entry(
+            fixture,
+            name="smartctl",
+            tags=["commissioning"],
+            script_type=ScriptType.TESTING,
+        )
+        await create_test_script_entry(
+            fixture,
+            name="memtester",
+            tags=["memory"],
+            script_type=ScriptType.TESTING,
+        )
+
+        scripts = await service.get_testing_scripts(["memtester"])
+        assert [script.name for script in scripts] == ["memtester"]
+
+    @pytest.mark.parametrize("selection", [["none"], ["smartctl", "none"]])
+    async def test_testing_scripts_none_selects_nothing(
+        self, service: ScriptsService, fixture: Fixture, selection: list[str]
+    ) -> None:
+        for name, tags in {
+            "smartctl": ["commissioning"],
+            "none": ["none"],
+        }.items():
+            await create_test_script_entry(
+                fixture, name=name, tags=tags, script_type=ScriptType.TESTING
+            )
+
+        assert await service.get_testing_scripts(selection) == []
+
+
+class TestGetUnmatchedSelection:
+    @pytest.mark.parametrize("selection", [None, []])
+    def test_without_selection(self, selection: list[str] | None) -> None:
+        assert get_unmatched_selection(selection, []) == []
+
+    def test_matches_names_and_tags(self) -> None:
+        scripts = [
+            make_script("smartctl", tags=["storage"]),
+            make_script("memtester", tags=None),
+        ]
+        assert (
+            get_unmatched_selection(
+                ["smartctl", "storage", "memtester"], scripts
+            )
+            == []
+        )
+
+    def test_returns_unmatched_entries(self) -> None:
+        scripts = [make_script("smartctl", id=5)]
+        assert get_unmatched_selection(["smartctl", "typo", "5"], scripts) == [
+            "typo",
+            "5",
+        ]
