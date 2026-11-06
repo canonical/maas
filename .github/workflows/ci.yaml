@@ -202,7 +202,28 @@ jobs:
       - name: Test
         run: |
           CACHE_DIR=/home/ubuntu/.cache/pip
-          su ubuntu -c "PIP_CACHE_DIR=$CACHE_DIR make test-py"
+          su ubuntu -c "PIP_CACHE_DIR=$CACHE_DIR make test-py-legacy"
+
+  test-python-pytest:
+    needs: changes
+    runs-on: ubuntu-24.04
+    if: >-
+      ${{ !github.event.pull_request.draft && needs.changes.outputs.python == 'true' }}
+
+    container:
+      image: ghcr.io/${{ github.repository }}-build-env:${{ needs.changes.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+      - uses: ./.github/actions/ci-setup
+
+      - name: Test
+        run: |
+          CACHE_DIR=/home/ubuntu/.cache/pip
+          su ubuntu -c "PIP_CACHE_DIR=$CACHE_DIR make test-py-pytest"
 
   test-go:
     needs: changes
@@ -251,7 +272,7 @@ jobs:
   ci-check:
     runs-on: ubuntu-slim
     if: always()
-    needs: [lint, test-python, test-go, test-docs, validate-conventional-commit]
+    needs: [lint, test-python, test-python-pytest, test-go, test-docs, validate-conventional-commit]
     steps:
       - name: Determine overall CI status
         id: status
