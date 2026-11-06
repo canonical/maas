@@ -31,7 +31,6 @@ from maasserver.api.commissioning_scripts import (
     CommissioningScriptsHandler,
 )
 from maasserver.api.devices import DeviceHandler, DevicesHandler
-from maasserver.api.dhcpsnippets import DHCPSnippetHandler, DHCPSnippetsHandler
 from maasserver.api.discoveries import DiscoveriesHandler, DiscoveryHandler
 from maasserver.api.dnsresourcerecords import (
     DNSResourceRecordHandler,
@@ -191,12 +190,6 @@ oidc_provider_handler = RestrictedResource(
 )
 oidc_providers_handler = RestrictedResource(
     OidcProvidersHandler, authentication=api_auth
-)
-dhcp_snippet_handler = RestrictedResource(
-    DHCPSnippetHandler, authentication=api_auth
-)
-dhcp_snippets_handler = RestrictedResource(
-    DHCPSnippetsHandler, authentication=api_auth
 )
 package_repository_handler = RestrictedResource(
     PackageRepositoryHandler, authentication=api_auth
@@ -714,16 +707,6 @@ patterns += [
         r"^package-repositories/(?P<id>[^/]+)/$",
         package_repository_handler,
         name="package_repository_handler",
-    ),
-    re_path(
-        r"^dhcp-snippets/$",
-        dhcp_snippets_handler,
-        name="dhcp_snippets_handler",
-    ),
-    re_path(
-        r"^dhcp-snippets/(?P<id>[^/]+)/$",
-        dhcp_snippet_handler,
-        name="dhcp_snippet_handler",
     ),
     re_path(
         r"^notifications/$",

@@ -27,14 +27,12 @@ from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, IPRANGE_TYPE
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models import (
     Config,
-    DHCPSnippet,
     Domain,
     Interface,
     RackController,
     ReservedIP,
     StaticIPAddress,
     Subnet,
-    VLAN,
 )
 from maasserver.models.subnet import get_boot_rackcontroller_ips
 from maasserver.secrets import SecretManager, SecretNotFound
@@ -310,34 +308,10 @@ def make_interface_hostname(interface):
         return f"{interface.node_config.node.hostname}-{interface_name}"
 
 
-def make_dhcp_snippet(dhcp_snippet):
-    """Return the DHCPSnippet as a dictionary."""
-    return {
-        "name": dhcp_snippet.name,
-        "description": dhcp_snippet.description,
-        "value": dhcp_snippet.value.data,
-    }
-
-
-def make_hosts_for_subnets(
-    subnets: list[Subnet], nodes_dhcp_snippets: list | None = None
-) -> list[dict]:
+def make_hosts_for_subnets(subnets: list[Subnet]) -> list[dict]:
     """Return list of host entries to create in the DHCP configuration for the
     given `subnets`.
     """
-    if nodes_dhcp_snippets is None:
-        nodes_dhcp_snippets = []
-
-    def get_dhcp_snippets_for_interface(interface):
-        dhcp_snippets = list()
-        for dhcp_snippet in nodes_dhcp_snippets:
-            iface_node = (
-                interface.node_config.node if interface.node_config else None
-            )
-            if dhcp_snippet.node == iface_node:
-                dhcp_snippets.append(make_dhcp_snippet(dhcp_snippet))
-        return dhcp_snippets
-
     sips = (
         StaticIPAddress.objects.filter(
             alloc_type__in=[
@@ -402,9 +376,6 @@ def make_hosts_for_subnets(
                                 "host": make_interface_hostname(parent),
                                 "mac": str(parent.mac_address),
                                 "ip": str(sip.ip),
-                                "dhcp_snippets": get_dhcp_snippets_for_interface(
-                                    parent
-                                ),
                             }
                         )
                 hosts.append(
@@ -412,9 +383,6 @@ def make_hosts_for_subnets(
                         "host": make_interface_hostname(interface),
                         "mac": str(interface.mac_address),
                         "ip": str(sip.ip),
-                        "dhcp_snippets": get_dhcp_snippets_for_interface(
-                            interface
-                        ),
                     }
                 )
             else:
@@ -423,9 +391,6 @@ def make_hosts_for_subnets(
                         "host": make_interface_hostname(interface),
                         "mac": str(interface.mac_address),
                         "ip": str(sip.ip),
-                        "dhcp_snippets": get_dhcp_snippets_for_interface(
-                            interface
-                        ),
                     }
                 )
 
@@ -439,21 +404,19 @@ def make_hosts_for_subnets(
                     "host": "rsvd-%d" % (reserved_ip.id),
                     "mac": reserved_ip.mac_address,
                     "ip": reserved_ip.ip,
-                    "dhcp_snippets": [],
                 }
             )
 
     return hosts
 
 
-def make_pools_for_subnet(subnet, dhcp_snippets, failover_peer=None):
+def make_pools_for_subnet(subnet, failover_peer=None):
     """Return list of pools to create in the DHCP config for `subnet`."""
     pools = []
     for ip_range in subnet.get_dynamic_ranges().order_by("id"):
         pool = {
             "ip_range_low": ip_range.start_ip,
             "ip_range_high": ip_range.end_ip,
-            "dhcp_snippets": dhcp_snippets.get(ip_range.id, []),
         }
         if failover_peer is not None:
             pool["failover_peer"] = failover_peer
@@ -468,7 +431,6 @@ def make_subnet_config(
     default_domain,
     search_list=None,
     failover_peer=None,
-    subnets_dhcp_snippets: list = None,
     peer_rack=None,
     ip_addresses=None,
 ):
@@ -480,7 +442,6 @@ def make_subnet_config(
     """
     ip_network = subnet.get_ipnetwork()
     dns_servers = []
-    ipranges_dhcp_snippets = dict()
     if subnet.allow_dns and default_dns_servers:
         # If the MAAS DNS server is enabled make sure that is used first.
         if subnet.gateway_ip:
@@ -504,22 +465,6 @@ def make_subnet_config(
     if subnet.dns_servers:
         # Add DNS user defined DNS servers
         dns_servers += [IPAddress(server) for server in subnet.dns_servers]
-    if subnets_dhcp_snippets is None:
-        subnets_dhcp_snippets = []
-    else:
-        subnet_only_dhcp_snippets = []
-        for snippet in subnets_dhcp_snippets:
-            if snippet.iprange is not None:
-                iprange_dhcp_snippets = ipranges_dhcp_snippets.get(
-                    snippet.iprange.id, []
-                )
-                iprange_dhcp_snippets.append(make_dhcp_snippet(snippet))
-                ipranges_dhcp_snippets[snippet.iprange.id] = (
-                    iprange_dhcp_snippets
-                )
-            else:
-                subnet_only_dhcp_snippets.append(snippet)
-        subnets_dhcp_snippets = subnet_only_dhcp_snippets
 
     next_server = None
     bootloader = None
@@ -550,14 +495,8 @@ def make_subnet_config(
         "domain_name": default_domain.name,
         "pools": make_pools_for_subnet(
             subnet,
-            ipranges_dhcp_snippets,
             failover_peer,
         ),
-        "dhcp_snippets": [
-            make_dhcp_snippet(dhcp_snippet)
-            for dhcp_snippet in subnets_dhcp_snippets
-            if dhcp_snippet.subnet == subnet
-        ],
         "next_server": str(next_server),
         "bootloader": bootloader,
     }
@@ -687,7 +626,6 @@ def get_dhcp_configure_for(
     ntp_servers: Union[list, dict],
     domain,
     search_list=None,
-    dhcp_snippets: Iterable = None,
     use_rack_proxy=True,
 ):
     """Get the DHCP configuration for `ip_version`."""
@@ -707,20 +645,6 @@ def get_dhcp_configure_for(
         )
     else:
         peer_name, peer_config, peer_rack = None, None, None
-
-    if dhcp_snippets is None:
-        dhcp_snippets = []
-
-    subnets_dhcp_snippets = [
-        dhcp_snippet
-        for dhcp_snippet in dhcp_snippets
-        if dhcp_snippet.subnet is not None
-    ]
-    nodes_dhcp_snippets = [
-        dhcp_snippet
-        for dhcp_snippet in dhcp_snippets
-        if dhcp_snippet.node is not None
-    ]
 
     ip_addresses = []
     if interface:
@@ -748,14 +672,13 @@ def get_dhcp_configure_for(
                 domain,
                 search_list,
                 peer_name,
-                subnets_dhcp_snippets,
                 peer_rack,
                 ip_addresses,
             )
         )
 
     # Generate the hosts for all subnets.
-    hosts = make_hosts_for_subnets(subnets, nodes_dhcp_snippets)
+    hosts = make_hosts_for_subnets(subnets)
     return (
         peer_config,
         sorted(subnet_configs, key=itemgetter("subnet")),
@@ -766,7 +689,7 @@ def get_dhcp_configure_for(
 
 @synchronous
 @transactional
-def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
+def get_dhcp_configuration(rack_controller):
     """Return tuple with IPv4 and IPv6 configurations for the
     rack controller."""
     # Get list of all vlans that are being managed by the rack controller.
@@ -777,32 +700,6 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
         vlan: split_managed_ipv4_ipv6_subnets(vlan.subnet_set.all())
         for vlan in vlans
     }
-
-    # Get the list of all DHCP snippets so we only have to query the database
-    # 1 + (the number of DHCP snippets used in this VLAN) instead of
-    # 1 + (the number of subnets in this VLAN) +
-    #     (the number of nodes in this VLAN)
-    dhcp_snippets = DHCPSnippet.objects.filter(enabled=True)
-    # If we're testing a DHCP Snippet insert it into our list
-    if test_dhcp_snippet is not None:
-        dhcp_snippets = list(dhcp_snippets)
-        replaced_snippet = False
-        # If its an existing DHCPSnippet with its contents being modified
-        # replace it with the new values and test
-        for i, dhcp_snippet in enumerate(dhcp_snippets):
-            if dhcp_snippet.id == test_dhcp_snippet.id:
-                dhcp_snippets[i] = test_dhcp_snippet
-                replaced_snippet = True
-                break
-        # If the snippet wasn't updated its either new or testing a currently
-        # disabled snippet
-        if not replaced_snippet:
-            dhcp_snippets.append(test_dhcp_snippet)
-    global_dhcp_snippets = [
-        make_dhcp_snippet(dhcp_snippet)
-        for dhcp_snippet in dhcp_snippets
-        if dhcp_snippet.node is None and dhcp_snippet.subnet is None
-    ]
 
     # Configure both DHCPv4 and DHCPv6 on the rack controller.
     failover_peers_v4 = []
@@ -843,7 +740,6 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
                 ntp_servers,
                 default_domain,
                 search_list=search_list,
-                dhcp_snippets=dhcp_snippets,
                 use_rack_proxy=use_rack_proxy,
             )
             failover_peer, subnets, hosts, interface = config
@@ -869,7 +765,6 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
                 ntp_servers,
                 default_domain,
                 search_list=search_list,
-                dhcp_snippets=dhcp_snippets,
                 use_rack_proxy=use_rack_proxy,
             )
             failover_peer, subnets, hosts, interface = config
@@ -901,7 +796,6 @@ def get_dhcp_configuration(rack_controller, test_dhcp_snippet=None):
         hosts_v6,
         interfaces_v6,
         get_omapi_key(),
-        global_dhcp_snippets,
     )
 
 
@@ -917,7 +811,6 @@ DHCPConfigurationForRack = namedtuple(
         "hosts_v6",
         "interfaces_v6",
         "omapi_key",
-        "global_dhcp_snippets",
     ),
 )
 
@@ -935,7 +828,6 @@ def generate_dhcp_configuration(rack_controller):
     result["dhcpd"] = base64.b64encode(
         get_config_v4(
             template_name="dhcpd.conf.template",
-            global_dhcp_snippets=config.global_dhcp_snippets,
             failover_peers=config.failover_peers_v4,
             shared_networks=config.shared_networks_v4,
             hosts=config.hosts_v4,
@@ -950,7 +842,6 @@ def generate_dhcp_configuration(rack_controller):
     result["dhcpd6"] = base64.b64encode(
         get_config_v6(
             template_name="dhcpd6.conf.template",
-            global_dhcp_snippets=config.global_dhcp_snippets,
             failover_peers=config.failover_peers_v6,
             shared_networks=config.shared_networks_v6,
             hosts=config.hosts_v6,
@@ -963,34 +854,6 @@ def generate_dhcp_configuration(rack_controller):
     ).decode("utf-8")
 
     return result
-
-
-def get_racks_by_subnet(subnet):
-    """Return the set of racks with at least one interface configured on the
-    specified subnet.
-    """
-    racks = RackController.objects.filter(
-        current_config__interface__ip_addresses__subnet__in=[subnet]
-    )
-
-    if subnet.vlan.relay_vlan_id:
-        relay_vlan = VLAN.objects.get(id=subnet.vlan.relay_vlan_id)
-        racks = racks.union(
-            RackController.objects.filter(
-                id__in=[
-                    relay_vlan.primary_rack_id,
-                    relay_vlan.secondary_rack_id,
-                ]
-            )
-        )
-    return racks
-
-
-def _get_dhcp_rackcontrollers(dhcp_snippet):
-    if dhcp_snippet.subnet is not None:
-        return get_racks_by_subnet(dhcp_snippet.subnet)
-    elif dhcp_snippet.node is not None:
-        return dhcp_snippet.node.get_boot_rack_controllers()
 
 
 def configure_dhcp_on_agents(
