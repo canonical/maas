@@ -11,20 +11,6 @@ from maasservicelayer.db.tables import ConsumerTable
 from maasservicelayer.models.consumers import Consumer
 
 
-class ConsumerClauseFactory(ClauseFactory):
-    @classmethod
-    def with_user_id(cls, user_id: int) -> Clause:
-        return Clause(condition=eq(ConsumerTable.c.user_id, user_id))
-
-    @classmethod
-    def with_secret(cls, secret: str) -> Clause:
-        return Clause(condition=eq(ConsumerTable.c.secret, secret))
-
-    @classmethod
-    def with_key(cls, key: str) -> Clause:
-        return Clause(condition=eq(ConsumerTable.c.key, key))
-
-
 class ConsumersRepository(BaseRepository[Consumer]):
     """
     Piston3 Consumer repository. See
@@ -39,3 +25,18 @@ class ConsumersRepository(BaseRepository[Consumer]):
 
     def get_model_factory(self) -> type[Consumer]:
         return Consumer
+
+
+# Legacy SQL clause factory, removed once every caller uses domain filters.
+class ConsumerClauseFactory(ClauseFactory):
+    @classmethod
+    def with_user_id(cls, user_id: int) -> Clause:
+        return Clause(condition=eq(ConsumerTable.c.user_id, user_id))
+
+    @classmethod
+    def with_secret(cls, secret: str) -> Clause:
+        return Clause(condition=eq(ConsumerTable.c.secret, secret))
+
+    @classmethod
+    def with_key(cls, key: str) -> Clause:
+        return Clause(condition=eq(ConsumerTable.c.key, key))

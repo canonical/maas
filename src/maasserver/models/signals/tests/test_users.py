@@ -9,8 +9,8 @@ from maasserver.sqlalchemy import service_layer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.usergroups import UserGroupsClauseFactory
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.usergroups import UserGroupsFilters
 from metadataserver.nodeinituser import get_node_init_user
 
 
@@ -38,7 +38,7 @@ class TestPostSaveUserSignal(MAASServerTestCase):
 
         group = service_layer.services.usergroups.get_one(
             QuerySpec(
-                where=UserGroupsClauseFactory.with_name(
+                where=UserGroupsFilters.with_name(
                     "Administrators" if user.is_superuser else "Users"
                 )
             )
@@ -60,12 +60,10 @@ class TestPostSaveUserSignal(MAASServerTestCase):
 
     def test_save_ignores_deleted_default_groups(self):
         service_layer.services.usergroups.delete_one(
-            QuerySpec(
-                where=UserGroupsClauseFactory.with_name("Administrators")
-            )
+            QuerySpec(where=UserGroupsFilters.with_name("Administrators"))
         )
         service_layer.services.usergroups.delete_one(
-            QuerySpec(where=UserGroupsClauseFactory.with_name("Users"))
+            QuerySpec(where=UserGroupsFilters.with_name("Users"))
         )
 
         user = self.user_factory()

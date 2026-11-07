@@ -7,11 +7,11 @@ from maascommon.openfga.async_client import OpenFGAClient
 from maascommon.openfga.base import OpenFGAEntitlementResourceType
 from maasservicelayer.builders.openfga_tuple import OpenFGATupleBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.openfga_tuples import (
-    OpenFGATuplesClauseFactory,
     OpenFGATuplesRepository,
 )
+from maasservicelayer.filters.openfga_tuples import OpenFGATuplesFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.openfga_tuple import (
     EntitlementDeleteSpec,
@@ -176,11 +176,11 @@ class OpenFGATupleService(Service):
 
     async def delete_pool(self, pool_id: int) -> None:
         query = QuerySpec(
-            where=OpenFGATuplesClauseFactory.and_clauses(
+            where=OpenFGATuplesFilters.and_filters(
                 [
-                    OpenFGATuplesClauseFactory.with_object_id(str(pool_id)),
-                    OpenFGATuplesClauseFactory.with_object_type("pool"),
-                    OpenFGATuplesClauseFactory.with_relation("parent"),
+                    OpenFGATuplesFilters.with_object_id(str(pool_id)),
+                    OpenFGATuplesFilters.with_object_type("pool"),
+                    OpenFGATuplesFilters.with_relation("parent"),
                 ]
             )
         )
@@ -188,10 +188,10 @@ class OpenFGATupleService(Service):
 
     async def delete_user(self, user_id: int) -> None:
         query = QuerySpec(
-            where=OpenFGATuplesClauseFactory.and_clauses(
+            where=OpenFGATuplesFilters.and_filters(
                 [
-                    OpenFGATuplesClauseFactory.with_user(f"user:{user_id}"),
-                    OpenFGATuplesClauseFactory.with_relation("member"),
+                    OpenFGATuplesFilters.with_user(f"user:{user_id}"),
+                    OpenFGATuplesFilters.with_relation("member"),
                 ]
             )
         )
@@ -200,21 +200,15 @@ class OpenFGATupleService(Service):
     async def delete_group(self, group_id: int) -> None:
         # Delete users who are members of this group AND entitlement tuples associated with this group
         membership_query = QuerySpec(
-            where=OpenFGATuplesClauseFactory.or_clauses(
+            where=OpenFGATuplesFilters.or_filters(
                 [
-                    OpenFGATuplesClauseFactory.and_clauses(
+                    OpenFGATuplesFilters.and_filters(
                         [
-                            OpenFGATuplesClauseFactory.with_object_type(
-                                "group"
-                            ),
-                            OpenFGATuplesClauseFactory.with_object_id(
-                                str(group_id)
-                            ),
+                            OpenFGATuplesFilters.with_object_type("group"),
+                            OpenFGATuplesFilters.with_object_id(str(group_id)),
                         ]
                     ),
-                    OpenFGATuplesClauseFactory.with_user(
-                        f"group:{group_id}#member"
-                    ),
+                    OpenFGATuplesFilters.with_user(f"group:{group_id}#member"),
                 ]
             )
         )
@@ -224,12 +218,12 @@ class OpenFGATupleService(Service):
         self, group_id: int, user_id: int
     ) -> None:
         query = QuerySpec(
-            where=OpenFGATuplesClauseFactory.and_clauses(
+            where=OpenFGATuplesFilters.and_filters(
                 [
-                    OpenFGATuplesClauseFactory.with_user(f"user:{user_id}"),
-                    OpenFGATuplesClauseFactory.with_relation("member"),
-                    OpenFGATuplesClauseFactory.with_object_type("group"),
-                    OpenFGATuplesClauseFactory.with_object_id(str(group_id)),
+                    OpenFGATuplesFilters.with_user(f"user:{user_id}"),
+                    OpenFGATuplesFilters.with_relation("member"),
+                    OpenFGATuplesFilters.with_object_type("group"),
+                    OpenFGATuplesFilters.with_object_id(str(group_id)),
                 ]
             )
         )
@@ -240,12 +234,12 @@ class OpenFGATupleService(Service):
     ) -> None:
         users = [f"user:{user_id}" for user_id in user_ids]
         query = QuerySpec(
-            where=OpenFGATuplesClauseFactory.and_clauses(
+            where=OpenFGATuplesFilters.and_filters(
                 [
-                    OpenFGATuplesClauseFactory.with_users(users),
-                    OpenFGATuplesClauseFactory.with_relation("member"),
-                    OpenFGATuplesClauseFactory.with_object_type("group"),
-                    OpenFGATuplesClauseFactory.with_object_id(str(group_id)),
+                    OpenFGATuplesFilters.with_users(users),
+                    OpenFGATuplesFilters.with_relation("member"),
+                    OpenFGATuplesFilters.with_object_type("group"),
+                    OpenFGATuplesFilters.with_object_id(str(group_id)),
                 ]
             )
         )
@@ -265,12 +259,8 @@ class OpenFGATupleService(Service):
         group_id: int,
     ) -> list[OpenFGATuple]:
         query = QuerySpec(
-            where=OpenFGATuplesClauseFactory.and_clauses(
-                [
-                    OpenFGATuplesClauseFactory.with_user(
-                        f"group:{group_id}#member"
-                    )
-                ]
+            where=OpenFGATuplesFilters.and_filters(
+                [OpenFGATuplesFilters.with_user(f"group:{group_id}#member")]
             )
         )
         return await self.get_many(query)
@@ -282,7 +272,7 @@ class OpenFGATupleService(Service):
         if not group_ids:
             return []
         query = QuerySpec(
-            where=OpenFGATuplesClauseFactory.with_users(
+            where=OpenFGATuplesFilters.with_users(
                 [f"group:{group_id}#member" for group_id in group_ids]
             )
         )
@@ -295,12 +285,8 @@ class OpenFGATupleService(Service):
         size: int,
     ) -> ListResult[OpenFGATuple]:
         query = QuerySpec(
-            where=OpenFGATuplesClauseFactory.and_clauses(
-                [
-                    OpenFGATuplesClauseFactory.with_user(
-                        f"group:{group_id}#member"
-                    )
-                ]
+            where=OpenFGATuplesFilters.and_filters(
+                [OpenFGATuplesFilters.with_user(f"group:{group_id}#member")]
             )
         )
         return await self.openfga_tuple_repository.list_entitlements(
@@ -315,16 +301,12 @@ class OpenFGATupleService(Service):
         resource_id: int,
     ) -> None:
         query = QuerySpec(
-            where=OpenFGATuplesClauseFactory.and_clauses(
+            where=OpenFGATuplesFilters.and_filters(
                 [
-                    OpenFGATuplesClauseFactory.with_user(
-                        f"group:{group_id}#member"
-                    ),
-                    OpenFGATuplesClauseFactory.with_relation(entitlement_name),
-                    OpenFGATuplesClauseFactory.with_object_type(resource_type),
-                    OpenFGATuplesClauseFactory.with_object_id(
-                        str(resource_id)
-                    ),
+                    OpenFGATuplesFilters.with_user(f"group:{group_id}#member"),
+                    OpenFGATuplesFilters.with_relation(entitlement_name),
+                    OpenFGATuplesFilters.with_object_type(resource_type),
+                    OpenFGATuplesFilters.with_object_id(str(resource_id)),
                 ]
             )
         )
@@ -336,12 +318,10 @@ class OpenFGATupleService(Service):
         items: list[EntitlementDeleteSpec],
     ) -> None:
         query = QuerySpec(
-            where=OpenFGATuplesClauseFactory.and_clauses(
+            where=OpenFGATuplesFilters.and_filters(
                 [
-                    OpenFGATuplesClauseFactory.with_user(
-                        f"group:{group_id}#member"
-                    ),
-                    OpenFGATuplesClauseFactory.with_entitlement_tuples(items),
+                    OpenFGATuplesFilters.with_user(f"group:{group_id}#member"),
+                    OpenFGATuplesFilters.with_entitlement_tuples(items),
                 ]
             )
         )
