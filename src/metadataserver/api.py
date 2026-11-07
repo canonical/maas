@@ -696,17 +696,7 @@ class VersionIndexHandler(MetadataViewHandler):
             NODE_TYPE.REGION_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
         ):
-            # XXX 2014-10-21 newell, bug=1382075
-            # Auto detection for IPMI tries to save power parameters
-            # for Moonshot.  This causes issues if the node's power
-            # type is already mscm as it uses SSH instead of IPMI.
-            # This fix is temporary as power parameters should not be
-            # overwritten during commissioning because MAAS already has
-            # knowledge to boot the node.
-            # See MP discussion bug=1389808, for further details on why
-            # we are using bug fix 1382075 here.
-            if node.power_type != "mscm":
-                store_node_power_parameters(node, request)
+            store_node_power_parameters(node, request)
 
         signaling_statuses = {
             SIGNAL_STATUS.OK: NODE_STATUS.READY,
