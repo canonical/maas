@@ -172,10 +172,7 @@ class MAASAuthorizationBackend(ModelBackend):
         )
 
     def _can_edit(self, user, machine):
-        editable = machine.owner_id is None or machine.owner_id == user.id
-        return editable or get_openfga_client().can_edit_machines_in_pool(
-            user, machine.pool_id
-        )
+        return machine.owner_id == user.id or self._can_admin(user, machine)
 
     def _can_admin(self, user, machine):
         if machine.pool_id is None:

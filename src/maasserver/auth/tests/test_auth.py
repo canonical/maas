@@ -200,11 +200,19 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
             )
         )
 
-    def test_user_can_edit_unowned_node(self):
+    def test_user_cannot_edit_unowned_node(self):
+        backend = MAASAuthorizationBackend()
+        self.assertFalse(
+            backend.has_perm(
+                factory.make_User(), NodePermission.edit, factory.make_Node()
+            )
+        )
+
+    def test_admin_can_edit_unowned_node(self):
         backend = MAASAuthorizationBackend()
         self.assertTrue(
             backend.has_perm(
-                factory.make_User(), NodePermission.edit, factory.make_Node()
+                factory.make_admin(), NodePermission.edit, factory.make_Node()
             )
         )
 
