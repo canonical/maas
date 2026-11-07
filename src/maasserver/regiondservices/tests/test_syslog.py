@@ -145,7 +145,10 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
         write_config = self.patch_autospec(syslog, "write_config")
         self.patch_autospec(service_monitor, "restartService")
         yield service._tryUpdate()
-        self.assertEqual(write_config.call_args.kwargs["bind"], ["10.0.0.9"])
+        self.assertEqual(
+            write_config.call_args.kwargs["bind"],
+            ["10.0.0.9", "127.0.0.1", "::1"],
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -161,7 +164,10 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
         write_config = self.patch_autospec(syslog, "write_config")
         self.patch_autospec(service_monitor, "restartService")
         yield service._tryUpdate()
-        self.assertEqual(write_config.call_args.kwargs["bind"], ["10.0.0.5"])
+        self.assertEqual(
+            write_config.call_args.kwargs["bind"],
+            ["10.0.0.5", "127.0.0.1", "::1"],
+        )
 
 
 class TestRegionSyslogService_Errors(MAASTransactionServerTestCase):

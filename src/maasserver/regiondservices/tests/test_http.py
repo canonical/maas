@@ -315,6 +315,8 @@ class TestRegionHTTPService(
             )
         )
         self.assertIn("listen 10.0.0.9:5240;", nginx_config)
+        self.assertIn("listen 127.0.0.1:5240;", nginx_config)
+        self.assertIn("listen [::1]:5240;", nginx_config)
         self.assertNotIn("listen [::]:5240;", nginx_config)
         self.assertNotIn("listen 5240;", nginx_config)
 
