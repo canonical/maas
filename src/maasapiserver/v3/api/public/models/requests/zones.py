@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
 from maasservicelayer.builders.zones import ZoneBuilder
-from maasservicelayer.db.filters import Clause
-from maasservicelayer.db.repositories.zones import ZonesClauseFactory
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.zones import ZonesFilters
 
 
 class ZonesFiltersParams(BaseModel):
@@ -16,9 +16,9 @@ class ZonesFiltersParams(BaseModel):
         Query(default=None, title="Filter by zone id", alias="id")
     )
 
-    def to_clause(self) -> Clause | None:
+    def to_filter(self) -> Filter | None:
         if self.ids:
-            return ZonesClauseFactory.with_ids(self.ids)
+            return ZonesFilters.with_ids(self.ids)
         return None
 
     def to_href_format(self) -> str:
