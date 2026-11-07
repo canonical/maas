@@ -13,10 +13,23 @@ from twisted.internet.defer import succeed
 from maasserver import eventloop
 from maasserver.api import machines as machines_module
 from maasserver.api.machines import AllocationOptions, get_allocation_options
+from maasserver.api.tests.test_nodes import RenderedNodesMixin
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
-from maasserver.enum import BRIDGE_TYPE, INTERFACE_TYPE, NODE_STATUS
+from maasserver.enum import (
+    BRIDGE_TYPE,
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+    NODE_STATUS,
+)
 from maasserver.exceptions import MAASAPIBadRequest
-from maasserver.models import Config, Domain, Machine, Node, ScriptSet
+from maasserver.models import (
+    Config,
+    Domain,
+    Machine,
+    Node,
+    ScriptSet,
+    StaticIPAddress,
+)
 from maasserver.models import node as node_module
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.testing.api import APITestCase, APITransactionTestCase
@@ -489,7 +502,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             ],
         )
 
-    def test_GET_machines_issues_linear_number_of_queries(self):
+    def test_GET_machines_issues_constant_number_of_queries(self):
         queries_count = []
         machines_count = []
 
@@ -514,13 +527,8 @@ class TestMachinesAPI(APITestCase.ForUser):
         factory.make_VirtualBlockDevice(node=node)
         exec_request()
 
-        expected_counts = [1, 2, 3]
-        self.assertEqual(machines_count, expected_counts)
-        base_count = 83
-        for idx, machine_count in enumerate(machines_count):
-            self.assertEqual(
-                queries_count[idx], base_count + (machine_count * 7)
-            )
+        self.assertEqual(machines_count, [1, 2, 3])
+        self.assertEqual(queries_count, [45, 45, 45])
 
     def test_GET_without_machines_returns_empty_list(self):
         # If there are no machines to list, the "read" op still works but
@@ -3116,4 +3124,99 @@ class TestMachinesAPIOpenFGAIntegration(OpenFGAMockMixin, APITestCase.ForUser):
         )
         self.openfga_client.can_edit_machines.assert_called_once_with(
             self.user
+        )
+
+
+class TestMachinesListingMatchesDetails(
+    RenderedNodesMixin, APITestCase.ForUser
+):
+    def test_GET_lists_machines_like_details(self):
+        machines = self.make_machines()
+
+        listing = self.get_json(reverse("machines_handler"))
+
+        self.assertEqual(
+            [machine.system_id for machine in machines],
+            extract_system_ids(listing),
+        )
+        self.assertListedLikeDetails(listing, "machine_handler")
+
+    def test_GET_renders_expected_values(self):
+        machine = self.make_rich_machine()
+
+        [listed] = self.get_json(reverse("machines_handler"))
+
+        interfaces = {
+            interface["name"]: interface
+            for interface in listed["interface_set"]
+        }
+        self.assertEqual(
+            {9000},
+            {
+                interfaces[interface.name]["effective_mtu"]
+                for interface in machine.current_config.interface_set.exclude(
+                    type=INTERFACE_TYPE.PHYSICAL
+                )
+            },
+        )
+        discovered_ip = StaticIPAddress.objects.get(
+            interface__node_config__node=machine,
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+        )
+        [dhcp_link] = [
+            link
+            for interface in listed["interface_set"]
+            for link in interface["links"]
+            if link["mode"] == "dhcp"
+        ]
+        self.assertEqual(discovered_ip.ip, dhcp_link["ip_address"])
+        self.assertEqual(
+            self.tagged_vlan.id,
+            dhcp_link["subnet"]["vlan"]["relay_vlan"]["id"],
+        )
+        self.assertEqual(
+            {
+                "gateway_ip": self.tagged_subnet.gateway_ip,
+                "link_id": machine.gateway_link_ipv4_id,
+            },
+            listed["default_gateways"]["ipv4"],
+        )
+        self.assertEqual(
+            self.ipv6_subnet.gateway_ip,
+            listed["default_gateways"]["ipv6"]["gateway_ip"],
+        )
+        self.assertEqual(
+            f"{self.info_event_type.description} - latest",
+            listed["status_message"],
+        )
+        used_for = {
+            device["used_for"]
+            for block_device in listed["blockdevice_set"]
+            for device in [block_device, *block_device["partitions"]]
+        }
+        self.assertTrue(
+            {"Cache device for cache0", "Cache device for cache1"} <= used_for
+        )
+        self.assertEqual(
+            {
+                "commissioning_status_name": "Failed",
+                "testing_status_name": "Running",
+                "cpu_test_status_name": "Passed",
+                "memory_test_status_name": "Passed",
+                "storage_test_status_name": "Running",
+                "network_test_status_name": "Failed",
+                "other_test_status_name": "Passed",
+            },
+            {
+                key: listed[key]
+                for key in (
+                    "commissioning_status_name",
+                    "testing_status_name",
+                    "cpu_test_status_name",
+                    "memory_test_status_name",
+                    "storage_test_status_name",
+                    "network_test_status_name",
+                    "other_test_status_name",
+                )
+            },
         )
