@@ -9,8 +9,6 @@ import django
 from django.conf import settings
 from django.db import connection, transaction
 
-from provisioningserver.config import is_dev_environment
-
 from . import LOGGER
 from .sampledata import generate
 
@@ -85,10 +83,8 @@ def setup_django(
             os.environ["SNAP_DATA"], "regiond.conf"
         )
         setting = "snap"
-    elif is_dev_environment():
-        setting = "development"
     else:
-        setting = "settings"
+        setting = "development"
 
     settings_module = import_module(f"maasserver.djangosettings.{setting}")
     config = {
