@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasapiserver.common.api.base import API
+from maasapiserver.v3.api.public.handlers.api_tokens import ApiTokensHandler
 from maasapiserver.v3.api.public.handlers.auth import AuthHandler
 from maasapiserver.v3.api.public.handlers.boot_resources import (
     BootloadersHandler,
@@ -64,6 +65,7 @@ from maasapiserver.v3.constants import V3_API_PREFIX, V3_API_UI_PREFIX
 APIv3 = API(
     prefix=V3_API_PREFIX,
     handlers=[
+        ApiTokensHandler(),
         AuthHandler(),
         BootloadersHandler(),
         BootSourcesHandler(),
