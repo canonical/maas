@@ -1,4 +1,4 @@
-# Copyright 2015-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """AMT Power Driver."""
@@ -47,6 +47,8 @@ HTTP_OR_HTTPS = [
 ]
 
 REQUIRED_PACKAGES = [["wsman", "wsmancli"]]
+
+AMT_OPENSSL_CONF = join(dirname(__file__), "amt.openssl.cnf")
 
 
 class AMTPowerDriver(PowerDriver):
@@ -191,7 +193,10 @@ class AMTPowerDriver(PowerDriver):
         result = shell.run_command(
             *command,
             stdin=stdin,
-            extra_environ={"AMT_PASSWORD": power_pass},
+            extra_environ={
+                "AMT_PASSWORD": power_pass,
+                "OPENSSL_CONF": AMT_OPENSSL_CONF,
+            },
             decode=False,
         )
         if result.returncode != 0:
@@ -440,7 +445,9 @@ class AMTPowerDriver(PowerDriver):
             "--noverifypeer",
             "--noverifyhost",
         )
-        result = shell.run_command(*command)
+        result = shell.run_command(
+            *command, extra_environ={"OPENSSL_CONF": AMT_OPENSSL_CONF}
+        )
         if not result.stdout:
             for error, error_info in AMT_ERRORS.items():
                 if error in result.stderr:

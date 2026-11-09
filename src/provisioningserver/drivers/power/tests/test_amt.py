@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -173,7 +173,10 @@ class TestAMTPowerDriver(MAASTestCase):
         run_command_mock.assert_called_once_with(
             *command,
             stdin=stdin,
-            extra_environ={"AMT_PASSWORD": power_pass},
+            extra_environ={
+                "AMT_PASSWORD": power_pass,
+                "OPENSSL_CONF": amt_module.AMT_OPENSSL_CONF,
+            },
             decode=False,
         )
         self.assertEqual(result, b"stdout")
@@ -802,6 +805,7 @@ class TestAMTPowerDriver(MAASTestCase):
             f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
             "--noverifypeer",
             "--noverifyhost",
+            extra_environ={"OPENSSL_CONF": amt_module.AMT_OPENSSL_CONF},
         )
         self.assertEqual(result, "amttool")
 
@@ -829,6 +833,7 @@ class TestAMTPowerDriver(MAASTestCase):
             f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
             "--noverifypeer",
             "--noverifyhost",
+            extra_environ={"OPENSSL_CONF": amt_module.AMT_OPENSSL_CONF},
         )
         self.assertEqual(result, "wsman")
 
