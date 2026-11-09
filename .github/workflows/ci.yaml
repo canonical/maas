@@ -2,7 +2,7 @@ name: CI check
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
@@ -18,7 +18,7 @@ permissions:
 jobs:
   save-pr-number:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' && github.event.action != 'edited' }}
     steps:
       - name: Save PR number to artifact
         run: echo "${{ github.event.pull_request.number }}" > pr-number.txt
@@ -30,7 +30,7 @@ jobs:
 
   changes:
     runs-on: ubuntu-24.04
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft && github.event.action != 'edited' }}
 
     outputs:
       python: ${{ steps.filter.outputs.python }}
