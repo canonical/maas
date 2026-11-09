@@ -111,6 +111,10 @@ Furthermore, we made better use of screen space across several screens by
 re-organizing information into otherwise empty areas. Destructive actions
 were moved from side panels to modals so they are easier to distinguish.
 
+And last but not least, we have introduced native dark mode to the UI,
+which can be toggled from the side navigation and will use your system
+settings as a default.
+
 #### Offline documentation
 
 Note that every documentation page that is linked above exists in MAAS's offline
