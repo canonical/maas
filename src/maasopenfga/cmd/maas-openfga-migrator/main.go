@@ -42,6 +42,7 @@ func main() {
 		URI:           uri,
 		TargetVersion: 0, // migrate to latest
 		Timeout:       time.Second * 30,
+		PingTimeout:   time.Second * 2,
 		Verbose:       true,
 		Logger:        log,
 	}

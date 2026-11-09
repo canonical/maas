@@ -33,7 +33,6 @@ class User(MaasBaseModel):
 @generate_builder()
 class UserProfile(MaasBaseModel):
     completed_intro: bool
-    auth_last_check: datetime | None = None
     is_local: bool
     user_id: int
     provider_id: int | None = None

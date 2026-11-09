@@ -11,6 +11,7 @@ from piston3.utils import rc
 
 from maascommon.logging.security import CREATED, DELETED
 from maascommon.openfga.base import MAASResourceEntitlement
+from maascommon.password_policy import enforce_password_complexity
 from maasserver.api.ssh_keys import SSHKeysHandler
 from maasserver.api.support import (
     check_permission,
@@ -95,14 +96,21 @@ class UsersHandler(OperationsHandler):
         """
         username = get_mandatory_param(request.data, "username")
         email = get_mandatory_param(request.data, "email")
-        if request.external_auth_info:
-            password = request.data.get("password")
-        else:
-            password = get_mandatory_param(request.data, "password")
+        password = get_mandatory_param(request.data, "password")
         is_superuser = extract_bool(
             get_mandatory_param(request.data, "is_superuser")
         )
 
+        # Reject weak passwords before hashing, matching every other
+        # creation entry point (createadmin, changepassword(s), 3.0 API).
+        # No-op when hardening is not active.
+        if password:
+            try:
+                enforce_password_complexity(password)
+            except ValueError as error:
+                raise MAASAPIValidationError(  # noqa: B904
+                    {"password": [str(error)]}
+                )
         create_audit_event(
             EVENT_TYPES.AUTHORISATION,
             ENDPOINT.API,

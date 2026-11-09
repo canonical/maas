@@ -180,6 +180,7 @@ from maasserver.workflow import (
 from maastemporalworker.workflow.deploy import DeployManyParam, DeployParam
 from maastemporalworker.workflow.power import (
     convert_power_action_to_power_workflow,
+    fetch_trusted_ssh_host_keys,
     get_temporal_task_queue_for_bmc,
 )
 from metadataserver.enum import (
@@ -466,145 +467,60 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         :return: A version of `node` that is filtered to include only those
             nodes that `user` is allowed to access.
         """
-        # Local import to avoid circular imports.
-        from maasserver.rbac import rbac
-
         # If the data is corrupt, this can get called with None for
         # user where a Node should have an owner but doesn't.
         # Nonetheless, the code should not crash with corrupt data.
         if user is None:
             return nodes.none()
 
-        if rbac.is_enabled():
-            # Non-admins aren't allowed to see controllers.
-            if not user.is_superuser:
-                nodes = nodes.exclude(
-                    Q(
-                        node_type__in=[
-                            NODE_TYPE.RACK_CONTROLLER,
-                            NODE_TYPE.REGION_CONTROLLER,
-                            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                        ]
-                    )
-                )
-
-            fetched_pools = rbac.get_resource_pool_ids(
-                user.username,
-                "view",
-                "view-all",
-                "deploy-machines",
-                "admin-machines",
-            )
-            visible_pools = fetched_pools["view"]
-            view_all_pools = fetched_pools["view-all"]
-            deploy_pools = fetched_pools["deploy-machines"]
-            admin_pools = fetched_pools["admin-machines"]
-
-            if perm == NodePermission.view:
-                condition = Q(Q(owner__isnull=True) | Q(owner=user))
-                condition |= Q(pool_id__in=view_all_pools)
-            elif perm == NodePermission.edit:
-                condition = Q(Q(owner__isnull=True) | Q(owner=user))
-                condition = Q(Q(pool_id__in=deploy_pools) & Q(condition))
-            elif perm == NodePermission.admin:
-                # There is no built-in Q object that represents False, but
-                # this one does.
-                condition = Q(id__in=[])
-            else:
-                raise NotImplementedError(
-                    "Invalid permission check (invalid permission name: %s)."
-                    % perm
-                )
-            # XXX blake_r 2018-12-12 - This should be cleaned up to only use
-            # the `condition` instead of using both `nodes.filter` and
-            # `condition`. The RBAC unit tests cover the expected result.
-            condition |= Q(pool_id__in=admin_pools)
-            condition = Q(Q(node_type=NODE_TYPE.MACHINE) & condition)
-            if user.is_superuser:
-                condition |= Q(
-                    node_type__in=[
-                        NODE_TYPE.DEVICE,
-                        NODE_TYPE.RACK_CONTROLLER,
-                        NODE_TYPE.REGION_CONTROLLER,
-                        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                    ]
-                )
-                nodes = nodes.filter(
-                    Q(
-                        node_type=NODE_TYPE.MACHINE,
-                        pool_id__in=set(visible_pools).union(view_all_pools),
-                    )
-                    | Q(
-                        node_type__in=[
-                            NODE_TYPE.DEVICE,
-                            NODE_TYPE.RACK_CONTROLLER,
-                            NODE_TYPE.REGION_CONTROLLER,
-                            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                        ]
-                    )
-                )
-            else:
-                condition |= Q(node_type=NODE_TYPE.DEVICE, owner=user)
-                nodes = nodes.filter(
-                    Q(
-                        node_type=NODE_TYPE.MACHINE,
-                        pool_id__in=set(visible_pools).union(view_all_pools),
-                    )
-                    | Q(node_type=NODE_TYPE.DEVICE, owner=user)
-                )
-        else:
+        if perm == NodePermission.view:
             view_all_pools = (
                 get_openfga_client().list_pools_with_view_machines_access(user)
             )
             visible_pools = get_openfga_client().list_pools_with_view_available_machines_access(
                 user
             )
-            if perm == NodePermission.view:
-                # visible pools: free and own machines.
-                condition = Q(
-                    Q(Q(owner__isnull=True) | Q(owner=user))
-                    & Q(pool_id__in=visible_pools)
-                )
-                # view all pools: all machines
-                condition |= Q(pool_id__in=view_all_pools)
-            elif perm == NodePermission.edit:
-                deploy_pools = (
-                    get_openfga_client().list_pool_with_deploy_machines_access(
-                        user
-                    )
-                )
-                # deploy pools: free and own machines.
-                condition = Q(
-                    Q(Q(owner__isnull=True) | Q(owner=user))
-                    & Q(pool_id__in=deploy_pools)
-                )
-            elif perm == NodePermission.admin:
-                # There is no built-in Q object that represents False, but
-                # this one does.
-                condition = Q(pool_id__in=[])
-
-            admin_pools = (
-                get_openfga_client().list_pools_with_edit_machines_access(user)
+            condition = Q(
+                Q(Q(owner__isnull=True) | Q(owner=user))
+                & Q(pool_id__in=visible_pools)
             )
-            condition |= Q(pool_id__in=admin_pools)
-            condition = Q(Q(node_type=NODE_TYPE.MACHINE) & condition)
-            if get_openfga_client().can_view_devices(user):
-                condition |= Q(
-                    node_type__in=[
-                        NODE_TYPE.DEVICE,
-                    ]
+            condition |= Q(pool_id__in=view_all_pools)
+        elif perm == NodePermission.edit:
+            deploy_pools = (
+                get_openfga_client().list_pool_with_deploy_machines_access(
+                    user
                 )
-            else:
-                condition |= Q(Q(node_type=NODE_TYPE.DEVICE) & Q(owner=user))
+            )
+            condition = Q(
+                Q(Q(owner__isnull=True) | Q(owner=user))
+                & Q(pool_id__in=deploy_pools)
+            )
+        elif perm == NodePermission.admin:
+            condition = Q(pool_id__in=[])
+        else:
+            raise NotImplementedError(
+                "Invalid permission check (invalid permission name: %s)."
+                % perm
+            )
 
-            if get_openfga_client().can_view_controllers(user):
-                condition |= Q(
-                    node_type__in=[
-                        NODE_TYPE.RACK_CONTROLLER,
-                        NODE_TYPE.REGION_CONTROLLER,
-                        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                    ]
-                )
+        admin_pools = (
+            get_openfga_client().list_pools_with_edit_machines_access(user)
+        )
+        condition |= Q(pool_id__in=admin_pools)
+        condition = Q(Q(node_type=NODE_TYPE.MACHINE) & condition)
+        if get_openfga_client().can_view_devices(user):
+            condition |= Q(node_type__in=[NODE_TYPE.DEVICE])
+        else:
+            condition |= Q(Q(node_type=NODE_TYPE.DEVICE) & Q(owner=user))
+
+        if get_openfga_client().can_view_controllers(user):
+            condition |= Q(
+                node_type__in=[
+                    NODE_TYPE.RACK_CONTROLLER,
+                    NODE_TYPE.REGION_CONTROLLER,
+                    NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                ]
+            )
         return nodes.filter(condition)
 
     def get_nodes(self, user, perm, ids=None, from_nodes=None):
@@ -1391,6 +1307,7 @@ class Node(CleanSave, TimestampedModel):
         self._previous_hostname = None
         self._previous_boot_interface_id = None
         self._previous_domain_id = None
+        self._previous_bmc_id = None
         self._updated = False
 
     def __setattr__(self, name, value):
@@ -2202,10 +2119,22 @@ class Node(CleanSave, TimestampedModel):
                 task_queue="region",
             )
 
+        # Reset only the BMC change tracking so that orphan cleanup works
+        # correctly across multiple saves on the same instance. The DHCP workflow
+        # currently relies on their lifetime values, so the other fields are left as is.
+        self._previous_bmc_id = None
+
     def _remove_orphaned_bmcs(self):
         from maasserver.models.bmc import BMC
 
-        BMC.objects.filter(node__isnull=True).delete()
+        previous_bmc_id = self._previous_bmc_id
+        if previous_bmc_id is None or previous_bmc_id == self.bmc_id:
+            # The node's BMC did not change on this save, so there
+            # is nothing to do.
+            return
+        # Only the previously referenced BMC can have been orphaned by this
+        # save.
+        BMC.objects.filter(id=previous_bmc_id, node__isnull=True).delete()
 
     def display_status(self):
         """Return status text as displayed to the user."""
@@ -5953,6 +5882,10 @@ class Node(CleanSave, TimestampedModel):
                             driver_opts=dict(power_info.power_parameters),
                             task_queue=power_wf_task_queue,
                             is_dpu=self.is_dpu,
+                            trusted_ssh_host_keys=fetch_trusted_ssh_host_keys(
+                                power_info.power_type,
+                                power_info.power_parameters,
+                            ),
                         ),
                         ephemeral_deploy=bool(self.ephemeral_deploy),
                         can_set_boot_order=bool(power_info.can_set_boot_order),
@@ -6593,11 +6526,11 @@ class Node(CleanSave, TimestampedModel):
         self.save()
 
         try:
-            if self.previous_status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
-                self._stop(user)
-            elif self.previous_status == NODE_STATUS.DEPLOYED:
+            if self.previous_status == NODE_STATUS.DEPLOYED:
                 # TODO: Power reset when DPU?
                 self._power_cycle()
+            else:
+                self._stop(user)
         except Exception as error:
             self.update_status(old_status)
             self.save()

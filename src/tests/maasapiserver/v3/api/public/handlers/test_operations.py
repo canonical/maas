@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, Mock
 from httpx import AsyncClient
 import pytest
 
+from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.responses.operations import (
     OperationResponse,
     OperationsListResponse,
@@ -26,9 +27,6 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.operations import Operation, OperationTask
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.operations import OperationsService
-from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -65,7 +63,7 @@ TEST_TASK = OperationTask(
 )
 
 
-def _setup_openfga_mock(services_mock: ServiceCollectionV3) -> AsyncMock:
+def _setup_openfga_mock(services_mock: Mock) -> AsyncMock:
     openfga_client = Mock()
     openfga_client.can_view_operations = AsyncMock(return_value=True)
     openfga_client.can_edit_operations = AsyncMock(return_value=True)
@@ -103,12 +101,11 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         openfga_client = _setup_openfga_mock(services_mock)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.list_for_user.return_value = ListResult(
             items=[TEST_OPERATION, TEST_OPERATION_2], total=2
         )
@@ -130,12 +127,11 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         _setup_openfga_mock(services_mock)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.list_for_user.return_value = ListResult(
             items=[TEST_OPERATION], total=2
         )
@@ -155,12 +151,11 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_list_operations_filter_by_status(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         _setup_openfga_mock(services_mock)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.list_for_user.return_value = ListResult(
             items=[TEST_OPERATION], total=1
         )
@@ -184,14 +179,62 @@ class TestOperationsApi(ApiCommonTests):
             ),
         )
 
-    async def test_get_operation(
+    async def test_list_operations_filter_by_resource(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         _setup_openfga_mock(services_mock)
-        services_mock.operations = Mock(OperationsService)
+        services_mock.operations.list_for_user.return_value = ListResult(
+            items=[TEST_OPERATION], total=1
+        )
+
+        response = await client.get(
+            f"{self.BASE_PATH}?resource_type=machine&resource_id=42"
+        )
+        operations_response = OperationsListResponse(**response.json())
+        assert response.status_code == 200
+        assert len(operations_response.items) == 1
+        services_mock.operations.list_for_user.assert_called_once_with(
+            1,
+            20,
+            user_id=0,
+            can_view_all=True,
+            query=QuerySpec(
+                where=OperationsClauseFactory.and_clauses(
+                    [
+                        OperationsClauseFactory.with_resource_type("machine"),
+                        OperationsClauseFactory.with_resource_id(42),
+                    ]
+                )
+            ),
+        )
+
+    async def test_list_operations_resource_id_requires_resource_type(
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions()
+        _setup_openfga_mock(services_mock)
+
+        response = await client.get(f"{self.BASE_PATH}?resource_id=42")
+        assert response.status_code == 422
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+        assert error_response.details is not None
+        assert error_response.details[0].field == "resource_type"
+        services_mock.operations.list_for_user.assert_not_called()
+
+    async def test_get_operation(
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions()
+        _setup_openfga_mock(services_mock)
         services_mock.operations.get_by_uuid_for_user.return_value = (
             TEST_OPERATION
         )
@@ -207,12 +250,11 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_get_operation_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         _setup_openfga_mock(services_mock)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.get_by_uuid_for_user.side_effect = (
             NotFoundException()
         )
@@ -222,7 +264,7 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_cancel_operation(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
@@ -230,11 +272,9 @@ class TestOperationsApi(ApiCommonTests):
         cancelling_operation = TEST_OPERATION.model_copy(
             update={"status": OperationStatus.CANCELLING}
         )
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.cancel_for_user.return_value = (
             cancelling_operation
         )
-        services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.cancel_workflow_by_operation_uuid = AsyncMock()
 
         response = await client.delete(
@@ -255,7 +295,7 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_cancel_operation_force_terminates_workflow(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
@@ -263,11 +303,9 @@ class TestOperationsApi(ApiCommonTests):
         cancelling_operation = TEST_OPERATION.model_copy(
             update={"status": OperationStatus.CANCELLING}
         )
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.cancel_for_user.return_value = (
             cancelling_operation
         )
-        services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.cancel_workflow_by_operation_uuid = AsyncMock()
         services_mock.temporal.terminate_workflow_by_operation_uuid = (
             AsyncMock()
@@ -292,12 +330,11 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_cancel_operation_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         _setup_openfga_mock(services_mock)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.cancel_for_user.side_effect = (
             NotFoundException()
         )
@@ -307,12 +344,11 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_cancel_operation_conflict(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         _setup_openfga_mock(services_mock)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.cancel_for_user.side_effect = (
             ConflictException()
         )
@@ -324,16 +360,14 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_cancel_operation_force_conflict(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         _setup_openfga_mock(services_mock)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.cancel_for_user.side_effect = (
             ConflictException()
         )
-        services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.terminate_workflow_by_operation_uuid = (
             AsyncMock()
         )
@@ -346,13 +380,12 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_get_operation_forbidden_for_other_user(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         openfga_client = _setup_openfga_mock(services_mock)
         openfga_client.can_view_operations.return_value = False
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.get_by_uuid_for_user.side_effect = (
             NotFoundException()
         )
@@ -362,13 +395,12 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_list_operations_non_admin_with_status_filter(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         openfga_client = _setup_openfga_mock(services_mock)
         openfga_client.can_view_operations.return_value = False
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.list_for_user.return_value = ListResult(
             items=[TEST_OPERATION], total=1
         )
@@ -395,12 +427,11 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_get_operation_tasks(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         _setup_openfga_mock(services_mock)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.get_by_uuid_for_user.return_value = (
             TEST_OPERATION
         )
@@ -425,12 +456,11 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_get_operation_tasks_with_next_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         _setup_openfga_mock(services_mock)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.get_by_uuid_for_user.return_value = (
             TEST_OPERATION
         )
@@ -449,12 +479,11 @@ class TestOperationsApi(ApiCommonTests):
 
     async def test_get_operation_tasks_operation_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions()
         _setup_openfga_mock(services_mock)
-        services_mock.operations = Mock(OperationsService)
         services_mock.operations.get_by_uuid_for_user.side_effect = (
             NotFoundException()
         )

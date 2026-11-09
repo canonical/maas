@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import auto, IntFlag
 import os
+import platform
 from typing import Sequence
 
 from alembic import op
@@ -92,15 +93,26 @@ class BootSourceCreateModel:
         )
 
 
+# Maps `platform.machine()` kernel architecture names to Debian architecture
+# names, used as a fallback when SNAP_ARCH is unset (e.g. running outside a
+# snap, such as in development or CI).
+KERNEL_TO_DEBIAN_ARCHITECTURES = {
+    "x86_64": "amd64",
+    "aarch64": "arm64",
+    "i686": "i386",
+    "ppc64le": "ppc64el",
+    "riscv64": "riscv64",
+    "s390x": "s390x",
+    "mips": "mips",
+    "mips64": "mips64el",
+}
+
+
 def get_architecture():
-    """Get the Debian architecture of the running system."""
+    """Get the architecture of the running system."""
     arch = os.getenv("SNAP_ARCH")
     if not arch:
-        # assume it's a deb environment
-        import apt_pkg
-
-        apt_pkg.init()
-        arch = apt_pkg.get_architectures()[0]
+        arch = KERNEL_TO_DEBIAN_ARCHITECTURES.get(platform.machine(), "amd64")
     return arch
 
 

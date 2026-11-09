@@ -38,11 +38,6 @@ from maasservicelayer.models.dnsresourcerecordsets import (
     GenericDNSRecord,
 )
 from maasservicelayer.models.domains import Domain
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.dnsresourcerecordsets import (
-    V3DNSResourceRecordSetsService,
-)
-from maasservicelayer.services.domains import DomainsService
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,
@@ -105,13 +100,12 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_list_domains_one_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.domains = Mock(DomainsService)
         services_mock.domains.list.return_value = ListResult[Domain](
             items=[DEFAULT_DOMAIN, TEST_DOMAIN], total=2
         )
@@ -124,13 +118,12 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_list_domains_with_next_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.domains = Mock(DomainsService)
         services_mock.domains.list.return_value = ListResult[Domain](
             items=[TEST_DOMAIN], total=2
         )
@@ -143,13 +136,12 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_get_by_id_get_default(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.domains = Mock(DomainsService)
         services_mock.domains.get_by_id.return_value = DEFAULT_DOMAIN
         response = await client.get(self.DEFAULT_DOMAIN_PATH)
         assert response.status_code == 200
@@ -161,13 +153,12 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_get_by_id(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.domains = Mock(DomainsService)
         services_mock.domains.get_by_id.return_value = TEST_DOMAIN
         response = await client.get(f"{self.BASE_PATH}/4")
         assert response.status_code == 200
@@ -179,13 +170,12 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_get_by_id_nonexist_id_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.domains = Mock(DomainsService)
         services_mock.domains.get_by_id.return_value = None
         response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
@@ -197,13 +187,12 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_get_by_id_incorrect_id_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.domains = Mock(DomainsService)
         services_mock.domains.get_by_id.side_effect = RequestValidationError(
             errors=[]
         )
@@ -217,7 +206,7 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_post_valid_domain_401(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -226,7 +215,6 @@ class TestDomainsApi(ApiCommonTests):
         domain_request = DomainRequest(
             name=TEST_DOMAIN.name, authoritative=TEST_DOMAIN.authoritative
         )
-        services_mock.domains = Mock(DomainsService)
         services_mock.domains.create.return_value = TEST_DOMAIN
         response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(domain_request)
@@ -244,14 +232,13 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_post_duplicate_409(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
         domain_request = DomainRequest(name="domain")
-        services_mock.domains = Mock(DomainsService)
         services_mock.domains.create.side_effect = [
             TEST_DOMAIN,
             AlreadyExistsException(
@@ -286,14 +273,13 @@ class TestDomainsApi(ApiCommonTests):
     )
     async def test_post_invalid_name_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         domain_request: dict[str, str],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.domains = Mock(DomainsService)
         services_mock.domains.create.side_effect = ValueError(
             "Invalid domain name."
         )
@@ -307,26 +293,24 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_delete_domain_with_id(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.domains = Mock(DomainsService)
         services_mock.domains.delete_by_id.side_effect = None
         response = await client.delete(f"{self.BASE_PATH}/10")
         assert response.status_code == 204
 
     async def test_delete_domain_with_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.domains = Mock(DomainsService)
         services_mock.domains.delete_by_id.side_effect = None
         response = await client.delete(
             f"{self.BASE_PATH}/10",
@@ -336,13 +320,12 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_delete_domain_wrong_etag_error(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.domains = Mock(DomainsService)
         services_mock.domains.delete_by_id.side_effect = [
             PreconditionFailedException(
                 details=[
@@ -368,13 +351,12 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_get_rrsets_for_domain(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.v3dnsrrsets = Mock(V3DNSResourceRecordSetsService)
         services_mock.v3dnsrrsets.get_dns_records_for_domain.return_value = [
             GenericDNSRecord(
                 name="example.com",
@@ -396,13 +378,12 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_post_rrsets_for_domain(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.v3dnsrrsets = Mock(V3DNSResourceRecordSetsService)
         services_mock.v3dnsrrsets.create_dns_records_for_domain.return_value = None
         request = {
             "name": "example",
@@ -420,13 +401,12 @@ class TestDomainsApi(ApiCommonTests):
 
     async def test_post_rrsets_for_domain_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.v3dnsrrsets = Mock(V3DNSResourceRecordSetsService)
         services_mock.v3dnsrrsets.create_dns_records_for_domain.side_effect = (
             NotFoundException(
                 details=[

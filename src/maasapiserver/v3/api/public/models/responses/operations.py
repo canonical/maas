@@ -23,6 +23,7 @@ from maasservicelayer.models.operations import Operation, OperationTask
 
 class OperationResponse(HalResponse[BaseHal]):
     kind: str = Field(default="Operation")
+    id: int
     uuid: str
     op_type: OperationType
     resource_id: int | None = None
@@ -46,6 +47,7 @@ class OperationResponse(HalResponse[BaseHal]):
         self_base_hyperlink: str,
     ) -> Self:
         return cls(
+            id=operation.id,
             uuid=operation.uuid,
             op_type=operation.op_type,
             resource_id=operation.resource_id,

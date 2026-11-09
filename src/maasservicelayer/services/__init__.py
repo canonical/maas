@@ -50,7 +50,6 @@ from maasservicelayer.db.repositories.events import (
     EventTypesRepository,
 )
 from maasservicelayer.db.repositories.external_auth import (
-    ExternalAuthRepository,
     ExternalOAuthRepository,
 )
 from maasservicelayer.db.repositories.fabrics import FabricsRepository
@@ -70,6 +69,9 @@ from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersRepository,
 )
 from maasservicelayer.db.repositories.nodes import NodesRepository
+from maasservicelayer.db.repositories.nodeuserdata import (
+    NodeUserDataRepository,
+)
 from maasservicelayer.db.repositories.notifications import (
     NotificationsRepository,
 )
@@ -83,6 +85,7 @@ from maasservicelayer.db.repositories.operations import OperationsRepository
 from maasservicelayer.db.repositories.package_repositories import (
     PackageRepositoriesRepository,
 )
+from maasservicelayer.db.repositories.power_types import PowerTypeRepository
 from maasservicelayer.db.repositories.racks import RacksRepository
 from maasservicelayer.db.repositories.rdns import RDNSRepository
 from maasservicelayer.db.repositories.reservedips import ReservedIPsRepository
@@ -92,6 +95,7 @@ from maasservicelayer.db.repositories.resource_pools import (
 from maasservicelayer.db.repositories.scriptresults import (
     ScriptResultsRepository,
 )
+from maasservicelayer.db.repositories.scripts import ScriptsRepository
 from maasservicelayer.db.repositories.service_status import (
     ServiceStatusRepository,
 )
@@ -149,6 +153,7 @@ from maasservicelayer.services.consumers import ConsumersService
 from maasservicelayer.services.database_configurations import (
     DatabaseConfigurationsService,
 )
+from maasservicelayer.services.dhcp import DHCPService
 from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.discoveries import DiscoveriesService
 from maasservicelayer.services.django_session import DjangoSessionService
@@ -160,10 +165,7 @@ from maasservicelayer.services.dnsresourcerecordsets import (
 from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.domains import DomainsService
 from maasservicelayer.services.events import EventsService
-from maasservicelayer.services.external_auth import (
-    ExternalAuthService,
-    ExternalOAuthService,
-)
+from maasservicelayer.services.external_auth import ExternalOAuthService
 from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.services.filestorage import FileStorageService
 from maasservicelayer.services.hooked_configurations import (
@@ -186,17 +188,21 @@ from maasservicelayer.services.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersService,
 )
 from maasservicelayer.services.nodes import NodesService
+from maasservicelayer.services.nodeuserdata import NodeUserDataService
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.services.package_repositories import (
     PackageRepositoriesService,
 )
+from maasservicelayer.services.power_types import PowerTypesService
 from maasservicelayer.services.racks import RacksService
 from maasservicelayer.services.rdns import RDNSService
 from maasservicelayer.services.reservedips import ReservedIPsService
 from maasservicelayer.services.resource_pools import ResourcePoolsService
+from maasservicelayer.services.script_parameters import ScriptParametersService
 from maasservicelayer.services.scriptresult import ScriptResultsService
+from maasservicelayer.services.scripts import ScriptsService
 from maasservicelayer.services.secrets import (
     SecretsService,
     SecretsServiceFactory,
@@ -271,6 +277,7 @@ class ServiceCollectionV3:
     database_configurations: DatabaseConfigurationsService
     configurations: ConfigurationsService
     consumers: ConsumersService
+    dhcp: DHCPService
     dhcpsnippets: DhcpSnippetsService
     discoveries: DiscoveriesService
     django_session: DjangoSessionService
@@ -279,7 +286,6 @@ class ServiceCollectionV3:
     dnsresources: DNSResourcesService
     domains: DomainsService
     events: EventsService
-    external_auth: ExternalAuthService
     external_oauth: ExternalOAuthService
     fabrics: FabricsService
     filestorage: FileStorageService
@@ -297,17 +303,21 @@ class ServiceCollectionV3:
     neighbours: NeighboursService
     nodegrouptorackcontrollers: NodeGroupToRackControllersService
     nodes: NodesService
+    nodeuserdata: NodeUserDataService
     notifications: NotificationsService
     oidc_revoked_tokens: OIDCRevokedTokenService
     openfga_tuples: OpenFGATupleService
     operations: OperationsService
     package_repositories: PackageRepositoriesService
+    power_types: PowerTypesService
     racks: RacksService
     rdns: RDNSService
     refresh_tokens: RefreshTokenService
     reservedips: ReservedIPsService
     resource_pools: ResourcePoolsService
+    script_parameters: ScriptParametersService
     scriptresults: ScriptResultsService
+    scripts: ScriptsService
     secrets: SecretsService
     service_status: ServiceStatusService
     spaces: SpacesService
@@ -408,6 +418,15 @@ class ServiceCollectionV3:
             context=context,
             scriptresults_repository=ScriptResultsRepository(context),
         )
+        services.scripts = ScriptsService(
+            context=context,
+            repository=ScriptsRepository(context),
+        )
+        services.script_parameters = ScriptParametersService(
+            context=context,
+            configurations_service=services.configurations,
+            scripts_service=services.scripts,
+        )
         services.dnspublications = DNSPublicationsService(
             context=context,
             dnspublication_repository=DNSPublicationRepository(context),
@@ -447,6 +466,7 @@ class ServiceCollectionV3:
             context=context,
             repository=BootResourcesRepository(context),
             boot_resource_sets_service=services.boot_resource_sets,
+            configurations_service=services.configurations,
         )
         services.boot_source_cache = BootSourceCacheService(
             context=context,
@@ -642,6 +662,18 @@ class ServiceCollectionV3:
             nodegrouptorackcontrollers_service=services.nodegrouptorackcontrollers,
             subnets_repository=SubnetsRepository(context),
         )
+        services.dhcp = DHCPService(
+            context=context,
+            configurations_service=services.configurations,
+            domains_service=services.domains,
+            interfaces_service=services.interfaces,
+            ipranges_service=services.ipranges,
+            nodes_service=services.nodes,
+            reservedips_service=services.reservedips,
+            staticipaddress_service=services.staticipaddress,
+            subnets_service=services.subnets,
+            vlans_service=services.vlans,
+        )
         services.dnsdata = DNSDataService(
             context=context,
             dnspublications_service=services.dnspublications,
@@ -670,16 +702,6 @@ class ServiceCollectionV3:
             secrets_service=services.secrets,
             users_service=services.users,
             refresh_tokens_service=services.refresh_tokens,
-        )
-        services.external_auth = ExternalAuthService(
-            context=context,
-            secrets_service=services.secrets,
-            users_service=services.users,
-            external_auth_repository=ExternalAuthRepository(context),
-            cache=cache.get(
-                ExternalAuthService.__name__,
-                ExternalAuthService.build_cache_object,
-            ),  # type: ignore
         )
         services.external_oauth = ExternalOAuthService(
             context=context,
@@ -775,5 +797,13 @@ class ServiceCollectionV3:
             operations_repository=OperationsRepository(context),
             operation_tasks_repository=OperationTasksRepository(context),
             temporal_service=services.temporal,
+        )
+        services.power_types = PowerTypesService(
+            context=context,
+            repository=PowerTypeRepository(),
+        )
+        services.nodeuserdata = NodeUserDataService(
+            context=context,
+            nodeuserdata_repository=NodeUserDataRepository(context),
         )
         return services

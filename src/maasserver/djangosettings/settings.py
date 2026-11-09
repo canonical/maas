@@ -84,7 +84,7 @@ def _get_default_db_config(config: RegionConfiguration) -> dict:
     maas_id = MAAS_ID.get() or "NO_ID"
     application_name = f"maas-regiond-{maas_id}"
 
-    return {
+    db = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": database_name,
         "USER": database_user,
@@ -98,8 +98,16 @@ def _get_default_db_config(config: RegionConfiguration) -> dict:
             "keepalives_interval": config.database_keepalive_interval,
             "keepalives_count": config.database_keepalive_count,
             "application_name": application_name,
+            "sslmode": config.database_sslmode,
         },
     }
+    if config.database_sslcert:
+        db["OPTIONS"]["sslcert"] = config.database_sslcert
+    if config.database_sslkey:
+        db["OPTIONS"]["sslkey"] = config.database_sslkey
+    if config.database_sslrootcert:
+        db["OPTIONS"]["sslrootcert"] = config.database_sslrootcert
+    return db
 
 
 # Enable HA which uses the new rack controller and BMC code paths. This is a
@@ -146,10 +154,7 @@ PISTON_DISPLAY_ERRORS = False
 # same model, so we silence the warnings that Piston gives.
 PISTON_IGNORE_DUPE_MODELS = True
 
-AUTHENTICATION_BACKENDS = (
-    "maasserver.auth.MAASAuthorizationBackend",
-    "maasserver.macaroon_auth.MacaroonAuthorizationBackend",
-)
+AUTHENTICATION_BACKENDS = ("maasserver.auth.MAASAuthorizationBackend",)
 
 # Database access configuration.
 try:
@@ -252,7 +257,7 @@ MIDDLEWARE = (
     "django.middleware.common.CommonMiddleware",
     # Used for rendering and logging exceptions.
     "maasserver.middleware.ExceptionMiddleware",
-    # Used to clear the RBAC/openfga thread-local cache.
+    # Used to clear the openfga thread-local cache.
     "maasserver.middleware.AuthorizationCacheMiddleware",
     # Handle errors that should really be handled in application code:
     # NoConnectionsAvailable, TimeoutError.
@@ -265,9 +270,6 @@ MIDDLEWARE = (
     "maasserver.middleware.CSRFHelperMiddleware",
     # Used to remove csrf cookies from responses,
     "maasserver.middleware.SuppressCSRFCookieMiddleware",
-    # Used to add external auth info to the request, to avoid getting the
-    # information in multiple places.
-    "maasserver.middleware.ExternalAuthInfoMiddleware",
     # Cookies to prevent CSRF.
     "django.middleware.csrf.CsrfViewMiddleware",
     # Creates request.user.
@@ -357,15 +359,8 @@ METADATA_URL_PREFIX = "/MAAS/metadata/"
 SIMPLESTREAMS_URL_PREFIX = "/MAAS/images-stream/"
 
 # The path to the asset manifest file.
-SNAP_MANIFEST_PATH = pathlib.Path(
+MAAS_UI_MANIFEST_PATH = pathlib.Path(
     "/snap/maas/current/usr/share/maas/web/static/asset-manifest.json"
-)
-DEB_MANIFEST_PATH = pathlib.Path(
-    "/usr/share/maas/web/static/asset-manifest.json"
-)
-
-MAAS_UI_MANIFEST_PATH = (
-    DEB_MANIFEST_PATH if DEB_MANIFEST_PATH.exists() else SNAP_MANIFEST_PATH
 )
 # The default value for assume_scheme in URLField will change from "http" to "https" in Django 6.0.
 FORMS_URLFIELD_ASSUME_HTTPS = False

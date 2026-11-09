@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import AsyncIterator, Awaitable, Callable, Iterator
+from typing import AsyncIterator, Awaitable, Callable, Iterator, override
 from unittest.mock import Mock
 
 from aioresponses import aioresponses
@@ -10,7 +10,6 @@ from django.core import signing
 from fastapi import FastAPI, Response
 from fastapi.exceptions import RequestValidationError
 from httpx import ASGITransport, AsyncClient, Headers
-from macaroonbakery import bakery
 import pytest
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -28,27 +27,24 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.client_certificate import (
     RequireClientCertMiddleware,
 )
-from maascommon.openfga.base import MAASResourceEntitlement
-from maasservicelayer.auth.external_auth import (
-    ExternalAuthConfig,
-    ExternalAuthType,
+from maascommon.openfga.async_client import OpenFGAClient
+from maascommon.openfga.base import (
+    MAASResourceEntitlement,
+    OpenFGAEntitlementResourceType,
+    PoolResourceEntitlements,
 )
 from maasservicelayer.db import Database
 from maasservicelayer.models.users import User
-from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
-from maasservicelayer.services.external_auth import ExternalAuthService
+from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.session_hash import get_session_auth_hash
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 
-RBAC_URL = "http://rbac.example.com"
-
 
 def create_app_with_mocks(
     mocked_services: ServiceCollectionV3,
     with_user: bool = False,
-    external_auth: bool = False,
 ):
     class InjectServicesMocks(BaseHTTPMiddleware):
         async def dispatch(
@@ -57,18 +53,6 @@ def create_app_with_mocks(
             call_next: Callable[[Request], Awaitable[Response]],
         ) -> Response:
             request.state.services = mocked_services
-            if external_auth:
-                request.state.services.external_auth.get_external_auth.return_value = ExternalAuthConfig(
-                    type=ExternalAuthType.RBAC,
-                    url=RBAC_URL,
-                    domain="",
-                    admin_group="",
-                )
-            else:
-                request.state.services.external_auth = Mock(
-                    ExternalAuthService
-                )
-                request.state.services.external_auth.get_external_auth.return_value = None
             return await call_next(request)
 
     class InjectUserInRequest(BaseHTTPMiddleware):
@@ -126,29 +110,17 @@ def create_internal_app_with_mocks(
 
 
 @pytest.fixture
-def app_with_mocked_services(services_mock: ServiceCollectionV3):
+def app_with_mocked_services(services_mock: Mock):
     yield create_app_with_mocks(services_mock)
 
 
 @pytest.fixture
-def app_with_mocked_services_user(services_mock: ServiceCollectionV3):
+def app_with_mocked_services_user(services_mock: Mock):
     yield create_app_with_mocks(services_mock, with_user=True)
 
 
 @pytest.fixture
-def app_with_mocked_services_rbac(services_mock: ServiceCollectionV3):
-    yield create_app_with_mocks(services_mock, external_auth=True)
-
-
-@pytest.fixture
-def app_with_mocked_services_user_rbac(services_mock: ServiceCollectionV3):
-    yield create_app_with_mocks(
-        services_mock, with_user=True, external_auth=True
-    )
-
-
-@pytest.fixture
-def internal_app_with_mocked_services(services_mock: ServiceCollectionV3):
+def internal_app_with_mocked_services(services_mock: Mock):
     yield create_internal_app_with_mocks(services_mock)
 
 
@@ -185,33 +157,41 @@ async def mocked_api_client_user(
         yield client
 
 
-class AsyncOpenFGAClientMock:
+class AsyncOpenFGAClientMock(OpenFGAClient):
     def __init__(
         self,
         permissions: set[MAASResourceEntitlement] | None = None,
+        permissions_on_pools: dict[PoolResourceEntitlements, list[int]]
+        | None = None,
     ):
         self._permissions = permissions or set()
+        self._permissions_on_pools = permissions_on_pools or {}
 
-    async def has_permission_on_maas(
-        self, permission: MAASResourceEntitlement, user_id: int
-    ) -> bool:
-        return permission in self._permissions
+    def _unformat_pool(self, obj: str) -> int:
+        return int(obj.removeprefix(f"{OpenFGAEntitlementResourceType.POOL}:"))
 
-    def __getattr__(self, item):
-        """Mock the OpenFGA client methods for checking permissions."""
-        if item == "has_permission_on_maas":
-            return self.has_permission_on_maas
+    @override
+    async def _check(self, user_id: int, relation: str, obj: str) -> bool:
+        if obj.startswith(OpenFGAEntitlementResourceType.POOL):
+            pool_id = self._unformat_pool(obj)
+            return pool_id in self._permissions_on_pools.get(
+                PoolResourceEntitlements(relation), []
+            )
+        return relation in self._permissions
 
-        async def _has_permission(*args, **kwargs) -> bool:
-            return item in self._permissions
-
-        return _has_permission
+    @override
+    async def _list_objects(
+        self, user_id: int, relation: str, obj_type: str
+    ) -> list[int]:
+        return self._permissions_on_pools.get(
+            PoolResourceEntitlements(relation), []
+        )
 
 
 @pytest.fixture
 def mocked_api_client_user_with_permissions(
     mocked_api_client_user: AsyncClient,
-    services_mock: ServiceCollectionV3,
+    services_mock: Mock,
 ) -> Callable[..., AsyncClient]:
     """
     Returns a factory that grants the given OpenFGA permissions to the
@@ -228,10 +208,11 @@ def mocked_api_client_user_with_permissions(
 
     def _with_permissions(
         *permissions: MAASResourceEntitlement,
+        permissions_on_pools: dict[PoolResourceEntitlements, list[int]]
+        | None = None,
     ) -> AsyncClient:
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
-            AsyncOpenFGAClientMock(set(permissions))
+            AsyncOpenFGAClientMock(set(permissions), permissions_on_pools)
         )
         return mocked_api_client_user
 
@@ -247,28 +228,6 @@ async def mocked_api_client_session_id(
         base_url="http://test",
     ) as client:
         client.cookies.set("sessionid", "fakesessionid")
-        yield client
-
-
-@pytest.fixture
-async def mocked_api_client_rbac(
-    app_with_mocked_services_rbac: FastAPI,
-) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(
-        transport=ASGITransport(app=app_with_mocked_services_rbac),
-        base_url="http://test",
-    ) as client:
-        yield client
-
-
-@pytest.fixture
-async def mocked_api_client_user_rbac(
-    app_with_mocked_services_user_rbac: FastAPI,
-) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(
-        transport=ASGITransport(app=app_with_mocked_services_user_rbac),
-        base_url="http://test",
-    ) as client:
         yield client
 
 
@@ -419,62 +378,6 @@ async def authenticated_user_api_client_v3(
             {"Authorization": "bearer " + token_response.access_token}
         )
         yield client
-
-
-@pytest.fixture
-async def enable_rbac(fixture: Fixture, mock_aioresponse) -> None:
-    """
-    Enable rbac by inserting the config in the db.
-    Mock also an HTTP call to the fake rbac server. If this fixture is used in
-    other tests it may need to be modified to mock other HTTP calls.
-    """
-    rbac_url = "http://rbac.example:5000"
-    now = utcnow()
-    external_auth_config = {
-        "path": "global/external-auth",
-        "created": now,
-        "updated": now,
-        "value": {
-            "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
-            "url": "",
-            "user": "admin@candid",
-            "domain": "",
-            "rbac-url": rbac_url,
-            "admin-group": "admin",
-        },
-    }
-    key = bakery.generate_key()
-    await fixture.create("maasserver_secret", [external_auth_config])
-    mock_aioresponse.get(
-        f"{rbac_url}/auth/discharge/info",
-        payload={
-            "Version": bakery.LATEST_VERSION,
-            "PublicKey": str(key.public_key),
-        },
-    )
-
-
-@pytest.fixture
-async def enable_candid(fixture: Fixture) -> None:
-    """
-    Enable candid by inserting the config in the db.
-    """
-    candid_url = "http://candid.example.com"
-    now = utcnow()
-    external_auth_config = {
-        "path": "global/external-auth",
-        "created": now,
-        "updated": now,
-        "value": {
-            "key": "mykey",
-            "url": candid_url,
-            "user": "admin@candid",
-            "domain": "",
-            "rbac-url": "",
-            "admin-group": "admin",
-        },
-    }
-    await fixture.create("maasserver_secret", [external_auth_config])
 
 
 @pytest.fixture

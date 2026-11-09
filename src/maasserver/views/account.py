@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Account views."""
@@ -73,11 +73,6 @@ def login(request):
     return JsonResponse(
         {
             "authenticated": request.user.is_authenticated,
-            "external_auth_url": (
-                request.external_auth_info.url
-                if request.external_auth_info
-                else None
-            ),
             "no_users": not UserProfile.objects.all_users().exists(),
         }
     )

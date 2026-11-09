@@ -1,5 +1,3 @@
-/build_pkg export-ignore
-/debian export-ignore
 /utilities export-ignore
 /required-packages export-ignore
 /snap export-ignore

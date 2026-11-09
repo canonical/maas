@@ -13,7 +13,6 @@
 /build
 /bin
 /dev-snap
-/build_pkg
 /db
 /dist
 /api-docs.rst

@@ -6,7 +6,7 @@ You interact with the MAAS community primarily through [our Discourse forum](htt
 
 ## Discourse categories
 
-The forum is organised into several public categories:
+The forum is organized into several public categories:
 
 - **[discourse](https://discourse.maas.io/c/discourse/3)**: A default, largely unmonitored category. Response times here are inconsistent.
   

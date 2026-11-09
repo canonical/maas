@@ -9,11 +9,8 @@ from django.urls import reverse
 
 from maasserver.auth import MAASAuthorizationBackend
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS
-from maasserver.middleware import ExternalAuthInfoMiddleware
 from maasserver.models import Node
 from maasserver.permissions import NodePermission, ResourcePoolPermission
-from maasserver.rbac import ALL_RESOURCES, FakeRBACClient, rbac
-from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import OpenFGAMock
 from maasserver.testing.testcase import MAASServerTestCase
@@ -65,17 +62,6 @@ def make_allocated_node(owner=None):
     return factory.make_Node(owner=owner, status=NODE_STATUS.ALLOCATED)
 
 
-class EnableRBACMixin:
-    def enable_rbac(self):
-        SecretManager().set_composite_secret(
-            "external-auth", {"rbac-url": "https://rbac.example.com"}
-        )
-        client = FakeRBACClient()
-        rbac._store.client = client
-        rbac._store.cleared = False  # Prevent re-creation of the client
-        self.rbac_store = client.store
-
-
 class OpenFGAMockMixin:
     """Mixin to disable auto-mocking and set up a custom OpenFGA client mock."""
 
@@ -87,7 +73,7 @@ class OpenFGAMockMixin:
         self.useFixture(OpenFGAMock(client=self.openfga_client))
 
 
-class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
+class TestMAASAuthorizationBackend(MAASServerTestCase):
     def test_invalid_check_object(self):
         backend = MAASAuthorizationBackend()
         exc = factory.make_exception()
@@ -124,130 +110,6 @@ class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
                 factory.make_User(), NodePermission.view, factory.make_Node()
             )
         )
-
-    def test_user_cannot_view_node_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(user, NodePermission.view, node))
-
-    def test_user_cannot_view_node_other_pool(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        pool = factory.make_ResourcePool()
-        self.rbac_store.add_pool(pool)
-        self.rbac_store.allow(user.username, pool, "view")
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(user, NodePermission.view, node))
-
-    def test_user_can_view_unowned_node_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.view, node))
-
-    def test_user_can_view_unowned_node_rbac_with_admin(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.view, node))
-
-    def test_user_cannot_view_owned_by_another_node_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(user, NodePermission.view, node))
-
-    def test_user_can_view_owned_by_another_node_rbac_view_all(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.rbac_store.allow(user.username, node.pool, "view-all")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.view, node))
-
-    def test_user_can_view_owned_by_another_node_when_admin_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.view, node))
-
-    def test_user_can_view_device_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Device()
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.view, node))
-
-    def test_user_can_edit_node_rbac_admin_machines(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.edit, node))
-
-    def test_user_can_edit_node_rbac_deploy_machines(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "deploy-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.edit, node))
-
-    def test_user_cannot_edit_node_rbac_with_view_or_view_all(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.rbac_store.allow(user.username, node.pool, "view-all")
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(user, NodePermission.edit, node))
-
-    def test_user_can_edit_owned_node_rbac_with_admin(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.edit, node))
-
-    def test_user_cannot_edit_node_rbac_if_locked(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(locked=True)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machine")
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(user, NodePermission.edit, node))
-
-    def test_user_cannot_edit_device_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Device()
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(user, NodePermission.edit, node))
 
     def test_admin_can_view_nodes_owned_by_others(self):
         backend = MAASAuthorizationBackend()
@@ -371,43 +233,6 @@ class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
         )
         self.assertTrue(backend.has_perm(owner, NodePermission.lock, node))
 
-    def test_user_can_lock_owned_node_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=user)
-        backend = MAASAuthorizationBackend()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.rbac_store.allow(user.username, node.pool, "deploy-machines")
-        self.assertTrue(backend.has_perm(user, NodePermission.lock, node))
-
-    def test_user_cannot_lock_node_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        backend = MAASAuthorizationBackend()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.assertFalse(backend.has_perm(user, NodePermission.lock, node))
-
-    def test_user_can_lock_node_rbac_owner_other_user(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        backend = MAASAuthorizationBackend()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        self.assertTrue(backend.has_perm(user, NodePermission.lock, node))
-
-    def test_user_cannot_lock_node_rbac_owner_other_user(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        backend = MAASAuthorizationBackend()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.assertFalse(backend.has_perm(user, NodePermission.lock, node))
-
     def test_user_has_no_admin_permission_on_node(self):
         # NodePermission.admin permission on nodes is granted to super users
         # only.
@@ -416,22 +241,6 @@ class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
         self.assertFalse(
             backend.has_perm(user, NodePermission.admin, factory.make_Node())
         )
-
-    def test_user_has_admin_permission_on_node_with_rbac(self):
-        self.enable_rbac()
-        backend = MAASAuthorizationBackend()
-        user = factory.make_User()
-        node = factory.make_Node()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        self.assertTrue(backend.has_perm(user, NodePermission.admin, node))
-
-    def test_admin_doesnt_have_admin_permission_on_node_with_rbac(self):
-        self.enable_rbac()
-        backend = MAASAuthorizationBackend()
-        user = factory.make_admin()
-        node = factory.make_Node()
-        self.assertFalse(backend.has_perm(user, NodePermission.admin, node))
 
     def test_user_cannot_view_BlockDevice_when_not_node_owner(self):
         backend = MAASAuthorizationBackend()
@@ -454,35 +263,6 @@ class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
         device = factory.make_BlockDevice(node=node)
         self.assertTrue(backend.has_perm(user, NodePermission.view, device))
 
-    def test_user_cannot_view_BlockDevice_when_no_owner_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        device = factory.make_BlockDevice(node=node)
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(user, NodePermission.view, device))
-
-    def test_user_can_view_BlockDevice_on_unowned_node_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        device = factory.make_BlockDevice(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.view, device))
-
-    def test_user_can_view_BlockDevice_on_other_owned_node_admin_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        device = factory.make_BlockDevice(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.view, device))
-
     def test_user_cannot_edit_BlockDevice_when_not_node_owner(self):
         backend = MAASAuthorizationBackend()
         user = factory.make_User()
@@ -497,46 +277,6 @@ class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
         device = factory.make_VirtualBlockDevice(node=node)
         self.assertTrue(backend.has_perm(user, NodePermission.edit, device))
 
-    def test_user_can_edit_BlockDevice_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        device = factory.make_BlockDevice(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.edit, device))
-
-    def test_user_cannot_edit_BlockDevice_rbac_vith_view(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        device = factory.make_BlockDevice(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(user, NodePermission.edit, device))
-
-    def test_user_can_edit_owned_BlockDevice_rbac_with_admin(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        device = factory.make_BlockDevice(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.edit, device))
-
-    def test_user_cannot_edit_BlockDevice_rbac_if_locked(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(locked=True)
-        device = factory.make_BlockDevice(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machine")
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(user, NodePermission.edit, device))
-
     def test_user_has_no_admin_permission_on_BlockDevice(self):
         # NodePermission.admin permission on block devices is granted to super
         # user only.
@@ -547,65 +287,6 @@ class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
                 user, NodePermission.admin, factory.make_BlockDevice()
             )
         )
-
-    def test_user_can_lock_owned_BlockDevice_node_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=user)
-        device = factory.make_BlockDevice(node=node)
-        backend = MAASAuthorizationBackend()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.rbac_store.allow(user.username, node.pool, "deploy-machines")
-        self.assertTrue(backend.has_perm(user, NodePermission.lock, device))
-
-    def test_user_cannot_lock_BlockDevice_node_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        device = factory.make_BlockDevice(node=node)
-        backend = MAASAuthorizationBackend()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.assertFalse(backend.has_perm(user, NodePermission.lock, device))
-
-    def test_user_can_lock_BlockDevice_node_rbac_owner_other_user(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        device = factory.make_BlockDevice(node=node)
-        backend = MAASAuthorizationBackend()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        self.assertTrue(backend.has_perm(user, NodePermission.lock, device))
-
-    def test_user_cannot_lock_BlockDevice_node_rbac_owner_other_user(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        device = factory.make_BlockDevice(node=node)
-        backend = MAASAuthorizationBackend()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.assertFalse(backend.has_perm(user, NodePermission.lock, device))
-
-    def test_user_has_admin_permission_on_BlockDevice_with_rbac(self):
-        self.enable_rbac()
-        backend = MAASAuthorizationBackend()
-        user = factory.make_User()
-        node = factory.make_Node()
-        device = factory.make_BlockDevice(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        self.assertTrue(backend.has_perm(user, NodePermission.admin, device))
-
-    def test_admin_doesnt_have_admin_permission_on_BlockDevice_with_rbac(self):
-        self.enable_rbac()
-        backend = MAASAuthorizationBackend()
-        user = factory.make_admin()
-        node = factory.make_Node()
-        device = factory.make_BlockDevice(node=node)
-        self.assertFalse(backend.has_perm(user, NodePermission.admin, device))
 
     def test_user_cannot_view_FilesystemGroup_when_not_node_owner(self):
         backend = MAASAuthorizationBackend()
@@ -634,94 +315,11 @@ class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
             backend.has_perm(user, NodePermission.view, filesystem_group)
         )
 
-    def test_user_cannot_view_FilesystemGroup_when_no_owner_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(
-            backend.has_perm(user, NodePermission.view, filesystem_group)
-        )
-
-    def test_user_can_view_FilesystemGroup_on_unowned_node_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(
-            backend.has_perm(user, NodePermission.view, filesystem_group)
-        )
-
-    def test_user_can_view_FilesystemGroup_other_owned_node_admin_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(
-            backend.has_perm(user, NodePermission.view, filesystem_group)
-        )
-
     def test_user_cannot_edit_FilesystemGroup_when_not_node_owner(self):
         backend = MAASAuthorizationBackend()
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
         filesystem_group = factory.make_FilesystemGroup(node=node)
-        self.assertFalse(
-            backend.has_perm(user, NodePermission.edit, filesystem_group)
-        )
-
-    def test_user_can_edit_FilesystemGroup_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(
-            backend.has_perm(user, NodePermission.edit, filesystem_group)
-        )
-
-    def test_user_cannot_edit_FilesystemGroup_rbac_vith_view(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(
-            backend.has_perm(user, NodePermission.edit, filesystem_group)
-        )
-
-    def test_user_can_edit_owned_FilesystemGroup_rbac_with_admin(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(
-            backend.has_perm(user, NodePermission.edit, filesystem_group)
-        )
-
-    def test_user_cannot_edit_FilesystemGroup_rbac_if_locked(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(locked=True)
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machine")
-        backend = MAASAuthorizationBackend()
         self.assertFalse(
             backend.has_perm(user, NodePermission.edit, filesystem_group)
         )
@@ -737,105 +335,6 @@ class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
             )
         )
 
-    def test_user_can_lock_owned_FilesystemGroup_node_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=user)
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        backend = MAASAuthorizationBackend()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.rbac_store.allow(user.username, node.pool, "deploy-machines")
-        self.assertTrue(
-            backend.has_perm(user, NodePermission.lock, filesystem_group)
-        )
-
-    def test_user_cannot_lock_FilesystemGroup_node_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        backend = MAASAuthorizationBackend()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.assertFalse(
-            backend.has_perm(user, NodePermission.lock, filesystem_group)
-        )
-
-    def test_user_can_lock_FilesystemGroup_node_rbac_owner_other_user(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        backend = MAASAuthorizationBackend()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        self.assertTrue(
-            backend.has_perm(user, NodePermission.lock, filesystem_group)
-        )
-
-    def test_user_cannot_lock_FilesystemGroup_node_rbac_owner_other_user(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        backend = MAASAuthorizationBackend()
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.assertFalse(
-            backend.has_perm(user, NodePermission.lock, filesystem_group)
-        )
-
-    def test_user_has_admin_permission_on_FilesystemGroup_with_rbac(self):
-        self.enable_rbac()
-        backend = MAASAuthorizationBackend()
-        user = factory.make_User()
-        node = factory.make_Node()
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        self.assertTrue(
-            backend.has_perm(user, NodePermission.admin, filesystem_group)
-        )
-
-    def test_admin_no_admin_permission_on_FilesystemGroup_with_rbac(self):
-        self.enable_rbac()
-        backend = MAASAuthorizationBackend()
-        user = factory.make_admin()
-        node = factory.make_Node()
-        filesystem_group = factory.make_FilesystemGroup(node=node)
-        self.assertFalse(
-            backend.has_perm(user, NodePermission.admin, filesystem_group)
-        )
-
-    def test_authenticate_username_password(self):
-        password = factory.make_string()
-        user = factory.make_User(password=password)
-        backend = MAASAuthorizationBackend()
-        request = factory.make_fake_request("/")
-        ExternalAuthInfoMiddleware(lambda request: request)(request)
-        self.assertEqual(
-            backend.authenticate(
-                request, username=user.username, password=password
-            ),
-            user,
-        )
-
-    def test_authenticate_username_password_external_auth(self):
-        SecretManager().set_composite_secret(
-            "external-auth", {"url": "https://example.com"}
-        )
-        password = factory.make_string()
-        user = factory.make_User(password=password)
-        backend = MAASAuthorizationBackend()
-        request = factory.make_fake_request("/")
-        ExternalAuthInfoMiddleware(lambda request: request)(request)
-        self.assertIsNone(
-            backend.authenticate(
-                request, username=user.username, password=password
-            )
-        )
-
     def test_authenticate_external_user_denied(self):
         password = factory.make_string()
         user = factory.make_User(password=password, is_local=False)
@@ -848,9 +347,7 @@ class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
         )
 
 
-class TestMAASAuthorizationBackendInterface(
-    MAASServerTestCase, EnableRBACMixin
-):
+class TestMAASAuthorizationBackendInterface(MAASServerTestCase):
     def test_unowned_interface_requires_admin(self):
         backend = MAASAuthorizationBackend()
         interface = factory.make_Interface(INTERFACE_TYPE.UNKNOWN)
@@ -885,90 +382,11 @@ class TestMAASAuthorizationBackendInterface(
         nic = factory.make_Interface(node=node)
         self.assertTrue(backend.has_perm(user, NodePermission.view, nic))
 
-    def test_user_cannot_view_when_no_owner_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        nic = factory.make_Interface(node=node)
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(user, NodePermission.view, nic))
-
-    def test_user_can_view_on_unowned_node_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        nic = factory.make_Interface(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.view, nic))
-
-    def test_user_can_view_on_other_owned_node_admin_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        nic = factory.make_Interface(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.view, nic))
-
     def test_user_cannot_edit_when_not_node_owner(self):
         backend = MAASAuthorizationBackend()
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
         nic = factory.make_Interface(node=node)
-        self.assertFalse(backend.has_perm(user, NodePermission.edit, nic))
-
-    def test_user_can_edit_rbac(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        nic = factory.make_Interface(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.edit, nic))
-
-    def test_user_cannot_edit_rbac_vith_view(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node()
-        nic = factory.make_Interface(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(user, NodePermission.edit, nic))
-
-    def test_owner_cannot_edit_rbac_vith_view(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=user)
-        nic = factory.make_Interface(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "view")
-        backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(user, NodePermission.edit, nic))
-
-    def test_user_can_edit_owned_rbac_with_admin(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(owner=factory.make_User())
-        nic = factory.make_Interface(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        backend = MAASAuthorizationBackend()
-        self.assertTrue(backend.has_perm(user, NodePermission.edit, nic))
-
-    def test_user_cannot_edit_rbac_if_locked(self):
-        self.enable_rbac()
-        user = factory.make_User()
-        node = factory.make_Node(locked=True)
-        nic = factory.make_Interface(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machine")
-        backend = MAASAuthorizationBackend()
         self.assertFalse(backend.has_perm(user, NodePermission.edit, nic))
 
     def test_user_has_no_admin_permission(self):
@@ -979,24 +397,6 @@ class TestMAASAuthorizationBackendInterface(
                 user, NodePermission.admin, factory.make_Interface()
             )
         )
-
-    def test_user_has_admin_permission_with_rbac(self):
-        self.enable_rbac()
-        backend = MAASAuthorizationBackend()
-        user = factory.make_User()
-        node = factory.make_Node()
-        nic = factory.make_Interface(node=node)
-        self.rbac_store.add_pool(node.pool)
-        self.rbac_store.allow(user.username, node.pool, "admin-machines")
-        self.assertTrue(backend.has_perm(user, NodePermission.admin, nic))
-
-    def test_admin_doesnt_have_admin_permission_with_rbac(self):
-        self.enable_rbac()
-        backend = MAASAuthorizationBackend()
-        user = factory.make_admin()
-        node = factory.make_Node()
-        nic = factory.make_Interface(node=node)
-        self.assertFalse(backend.has_perm(user, NodePermission.admin, nic))
 
     def test_owner_can_edit_device_interface(self):
         backend = MAASAuthorizationBackend()
@@ -1243,9 +643,7 @@ class TestNodeVisibility(MAASServerTestCase):
         )
 
 
-class TestMAASAuthorizationBackendResourcePool(
-    MAASServerTestCase, EnableRBACMixin
-):
+class TestMAASAuthorizationBackendResourcePool(MAASServerTestCase):
     def test_ResourcePool_requires_ResourcePoolPermission(self):
         backend = MAASAuthorizationBackend()
         pool = factory.make_ResourcePool()
@@ -1260,20 +658,6 @@ class TestMAASAuthorizationBackendResourcePool(
         admin = factory.make_admin()
         self.assertFalse(backend.has_perm(user, ResourcePoolPermission.create))
         self.assertTrue(backend.has_perm(admin, ResourcePoolPermission.create))
-
-    def test_create_requires_rbac_edit_all_resources(self):
-        self.enable_rbac()
-        backend = MAASAuthorizationBackend()
-        pool = factory.make_ResourcePool()
-        self.rbac_store.add_pool(pool)
-        user1 = factory.make_User()
-        self.rbac_store.allow(user1.username, pool, "edit")
-        user2 = factory.make_User()
-        self.rbac_store.allow(user2.username, ALL_RESOURCES, "edit")
-        self.assertFalse(
-            backend.has_perm(user1, ResourcePoolPermission.create)
-        )
-        self.assertTrue(backend.has_perm(user2, ResourcePoolPermission.create))
 
     def test_view_requires_obj(self):
         backend = MAASAuthorizationBackend()
@@ -1301,22 +685,6 @@ class TestMAASAuthorizationBackendResourcePool(
             backend.has_perm(admin, ResourcePoolPermission.view, pool)
         )
 
-    def test_view_rbac_viewable(self):
-        self.enable_rbac()
-        backend = MAASAuthorizationBackend()
-        pool1 = factory.make_ResourcePool()
-        pool2 = factory.make_ResourcePool()
-        self.rbac_store.add_pool(pool1)
-        self.rbac_store.add_pool(pool2)
-        user = factory.make_User()
-        self.rbac_store.allow(user.username, pool2, "view")
-        self.assertFalse(
-            backend.has_perm(user, ResourcePoolPermission.view, pool1)
-        )
-        self.assertTrue(
-            backend.has_perm(user, ResourcePoolPermission.view, pool2)
-        )
-
     def test_edit_requires_admin(self):
         backend = MAASAuthorizationBackend()
         pool = factory.make_ResourcePool()
@@ -1327,23 +695,6 @@ class TestMAASAuthorizationBackendResourcePool(
         )
         self.assertTrue(
             backend.has_perm(admin, ResourcePoolPermission.edit, pool)
-        )
-
-    def test_edit_rbac_editable(self):
-        self.enable_rbac()
-        backend = MAASAuthorizationBackend()
-        pool1 = factory.make_ResourcePool()
-        pool2 = factory.make_ResourcePool()
-        self.rbac_store.add_pool(pool1)
-        self.rbac_store.add_pool(pool2)
-        user = factory.make_User()
-        self.rbac_store.allow(user.username, pool1, "view")
-        self.rbac_store.allow(user.username, pool2, "edit")
-        self.assertFalse(
-            backend.has_perm(user, ResourcePoolPermission.edit, pool1)
-        )
-        self.assertTrue(
-            backend.has_perm(user, ResourcePoolPermission.edit, pool2)
         )
 
 

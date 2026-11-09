@@ -4,7 +4,7 @@ Cloud-init is a powerful part of the MAAS customization suite.  This article wal
 
 ## What is cloud-init?
 
-Cloud-init automatically configures machines after bootup. It can create users, install software, and set up networking. When you're using MAAS, cloud-init can ensure that each machine is ready to use when deployed. If you're relatively new to cloud-init, we recommend you consult [the cloud-init documentation](https://cloudinit.readthedocs.io/en/latest/) before trying these examples.
+Cloud-init automatically configures machines after bootup. It can create users, install software, and set up networking. When you're using MAAS, cloud-init can ensure that each machine is ready to use when deployed. If you're relatively new to cloud-init, we recommend you consult [the cloud-init documentation](https://docs.cloud-init.io/) before trying these examples.
 
 ## Basic cloud-init configurations for MAAS
 

@@ -4,11 +4,11 @@ This section provides practical, step-by-step guidance for getting the most out 
 
 ## Plan and prepare
 
-Before installing anything, make sure MAAS is the right fit. Confirm that your intended use matches the reference architecture. Clarify your environment's requirements, choose the right installation method (Snap vs. Deb), and decide on deployment targets: bare metal, VMs, or a mix. These choices will shape your entire setup.
+Before installing anything, make sure MAAS is the right fit. Confirm that your intended use matches the reference architecture. Clarify your environment's requirements, and decide on deployment targets: bare metal, VMs, or a mix. These choices will shape your entire setup.
 
 * Confirm intended use matches reference architecture*
 * [Examine and confirm requirements](/reference/configuration-guides/installation-requirements.md)
-* [Choose the installation type](/how-to-guides/get-started/install-maas.md)
+* [Install MAAS](/how-to-guides/get-started/install-maas.md)
 
 ## Install and set up
 

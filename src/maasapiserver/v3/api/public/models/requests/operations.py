@@ -1,12 +1,16 @@
 # Copyright 2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Self
+from urllib.parse import quote
+
 from fastapi import Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from maascommon.enums.operations import OperationStatus, OperationType
 from maasservicelayer.db.filters import Clause
 from maasservicelayer.db.repositories.operations import OperationsClauseFactory
+from maasservicelayer.exceptions.catalog import ValidationException
 
 
 class OperationFilterParams(BaseModel):
@@ -25,6 +29,28 @@ class OperationFilterParams(BaseModel):
         )
     )
 
+    resource_type: str | None = Field(
+        Query(
+            default=None,
+            description="Filter by resource type, e.g. 'machine'",
+        )
+    )
+
+    resource_id: int | None = Field(
+        Query(default=None, description="Filter by resource id")
+    )
+
+    @model_validator(mode="after")
+    def validate_resource_filter(self) -> Self:
+        if self.resource_id is not None and self.resource_type is None:
+            raise ValidationException.build_for_field(
+                "resource_type",
+                "Missing 'resource_type' query parameter. You must "
+                "specify resource_type when filtering by resource_id.",
+                location="query",
+            )
+        return self
+
     def to_clause(self) -> Clause | None:
         clauses = []
         if self.status is not None:
@@ -33,6 +59,14 @@ class OperationFilterParams(BaseModel):
             clauses.append(OperationsClauseFactory.with_op_type(self.op_type))
         if self.is_bulk is not None:
             clauses.append(OperationsClauseFactory.with_is_bulk(self.is_bulk))
+        if self.resource_type is not None:
+            clauses.append(
+                OperationsClauseFactory.with_resource_type(self.resource_type)
+            )
+        if self.resource_id is not None:
+            clauses.append(
+                OperationsClauseFactory.with_resource_id(self.resource_id)
+            )
         if len(clauses) == 0:
             return None
         elif len(clauses) == 1:
@@ -48,5 +82,9 @@ class OperationFilterParams(BaseModel):
             parts.append(f"op_type={self.op_type}")
         if self.is_bulk is not None:
             parts.append(f"is_bulk={str(self.is_bulk).lower()}")
+        if self.resource_type is not None:
+            parts.append(f"resource_type={quote(self.resource_type)}")
+        if self.resource_id is not None:
+            parts.append(f"resource_id={self.resource_id}")
 
         return "&".join(parts) if parts else ""

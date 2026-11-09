@@ -51,6 +51,12 @@ T = TypeVar("T", bound=Node)
 
 
 class AbstractNodesRepository(BaseRepository[T], ABC):
+    async def get_url(self, system_id: str) -> str | None:
+        stmt = select(NodeTable.c.url).where(
+            NodeTable.c.system_id == system_id
+        )
+        return (await self.execute_stmt(stmt)).scalar_one_or_none()
+
     async def move_to_zone(self, old_zone_id: int, new_zone_id: int) -> None:
         stmt = (
             update(NodeTable)

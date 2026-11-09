@@ -61,20 +61,6 @@ from maasservicelayer.models.bootresources import (
 )
 from maasservicelayer.models.bootresourcesets import BootResourceSet
 from maasservicelayer.models.nodes import Node
-from maasservicelayer.services import (
-    BootSourceCacheService,
-    ServiceCollectionV3,
-)
-from maasservicelayer.services.bootresourcefiles import (
-    BootResourceFilesService,
-)
-from maasservicelayer.services.bootresourcefilesync import (
-    BootResourceFileSyncService,
-)
-from maasservicelayer.services.bootresources import BootResourceService
-from maasservicelayer.services.bootresourcesets import BootResourceSetsService
-from maasservicelayer.services.nodes import NodesService
-from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from maastesting.factory import factory
 from tests.fixtures import AsyncContextManagerMock
@@ -214,7 +200,7 @@ class TestCustomImagesApi(ApiCommonTests):
         request_to_builder_mock: MagicMock,
         async_local_file_mock: MagicMock,
         maas_id_mock: MagicMock,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -239,18 +225,15 @@ class TestCustomImagesApi(ApiCommonTests):
 
         request_to_builder_mock.return_value = None
 
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.create.return_value = TEST_BOOT_RESOURCE_1
         services_mock.boot_resources.get_next_version_name.return_value = (
             TEST_BOOT_RESOURCE_SET.version
         )
 
-        services_mock.boot_resource_sets = Mock(BootResourceSetsService)
         services_mock.boot_resource_sets.create.return_value = (
             TEST_BOOT_RESOURCE_SET
         )
 
-        services_mock.boot_resource_files = Mock(BootResourceFilesService)
         services_mock.boot_resource_files.create.return_value = resource_file
         services_mock.boot_resource_files.calculate_filename_on_disk.return_value = file_name
 
@@ -259,18 +242,13 @@ class TestCustomImagesApi(ApiCommonTests):
         node_mock = Mock(Node)
         node_mock.id = 1
 
-        services_mock.nodes = Mock(NodesService)
         services_mock.nodes.get_one.return_value = node_mock
 
-        services_mock.boot_resource_file_sync = Mock(
-            BootResourceFileSyncService
-        )
         services_mock.boot_resource_file_sync.get_or_create.return_value = (
             None,
             True,
         )
 
-        services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.register_or_update_workflow_call.return_value = None
 
         async_local_file_mock.store.return_value = AsyncContextManagerMock(
@@ -335,7 +313,7 @@ class TestCustomImagesApi(ApiCommonTests):
         self,
         request_to_builder_mock: MagicMock,
         async_local_file_mock: MagicMock,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -349,18 +327,15 @@ class TestCustomImagesApi(ApiCommonTests):
 
         request_to_builder_mock.return_value = None
 
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.create.return_value = TEST_BOOT_RESOURCE_1
         services_mock.boot_resources.get_next_version_name.return_value = (
             TEST_BOOT_RESOURCE_SET.version
         )
 
-        services_mock.boot_resource_sets = Mock(BootResourceSetsService)
         services_mock.boot_resource_sets.create.return_value = (
             TEST_BOOT_RESOURCE_SET
         )
 
-        services_mock.boot_resource_files = Mock(BootResourceFilesService)
         services_mock.boot_resource_files.calculate_filename_on_disk.return_value = file_name
 
         async_local_file_mock.return_value = AsyncContextManagerMock(
@@ -400,7 +375,7 @@ class TestCustomImagesApi(ApiCommonTests):
         self,
         request_to_builder_mock: MagicMock,
         statvfs_mock: MagicMock,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -408,18 +383,15 @@ class TestCustomImagesApi(ApiCommonTests):
         )
         request_to_builder_mock.return_value = None
 
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.create.return_value = TEST_BOOT_RESOURCE_1
         services_mock.boot_resources.get_next_version_name.return_value = (
             TEST_BOOT_RESOURCE_SET.version
         )
 
-        services_mock.boot_resource_sets = Mock(BootResourceSetsService)
         services_mock.boot_resource_sets.create.return_value = (
             TEST_BOOT_RESOURCE_SET
         )
 
-        services_mock.boot_resource_files = Mock(BootResourceFilesService)
         services_mock.boot_resource_files.calculate_filename_on_disk.return_value = "file.bin"
 
         statvfs_result = Mock()
@@ -451,13 +423,12 @@ class TestCustomImagesApi(ApiCommonTests):
 
     async def test_list_custom_images_200_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list.return_value = ListResult[
             BootResource
         ](items=[TEST_BOOT_RESOURCE_1], total=1)
@@ -474,13 +445,12 @@ class TestCustomImagesApi(ApiCommonTests):
 
     async def test_list_custom_images_200_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list.return_value = ListResult[
             BootResource
         ](items=[TEST_BOOT_RESOURCE_1, TEST_BOOT_RESOURCE_2], total=2)
@@ -499,13 +469,12 @@ class TestCustomImagesApi(ApiCommonTests):
 
     async def test_list_custom_images_filter_by_file_type(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list.return_value = ListResult[
             BootResource
         ](items=[TEST_BOOT_RESOURCE_1], total=1)
@@ -530,13 +499,12 @@ class TestCustomImagesApi(ApiCommonTests):
 
     async def test_list_custom_images_filter_combined(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list.return_value = ListResult[
             BootResource
         ](items=[TEST_BOOT_RESOURCE_1], total=2)
@@ -559,13 +527,12 @@ class TestCustomImagesApi(ApiCommonTests):
 
     async def test_get_custom_image_by_id_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = (
             TEST_BOOT_RESOURCE_1
         )
@@ -581,13 +548,12 @@ class TestCustomImagesApi(ApiCommonTests):
 
     async def test_get_custom_image_by_id_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = None
 
         response = await client.get(f"{self.BASE_PATH}/3")
@@ -601,13 +567,12 @@ class TestCustomImagesApi(ApiCommonTests):
 
     async def test_delete_custom_images_204(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.delete_one.return_value = (
             TEST_BOOT_RESOURCE_2
         )
@@ -632,7 +597,7 @@ class TestCustomImagesApi(ApiCommonTests):
 
     async def test_delete_custom_images_204_by_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -640,7 +605,6 @@ class TestCustomImagesApi(ApiCommonTests):
         )
         correct_etag = "correct_etag"
 
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.delete_one.return_value = (
             TEST_BOOT_RESOURCE_2
         )
@@ -668,13 +632,12 @@ class TestCustomImagesApi(ApiCommonTests):
 
     async def test_delete_custom_images_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.delete_one.side_effect = (
             NotFoundException()
         )
@@ -705,14 +668,13 @@ class TestCustomImagesApi(ApiCommonTests):
 
     async def test_delete_custom_images_412_wrong_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
         )
         wrong_etag = "wrong_etag"
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.delete_one.side_effect = PreconditionFailedException(
             details=[
                 BaseExceptionDetail(
@@ -753,13 +715,12 @@ class TestCustomImagesApi(ApiCommonTests):
 
     async def test_bulk_delete_custom_images(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.delete_many.return_value = None
 
         response = await client.delete(f"{self.BASE_PATH}?id=1&id=2")
@@ -798,13 +759,12 @@ class TestCustomImageStatusApi(ApiCommonTests):
 
     async def test_list_custom_images_status_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list_custom_images_status.return_value = (
             ListResult[CustomBootResourceStatus](
                 items=[
@@ -835,13 +795,12 @@ class TestCustomImageStatusApi(ApiCommonTests):
 
     async def test_list_custom_images_status_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list_custom_images_status.return_value = (
             ListResult[CustomBootResourceStatus](
                 items=[
@@ -888,13 +847,12 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
 
     async def test_list_custom_images_statistics_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list_custom_images_statistics.return_value = ListResult[
             CustomBootResourceStatistic
         ](
@@ -928,13 +886,12 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
 
     async def test_list_custom_images_statistics_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list_custom_images_statistics.return_value = ListResult[
             CustomBootResourceStatistic
         ](
@@ -965,13 +922,12 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
 
     async def test_list_custom_images_statistics_filters(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list_custom_images_statistics.return_value = ListResult[
             CustomBootResourceStatistic
         ](
@@ -1005,13 +961,12 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
 
     async def test_get_custom_image_statistic_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_custom_image_statistic_by_id.return_value = CustomBootResourceStatistic(
             id=1,
             last_updated=utcnow(),
@@ -1029,13 +984,12 @@ class TestCustomImageStatisticsApi(ApiCommonTests):
 
     async def test_get_custom_image_statistic_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_custom_image_statistic_by_id.return_value = None
 
         response = await client.get(f"{self.BASE_PATH}/1")
@@ -1085,14 +1039,13 @@ class TestBootloadersApi(ApiCommonTests):
 
     async def test_list_bootloaders_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         bootloader: BootResource,
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list.return_value = ListResult[
             BootResource
         ](
@@ -1122,14 +1075,13 @@ class TestBootloadersApi(ApiCommonTests):
 
     async def test_list_bootloaders_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         bootloader: BootResource,
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.list.return_value = ListResult[
             BootResource
         ](
@@ -1149,14 +1101,13 @@ class TestBootloadersApi(ApiCommonTests):
 
     async def test_get_bootloader_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         bootloader: BootResource,
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = bootloader
 
         response = await client.get(f"{self.BASE_PATH}/1")
@@ -1181,13 +1132,12 @@ class TestBootloadersApi(ApiCommonTests):
 
     async def test_get_bootloader_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = None
 
         response = await client.get(f"{self.BASE_PATH}/1")
@@ -1227,7 +1177,7 @@ class TestONIEImageUpload(ApiCommonTests):
         to_builder_mock: MagicMock,
         maas_id_mock: MagicMock,
         async_file_mock: MagicMock,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -1261,32 +1211,24 @@ class TestONIEImageUpload(ApiCommonTests):
             updated=utcnow(),
         )
 
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.create.return_value = onie_boot_resource
         services_mock.boot_resources.get_next_version_name.return_value = "1"
 
-        services_mock.boot_resource_sets = Mock(BootResourceSetsService)
         services_mock.boot_resource_sets.create.return_value = Mock(
             id=1, version="1"
         )
 
-        services_mock.boot_resource_files = Mock(BootResourceFilesService)
         services_mock.boot_resource_files.calculate_filename_on_disk.return_value = "test.bin"
         services_mock.boot_resource_files.create.return_value = Mock(
             id=1, sha256=sha256_hash
         )
 
-        services_mock.boot_resource_file_sync = Mock(
-            BootResourceFileSyncService
-        )
         services_mock.boot_resource_file_sync.get_or_create.return_value = (
             Mock()
         )
 
-        services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.register_or_update_workflow_call.return_value = None
 
-        services_mock.nodes = Mock(NodesService)
         services_mock.nodes.get_one.return_value = Node(
             id=1,
             system_id="test-region",
@@ -1330,7 +1272,7 @@ class TestONIEImageUpload(ApiCommonTests):
     async def test_upload_onie_image_invalid_name(
         self,
         to_builder_mock: MagicMock,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -1339,9 +1281,7 @@ class TestONIEImageUpload(ApiCommonTests):
         file_data = self.create_onie_installer_binary(size_in_bytes=1024)
         sha256_hash = hashlib.sha256(file_data).hexdigest()
 
-        services_mock.boot_source_cache = Mock(BootSourceCacheService)
         services_mock.boot_source_cache.get_unique_os_releases.return_value = []
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_usable_architectures.return_value = [
             "amd64/generic"
         ]
@@ -1381,7 +1321,7 @@ class TestONIEImageUpload(ApiCommonTests):
         to_builder_mock: MagicMock,
         maas_id_mock: MagicMock,
         async_file_mock: MagicMock,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         """Test uploading an ONIE image with self-extracting file type."""
@@ -1417,32 +1357,24 @@ class TestONIEImageUpload(ApiCommonTests):
             updated=utcnow(),
         )
 
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.create.return_value = onie_boot_resource
         services_mock.boot_resources.get_next_version_name.return_value = "1"
 
-        services_mock.boot_resource_sets = Mock(BootResourceSetsService)
         services_mock.boot_resource_sets.create.return_value = Mock(
             id=1, version="1"
         )
 
-        services_mock.boot_resource_files = Mock(BootResourceFilesService)
         services_mock.boot_resource_files.calculate_filename_on_disk.return_value = "test.bin"
         services_mock.boot_resource_files.create.return_value = Mock(
             id=1, sha256=sha256_hash
         )
 
-        services_mock.boot_resource_file_sync = Mock(
-            BootResourceFileSyncService
-        )
         services_mock.boot_resource_file_sync.get_or_create.return_value = (
             Mock()
         )
 
-        services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.register_or_update_workflow_call.return_value = None
 
-        services_mock.nodes = Mock(NodesService)
         services_mock.nodes.get_one.return_value = Node(
             id=1,
             system_id="test-region",

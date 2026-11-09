@@ -297,6 +297,14 @@ class TestGetConfig(MAASTestCase):
         self.assertNotIn("dhcp6.domain-search", rendered)  # IPv6
         self.assertNotIn("domain-search", rendered)  # IPv4
 
+    def test_omapi_key_uses_hmac_sha256_algorithm(self):
+        # The rendered DHCP config must specify algorithm HMAC-SHA256 in the
+        # OMAPI key stanza regardless of template variant.
+        params = make_sample_params(self, ipv6=self.ipv6)
+        rendered = config.get_config(self.template, **params)
+        self.assertIn("algorithm HMAC-SHA256", rendered)
+        self.assertNotIn("algorithm HMAC-MD5", rendered)
+
     def test_renders_ntp_servers_as_comma_separated_list(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         rendered = config.get_config(self.template, **params)
@@ -776,6 +784,13 @@ class TestComposeConditionalBootloader(MAASTestCase):
                     f'option user-class = "{method.user_class}" or',
                     output,
                 )
+            elif method.user_class == "onie_dhcp_user_class":
+                self.assertIn(
+                    f'option user-class = "{method.user_class}" or '
+                    f"substring(option user-class, 1, "
+                    f'{len(method.user_class)}) = "{method.user_class}"',
+                    output,
+                )
             elif method.user_class is not None:
                 self.assertIn(
                     f'option user-class = "{method.user_class}" {{',
@@ -868,6 +883,12 @@ class TestComposeConditionalBootloader(MAASTestCase):
         output = config.compose_conditional_bootloader(False, ip)
 
         self.assertIn('option user-class = "onie_dhcp_user_class"', output)
+        # Also match the RFC 3004 length-prefixed form ONIE sends (the leading
+        # length byte makes a bare string compare fail), see LP#2169156.
+        self.assertIn(
+            'substring(option user-class, 1, 20) = "onie_dhcp_user_class"',
+            output,
+        )
 
         self.assertIn("option vivso.iana 01:01:01", output)
         self.assertIn("option onie.installer_url", output)

@@ -54,10 +54,8 @@ func getPostgresDSN(dbHost, user, pass, name string) string {
 
 func main() {
 	socketPath := os.Getenv("MAAS_OPENFGA_HTTP_SOCKET_PATH")
-
 	if socketPath == "" {
-		// Deb installation
-		socketPath = "/var/lib/maas/openfga-http.sock"
+		log.Fatal("environment variable 'MAAS_OPENFGA_HTTP_SOCKET_PATH' is not set")
 	}
 
 	//nolint:gosec // G703: we allow custom socket path being specified

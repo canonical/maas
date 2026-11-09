@@ -20,13 +20,7 @@ from maasservicelayer.db.repositories.staticipaddress import (
 from maasservicelayer.db.repositories.vlans import VlansClauseFactory
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.vlans import Vlan
-from maasservicelayer.services import (
-    CacheForServices,
-    ServiceCollectionV3,
-    StaticIPAddressService,
-    VlansService,
-)
-from maasservicelayer.services.temporal import TemporalService
+from maasservicelayer.services import CacheForServices
 from maasservicelayer.utils.date import utcnow
 import maastemporalworker.workflow.activity as activity_module
 from maastemporalworker.workflow.configure import (
@@ -53,11 +47,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("maasdb")
 class TestConfigureAgentActivity:
-    async def test_get_rack_controller(
-        self, services_mock: ServiceCollectionV3, monkeypatch
-    ):
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.vlans = Mock(VlansService)
+    async def test_get_rack_controller(self, services_mock: Mock, monkeypatch):
         services_mock.vlans.get_node_vlans.return_value = [
             Vlan(
                 id=1,
@@ -108,10 +98,8 @@ class TestConfigureAgentActivity:
         )
 
     async def test_get_region_controller_endpoints(
-        self, services_mock: ServiceCollectionV3, monkeypatch
+        self, services_mock: Mock, monkeypatch
     ):
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.staticipaddress = Mock(StaticIPAddressService)
         services_mock.staticipaddress.get_for_nodes.return_value = [
             StaticIPAddress(
                 id=0,
@@ -174,10 +162,8 @@ class TestConfigureAgentActivity:
         )
 
     async def test_get_region_controller_endpoints_with_blank(
-        self, services_mock: ServiceCollectionV3, monkeypatch
+        self, services_mock: Mock, monkeypatch
     ):
-        services_mock.temporal = Mock(TemporalService)
-        services_mock.staticipaddress = Mock(StaticIPAddressService)
         services_mock.staticipaddress.get_for_nodes.return_value = [
             StaticIPAddress(
                 id=0,

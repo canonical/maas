@@ -51,6 +51,10 @@ class SubnetClauseFactory(ClauseFactory):
         return Clause(condition=eq(SubnetTable.c.allow_dns, allow_dns))
 
     @classmethod
+    def with_managed(cls, managed: bool) -> Clause:
+        return Clause(condition=eq(SubnetTable.c.managed, managed))
+
+    @classmethod
     def with_rdns_mode(cls, rdns_mode: RdnsMode) -> Clause:
         return Clause(condition=eq(SubnetTable.c.rdns_mode, rdns_mode))
 

@@ -14,7 +14,6 @@ python3-aiodns
 python3-aiofiles
 python3-aiohttp
 python3-alembic
-python3-apt
 python3-asyncpg
 python3-attr
 python3-authlib
@@ -35,7 +34,6 @@ python3-hvac
 python3-joserfc
 python3-jsonschema
 python3-lxml
-python3-macaroonbakery
 python3-markupsafe
 python3-mimeparse
 python3-python-multipart

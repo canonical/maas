@@ -43,7 +43,6 @@ top_level = {
     "logout",
     "list",
     "refresh",
-    "configauth",
     "apikey",
     "changepassword",
     "config-tls",

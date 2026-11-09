@@ -52,6 +52,15 @@ class TestNodeClauseFactory:
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestNodesRepository:
+    @pytest.mark.parametrize("url", ["", "http://region:5240/MAAS"])
+    async def test_get_url(
+        self, db_connection: AsyncConnection, fixture: Fixture, url: str
+    ) -> None:
+        node = await create_test_machine_entry(fixture, url=url)
+        repository = NodesRepository(Context(connection=db_connection))
+        assert await repository.get_url(node["system_id"]) == url
+        assert await repository.get_url("missing") is None
+
     async def test_move_to_zone(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:

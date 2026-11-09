@@ -4,7 +4,7 @@ Performance directly affects how quickly MAAS can list, commission, and deploy m
 
 ## How we measure
 
-To keep MAAS fast, we run continuous performance tests that mimic real-world data centre conditions:
+To keep MAAS fast, we run continuous performance tests that mimic real-world data center conditions:
 
 - Reference environment:
   - 5 rack controllers

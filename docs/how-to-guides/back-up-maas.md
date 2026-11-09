@@ -1,6 +1,6 @@
 # Back up MAAS
 
-MAAS uses standard command-line utilities for simple, familiar backups.  The options described here allow you to either back up and restore everything MAAS-related, or just back up key packages and files.
+MAAS uses standard command-line utilities for simple, familiar backups.  The options described here allow you to back up either a proof-of-concept test database or a complete production MAAS installation.
 
 ## Back up a POC database
 
@@ -93,83 +93,4 @@ The method uses `pg_dumpall` the entire database and make a complete snapshot of
    ```sh
    sudo systemctl start postgresql.service
    sudo snap restart maas
-   ```
-
-## Package production backup
-
-Backs up PostgreSQL and key MAAS files.
-
-### Backup
-
-1. Find PostgreSQL service:
-
-   ```sh
-   sudo systemctl list-units --type=service | grep postgres
-   ```
-
-2. Create backup directory:
-
-   ```sh
-   mkdir -p <backup-path>/$(date +%s)
-   ```
-
-3. Dump database:
-
-   ```sh
-   sudo -u postgres pg_dumpall -c > "<backup-path>/$(date +%s)_dump.sql"
-   ```
-
-4. Stop MAAS services:
-
-   ```sh
-   sudo systemctl stop maas-dhcpd.service maas-rackd.service maas-regiond.service
-   ```
-
-5. (Optional) Stop PostgreSQL:
-
-   ```sh
-   sudo systemctl stop postgresql.service
-   ```
-
-6. Archive MAAS files:
-
-   ```sh
-   sudo tar cvpzWf <backup-path>/$(date +%s)_maas_backup.tgz --exclude=/var/lib/maas/boot-resources /etc/maas /var/lib/maas
-   ```
-
-7. Restart services:
-
-   ```sh
-   sudo systemctl start postgresql.service
-   sudo snap restart maas
-   ```
-
-### Restore
-
-1. Reinstall Ubuntu (if possible).
-2. Ensure PostgreSQL is installed.
-3. Restore database:
-
-   ```sh
-   sudo -u postgres psql -f <backup-path>/<dump.sql> postgres
-   ```
-
-4. Install [MAAS from packages](/how-to-guides/get-started/install-maas.md).
-5. Stop MAAS services:
-
-   ```sh
-   sudo systemctl stop maas-dhcpd.service maas-rackd.service maas-regiond.service
-   ```
-
-6. Extract backup:
-
-   ```sh
-   sudo tar xvzpf <backup-path>/<backup.tgz> -C /
-   ```
-
-7. Restart services:
-
-   ```sh
-   sudo systemctl start postgresql.service
-   sudo systemctl restart maas-dhcpd.service maas-rackd.service maas-regiond.service
    ```

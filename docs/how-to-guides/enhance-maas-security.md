@@ -114,7 +114,7 @@ Renew a certificate the same way you enable TLS:
 ​​sudo maas config-tls enable new-server-key.pem new-server.pem --port 5443
 ```
 
-Place the certificate and key in an accessible directory, such as `/var/snap/maas/common` if you're using the MAAS snap.
+Place the certificate and key in an accessible directory, such as `/var/snap/maas/common`.
 
 ### Set up a local cert authority
 
@@ -194,6 +194,17 @@ sudo cp mysite.com.pem /etc/ssl/private/
 ```
 
 Include your root and intermediate CA certificates in the same PEM file, if required.
+
+## Harden MAAS and use FIPS mode
+
+MAAS can apply STIG- and CIS-aligned transport-security controls to its controllers. These tasks have their own guides:
+
+- [Activate MAAS hardening](/how-to-guides/activate-maas-hardening.md) on region controllers.
+- [Harden a rack controller](/how-to-guides/harden-a-rack-controller.md).
+- [Resolve hardening violations](/how-to-guides/resolve-hardening-violations.md).
+- [Enable FIPS mode on a MAAS controller](/how-to-guides/enable-fips-mode-on-a-controller.md).
+- [Manage trusted SSH host keys](/how-to-guides/manage-trusted-ssh-host-keys.md) for SSH-based power drivers in FIPS mode.
+- [Deploy a FIPS kernel](/how-to-guides/deploy-a-fips-kernel.md) to a managed machine.
 
 ## Use TLS termination (3.2-)
 

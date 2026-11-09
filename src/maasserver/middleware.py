@@ -31,7 +31,6 @@ from maasserver import openfga
 from maasserver.authorization import clear_caches
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.exceptions import MAASAPIException
-from maasserver.sqlalchemy import service_layer
 from maasserver.utils.orm import is_retryable_failure
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -46,7 +45,6 @@ PUBLIC_URL_PREFIXES = [
     reverse("login"),
     # Authentication: must be visible to anonymous users.
     reverse("authenticate"),
-    reverse("discharge-request"),
     # CSRF: only usable by logged in users, but returns FORBIDDEN instead of
     # a redirect to the login page on request of an unauthenticated user.
     reverse("csrf"),
@@ -424,40 +422,14 @@ class SuppressCSRFCookieMiddleware:
         return response
 
 
-class ExternalAuthInfoMiddleware:
-    """A Middleware adding information about the external authentication.
-
-    This adds an `external_auth_info` attribute to the request, which is an
-    ExternalAuthInfo instance if external authentication is enabled, None
-    otherwise.
-
-    """
-
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        request.external_auth_info = (
-            service_layer.services.external_auth.get_external_auth()
-        )
-        return self.get_response(request)
-
-
 class AuthorizationCacheMiddleware:
-    """Middleware that cleans the RBAC and openfga thread-local cache.
-
-
-    At the end of each request the RBAC client that is held in the thread-local
-    needs to be cleaned up. That way the next request on the same thread will
-    use a new RBAC client.
-    """
+    """Middleware that cleans the openfga thread-local cache."""
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
         """Clear the cache before and after the request, to ensure that any cached data from a previous request is not used, and that any cached data from this request is not used in the next one."""
-        # TODO: Fix RBACFixture and move to clear_caches()
         openfga.get_openfga_client().clear_cache()
         result = self.get_response(request)
         clear_caches()

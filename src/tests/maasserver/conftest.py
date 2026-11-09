@@ -4,14 +4,11 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
-from django.db import transaction
 import hvac
 import pytest
 
 from maasserver import vault
 from maasserver.config import RegionConfiguration
-from maasserver.rbac import FakeRBACClient, rbac
-from maasserver.secrets import SecretManager
 from maasserver.sqlalchemy import service_layer
 from maasserver.vault import (
     get_region_vault_client,
@@ -86,27 +83,6 @@ def mock_hvac_client(mocker):
     cli.secrets.kv.v2 = mock_kv
     cli.mock_kv = mock_kv
     yield cli
-
-
-@pytest.fixture
-def enable_rbac(maasdb):
-    with transaction.atomic():
-        SecretManager().set_composite_secret(
-            "external-auth",
-            {
-                "url": "https://auth.example.com",
-                "user": "user@candid",
-                "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
-                "rbac-url": "http://rbac.example.com",
-            },
-        )
-
-    client = FakeRBACClient()
-    rbac._store.client = client
-    rbac._store.cleared = False
-    yield client.store
-    rbac._store.client = None
-    rbac.clear()
 
 
 @pytest.fixture

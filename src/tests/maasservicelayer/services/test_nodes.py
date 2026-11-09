@@ -98,6 +98,13 @@ class TestNodesService:
             scriptresults_service=scriptresults_service_mock,
         )
 
+    async def test_get_url(self, nodes_service, nodes_repository_mock) -> None:
+        nodes_repository_mock.get_url.return_value = "http://region:5240/MAAS"
+        assert await nodes_service.get_url("rack-1") == (
+            "http://region:5240/MAAS"
+        )
+        nodes_repository_mock.get_url.assert_called_once_with("rack-1")
+
     async def test_update_by_system_id(
         self, nodes_service, nodes_repository_mock
     ) -> None:

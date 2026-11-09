@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
+from typing import Annotated
 
 from fastapi import Depends, Response
 from OpenSSL import crypto
@@ -12,6 +13,7 @@ from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
     ServiceUnavailableErrorBodyResponse,
     UnauthorizedBodyResponse,
+    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.internal.models.requests.agent import (
@@ -19,6 +21,7 @@ from maasapiserver.v3.api.internal.models.requests.agent import (
 )
 from maasapiserver.v3.api.internal.models.responses.agent import (
     AgentConfigResponse,
+    AgentDHCPDataResponse,
     AgentSignedCertificateResponse,
 )
 from maasapiserver.v3.api.public.models.responses.base import (
@@ -57,6 +60,7 @@ from maasservicelayer.models.secrets import (
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 from provisioningserver.certificates import Certificate, CertificateRequest
+from provisioningserver.config import ClusterConfiguration
 
 logger = structlog.get_logger()
 
@@ -178,13 +182,38 @@ class AgentHandler(Handler):
             if node:
                 system_id = node.system_id
 
+        temporal_host = ""
+        with ClusterConfiguration.open() as cfg:
+            temporal_host = cfg.temporal_server
+
         response.headers["ETag"] = agent.etag()
         return AgentConfigResponse.from_model(
             maas_url=maas_url,
             rpc_secret=rpc_secret,
             system_id=system_id,
-            temporal={"encryption_key": rpc_secret},
+            temporal={"encryption_key": rpc_secret, "host": temporal_host},
             self_base_hyperlink=f"{V3_INTERNAL_API_PREFIX}/agents/{uuid}/config",
+        )
+
+    @handler(
+        path="/agents/{system_id}/dhcp_data",
+        methods=["GET"],
+        responses={
+            200: {"model": AgentDHCPDataResponse},
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        status_code=200,
+    )
+    async def get_agent_dhcp_data(
+        self,
+        system_id: str,
+        services: Annotated[ServiceCollectionV3, Depends(services)],
+    ) -> AgentDHCPDataResponse:
+        dhcp_data = await services.dhcp.get_kea_dhcp_data_for_agent(system_id)
+        return AgentDHCPDataResponse.from_model(
+            dhcp_data=dhcp_data,
+            self_base_hyperlink=f"{V3_INTERNAL_API_PREFIX}/agents/{system_id}/dhcp_data",
         )
 
     @handler(

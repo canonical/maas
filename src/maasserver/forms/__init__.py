@@ -121,7 +121,6 @@ from maasserver.forms.settings import (
     INVALID_SETTING_MSG_TEMPLATE,
     validate_missing_boot_images,
 )
-from maasserver.macaroon_auth import external_auth_enabled
 from maasserver.models import (
     Bcache,
     BlockDevice,
@@ -1274,8 +1273,22 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
             self.fields["deployed"] = forms.BooleanField(required=False)
 
     def clean(self):
+        from maasserver.forms.fips_power import apply_fips_power_validation
+
         cleaned_data = super().clean()
         cleaned_data = WithPowerTypeMixin.check_driver(self, cleaned_data)
+
+        power_type = cleaned_data.get("power_type", "")
+        power_parameters = cleaned_data.get("power_parameters") or {}
+        if isinstance(power_parameters, str):
+            try:
+                power_parameters = json.loads(power_parameters)
+            except (ValueError, TypeError):
+                power_parameters = {}
+
+        if power_type:
+            apply_fips_power_validation(self, power_type, power_parameters)
+
         return cleaned_data
 
     def _setup_deployed_machine(self, machine):
@@ -1630,20 +1643,6 @@ class NewUserCreationForm(UserCreationForm):
             "password2",
             "is_superuser",
         )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.external_auth_enabled = external_auth_enabled()
-        if self.external_auth_enabled:
-            del self.fields["password1"]
-            del self.fields["password2"]
-
-    def clean(self):
-        super().clean()
-        if self.external_auth_enabled:
-            # add back data for password fields, as save() needs them
-            self.cleaned_data["password1"] = None
-            self.cleaned_data["password2"] = None
 
     def save(self, commit=True):
         user = super().save(commit=False)

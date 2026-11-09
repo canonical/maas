@@ -675,6 +675,15 @@ class TestClusterConfiguration(MAASTestCase):
         config.use_json_logging = "false"
         self.assertFalse(config.debug)
 
+    def test_default_temporal_server(self):
+        config = ClusterConfiguration({})
+        self.assertEqual("", config.temporal_server)
+
+    def test_set_and_get_temporal_server(self):
+        config = ClusterConfiguration({})
+        config.temporal_server = "127.0.0.1"
+        self.assertEqual("127.0.0.1", config.temporal_server)
+
 
 class TestClusterConfigurationGRUBRoot(MAASTestCase):
     """Tests for `ClusterConfiguration.grub_root`."""

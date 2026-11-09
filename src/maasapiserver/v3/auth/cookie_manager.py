@@ -1,4 +1,4 @@
-# Copyright 2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from enum import StrEnum
@@ -29,10 +29,6 @@ MAAS_OAUTH2_REFRESH_TOKEN_COOKIE_NAME = "maas.oauth2_refresh_token_cookie"
 class MAASDjangoCookie(StrEnum):
     SESSION_ID = "sessionid"
     CSRF_TOKEN = "csrftoken"
-
-
-class MAASMacaroonCookie(StrEnum):
-    MACAROON_MAAS = "macaroon-maas"
 
 
 class MAASLocalCookie(StrEnum):

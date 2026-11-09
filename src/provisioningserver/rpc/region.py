@@ -1,4 +1,4 @@
-# Copyright 2014-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC declarations for the region.
@@ -15,6 +15,7 @@ __all__ = [
     "GetDiscoveryState",
     "GetDNSConfiguration",
     "GetTimeConfiguration",
+    "GetTrustedSshHostKeys",
     "Identify",
     "ListNodePowerParameters",
     "MarkNodeFailed",
@@ -507,3 +508,31 @@ class UpdateControllerState(amp.Command):
     ]
     response = []
     errors = {NoSuchNode: b"NoSuchNode", NoSuchScope: b"NoSuchScope"}
+
+
+class GetTrustedSshHostKeys(amp.Command):
+    """Return every trusted SSH host key registered for a given host.
+
+    Used by paramiko's `TrustedHostKeyPolicy` (power drivers) to verify a
+    presented host key, and by the virsh pod driver under FIPS to
+    materialize a known_hosts file before connecting (the CLI `ssh` binary
+    verifies against a known_hosts file rather than a per-key callback).
+
+    :since: 3.7
+    """
+
+    arguments = [
+        (b"host", amp.Unicode()),
+    ]
+    response = [
+        (
+            b"keys",
+            AmpList(
+                [
+                    (b"key_type", amp.Unicode()),
+                    (b"public_key", amp.Unicode()),
+                ]
+            ),
+        )
+    ]
+    errors = []

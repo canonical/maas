@@ -59,6 +59,13 @@ Across all parts of the codebase:
 - Be especially careful with authentication and authorization code
 - Always use secure defaults for cryptographic operations
 
+## FIPS and STIG/CIS Hardening Compliance
+
+MAAS has support for FIPS 140-2/140-3 and STIG/CIS hardening.
+Ensure that any changes made do not break FIPS compliance when FIPS is enabled at the operating system level.
+Additionally, ensure that changes do not enforce FIPS checks when it is not enabled at the operating system level.
+Finally, ensure that any changes do not break STIG/CIS hardening configuration.
+
 ## Documentation Standards
 
 - Keep inline comments focused on *why*, not *what*
@@ -96,7 +103,7 @@ All commits and pull/merge requests must follow the [Conventional Commits](https
 - **!**: Add before colon if commit introduces breaking changes
 - **description**: Brief summary, aim for 72 characters or less
 - **body**: Optional - detailed explanation of the change
-- **footer**: Optional - metadata like `Resolves LP:2066936` or `BREAKING CHANGE: description`
+- **footer**: Optional - metadata like `Resolves LP: #2066936` or `BREAKING CHANGE: description`
 
 ### Allowed Types
 
@@ -128,7 +135,7 @@ Use one of these scopes where applicable:
 
 ### Guidelines
 
-- Ticket references are **mandatory** for `fix` commits. For all other types, include them when a relevant issue exists. Supported trackers: `Resolves LP:2066936` (Launchpad), `Resolves GH:123` (GitHub), `Resolves JIRA-123` (Jira).
+- Ticket references are **mandatory** for `fix` commits. For all other types, include them when a relevant issue exists. Supported trackers: `Resolves LP: #2066936` (Launchpad), `Resolves GH:123` (GitHub), `Resolves JIRA-123` (Jira).
 - **Description (title)**: Provide a high-level overview only. Do not enumerate individual changes or list implementation details. Focus on the problem being solved or the feature being added.
 - **Body**: Use the body to explain the reasoning, context, and any non-obvious implementation details. Keep it concise and focused on the "why" rather than exhaustively documenting the "what".
 
@@ -151,7 +158,7 @@ fix(network): correct VLAN configuration parsing
 The parser was incorrectly handling tagged VLANs with non-standard
 MTU values, causing network interface initialization to fail.
 
-Resolves LP:2066936
+Resolves LP: #2066936
 ```
 
 Good feature:
@@ -274,7 +281,6 @@ Key points:
     - Use `check_permissions` for authorization
     - Mock services in tests, not repositories
 - **Testing**: Use `APICommonTests`, `mocked_api_client*` fixtures
-- **Authentication**: Support Bearer tokens, Django sessionid, and Macaroons
 - **Documentation**: Ensure OpenAPI spec stays accurate
 
 ### `src/maasservicelayer`

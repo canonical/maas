@@ -26,21 +26,15 @@ from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.models.reservedips import ReservedIP
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.ipranges import IPRangesService
-from maasservicelayer.services.staticipaddress import StaticIPAddressService
 
 
 @pytest.mark.asyncio
 class TestReservedIPCreateRequest:
-    async def test_ip_already_in_use(
-        self, services_mock: ServiceCollectionV3
-    ) -> None:
+    async def test_ip_already_in_use(self, services_mock: Mock) -> None:
         ip = IPv4Address("10.10.0.3")
         staticipaddress_mock = Mock(StaticIPAddress)
         staticipaddress_mock.ip = ip
         staticipaddress_mock.id = 1
-        services_mock.staticipaddress = Mock(StaticIPAddressService)
         services_mock.staticipaddress.get_one.return_value = (
             staticipaddress_mock
         )
@@ -67,16 +61,12 @@ class TestReservedIPCreateRequest:
             )
         )
 
-    async def test_ip_inside_dynamic_range(
-        self, services_mock: ServiceCollectionV3
-    ) -> None:
+    async def test_ip_inside_dynamic_range(self, services_mock: Mock) -> None:
         ip = IPv4Address("10.10.0.3")
-        services_mock.staticipaddress = Mock(StaticIPAddressService)
         services_mock.staticipaddress.get_one.return_value = None
         ip_range_mock = Mock(IPRange)
         ip_range_mock.start_ip = IPv4Address("10.10.0.0")
         ip_range_mock.end_ip = IPv4Address("10.10.0.5")
-        services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_dynamic_range_for_ip.return_value = (
             ip_range_mock
         )
@@ -101,13 +91,9 @@ class TestReservedIPCreateRequest:
             1, ip
         )
 
-    async def test_ip_not_in_subnet(
-        self, services_mock: ServiceCollectionV3
-    ) -> None:
+    async def test_ip_not_in_subnet(self, services_mock: Mock) -> None:
         ip = IPv4Address("10.10.0.3")
-        services_mock.staticipaddress = Mock(StaticIPAddressService)
         services_mock.staticipaddress.get_one.return_value = None
-        services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_dynamic_range_for_ip.return_value = None
         subnet_mock = Mock(Subnet)
         subnet_mock.id = 1
@@ -127,13 +113,9 @@ class TestReservedIPCreateRequest:
             QuerySpec(where=StaticIPAddressClauseFactory.with_ip(ip))
         )
 
-    async def test_ip_is_network_address(
-        self, services_mock: ServiceCollectionV3
-    ) -> None:
+    async def test_ip_is_network_address(self, services_mock: Mock) -> None:
         ip = IPv4Address("10.10.0.0")
-        services_mock.staticipaddress = Mock(StaticIPAddressService)
         services_mock.staticipaddress.get_one.return_value = None
-        services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_dynamic_range_for_ip.return_value = None
         subnet_mock = Mock(Subnet)
         subnet_mock.id = 1
@@ -153,13 +135,9 @@ class TestReservedIPCreateRequest:
             QuerySpec(where=StaticIPAddressClauseFactory.with_ip(ip))
         )
 
-    async def test_ip_is_broadcast_address(
-        self, services_mock: ServiceCollectionV3
-    ) -> None:
+    async def test_ip_is_broadcast_address(self, services_mock: Mock) -> None:
         ip = IPv4Address("10.10.0.255")
-        services_mock.staticipaddress = Mock(StaticIPAddressService)
         services_mock.staticipaddress.get_one.return_value = None
-        services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_dynamic_range_for_ip.return_value = None
         subnet_mock = Mock(Subnet)
         subnet_mock.id = 1

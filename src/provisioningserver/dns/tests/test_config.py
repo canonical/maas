@@ -11,19 +11,19 @@ from unittest import TestCase
 from unittest.mock import Mock, sentinel
 
 from fixtures import EnvironmentVariable
-from netaddr import IPAddress, IPNetwork
+from netaddr import IPNetwork
 from twisted.python.filepath import FilePath
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns import config
 from provisioningserver.dns.config import (
+    _rndc_conf_uses_approved_algorithm,
     clean_old_zone_files,
     compose_config_path,
     DNSConfig,
     DNSConfigDirectoryMissing,
     DNSConfigFail,
-    DynamicDNSUpdate,
     execute_rndc_command,
     extract_suggested_named_conf,
     generate_rndc,
@@ -168,6 +168,101 @@ class TestRNDCUtilities(MAASTestCase):
                 conf_content = stream.read()
                 self.assertIn(content, conf_content)
 
+    def test_set_up_rndc_generates_sha256_key(self):
+        # Keys are created with hmac-sha256 on a fresh install.
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_rndc()
+        rndc_file = os.path.join(dns_conf_dir, MAAS_RNDC_CONF_NAME)
+        with open(rndc_file, encoding="ascii") as stream:
+            content = stream.read()
+        self.assertIn("algorithm hmac-sha256", content)
+
+    def test_set_up_rndc_idempotent_when_already_sha256(self):
+        # A rndc.conf already using hmac-sha256 is left unchanged; the helper
+        # must not regenerate the key (idempotency requirement).
+        dns_conf_dir = patch_dns_config_path(self)
+        # Write an initial rndc.conf with a known secret and hmac-sha256.
+        initial_secret = "aGFyZGVuaW5nLXRlc3Qtc2VjcmV0LWtleQ=="
+        rndc_file = os.path.join(dns_conf_dir, MAAS_RNDC_CONF_NAME)
+        named_file = os.path.join(dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME)
+        rndc_content = (
+            "# Start of rndc.conf\n"
+            'key "rndc-maas-key" {\n'
+            "    algorithm hmac-sha256;\n"
+            f'    secret "{initial_secret}";\n'
+            "};\n"
+        )
+        with open(rndc_file, "w", encoding="ascii") as fh:
+            fh.write(rndc_content)
+        with open(named_file, "w", encoding="ascii") as fh:
+            fh.write("# placeholder named conf\n")
+        # Capture mtime before calling set_up_rndc.
+        mtime_before = os.path.getmtime(rndc_file)
+        set_up_rndc()
+        # File must not have been rewritten.
+        mtime_after = os.path.getmtime(rndc_file)
+        self.assertEqual(mtime_before, mtime_after)
+        with open(rndc_file, encoding="ascii") as fh:
+            self.assertIn(initial_secret, fh.read())
+
+    def test_set_up_rndc_rotates_non_approved_algorithm(self):
+        # A rndc.conf using a non-approved algorithm (e.g. hmac-md5 from a
+        # pre-3.7 installation) must be regenerated with hmac-sha256 on the
+        # next service restart (key rotation).
+        dns_conf_dir = patch_dns_config_path(self)
+        old_secret = "b2xkLW1kNS1zZWNyZXQ="
+        rndc_file = os.path.join(dns_conf_dir, MAAS_RNDC_CONF_NAME)
+        # Write a stale rndc.conf with hmac-md5.
+        old_content = (
+            "# Start of rndc.conf\n"
+            'key "rndc-maas-key" {\n'
+            "    algorithm hmac-md5;\n"
+            f'    secret "{old_secret}";\n'
+            "};\n"
+        )
+        with open(rndc_file, "w", encoding="ascii") as fh:
+            fh.write(old_content)
+        set_up_rndc()
+        with open(rndc_file, encoding="ascii") as fh:
+            new_content = fh.read()
+        self.assertIn("algorithm hmac-sha256", new_content)
+        self.assertNotIn(old_secret, new_content)
+
+    def test_rndc_conf_uses_approved_algorithm_returns_true_for_sha256(self):
+        # Helper returns True for an existing rndc.conf with hmac-sha256.
+        dns_conf_dir = patch_dns_config_path(self)
+        rndc_file = os.path.join(dns_conf_dir, MAAS_RNDC_CONF_NAME)
+        with open(rndc_file, "w", encoding="ascii") as fh:
+            fh.write(
+                "# Start of rndc.conf\n"
+                'key "rndc-maas-key" {\n'
+                "    algorithm hmac-sha256;\n"
+                '    secret "dGVzdA==";\n'
+                "};\n"
+            )
+        self.assertTrue(_rndc_conf_uses_approved_algorithm(rndc_file))
+
+    def test_rndc_conf_uses_approved_algorithm_returns_false_for_md5(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        rndc_file = os.path.join(dns_conf_dir, MAAS_RNDC_CONF_NAME)
+        with open(rndc_file, "w", encoding="ascii") as fh:
+            fh.write(
+                "# Start of rndc.conf\n"
+                'key "rndc-maas-key" {\n'
+                "    algorithm hmac-md5;\n"
+                '    secret "dGVzdA==";\n'
+                "};\n"
+            )
+        self.assertFalse(_rndc_conf_uses_approved_algorithm(rndc_file))
+
+    def test_rndc_conf_uses_approved_algorithm_returns_false_when_missing(
+        self,
+    ):
+        # Missing file → False (triggers regeneration).
+        self.assertFalse(
+            _rndc_conf_uses_approved_algorithm("/nonexistent/rndc.conf")
+        )
+
     def test_set_up_options_conf_writes_configuration(self):
         dns_conf_dir = patch_dns_config_path(self)
         fake_dns = [factory.make_ipv4_address(), factory.make_ipv4_address()]
@@ -245,6 +340,230 @@ class TestRNDCUtilities(MAASTestCase):
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
         )
         self.assertTrue(os.path.exists(target_file))
+
+    def test_set_up_options_conf_without_hardening(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=False)
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertNotIn('version "not disclosed"', contents)
+        self.assertNotIn("allow-transfer", contents)
+        self.assertNotIn("fetches-per-zone", contents)
+        self.assertNotIn("fetches-per-server", contents)
+
+    def test_set_up_options_conf_with_hardening(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=True)
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn('version "not disclosed"', contents)
+        self.assertIn("allow-transfer { none; }", contents)
+        self.assertIn("fetches-per-zone 100", contents)
+        self.assertIn("fetches-per-server 100", contents)
+
+    def test_set_up_options_conf_with_hardening_and_dns_bind(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=True, dns_bind=["10.0.0.1"])
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("listen-on { 10.0.0.1; 127.0.0.1; }", contents)
+        self.assertNotIn("listen-on-v6", contents)
+
+    def test_set_up_options_conf_with_hardening_and_mixed_dns_bind(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=True, dns_bind=["10.0.0.1", "fd00::1"])
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("listen-on { 10.0.0.1; 127.0.0.1; }", contents)
+        self.assertIn("listen-on-v6 { fd00::1; ::1; }", contents)
+
+    def test_set_up_options_conf_with_hardening_and_ipv6_only_dns_bind(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=True, dns_bind=["fd00::1"])
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("listen-on-v6 { fd00::1; ::1; }", contents)
+        self.assertNotIn("listen-on {", contents)
+
+    def test_set_up_options_conf_with_hardening_no_dns_bind(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=True, dns_bind=[])
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertNotIn("listen-on", contents)
+
+    def test_set_up_options_conf_without_hardening_with_dns_bind(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=False, dns_bind=["10.0.0.1", "fd00::1"])
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("listen-on { 10.0.0.1; 127.0.0.1; }", contents)
+        self.assertIn("listen-on-v6 { fd00::1; ::1; }", contents)
+
+    def test_set_up_options_conf_with_multiple_dns_bind(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(
+            hardening=True,
+            dns_bind=[
+                "10.0.0.1",
+                "10.0.0.2",
+                "fd00::1",
+                "fd00::2",
+            ],
+        )
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("listen-on { 10.0.0.1; 10.0.0.2; 127.0.0.1; }", contents)
+        self.assertIn("listen-on-v6 { fd00::1; fd00::2; ::1; }", contents)
+
+    def test_set_up_options_conf_without_hardening_no_dns_bind(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=False, dns_bind=[])
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertNotIn("listen-on", contents)
+
+    def test_set_up_options_conf_explicit_allow_transfer(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=False, dns_allow_transfer="trusted")
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("allow-transfer { trusted; }", contents)
+
+    def test_set_up_options_conf_allow_transfer_overrides_hardening_default(
+        self,
+    ):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=True, dns_allow_transfer="trusted")
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("allow-transfer { trusted; }", contents)
+        self.assertNotIn("allow-transfer { none; }", contents)
+
+    def test_set_up_options_conf_allow_transfer_suppressed_when_empty_no_hardening(
+        self,
+    ):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=False, dns_allow_transfer="")
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertNotIn("allow-transfer", contents)
+
+    def test_set_up_options_conf_explicit_fetch_limits(self):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(
+            hardening=False,
+            dns_fetches_per_zone=50,
+            dns_fetches_per_server=75,
+        )
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("fetches-per-zone 50", contents)
+        self.assertIn("fetches-per-server 75", contents)
+
+    def test_set_up_options_conf_fetch_limits_override_hardening_defaults(
+        self,
+    ):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(
+            hardening=True,
+            dns_fetches_per_zone=200,
+            dns_fetches_per_server=300,
+        )
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("fetches-per-zone 200", contents)
+        self.assertIn("fetches-per-server 300", contents)
+        self.assertNotIn("fetches-per-zone 100", contents)
+        self.assertNotIn("fetches-per-server 100", contents)
+
+    def test_set_up_options_conf_fetch_limits_suppressed_when_zero_no_hardening(
+        self,
+    ):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(
+            hardening=False,
+            dns_fetches_per_zone=0,
+            dns_fetches_per_server=0,
+        )
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertNotIn("fetches-per-zone", contents)
+        self.assertNotIn("fetches-per-server", contents)
+
+    def test_set_up_options_conf_allow_transfer_default_applies_when_explicit_empty_string_and_hardening(
+        self,
+    ):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(hardening=True, dns_allow_transfer="")
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("allow-transfer { none; }", contents)
+
+    def test_set_up_options_conf_fetch_limits_default_applies_when_explicit_zero_and_hardening(
+        self,
+    ):
+        dns_conf_dir = patch_dns_config_path(self)
+        set_up_options_conf(
+            hardening=True,
+            dns_fetches_per_zone=0,
+            dns_fetches_per_server=0,
+        )
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
+        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn("fetches-per-zone 100", contents)
+        self.assertIn("fetches-per-server 100", contents)
 
     def test_clean_old_zone_files(self):
         zone_file_dir = patch_zone_file_config_path(self)
@@ -346,7 +665,7 @@ class TestRNDCUtilities(MAASTestCase):
             dedent(
                 """\
             # key "rndc-key" {
-            # \talgorithm hmac-md5;
+            # \talgorithm hmac-sha256;
             # \tsecret "FuvtYZbYYLLJQKtn3zembg==";
             # };
             # %s
@@ -360,7 +679,7 @@ class TestRNDCUtilities(MAASTestCase):
         )
 
         self.assertIn(
-            'key "rndc-key" {\n\talgorithm hmac-md5;\n',
+            'key "rndc-key" {\n\talgorithm hmac-sha256;\n',
             uncomment_named_conf(named_comment),
         )
 
@@ -609,9 +928,6 @@ class TestDNSConfig(MAASTestCase):
             # Disable forwarding for authoritative zones, lp:2118833
             forwarders {{ }};
             file "zone.{domain}";
-            allow-update {{
-                key maas.;
-            }};
             allow-transfer {{
                 trusted;
             }};
@@ -650,9 +966,6 @@ class TestDNSConfig(MAASTestCase):
                 # Disable forwarding for authoritative zones, lp:2118833
                 forwarders {{ }};
                 file "zone.{domain}";
-                allow-update {{
-                    key maas.;
-                }};
             }};
             """
         )
@@ -662,185 +975,3 @@ class TestDNSConfig(MAASTestCase):
         self.assertEqual(
             expected[f'zone "{domain}"'], config[f'zone "{domain}"']
         )
-
-
-class TestDynamicDNSUpdate(MAASTestCase):
-    def test_create_from_trigger_v4(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate.create_from_trigger(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="A",
-            answer=factory.make_ip_address(ipv6=False),
-        )
-        self.assertEqual(update.rectype, "A")
-
-    def test_create_from_trigger_v6(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate.create_from_trigger(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="A",
-            answer=factory.make_ip_address(ipv6=True),
-        )
-        self.assertEqual(update.rectype, "AAAA")
-
-    def test_answer_as_ip_returns_ip_when_answer_is_an_ip(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="A",
-            answer=factory.make_ip_address(),
-        )
-        self.assertIsNotNone(update.answer_as_ip)
-
-    def test_answer_as_ip_returns_none_when_answer_is_not_an_ip(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="CNAME",
-            answer=factory.make_name(),
-        )
-        self.assertIsNone(update.answer_as_ip)
-
-    def test_answer_is_ip_returns_true_when_answer_is_an_ip(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="A",
-            answer=factory.make_ip_address(),
-        )
-        self.assertTrue(update.answer_is_ip)
-
-    def test_answer_is_ip_returns_false_when_answer_is_not_an_ip(self):
-        domain = factory.make_name()
-        update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}.{domain}",
-            rectype="CNAME",
-            answer=factory.make_name(),
-        )
-        self.assertFalse(update.answer_is_ip)
-
-    def test_as_reverse_record_update(self):
-        domain = factory.make_name()
-        ip_version = random.choice([4, 6])
-        host_bits = (
-            random.randint(8, 24)
-            if ip_version == 4
-            else random.randint(8, 124)
-        )
-        subnet = factory.make_ip4_or_6_network(
-            version=ip_version, host_bits=host_bits
-        )
-        ip_answer = factory.pick_ip_in_network(subnet)
-        fwd_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}",
-            rectype="A",
-            answer=ip_answer,
-        )
-        expected_rev_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=IPAddress(fwd_update.answer).reverse_dns,
-            rectype="PTR",
-            ttl=fwd_update.ttl,
-            subnet=str(subnet),
-            answer=f"{fwd_update.name}.{domain}",
-        )
-        rev_update = DynamicDNSUpdate.as_reverse_record_update(
-            fwd_update, subnet
-        )
-        self.assertEqual(expected_rev_update.name, rev_update.name)
-        self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
-        self.assertEqual(expected_rev_update.answer, rev_update.answer)
-
-    def test_as_reverse_record_update_for_glue_zone_v4(self):
-        domain = factory.make_name()
-        subnet = IPNetwork("10.1.1.0/25")
-        fwd_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}",
-            rectype="A",
-            answer=str("10.1.1.5"),
-        )
-        expected_rev_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name="5.0-25.1.1.10.in-addr.arpa.",
-            rectype="PTR",
-            ttl=fwd_update.ttl,
-            subnet=str(subnet),
-            answer=f"{fwd_update.name}.{domain}",
-        )
-        rev_update = DynamicDNSUpdate.as_reverse_record_update(
-            fwd_update, subnet
-        )
-        self.assertEqual(expected_rev_update.name, rev_update.name)
-        self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
-        self.assertEqual(expected_rev_update.answer, rev_update.answer)
-
-    def test_as_reverse_record_update_for_glue_zone_v6(self):
-        domain = factory.make_name()
-        subnet = IPNetwork("fc55:4c7c:a5ea:57b0:7cad:a076:a844:8000/126")
-        fwd_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}",
-            rectype="A",
-            answer="fc55:4c7c:a5ea:57b0:7cad:a076:a844:8001",
-        )
-        expected_rev_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name="1.8000-126.0.0.8.4.4.8.a.6.7.0.a.d.a.c.7.0.b.7.5.a.e.5.a.c.7.c.4.5.5.c.f.ip6.arpa.",
-            rectype="PTR",
-            ttl=fwd_update.ttl,
-            subnet=str(subnet),
-            answer=f"{fwd_update.name}.{domain}",
-        )
-        rev_update = DynamicDNSUpdate.as_reverse_record_update(
-            fwd_update, subnet
-        )
-        self.assertEqual(expected_rev_update.name, rev_update.name)
-        self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
-        self.assertEqual(expected_rev_update.answer, rev_update.answer)
-
-    def test_as_reverse_record_update_no_zone_set(self):
-        domain = factory.make_name()
-        subnet = IPNetwork("10.1.1.128/25")
-        fwd_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone=domain,
-            name=f"{factory.make_name()}",
-            rectype="A",
-            answer=str("10.1.1.161"),
-        )
-        expected_rev_update = DynamicDNSUpdate(
-            operation="INSERT",
-            zone="128-25.1.1.10.in-addr.arpa.",
-            name="161.128-25.1.1.10.in-addr.arpa.",
-            rectype="PTR",
-            ttl=fwd_update.ttl,
-            subnet=str(subnet),
-            answer=f"{fwd_update.name}.{domain}",
-        )
-        rev_update = DynamicDNSUpdate.as_reverse_record_update(
-            fwd_update, subnet
-        )
-        self.assertEqual(expected_rev_update.name, rev_update.name)
-        self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
-        self.assertEqual(expected_rev_update.answer, rev_update.answer)
-        self.assertEqual(expected_rev_update.zone, rev_update.zone)

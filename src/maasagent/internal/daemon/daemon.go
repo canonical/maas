@@ -38,7 +38,7 @@ import (
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.opentelemetry.io/otel/trace"
 	tracenoop "go.opentelemetry.io/otel/trace/noop"
 	"golang.org/x/sync/errgroup"
@@ -46,6 +46,7 @@ import (
 	"maas.io/core/src/maasagent/internal/atomicfile"
 	"maas.io/core/src/maasagent/internal/certutil"
 	"maas.io/core/src/maasagent/internal/client"
+	"maas.io/core/src/maasagent/internal/fips"
 	"maas.io/core/src/maasagent/internal/logger"
 	"maas.io/core/src/maasagent/internal/pathutil"
 	"maas.io/core/src/maasagent/internal/token"
@@ -214,6 +215,11 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 	d.logger = logger.New(string(d.cfg.Observability.Logging.Level))
 	d.logger.Info("Starting daemon")
 
+	// Detect and log host FIPS state once at startup. Native FIPS enforcement
+	// is driven by GODEBUG=fips140 set by the snap wrapper; this records the
+	// detected state for operators and audit tooling.
+	fips.IsEnabled()
+
 	if err := d.setupObservability(ctx); err != nil {
 		return fmt.Errorf("configure observability: %w", err)
 	}
@@ -255,6 +261,7 @@ func (d *Daemon) Start(ctx context.Context, args DaemonArgs) error {
 
 		d.dynCfg = &DynamicConfig{
 			Temporal: TemporalConfig{
+				Host:          dynCfg.Temporal.Host,
 				EncryptionKey: dynCfg.RPCSecret,
 			},
 			SystemID:  dynCfg.SystemID,
@@ -490,26 +497,22 @@ func startRackd(ctx context.Context, fs afero.Fs, cfg rackdConfig) error {
 }
 
 // writeRackdConfig persists legacy configuration files (secret, agent_uuid
-// and rackd.conf with specified maas_url parameter) required by rackd.
-// If running as a snap, it sets the snap_mode to "rack".
+// and rackd.conf with specified maas_url parameter) required by rackd, and
+// sets the snap_mode to "rack".
 // TODO: Remove once Python based rackd is obsolete.
 func writeRackdConfig(fs afero.Fs, cfg rackdConfig) error {
-	if common := filepath.Clean(os.Getenv("SNAP_COMMON")); common != "" {
+	snapCommon := os.Getenv("SNAP_COMMON")
+	common := filepath.Clean(snapCommon)
+
+	if snapCommon != "" {
 		if err := atomicfile.WriteFileWithFs(fs, filepath.Join(common, "snap_mode"),
 			[]byte("rack"), 0o640); err != nil {
 			return fmt.Errorf("writing snap_mode: %w", err)
 		}
 	}
 
-	commonDir := "/var/lib/maas"
-	if dir := os.Getenv("SNAP_COMMON"); dir != "" {
-		commonDir = filepath.Join(filepath.Clean(dir), "maas")
-	}
-
-	dataDir := "/etc/maas"
-	if dir := os.Getenv("SNAP_DATA"); dir != "" {
-		dataDir = filepath.Clean(dir)
-	}
+	commonDir := filepath.Join(common, "maas")
+	dataDir := filepath.Clean(os.Getenv("SNAP_DATA"))
 
 	configFiles := []struct {
 		path string
@@ -549,21 +552,13 @@ func writeRackdConfig(fs afero.Fs, cfg rackdConfig) error {
 // from rackd-supervised agents to standalone operation.
 // TODO: Remove once Python based rackd is obsolete.
 func restartRackd(ctx context.Context) error {
-	if snap := os.Getenv("SNAP"); snap != "" {
-		snap = filepath.Clean(snap)
-
-		return runAll(
-			exec.CommandContext(ctx, "snapctl", "stop", "maas.pebble"),
-			//nolint:gosec // G204 previous .Clean and .Join should be enough
-			exec.CommandContext(ctx, filepath.Join(snap, "usr/bin/reconfigure-pebble")),
-			exec.CommandContext(ctx, "snapctl", "start", "maas.pebble"),
-		)
-	}
+	snap := filepath.Clean(os.Getenv("SNAP"))
 
 	return runAll(
-		exec.CommandContext(ctx, "systemctl", "stop", "maas-rackd"),
-		exec.CommandContext(ctx, "systemctl", "enable", "maas-rackd"),
-		exec.CommandContext(ctx, "systemctl", "start", "maas-rackd"),
+		exec.CommandContext(ctx, "snapctl", "stop", "maas.pebble"),
+		//nolint:gosec // G204 previous .Clean and .Join should be enough
+		exec.CommandContext(ctx, filepath.Join(snap, "usr/bin/reconfigure-pebble")),
+		exec.CommandContext(ctx, "snapctl", "start", "maas.pebble"),
 	)
 }
 
@@ -582,6 +577,7 @@ func runAll(cmds ...*exec.Cmd) error {
 // TODO: Remove once Python based rackd is obsolete
 func (d *Daemon) readLegacyConfig(path string) error {
 	type temporalConfig struct {
+		Host          string `yaml:"host"`
 		EncryptionKey string `yaml:"encryption_key"`
 	}
 
@@ -602,6 +598,7 @@ func (d *Daemon) readLegacyConfig(path string) error {
 
 	d.dynCfg = &DynamicConfig{
 		Temporal: TemporalConfig{
+			Host:          cfg.Temporal.Host,
 			EncryptionKey: cfg.Temporal.EncryptionKey,
 		},
 		SystemID: cfg.SystemID,

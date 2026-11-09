@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from pathlib import Path
+import typing
 from unittest.mock import Mock
 
 import pytest
@@ -63,9 +64,19 @@ class AsyncIteratorMock:
             raise StopAsyncIteration
 
 
+def create_services_mock() -> Mock:
+    services_mock = Mock(ServiceCollectionV3)
+    for (
+        service_name,
+        service_class,
+    ) in typing.get_type_hints(ServiceCollectionV3).items():
+        setattr(services_mock, service_name, Mock(spec_set=service_class))
+    return services_mock
+
+
 @pytest.fixture
 def services_mock():
-    yield Mock(ServiceCollectionV3)
+    yield create_services_mock()
 
 
 @pytest.fixture

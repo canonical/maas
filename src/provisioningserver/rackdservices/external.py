@@ -25,6 +25,7 @@ from twisted.internet.defer import (
 )
 from twisted.internet.threads import deferToThread
 
+from maascommon.hardening import is_hardening_enabled
 from provisioningserver.agent import config as agent_config
 from provisioningserver.certificates import get_maas_agent_cert_paths
 from provisioningserver.config import ClusterConfiguration
@@ -44,6 +45,10 @@ from provisioningserver.rpc.region import (
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.syslog import config as syslog_config
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET, MAAS_UUID
+from provisioningserver.utils.network import (
+    resolve_dual_stack_service_bind,
+    resolve_service_bind,
+)
 from provisioningserver.utils.twisted import callOut
 
 log = LegacyLogger()
@@ -247,11 +252,18 @@ class RackProxy(RackOnlyExternalService):
             f"http://{upstream}:{configuration.port}"
             for upstream in configuration.upstream_proxies
         )
+        hardening_active = is_hardening_enabled()
+        http_proxy_bind = resolve_dual_stack_service_bind(
+            ClusterConfiguration.open,
+            "http_proxy_bind",
+            hardening_active=hardening_active,
+        )
         proxy_config.write_config(
             configuration.allowed_cidrs,
             peer_proxies=peers,
             prefer_v4_proxy=configuration.prefer_v4_proxy,
             maas_proxy_port=configuration.port,
+            http_proxy_bind=http_proxy_bind,
         )
 
 
@@ -320,11 +332,17 @@ class RackSyslog(RackOnlyExternalService):
             {"name": name, "ip": ip}
             for name, ip in dict(configuration.forwarders).items()
         ]
+        bind = resolve_service_bind(
+            ClusterConfiguration.open,
+            "syslog_bind",
+            hardening_active=is_hardening_enabled(),
+        )
         syslog_config.write_config(
             False,
             forwarders=forwarders,
             port=configuration.port,
             promtail_port=configuration.promtail_port,
+            bind=bind,
         )
 
 
@@ -347,6 +365,11 @@ class RackAgent(RackOnlyExternalService):
             ]
             debug_enabled = config.debug
             httpproxy_cache_size = config.httpproxy_cache_size
+            temporal_server = (
+                config.temporal_server
+                if config.temporal_server
+                else urlparse(controllers[0]).hostname
+            )
 
         cert_file, key_file, ca_file = ("", "", "")
 
@@ -359,7 +382,7 @@ class RackAgent(RackOnlyExternalService):
             system_id=MAAS_ID.get(),
             controller=controllers[0],
             temporal=agent_config.AgentTemporalConfig(
-                host=urlparse(controllers[0]).hostname,
+                host=temporal_server,
                 port=5271,
                 encryption_key=MAAS_SHARED_SECRET.get(),
             ),

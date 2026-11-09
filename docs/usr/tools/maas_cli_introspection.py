@@ -30,7 +30,6 @@ builtins = {
     "status",
     "migrate",
     "apikey",
-    "configauth",
     "config-tls",
     "config-vault",
     "createadmin",

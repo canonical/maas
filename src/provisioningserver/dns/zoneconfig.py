@@ -12,10 +12,8 @@ from typing import Iterator
 from netaddr import IPAddress, IPNetwork, spanning_cidr
 from netaddr.core import AddrFormatError
 
-from provisioningserver.dns.actions import freeze_thaw_zone, NSUpdateCommand
 from provisioningserver.dns.config import (
     compose_zone_file_config_path,
-    DynamicDNSUpdate,
     render_dns_template,
     report_missing_config_dir,
 )
@@ -109,17 +107,6 @@ def get_details_for_ip_range(ip_range):
     return intersecting_subnets, prefix, rdns_suffix
 
 
-def networks_overlap(net1, net2):
-    return net1 in net2 or net2 in net1
-
-
-def record_for_network(update: DynamicDNSUpdate, network: IPNetwork) -> bool:
-    if update.rectype != "PTR":
-        return True
-
-    return IPAddress(update.ip) in network
-
-
 class DomainInfo:
     """Information about a DNS zone"""
 
@@ -163,9 +150,6 @@ class DomainConfigBase:
         self.target_base = compose_zone_file_config_path("zone")
         self.default_ttl = kwargs.pop("default_ttl", 30)
         self.ns_ttl = kwargs.pop("ns_ttl", self.default_ttl)
-        self.requires_reload = False
-        self._dynamic_updates = kwargs.pop("dynamic_updates", [])
-        self.force_config_write = kwargs.pop("force_config_write", False)
 
     def make_parameters(self):
         """Return a dict of the common template parameters."""
@@ -177,36 +161,6 @@ class DomainConfigBase:
             "ns_ttl": self.ns_ttl,
             "ns_host_name": self.ns_host_name,
         }
-
-    def zone_file_exists(self, zone_info):
-        try:
-            os.stat(zone_info.target_path)
-        except FileNotFoundError:
-            return False
-        else:
-            return True
-
-    def dynamic_update(self, zone_info, network=None):
-        nsupdate = NSUpdateCommand(
-            zone_info.zone_name,
-            [
-                update
-                for update in self._dynamic_updates
-                if update.zone == zone_info.zone_name
-                or (
-                    networks_overlap(IPNetwork(update.subnet), network)
-                    and record_for_network(update, network)
-                    if network
-                    else networks_overlap(
-                        IPNetwork(update.subnet), zone_info.subnetwork
-                    )
-                    and record_for_network(update, zone_info.subnetwork)
-                )
-            ],
-            serial=self.serial,
-            ttl=self.default_ttl,
-        )
-        nsupdate.update()
 
     @classmethod
     def write_zone_file(cls, output_file, *parameters):
@@ -350,40 +304,27 @@ class DNSForwardZoneConfig(DomainConfigBase):
                     if dynamic_range.version == 4
                 )
             )
-            if not self.force_config_write and self.zone_file_exists(zi):
-                self.dynamic_update(zi)
-                PROMETHEUS_METRICS.update(
-                    "maas_dns_dynamic_update_count",
-                    "inc",
-                    labels={"zone": self.domain},
-                )
-            else:
-                self.requires_reload = True
-                needs_freeze_thaw = self.zone_file_exists(zi)
-                with freeze_thaw_zone(needs_freeze_thaw, zone=zi.zone_name):
-                    self.write_zone_file(
-                        zi.target_path,
-                        self.make_parameters(),
-                        {
-                            "mappings": {
-                                "A": self.get_A_mapping(
-                                    self._mapping, self._ipv4_ttl
-                                ),
-                                "AAAA": self.get_AAAA_mapping(
-                                    self._mapping, self._ipv6_ttl
-                                ),
-                            },
-                            "other_mapping": enumerate_rrset_mapping(
-                                self._other_mapping
-                            ),
-                            "generate_directives": {"A": generate_directives},
-                        },
-                    )
-                PROMETHEUS_METRICS.update(
-                    "maas_dns_full_zonefile_write_count",
-                    "inc",
-                    labels={"zone": self.domain},
-                )
+            self.write_zone_file(
+                zi.target_path,
+                self.make_parameters(),
+                {
+                    "mappings": {
+                        "A": self.get_A_mapping(self._mapping, self._ipv4_ttl),
+                        "AAAA": self.get_AAAA_mapping(
+                            self._mapping, self._ipv6_ttl
+                        ),
+                    },
+                    "other_mapping": enumerate_rrset_mapping(
+                        self._other_mapping
+                    ),
+                    "generate_directives": {"A": generate_directives},
+                },
+            )
+            PROMETHEUS_METRICS.update(
+                "maas_dns_full_zonefile_write_count",
+                "inc",
+                labels={"zone": self.domain},
+            )
 
 
 class DNSReverseZoneConfig(DomainConfigBase):
@@ -612,39 +553,28 @@ class DNSReverseZoneConfig(DomainConfigBase):
                     if dynamic_range.version == 4
                 )
             )
-            if not self.force_config_write and self.zone_file_exists(zi):
-                self.dynamic_update(zi, network=zi.subnetwork)
-                PROMETHEUS_METRICS.update(
-                    "maas_dns_dynamic_update_count",
-                    "inc",
-                    labels={"zone": self.domain},
-                )
-            else:
-                self.requires_reload = True
-                needs_freeze_thaw = self.zone_file_exists(zi)
-                with freeze_thaw_zone(needs_freeze_thaw, zone=zi.zone_name):
-                    self.write_zone_file(
-                        zi.target_path,
-                        self.make_parameters(),
-                        {
-                            "mappings": {
-                                "PTR": self.get_PTR_mapping(
-                                    self._mapping, zi.subnetwork
-                                )
-                            },
-                            "other_mapping": [],
-                            "generate_directives": {
-                                "PTR": generate_directives,
-                                "CNAME": self.get_rfc2317_GENERATE_directives(
-                                    zi.subnetwork,
-                                    self._rfc2317_ranges,
-                                    self.domain,
-                                ),
-                            },
-                        },
-                    )
-                PROMETHEUS_METRICS.update(
-                    "maas_dns_full_zonefile_write_count",
-                    "inc",
-                    labels={"zone": self.domain},
-                )
+            self.write_zone_file(
+                zi.target_path,
+                self.make_parameters(),
+                {
+                    "mappings": {
+                        "PTR": self.get_PTR_mapping(
+                            self._mapping, zi.subnetwork
+                        )
+                    },
+                    "other_mapping": [],
+                    "generate_directives": {
+                        "PTR": generate_directives,
+                        "CNAME": self.get_rfc2317_GENERATE_directives(
+                            zi.subnetwork,
+                            self._rfc2317_ranges,
+                            self.domain,
+                        ),
+                    },
+                },
+            )
+            PROMETHEUS_METRICS.update(
+                "maas_dns_full_zonefile_write_count",
+                "inc",
+                labels={"zone": self.domain},
+            )

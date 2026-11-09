@@ -21,10 +21,6 @@ from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.switches import Switch, SwitchWithTargetImage
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.bootresources import BootResourceService
-from maasservicelayer.services.interfaces import InterfacesService
-from maasservicelayer.services.switches import SwitchesService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -115,13 +111,12 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_list_switches(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
         services_mock.switches.list_with_details.return_value = ListResult[
             SwitchWithTargetImage
         ](
@@ -165,13 +160,12 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_list_switches_with_pagination(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
         services_mock.switches.list_with_details.return_value = ListResult[
             SwitchWithTargetImage
         ](
@@ -189,13 +183,12 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_get_switch(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_one_with_details.return_value = (
             SwitchWithTargetImage.from_switch(
                 TEST_SWITCH,
@@ -218,13 +211,12 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_get_switch_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_one_with_details.return_value = None
 
         response = await client.get(f"{self.BASE_PATH}/999")
@@ -232,14 +224,12 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_create_switch(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
-        services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.get_one.return_value = None
         services_mock.switches.get_one_with_details.return_value = (
             SwitchWithTargetImage.from_switch(
@@ -267,14 +257,12 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_create_switch_with_image(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
-        services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.get_one.return_value = None
         services_mock.switches.get_one_with_details.return_value = (
             SwitchWithTargetImage.from_switch(
@@ -297,7 +285,6 @@ class TestSwitchesApi(ApiCommonTests):
                 }
             )
         )
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = TEST_NOS_IMAGE
         services_mock.boot_resources.get_by_id.return_value = TEST_NOS_IMAGE
 
@@ -320,17 +307,14 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_create_switch_with_nonexistent_image(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
-        services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.get_one.return_value = None
 
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = None
 
         new_switch_data = {
@@ -343,17 +327,14 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_create_switch_with_non_onie_image(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
-        services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.get_one.return_value = None
 
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.side_effect = [
             BootResource(
                 id=2,
@@ -376,14 +357,12 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_create_switch_with_assigned_interface(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
-        services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.get_one.return_value = Interface(
             id=1,
             created=datetime.now(timezone.utc),
@@ -403,14 +382,12 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_create_switch_claims_unknown_interface(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
-        services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.get_one.return_value = Interface(
             id=1,
             created=datetime.now(timezone.utc),
@@ -446,14 +423,13 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_update_switch(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         """Test updating an existing switch."""
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_one_with_details.return_value = (
             SwitchWithTargetImage.from_switch(
                 TEST_SWITCH,
@@ -482,7 +458,6 @@ class TestSwitchesApi(ApiCommonTests):
             ),
         ]
 
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = TEST_NOS_IMAGE
 
         update_data = {
@@ -503,13 +478,12 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_update_switch_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_one_with_details.return_value = None
 
         update_data = {
@@ -523,16 +497,14 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_update_switch_image_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_one_with_details.return_value = TEST_SWITCH
 
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_one.return_value = None
 
         update_data = {
@@ -544,13 +516,12 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_delete_switch(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
         services_mock.switches.get_by_id.return_value = TEST_SWITCH
         services_mock.switches.delete_by_id.return_value = None
 
@@ -559,13 +530,12 @@ class TestSwitchesApi(ApiCommonTests):
 
     async def test_delete_switch_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.switches = Mock(SwitchesService)
         services_mock.switches.delete_by_id.side_effect = NotFoundException()
 
         response = await client.delete(f"{self.BASE_PATH}/999")

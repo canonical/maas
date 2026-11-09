@@ -16,27 +16,27 @@ Understanding what MAAS is doing under the hood is critical when troubleshooting
 
 ### Region controller logs
 
-- Snap: `journalctl -u snap.maas.pebble -t maas-regiond`
-
-- Debian: `journalctl -u maas-regiond`
+```
+journalctl -u snap.maas.pebble -t maas-regiond
+```
 
 ### Rack controller logs
 
-- `Snap: journalctl -u snap.maas.pebble -t maas-rackd`
-
-- `Debian: journalctl -u maas-rackd`
+```
+journalctl -u snap.maas.pebble -t maas-rackd
+```
 
 ### Agent logs
 
-- Snap: `journalctl -u snap.maas.pebble -t maas-agent`
-
-- Debian: `journalctl -u maas-agent`
+```
+journalctl -u snap.maas.pebble -t maas-agent
+```
 
 ### API server logs
 
-- Snap: `journalctl -u snap.maas.pebble -t maas-apiserver`
-
-- Debian: `journalctl -u maas-apiserver`
+```
+journalctl -u snap.maas.pebble -t maas-apiserver
+```
 
 ### Filtering logs by machine name
 

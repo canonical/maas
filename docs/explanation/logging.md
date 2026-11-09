@@ -273,12 +273,12 @@ maas $PROFILE maas set-config name="remote_syslog" value="
 
 ## Direct log access
 
-Logs can be found at the following paths for snap installations:
+MAAS logs to the system journal. Filter by syslog identifier to read a specific log:
 
-- /var/snap/maas/common/log/maas.log
-- /var/snap/maas/common/log/regiond.log
-- /var/snap/maas/common/log/rackd.log
-- /var/snap/maas/common/log/rsyslog/$MACHINE_NAME/$RELEVANT_DATE/messages
+- `journalctl -u snap.maas.pebble -t maas-log` for MAAS-tagged records (formerly `maas.log`)
+- `journalctl -u snap.maas.pebble -t maas-regiond` for the region controller
+- `journalctl -u snap.maas.pebble -t maas-rackd` for the rack controller
+- `journalctl -u snap.maas.pebble -t maas-machine MAAS_MACHINE_HOSTNAME=$MACHINE_NAME` for machine syslog
 
 Logs can be extensive and challenging to search. The MAAS web UI does not categorize events by type.
 

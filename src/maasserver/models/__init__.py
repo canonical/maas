@@ -63,8 +63,6 @@ __all__ = [
     "PhysicalInterface",
     "RackController",
     "RAID",
-    "RBACLastSync",
-    "RBACSync",
     "RDNS",
     "RegionController",
     "RegionControllerProcess",
@@ -72,7 +70,6 @@ __all__ = [
     "RegionRackRPCConnection",
     "ReservedIP",
     "ResourcePool",
-    "RootKey",
     "Script",
     "ScriptResult",
     "ScriptSet",
@@ -87,6 +84,7 @@ __all__ = [
     "Subnet",
     "Tag",
     "Template",
+    "TrustedSshHostKey",
     "UnknownInterface",
     "UserProfile",
     "VaultSecret",
@@ -177,7 +175,6 @@ from maasserver.models.packagerepository import PackageRepository
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
-from maasserver.models.rbacsync import RBACLastSync, RBACSync
 from maasserver.models.rdns import RDNS
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (
@@ -186,7 +183,6 @@ from maasserver.models.regioncontrollerprocessendpoint import (
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
 from maasserver.models.reservedip import ReservedIP
 from maasserver.models.resourcepool import ResourcePool
-from maasserver.models.rootkey import RootKey
 from maasserver.models.script import Script
 from maasserver.models.scriptresult import ScriptResult
 from maasserver.models.scriptset import ScriptSet
@@ -200,6 +196,7 @@ from maasserver.models.staticroute import StaticRoute
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.template import Template
+from maasserver.models.trustedsshhostkey import TrustedSshHostKey
 from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
 from maasserver.models.versionedtextfile import VersionedTextFile

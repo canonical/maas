@@ -27,3 +27,7 @@ class OperationType(StrEnum):
     MACHINE_DEPLOY = "machine.deploy"
     MACHINE_BULKDEPLOY = "machine.bulkdeploy"
     SELECTION_SYNC = "selection.sync"
+
+
+class OperationResourceType(StrEnum):
+    MACHINE = "machine"

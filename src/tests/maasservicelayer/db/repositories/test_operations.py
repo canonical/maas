@@ -5,6 +5,7 @@ from collections.abc import Sequence
 import uuid as uuid_module
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
@@ -95,6 +96,28 @@ class TestOperationsClauseFactory:
             == "maasserver_operation.is_bulk = true"
         )
 
+    def test_with_resource_type(self) -> None:
+        clause = OperationsClauseFactory.with_resource_type("machine")
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.resource_type = 'machine'"
+        )
+
+    def test_with_resource_id(self) -> None:
+        clause = OperationsClauseFactory.with_resource_id(42)
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_operation.resource_id = 42"
+        )
+
     def test_with_user_id(self) -> None:
         clause = OperationsClauseFactory.with_user_id(1)
         assert (
@@ -181,6 +204,44 @@ class TestOperationsRepository(RepositoryCommonTests[Operation]):
     async def test_get_by_uuid_not_found(self, repository_instance) -> None:
         instance = await repository_instance.get_by_uuid("non-existent-uuid")
         assert instance is None
+
+    async def test_one_in_progress_operation_per_resource(
+        self, fixture: Fixture
+    ) -> None:
+        await create_test_operation_entry(
+            fixture,
+            uuid="in-progress-1",
+            status=OperationStatus.RUNNING,
+            resource_type="machine",
+            resource_id=42,
+        )
+        with pytest.raises(IntegrityError):
+            await create_test_operation_entry(
+                fixture,
+                uuid="in-progress-2",
+                status=OperationStatus.ACCEPTED,
+                resource_type="machine",
+                resource_id=42,
+            )
+
+    async def test_completed_operations_do_not_block_new_in_progress(
+        self, fixture: Fixture
+    ) -> None:
+        await create_test_operation_entry(
+            fixture,
+            uuid="completed-1",
+            status=OperationStatus.COMPLETED,
+            resource_type="machine",
+            resource_id=42,
+        )
+        second = await create_test_operation_entry(
+            fixture,
+            uuid="accepted-after-completed",
+            status=OperationStatus.ACCEPTED,
+            resource_type="machine",
+            resource_id=42,
+        )
+        assert second.status == OperationStatus.ACCEPTED
 
 
 class TestOperationTasksRepository(RepositoryCommonTests[OperationTask]):

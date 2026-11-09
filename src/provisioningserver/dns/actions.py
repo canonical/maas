@@ -4,23 +4,18 @@
 """Low-level actions to manage the DNS service, like reloading zones."""
 
 from collections.abc import Sequence
-from contextlib import contextmanager, nullcontext
 from subprocess import CalledProcessError, TimeoutExpired
 from time import sleep
 
 from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
-    get_nsupdate_key_path,
     set_up_options_conf,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.shell import ExternalProcessError, run_command
+from provisioningserver.utils.shell import ExternalProcessError
 
 maaslog = get_maas_logger("dns")
-
-
-MAAS_NSUPDATE_HOST = "localhost"
 
 
 def bind_reconfigure():
@@ -43,60 +38,6 @@ def bind_reconfigure():
         raise
 
 
-def bind_freeze_zone(zone=None, timeout=2):
-    cmd = ("freeze",)  # freeze all zones
-    if zone:
-        cmd = ("freeze", zone)  # freeze one zone
-
-    try:
-        execute_rndc_command(cmd, timeout=timeout)
-    except CalledProcessError as e:
-        maaslog.error(
-            f"Freezing {zone if zone else 'all zones'} for update failed"
-        )
-        ExternalProcessError.upgrade(e)
-        raise
-    except TimeoutExpired as e:
-        maaslog.error(
-            f"Freezing {zone if zone else 'all zones'} for update timed out"
-        )
-        ExternalProcessError.upgrade(e)
-        raise
-
-
-def bind_thaw_zone(zone=None, timeout=2):
-    cmd = ("thaw",)  # thaw all zones
-    if zone:
-        cmd = ("thaw", zone)  # thaw one zone
-
-    try:
-        execute_rndc_command(cmd, timeout=timeout)
-    except CalledProcessError as e:
-        maaslog.error(
-            f"Thawing {zone if zone else 'all zones'} for update failed"
-        )
-        ExternalProcessError.upgrade(e)
-        raise
-    except TimeoutExpired as e:
-        maaslog.error(
-            f"Thawing {zone if zone else 'all zones'} for update timed out"
-        )
-        ExternalProcessError.upgrade(e)
-        raise
-
-
-@contextmanager
-def freeze_thaw_zone(required, zone=None, timeout=2):
-    if not required:
-        yield nullcontext()
-    else:
-        bind_freeze_zone(zone=zone, timeout=timeout)
-        try:
-            yield
-        finally:
-            bind_thaw_zone(zone=zone, timeout=timeout)
-
-
 def bind_reload(timeout=2):
     """Ask BIND to reload its configuration and all zone files.  This operation
     is 'best effort' (with logging) as the server may not be running, and there
@@ -115,19 +56,19 @@ def bind_reload(timeout=2):
         return False
 
 
-def bind_reload_with_retries(attempts=10, interval=2, timeout=2):
+def bind_reload_with_retries(max_attempts=10, interval=2, timeout=2):
     """Ask BIND to reload its configuration and all zone files.
 
-    :param attempts: The number of attempts.
+    :param max_attempts: Max number of attempts.
     :param interval: The time in seconds to sleep between each attempt.
+    :return: True if any attempt succeeded, False otherwise.
     """
-    for countdown in range(attempts - 1, -1, -1):
+    for attempt in range(max_attempts):
         if bind_reload(timeout=timeout):
-            break
-        if countdown == 0:
-            break
-        else:
+            return True
+        if attempt < max_attempts - 1:
             sleep(interval)
+    return False
 
 
 def bind_reload_zones(zone_list):
@@ -175,11 +116,35 @@ def bind_write_configuration(
     )
 
 
-def bind_write_options(upstream_dns, dnssec_validation):
+def bind_write_options(
+    upstream_dns,
+    dnssec_validation,
+    dns_bind=(),
+    hardening: bool = False,
+    dns_allow_transfer="",
+    dns_fetches_per_zone=0,
+    dns_fetches_per_server=0,
+):
     """Write BIND options.
 
     :param upstream_dns: A sequence of upstream DNS servers.
     :param dnssec_validation: Whether to enable DNSSec.
+    :param dns_bind: IP address(es) BIND listens on.  May contain a mix of
+        IPv4 and IPv6 addresses; they are classified by family and emitted
+        as ``listen-on { <v4>; ...; 127.0.0.1; };`` and/or
+        ``listen-on-v6 { <v6>; ...; ::1; };`` directives.  Defaults to
+        empty (no listen-on/listen-on-v6 directives).
+    :param hardening: When True, emit version hiding and apply safe defaults
+        for transfer/fetch limits when none are explicitly configured.
+        Defaults to False.
+    :param dns_allow_transfer: ACL value for ``allow-transfer``
+        (e.g. ``"none"``, ``"trusted"``).  Empty string suppresses the
+        directive entirely; when *hardening* is True and this is empty,
+        ``"none"`` is used automatically.
+    :param dns_fetches_per_zone: Value for ``fetches-per-zone``; 0 suppresses
+        the directive (when *hardening* is True and this is 0, 100 is used).
+    :param dns_fetches_per_server: Value for ``fetches-per-server``; same
+        semantics as *dns_fetches_per_zone*.
     """
     # upstream_dns was formerly specified as a single IP address. These
     # assertions are here to prevent code that assumes that slipping through.
@@ -187,7 +152,13 @@ def bind_write_options(upstream_dns, dnssec_validation):
     assert isinstance(upstream_dns, Sequence)
 
     set_up_options_conf(
-        upstream_dns=upstream_dns, dnssec_validation=dnssec_validation
+        upstream_dns=upstream_dns,
+        dnssec_validation=dnssec_validation,
+        dns_bind=dns_bind,
+        hardening=hardening,
+        dns_allow_transfer=dns_allow_transfer,
+        dns_fetches_per_zone=dns_fetches_per_zone,
+        dns_fetches_per_server=dns_fetches_per_server,
     )
 
 
@@ -199,50 +170,3 @@ def bind_write_zones(zones):
     """
     for zone in zones:
         zone.write_config()
-
-
-class NSUpdateCommand:
-    executable = "nsupdate"
-
-    def __init__(self, zone, updates, **kwargs):
-        self._zone = zone
-        self._updates = updates
-        self._serial = kwargs.get("serial")
-        self._zone_ttl = kwargs["ttl"]
-
-    def _format_update(self, update):
-        if update.operation == "DELETE":
-            if update.answer:
-                return f"update delete {update.name} {update.rectype} {update.answer}"
-            return f"update delete {update.name} {update.rectype}"
-        ttl = update.ttl
-        if ttl is None:
-            ttl = self._zone_ttl
-        return (
-            f"update add {update.name} {ttl} {update.rectype} {update.answer}"
-        )
-
-    def update(self, server_address=MAAS_NSUPDATE_HOST):
-        stdin = [f"zone {self._zone}"] + [
-            self._format_update(update) for update in self._updates
-        ]
-        if server_address:
-            stdin = [f"server {server_address}"] + stdin
-
-        if self._serial:
-            stdin.append(
-                f"update add {self._zone} {self._zone_ttl} SOA {self._zone}. nobody.example.com. {self._serial} 600 1800 604800 {self._zone_ttl}"
-            )
-
-        stdin.append("send\n")
-
-        cmd = [self.executable, "-k", get_nsupdate_key_path()]
-        if len(self._updates) > 1:
-            cmd.append("-v")  # use TCP for bulk payloads
-
-        try:
-            run_command(*cmd, stdin="\n".join(stdin).encode("ascii"))
-        except CalledProcessError as exc:
-            maaslog.error(f"dynamic update of DNS failed: {exc}")
-            ExternalProcessError.upgrade(exc)
-            raise

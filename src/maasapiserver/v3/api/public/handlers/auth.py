@@ -15,7 +15,6 @@ from maasapiserver.common.api.models.responses.errors import (
     NotFoundBodyResponse,
     UnauthorizedBodyResponse,
 )
-from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.api import cookie_manager, services
 from maasapiserver.v3.api.public.models.requests.external_auth import (
     OAuthProviderRequest,
@@ -38,7 +37,6 @@ from maasapiserver.v3.auth.cookie_manager import (
     EncryptedCookieManager,
     MAASDjangoCookie,
     MAASLocalCookie,
-    MAASMacaroonCookie,
     MAASOAuth2Cookie,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -86,15 +84,9 @@ class AuthHandler(Handler):
     ) -> PreLoginInfoResponse:
         is_authenticated = authenticated_user is not None
         users_exist = await services.users.has_users()
-        legacy_external_auth_config = (
-            await services.external_auth.get_external_auth()
-        )
         return PreLoginInfoResponse(
             is_authenticated=is_authenticated,
             no_users=not users_exist,
-            external_legacy_login_url=legacy_external_auth_config.url
-            if legacy_external_auth_config
-            else None,
         )
 
     @handler(
@@ -116,15 +108,6 @@ class AuthHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
         form_data: OAuth2PasswordRequestForm = Depends(),  # noqa: B008
     ) -> TokenResponse:
-        if (
-            external_auth_info
-            := await request.state.services.external_auth.get_external_auth()
-        ):
-            await request.state.services.external_auth.raise_discharge_required_exception(
-                external_auth_info,
-                extract_absolute_uri(request),
-                request.headers,
-            )
         tokens = await services.auth.login(
             form_data.username, form_data.password
         )
@@ -598,6 +581,5 @@ class AuthHandler(Handler):
             MAASDjangoCookie.CSRF_TOKEN,
             MAASLocalCookie.JWT_TOKEN,
             MAASLocalCookie.REFRESH_TOKEN,
-            MAASMacaroonCookie.MACAROON_MAAS,
         ):
             cookie_manager.clear_cookie(key=key)

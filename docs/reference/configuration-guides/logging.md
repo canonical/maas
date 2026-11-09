@@ -13,7 +13,7 @@ You can also account for user activities with audit logs.
 
 ## Firewall logs
 
-Ubuntu's UncomplicatedFirewall ([UFW](https://wiki.ubuntu.com/UncomplicatedFirewall)) serves as a front-end for [iptables](https://help.ubuntu.com/community/IptablesHowTo). To secure your MAAS setup, regularly review logs located in `/var/log/ufw*`.
+Ubuntu's UncomplicatedFirewall ([UFW](https://wiki.ubuntu.com/UncomplicatedFirewall)) serves as a front-end for [iptables](https://wiki.ubuntu.com/IptablesHowTo). To secure your MAAS setup, regularly review logs located in `/var/log/ufw*`.
 
 Find red flags in UFW and iptables logs by looking for key patterns:
 
@@ -48,10 +48,7 @@ Use a log analysis tool, or inspect raw logs stored in paths like `/var/log/http
 
 ## MAAS logs
 
-| Pkg Fmt  | Look for failed logins in...           |
-|----------|-----------------------------------------|
-| Snap     | `/var/snap/maas/common/log/regiond.log` |
-| Packages | `/var/log/maas/regiond.log`             |
+Look for failed logins in the region controller log in the system journal (`journalctl -u snap.maas.pebble -t maas-regiond`).
 
 For example, a legitimate login request might resemble:
 
@@ -63,13 +60,13 @@ For example, a legitimate login request might resemble:
 
 ### Systemd log commands
 
-|**Component**|**Snap Command**|**Debian Command**|
-| --- | --- | --- |
-|**Regiond**|`journalctl -u snap.maas.pebble -t maas-regiond`|`journalctl -u maas-regiond`|
-|**Rackd**|`journalctl -u snap.maas.pebble -t maas-rackd`|`journalctl -u maas-rackd`|
-|**API Server**|`journalctl -u snap.maas.pebble -t maas-apiserver`|`journalctl -u maas-apiserver`|
-|**Proxy (squid)**|`journalctl -u snap.maas.pebble -t maas-proxy`|`journalctl -u maas-proxy`|
-|**NTP (chrony)**|`journalctl -u snap.maas.pebble -t chronyd`|`journalctl -u chrony`|
+|**Component**|**Command**|
+| --- | --- |
+|**Regiond**|`journalctl -u snap.maas.pebble -t maas-regiond`|
+|**Rackd**|`journalctl -u snap.maas.pebble -t maas-rackd`|
+|**API Server**|`journalctl -u snap.maas.pebble -t maas-apiserver`|
+|**Proxy (squid)**|`journalctl -u snap.maas.pebble -t maas-proxy`|
+|**NTP (chrony)**|`journalctl -u snap.maas.pebble -t chronyd`|
 
 ## Audit logs
 

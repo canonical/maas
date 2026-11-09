@@ -112,6 +112,20 @@ class TestHMCZPowerDriver(MAASTestCase):
             PowerActionError, self.hmcz._get_partition, self.make_context()
         )
 
+    def test_get_partition_logs_off_session_when_not_found(self):
+        cpc = self.fake_session.hmc.cpcs.add(
+            {
+                "name": factory.make_name("cpc"),
+                "dpm-enabled": True,
+            }
+        )
+        cpc.partitions.add({"name": factory.make_name("power_partition_name")})
+
+        self.assertRaises(
+            PowerActionError, self.hmcz._get_partition, self.make_context()
+        )
+        self.assertFalse(self.fake_session.is_logon())
+
     # zhmcclient_mock doesn't currently support async so MagicMock
     # must be used for power on/off
 
@@ -123,6 +137,22 @@ class TestHMCZPowerDriver(MAASTestCase):
         mock_get_partition.return_value.start.assert_called_once_with(
             wait_for_completion=False
         )
+
+    @inlineCallbacks
+    def test_power_on_logs_off_session(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        partition = mock_get_partition.return_value
+        yield self.hmcz.power_on(None, self.make_context())
+        partition.manager.session.logoff.assert_called_once()
+
+    @inlineCallbacks
+    def test_power_on_succeeds_even_if_session_logoff_fails(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        partition = mock_get_partition.return_value
+        partition.manager.session.logoff.side_effect = ConnectionError()
+        # Should not raise, despite logoff() failing.
+        yield self.hmcz.power_on(None, self.make_context())
+        partition.start.assert_called_once_with(wait_for_completion=False)
 
     @inlineCallbacks
     def test_power_on_stops_in_a_paused_state(self):
@@ -179,6 +209,13 @@ class TestHMCZPowerDriver(MAASTestCase):
         mock_get_partition.return_value.stop.assert_called_once_with(
             wait_for_completion=False
         )
+
+    @inlineCallbacks
+    def test_power_off_logs_off_session(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        partition = mock_get_partition.return_value
+        yield self.hmcz.power_off(None, self.make_context())
+        partition.manager.session.logoff.assert_called_once()
 
     @inlineCallbacks
     def test_power_off_waits_for_starting_state(self):
@@ -244,6 +281,40 @@ class TestHMCZPowerDriver(MAASTestCase):
             None, self.make_context(power_partition_name)
         )
 
+        self.assertEqual("on", status)
+
+    @inlineCallbacks
+    def test_power_query_logs_off_session(self):
+        power_partition_name = factory.make_name("power_partition_name")
+        cpc = self.fake_session.hmc.cpcs.add(
+            {
+                "name": factory.make_name("cpc"),
+                "dpm-enabled": True,
+            }
+        )
+        cpc.partitions.add(
+            {
+                "name": power_partition_name,
+                "status": "active",
+            }
+        )
+
+        yield self.hmcz.power_query(
+            None, self.make_context(power_partition_name)
+        )
+
+        self.assertFalse(self.fake_session.is_logon())
+
+    @inlineCallbacks
+    def test_power_query_result_not_masked_by_session_logoff_failure(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        partition = mock_get_partition.return_value
+        partition.get_property.return_value = "active"
+        partition.manager.session.logoff.side_effect = ConnectionError()
+
+        status = yield self.hmcz.power_query(None, self.make_context())
+
+        # The result is still returned, despite logoff() failing.
         self.assertEqual("on", status)
 
     @inlineCallbacks
@@ -424,6 +495,32 @@ class TestHMCZPowerDriver(MAASTestCase):
         self.assertEqual(nic.uri, partition.properties["boot-network-device"])
 
     @inlineCallbacks
+    def test_set_boot_order_logs_off_session(self):
+        power_partition_name = factory.make_name("power_partition_name")
+        mac_address = factory.make_mac_address()
+        cpc = self.fake_session.hmc.cpcs.add(
+            {
+                "name": factory.make_name("cpc"),
+                "dpm-enabled": True,
+            }
+        )
+        partition = cpc.partitions.add(
+            {
+                "name": power_partition_name,
+                "status": "terminated",
+            }
+        )
+        partition.nics.add({"mac-address": mac_address})
+
+        yield self.hmcz.set_boot_order(
+            None,
+            self.make_context(power_partition_name),
+            [{"mac_address": mac_address}],
+        )
+
+        self.assertFalse(self.fake_session.is_logon())
+
+    @inlineCallbacks
     def test_set_boot_order_storage_volume(self):
         # zhmcclient_mock doesn't support storage groups.
         serial = "PHAX852069487P8CGN "
@@ -597,6 +694,17 @@ class TestRetryOnBusy(MAASTestCase):
             }
         )
 
+    def make_not_valid_state_error(self):
+        return HTTPError(
+            {
+                "http-status": 409,
+                "reason": 1,
+                "message": "partition is not in a valid state",
+                "request-method": "POST",
+                "request-uri": "/api/partitions/abc",
+            }
+        )
+
     def test_returns_result_without_retrying_on_success(self):
         mock_sleep = self.patch(hmcz_module.time, "sleep")
         func = Mock(return_value="ok")
@@ -628,6 +736,43 @@ class TestRetryOnBusy(MAASTestCase):
         self.assertEqual(mock_sleep.call_count, 2)
         mock_sleep.assert_called_with(5)
 
+    def test_retries_while_409_1_not_valid_state_then_succeeds(self):
+        mock_sleep = self.patch(hmcz_module.time, "sleep")
+        func = Mock(
+            side_effect=[
+                self.make_not_valid_state_error(),
+                self.make_not_valid_state_error(),
+                "ok",
+            ]
+        )
+
+        result = hmcz_module._retry_on_busy(
+            func, op_desc="op", system_id="sys", retry_delay=5
+        )
+
+        self.assertEqual(result, "ok")
+        self.assertEqual(func.call_count, 3)
+        self.assertEqual(mock_sleep.call_count, 2)
+        mock_sleep.assert_called_with(5)
+
+    def test_retries_across_mixed_409_1_and_409_2_then_succeeds(self):
+        mock_sleep = self.patch(hmcz_module.time, "sleep")
+        func = Mock(
+            side_effect=[
+                self.make_busy_error(),
+                self.make_not_valid_state_error(),
+                "ok",
+            ]
+        )
+
+        result = hmcz_module._retry_on_busy(
+            func, op_desc="op", system_id="sys"
+        )
+
+        self.assertEqual(result, "ok")
+        self.assertEqual(func.call_count, 3)
+        self.assertEqual(mock_sleep.call_count, 2)
+
     def test_reraises_other_http_errors_immediately(self):
         mock_sleep = self.patch(hmcz_module.time, "sleep")
         other = HTTPError({"http-status": 500, "reason": 1})
@@ -645,7 +790,7 @@ class TestRetryOnBusy(MAASTestCase):
 
     def test_reraises_409_with_other_reason_immediately(self):
         mock_sleep = self.patch(hmcz_module.time, "sleep")
-        other = HTTPError({"http-status": 409, "reason": 1})
+        other = HTTPError({"http-status": 409, "reason": 3})
         func = Mock(side_effect=other)
 
         self.assertRaises(
@@ -661,6 +806,22 @@ class TestRetryOnBusy(MAASTestCase):
     def test_gives_up_and_reraises_after_max_attempts(self):
         mock_sleep = self.patch(hmcz_module.time, "sleep")
         func = Mock(side_effect=self.make_busy_error())
+
+        self.assertRaises(
+            HTTPError,
+            hmcz_module._retry_on_busy,
+            func,
+            op_desc="op",
+            system_id="sys",
+            max_attempts=3,
+        )
+        self.assertEqual(func.call_count, 3)
+        # No sleep after the final (failing) attempt.
+        self.assertEqual(mock_sleep.call_count, 2)
+
+    def test_gives_up_and_reraises_after_max_attempts_409_1(self):
+        mock_sleep = self.patch(hmcz_module.time, "sleep")
+        func = Mock(side_effect=self.make_not_valid_state_error())
 
         self.assertRaises(
             HTTPError,
@@ -859,3 +1020,16 @@ class TestProbeHMCZAndEnlist(MAASTestCase):
             domain=self.domain,
         )
         self.assertRPC(rpc, "commissioning")
+
+    @inlineCallbacks
+    def test_probe_hmcz_and_enlist_logs_off_session(self):
+        yield self.create_fake_rpc_service()
+        yield hmcz_module.probe_hmcz_and_enlist(
+            self.user,
+            self.hostname,
+            self.username,
+            self.password,
+            accept_all=False,
+            domain=self.domain,
+        )
+        self.assertFalse(self.fake_session.is_logon())

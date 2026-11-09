@@ -11,6 +11,14 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
 )
 from maasservicelayer.models.agents import Agent
+from maasservicelayer.models.dhcp import (
+    DHCPDataForAgent,
+    InterfaceData,
+    IPRangeData,
+    KeaHAConfig,
+    SubnetData,
+    VlanData,
+)
 
 
 class AgentResponse(HalResponse[BaseHal]):
@@ -54,6 +62,34 @@ class AgentConfigResponse(HalResponse[BaseHal]):
             rpc_secret=rpc_secret,
             system_id=system_id,
             temporal=temporal,
+            hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
+                self=BaseHref(href=f"{self_base_hyperlink.rstrip('/')}")
+            ),
+        )
+
+
+class AgentDHCPDataResponse(HalResponse[BaseHal]):
+    kind: str = Field(default="AgentDHCPData")
+    vlans: list[VlanData]
+    subnets: list[SubnetData]
+    ipranges: list[IPRangeData]
+    interfaces: list[InterfaceData]
+    default_dns_servers: list[str]
+    ntp_servers: list[str]
+    ha_data: list[KeaHAConfig]
+
+    @classmethod
+    def from_model(
+        cls, dhcp_data: DHCPDataForAgent, self_base_hyperlink: str
+    ) -> Self:
+        return cls(
+            vlans=dhcp_data.vlans,
+            subnets=dhcp_data.subnets,
+            ipranges=dhcp_data.ipranges,
+            interfaces=dhcp_data.interfaces,
+            default_dns_servers=dhcp_data.default_dns_servers,
+            ntp_servers=dhcp_data.ntp_servers,
+            ha_data=dhcp_data.ha_data,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(href=f"{self_base_hyperlink.rstrip('/')}")
             ),

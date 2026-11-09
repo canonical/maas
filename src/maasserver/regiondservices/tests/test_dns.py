@@ -90,7 +90,7 @@ class TestDNSReloadService(MAASTransactionServerTestCase):
         service = dns.DNSReloadService(Clock())
         dns_update_all_zones_mock = self.patch(dns, "dns_update_all_zones")
         yield service._tryUpdate()
-        dns_update_all_zones_mock.assert_called_once_with(requires_reload=True)
+        dns_update_all_zones_mock.assert_called_once_with()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -106,9 +106,7 @@ class TestDNSReloadService(MAASTransactionServerTestCase):
 
         dns_update_all_zones_mock = self.patch(dns, "dns_update_all_zones")
         yield service._tryUpdate()
-        dns_update_all_zones_mock.assert_called_once_with(
-            requires_reload=True, serial="0000000005"
-        )
+        dns_update_all_zones_mock.assert_called_once_with(serial="0000000005")
 
     @wait_for_reactor
     @inlineCallbacks
@@ -141,4 +139,4 @@ class TestDNSReloadService(MAASTransactionServerTestCase):
 
         dns_update_all_zones_mock = self.patch(dns, "dns_update_all_zones")
         yield service._tryUpdate()
-        dns_update_all_zones_mock.assert_called_once_with(requires_reload=True)
+        dns_update_all_zones_mock.assert_called_once_with()

@@ -7,13 +7,10 @@ import inspect
 import logging
 from unittest.mock import patch
 
-from django.db import connection
 import fixtures
 
 from maasserver import openfga as openfga_module
 from maasserver.models import Config
-from maasserver.rbac import FakeRBACClient, rbac
-from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 
 
@@ -80,59 +77,6 @@ class LogSQL(fixtures.Fixture):
         if self.include_stacktrace:
             log.removeFilter(self._addedFilter)
         self.removeHandler(self._setHandler)
-
-
-class RBACClearFixture(fixtures.Fixture):
-    """Fixture that clears the RBAC thread-local cache between tests."""
-
-    def _setUp(self):
-        self.addCleanup(rbac.clear)
-
-
-class RBACForceOffFixture(fixtures.Fixture):
-    """Fixture that ensures RBAC is off and no query is performed.
-
-    This is great for tests that count queries and ensure that one is
-    not caused.
-    """
-
-    def _setUp(self):
-        orig_get_url = rbac._get_rbac_url
-        rbac._get_rbac_url = lambda: None
-
-        def cleanup():
-            rbac._get_rbac_url = orig_get_url
-
-        self.addCleanup(cleanup)
-
-
-class RBACEnabled(fixtures.Fixture):
-    """Fixture that enables RBAC."""
-
-    def _setUp(self):
-        # Must be called inside a transaction.
-        assert connection.in_atomic_block
-
-        SecretManager().set_composite_secret(
-            "external-auth",
-            {
-                "url": "https://auth.example.com",
-                "user": "user@candid",
-                "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
-                "rbac-url": "http://rbac.example.com",
-            },
-        )
-
-        client = FakeRBACClient()
-        rbac._store.client = client
-        rbac._store.cleared = False
-        self.store = client.store
-
-        def cleanup():
-            rbac._store.client = None
-            rbac.clear()
-
-        self.addCleanup(cleanup)
 
 
 class OpenFGAMock(fixtures.Fixture):

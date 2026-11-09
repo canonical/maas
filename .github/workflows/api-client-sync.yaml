@@ -133,18 +133,17 @@ jobs:
             --jq '[.[] | select(.headRefName | startswith("chore/update-api-client-"))] | first | .headRefName')
 
           if [[ -n "$existing_branch" ]]; then
-            echo "Found existing PR branch: $existing_branch — pushing to it."
+            echo "Found existing PR branch: $existing_branch — force pushing to it."
             BRANCH="$existing_branch"
             git fetch origin "$BRANCH"
-            git checkout -b "$BRANCH" "origin/$BRANCH"
             echo "is_new_pr=false" >> "$GITHUB_OUTPUT"
           else
             BRANCH="chore/update-api-client-${{ github.sha }}"
             echo "No existing PR found — creating new branch: $BRANCH"
-            git checkout -b "$BRANCH"
             echo "is_new_pr=true" >> "$GITHUB_OUTPUT"
           fi
 
+          git checkout -b "$BRANCH"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
           if git diff --cached --quiet; then
@@ -157,7 +156,9 @@ jobs:
           git commit -m "chore(api): regenerated API client
 
           Triggered by: ${{ github.repository }}@${{ github.sha }}"
-          git push origin "$BRANCH"
+          # The client is regenerated from scratch each run, so replace the previous
+          # commit if there was an existing branch.
+          git push --force-with-lease origin "$BRANCH"
 
       - name: Open PR on MAAS UI repo
         if: steps.push-branch.outputs.has_changes == 'true' && steps.push-branch.outputs.is_new_pr == 'true'

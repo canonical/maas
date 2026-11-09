@@ -6,6 +6,9 @@
 # Install the asyncio reactor with uvloop. This must be done before any other
 # twisted code is imported.
 import asyncio
+import logging
+import os
+from pathlib import Path
 import sys
 
 from twisted.internet import asyncioreactor
@@ -92,4 +95,25 @@ def runService(service):
 
 def run():
     """Run the maas-rackd service."""
+    # Clean up any stale DHCP notification socket from a previous run.
+    # The socket may be left behind if rackd was killed without a clean
+    # shutdown.
+    logger = logging.getLogger("provisioningserver.server")
+    try:
+        sock_path = (
+            Path(os.getenv("MAAS_DATA", "/var/lib/maas")) / "dhcpd.sock"
+        )
+        sock_path.unlink(missing_ok=True)
+    except Exception:
+        logger.warning("Failed to clean up stale dhcpd.sock", exc_info=True)
+
+    # Set the hardening mode flag so services read the correct posture.
+    from maascommon.hardening import configure_hardening
+    from provisioningserver.config import ClusterConfiguration
+
+    try:
+        with ClusterConfiguration.open() as config:
+            configure_hardening(config.hardening_enabled)
+    except Exception:
+        configure_hardening("auto")
     runService("maas-rackd")

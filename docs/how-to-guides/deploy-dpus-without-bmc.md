@@ -89,7 +89,7 @@ maas admin boot-resources create name="custom/ubuntu-bluefield" \
 
 Now when everything is set up, it's time to enlist both the host and DPU into MAAS. We assume here that the host is connected to a VLAN where MAAS is providing DHCP.
 
-Now, use your favourite IPMI tool to set PXE for the next boot and turn on the host. For example:
+Now, use your favorite IPMI tool to set PXE for the next boot and turn on the host. For example:
 
 ```shell
 ipmitool -H $bmc_ip -I lanplus -U $bmc_user -P $bmc_pass chassis bootdev pxe

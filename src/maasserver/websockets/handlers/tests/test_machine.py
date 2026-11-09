@@ -66,8 +66,6 @@ from maasserver.models.scriptset import get_status_from_qs
 import maasserver.node_action as node_action_module
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
-from maasserver.rbac import FakeRBACClient, rbac
-from maasserver.secrets import SecretManager
 from maasserver.storage_layouts import (
     get_applied_storage_layout_for_node,
     MIN_BOOT_PARTITION_SIZE,
@@ -77,7 +75,6 @@ from maasserver.storage_layouts import (
 )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -779,7 +776,7 @@ class TestMachineHandler(MAASServerTestCase):
         queries, _ = count_queries(handler.get, {"system_id": node.system_id})
         self.assertEqual(
             queries,
-            60,
+            59,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -2197,8 +2194,7 @@ class TestMachineHandler(MAASServerTestCase):
         count2, _ = count_queries(
             handler.get, {"system_id": machine1.system_id}
         )
-        # there's a 1-query difference between counts because of caching
-        self.assertEqual(count1, count2 + 1)
+        self.assertEqual(count1, count2)
 
     def test_get_numa_nodes_for_machine(self):
         user = factory.make_User()
@@ -2344,21 +2340,6 @@ class TestMachineHandler(MAASServerTestCase):
     def test_get_object_raises_error_if_owner_by_another_user(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
-        handler = MachineHandler(user, {}, None)
-        self.assertRaises(
-            HandlerDoesNotExistError,
-            handler.get_object,
-            {"system_id": node.system_id},
-        )
-
-    def test_get_object_returns_error_if_not_allowed(self):
-        SecretManager().set_composite_secret(
-            "external-auth", {"rbac-url": "http://rbac.example.com"}
-        )
-        rbac._store.client = FakeRBACClient()
-        rbac._store.cleared = False  # Prevent re-creation of the client.
-        user = factory.make_User()
-        node = factory.make_Node()
         handler = MachineHandler(user, {}, None)
         self.assertRaises(
             HandlerDoesNotExistError,
@@ -5509,8 +5490,6 @@ class TestMachineHandlerSuppressScriptResult(MAASServerTestCase):
             self.assertEqual(actual, expected)
 
     def test_get_latest_failed_testing_script_results_num_queries(self):
-        # Prevent RBAC from making a query.
-        self.useFixture(RBACForceOffFixture())
         owner = factory.make_User()
         handler = MachineHandler(owner, {}, None)
         nodes = []

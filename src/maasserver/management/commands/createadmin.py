@@ -1,4 +1,4 @@
-# Copyright 2012-2025 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django command: create an administrator account."""
@@ -33,6 +33,10 @@ class AlreadyExistingUser(CommandError):
 
 class SSHKeysError(CommandError):
     """Error during SSH keys import."""
+
+
+class WeakPassword(CommandError):
+    """Password does not meet the hardening complexity policy."""
 
 
 def read_password(prompt: str):
@@ -140,9 +144,13 @@ class Command(BaseCommandWithConnection):
     def handle(self, *args, **options):
         from django.contrib.auth.models import User
 
-        from maasserver.macaroon_auth import external_auth_enabled
+        from maascommon.hardening import configure_hardening
+        from maascommon.password_policy import enforce_password_complexity
         from maasserver.models import SSHKey
+        from maasserver.models.config import read_hardening_enabled_from_db
         from maasserver.models.sshkey import ImportSSHKeysError
+
+        configure_hardening(read_hardening_enabled_from_db())
 
         username = options.get("username")
         password = options.get("password")
@@ -155,12 +163,23 @@ class Command(BaseCommandWithConnection):
             prompt_ssh_import = True
         if username is None:
             username = prompt_for_username()
-        if password is None and not external_auth_enabled():
+        if password is None:
             password = prompt_for_password()
         if email is None:
             email = prompt_for_email()
         if prompt_ssh_import:
             ssh_import = prompt_for_ssh_import()
+
+        # Reject weak passwords before hashing. When hardening is active the
+        # password is fed to PBKDF2 as the HMAC key, and OpenSSL's FIPS provider
+        # rejects keys shorter than 14 bytes with "[Provider routines] invalid
+        # key length"; enforce the policy here so the operator gets a clear
+        # message instead of a raw crypto traceback.
+        if password is not None:
+            try:
+                enforce_password_complexity(password)
+            except ValueError as error:
+                raise WeakPassword(str(error))  # noqa: B904
 
         with transaction.atomic():
             try:

@@ -36,12 +36,7 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.staticroutes import StaticRoute
 from maasservicelayer.models.subnets import Subnet
-from maasservicelayer.services import (
-    ReservedIPsService,
-    ServiceCollectionV3,
-    StaticRoutesService,
-)
-from maasservicelayer.services.subnets import SubnetsService
+from maasservicelayer.services import ReservedIPsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -118,13 +113,12 @@ class TestStaticRoutesApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.list.return_value = ListResult[StaticRoute](
             items=[TEST_STATICROUTE], total=1
         )
@@ -150,13 +144,12 @@ class TestStaticRoutesApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.list.return_value = ListResult[StaticRoute](
             items=[TEST_STATICROUTE], total=2
         )
@@ -182,13 +175,12 @@ class TestStaticRoutesApi(ApiCommonTests):
 
     async def test_get_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.get_one.return_value = TEST_STATICROUTE
         response = await client.get(f"{self.BASE_PATH}/{TEST_STATICROUTE.id}")
         assert response.status_code == 200
@@ -218,13 +210,12 @@ class TestStaticRoutesApi(ApiCommonTests):
 
     async def test_get_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.get_one.return_value = None
         response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
@@ -236,13 +227,12 @@ class TestStaticRoutesApi(ApiCommonTests):
 
     async def test_get_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.get_one.return_value = (
             RequestValidationError(errors=[])
         )
@@ -256,15 +246,13 @@ class TestStaticRoutesApi(ApiCommonTests):
 
     async def test_post_201(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.create.return_value = TEST_STATICROUTE
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.side_effect = [
             TEST_SOURCE_SUBNET,
             TEST_DESTINATION_SUBNET,
@@ -299,15 +287,13 @@ class TestStaticRoutesApi(ApiCommonTests):
 
     async def test_post_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.create.return_value = TEST_STATICROUTE
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.return_value = None
         staticroute_request = StaticRouteRequest(
             gateway_ip=TEST_STATICROUTE.gateway_ip,
@@ -321,7 +307,7 @@ class TestStaticRoutesApi(ApiCommonTests):
 
     async def test_put_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -329,12 +315,10 @@ class TestStaticRoutesApi(ApiCommonTests):
         )
         updated_staticroute = TEST_STATICROUTE
         updated_staticroute.gateway_ip = IPv4Address("10.0.0.2")
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_one.side_effect = [
             TEST_SOURCE_SUBNET,
             TEST_DESTINATION_SUBNET,
         ]
-        services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.update_one.return_value = (
             updated_staticroute
         )
@@ -373,7 +357,7 @@ class TestStaticRoutesApi(ApiCommonTests):
 
     async def test_put_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -394,13 +378,12 @@ class TestStaticRoutesApi(ApiCommonTests):
 
     async def test_delete(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.get_one.return_value = TEST_STATICROUTE
         services_mock.staticroutes.delete_one.return_value = TEST_STATICROUTE
         response = await client.delete(
@@ -426,13 +409,12 @@ class TestStaticRoutesApi(ApiCommonTests):
 
     async def test_delete_with_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.staticroutes = Mock(StaticRoutesService)
         services_mock.staticroutes.get_one.return_value = TEST_STATICROUTE
         services_mock.staticroutes.delete_by_id.side_effect = PreconditionFailedException(
             details=[

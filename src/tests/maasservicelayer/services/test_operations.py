@@ -11,6 +11,7 @@ from temporalio.common import (
 )
 
 from maascommon.enums.operations import (
+    OperationResourceType,
     OperationStatus,
     OperationTaskStatus,
     OperationType,
@@ -37,10 +38,13 @@ from maasservicelayer.models.base import (
     ResourceBuilder,
 )
 from maasservicelayer.models.operations import Operation, OperationTask
+from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.base import BaseService
 from maasservicelayer.services.operations import OperationsService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
+from tests.fixtures.factories.operations import create_test_operation_entry
+from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.services.base import ServiceCommonTests
 
 ERROR_MESSAGE = "operation failed"
@@ -397,6 +401,33 @@ class TestOperationsService:
             )
         )
 
+    async def test_has_active_operation_for_resource(self) -> None:
+        repository = Mock(OperationsRepository)
+        repository.exists.return_value = True
+        service = self._service(repository)
+
+        assert await service.has_active_operation_for_resource(
+            resource_type=OperationResourceType.MACHINE, resource_id=1
+        )
+        query = repository.exists.call_args.kwargs["query"]
+        assert query == QuerySpec(
+            where=OperationsClauseFactory.and_clauses(
+                [
+                    OperationsClauseFactory.with_resource_type(
+                        OperationResourceType.MACHINE
+                    ),
+                    OperationsClauseFactory.with_resource_id(1),
+                    OperationsClauseFactory.with_statuses(
+                        [
+                            OperationStatus.ACCEPTED,
+                            OperationStatus.RUNNING,
+                            OperationStatus.CANCELLING,
+                        ]
+                    ),
+                ]
+            )
+        )
+
     async def test_update_status_running_sets_started(self) -> None:
         repository = Mock(OperationsRepository)
         repository.get_one.return_value = TEST_OPERATION
@@ -702,4 +733,54 @@ class TestOperationsService:
 
         operation_tasks_repo.list_by_operation_uuid.assert_awaited_once_with(
             operation_uuid="op-uuid", page=1, size=10
+        )
+
+
+@pytest.mark.asyncio
+class TestIntegrationOperationsService:
+    @pytest.mark.parametrize(
+        "status, is_active",
+        [
+            (OperationStatus.ACCEPTED, True),
+            (OperationStatus.RUNNING, True),
+            (OperationStatus.CANCELLING, True),
+            (OperationStatus.COMPLETED, False),
+            (OperationStatus.COMPLETED_WITH_ERRORS, False),
+            (OperationStatus.FAILED, False),
+            (OperationStatus.CANCELLED, False),
+        ],
+    )
+    async def test_has_active_operation_for_resource(
+        self,
+        fixture: Fixture,
+        services: ServiceCollectionV3,
+        status: OperationStatus,
+        is_active: bool,
+    ) -> None:
+        await create_test_operation_entry(
+            fixture,
+            status=status,
+            resource_type=OperationResourceType.MACHINE,
+            resource_id=1,
+        )
+
+        assert (
+            await services.operations.has_active_operation_for_resource(
+                resource_type=OperationResourceType.MACHINE, resource_id=1
+            )
+            is is_active
+        )
+
+    async def test_has_active_operation_ignores_other_resources(
+        self, fixture: Fixture, services: ServiceCollectionV3
+    ) -> None:
+        await create_test_operation_entry(
+            fixture,
+            status=OperationStatus.RUNNING,
+            resource_type=OperationResourceType.MACHINE,
+            resource_id=2,
+        )
+
+        assert not await services.operations.has_active_operation_for_resource(
+            resource_type=OperationResourceType.MACHINE, resource_id=1
         )

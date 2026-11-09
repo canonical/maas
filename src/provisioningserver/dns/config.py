@@ -5,10 +5,8 @@
 
 from collections import namedtuple
 from contextlib import contextmanager
-from dataclasses import dataclass
 from datetime import datetime
 import errno
-from functools import cached_property
 import grp
 import os
 import os.path
@@ -16,12 +14,11 @@ from pathlib import Path
 import re
 import sys
 
-from netaddr import AddrFormatError, IPAddress
-
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import load_template, locate_config
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.isc import read_isc_file
+from provisioningserver.utils.network import partition_by_family
 from provisioningserver.utils.shell import call_and_check
 
 maaslog = get_maas_logger("dns")
@@ -30,86 +27,8 @@ MAAS_NAMED_CONF_NAME = "named.conf.maas"
 MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME = "named.conf.options.inside.maas"
 MAAS_NAMED_RNDC_CONF_NAME = "named.conf.rndc.maas"
 MAAS_RNDC_CONF_NAME = "rndc.conf.maas"
-MAAS_NSUPDATE_KEY_NAME = "keys.conf.maas"
 MAAS_ZONE_FILE_DIR = "/var/lib/bind/maas"
 MAAS_ZONE_FILE_GROUP = "bind"
-
-
-@dataclass
-class DynamicDNSUpdate:
-    operation: str
-    name: str
-    zone: str
-    rectype: str
-    rev_zone: str | None = None
-    ttl: int | None = None
-    subnet: str | None = None  # for reverse updates
-    answer: str | None = None
-    ip: str | None = None
-
-    @classmethod
-    def create_from_trigger(cls, **kwargs):
-        answer = kwargs.get("answer")
-        rectype = kwargs.pop("rectype")
-        if answer:
-            del kwargs["answer"]
-            # the DB trigger is unable to figure out if an IP is v6, so we do it here instead
-            try:
-                ip = IPAddress(answer)
-            except AddrFormatError:
-                pass
-            else:
-                if ip.version == 6:
-                    rectype = "AAAA"
-        if kwargs.get("ttl") == 0:  # default ttl
-            kwargs["ttl"] = 30
-        return cls(answer=answer, rectype=rectype, **kwargs)
-
-    @classmethod
-    def as_reverse_record_update(cls, fwd_update, subnet):
-        if not fwd_update.answer_is_ip:
-            return None
-        ip = IPAddress(fwd_update.answer)
-        name = ip.reverse_dns
-        zone = fwd_update.rev_zone
-        if (ip.version == 4 and subnet.prefixlen > 24) or (
-            ip.version == 6 and subnet.prefixlen > 124
-        ):
-            name_split = ip.reverse_dns.split(".")
-            suffix = [zone]
-            if not zone:
-                if ip.version == 4:
-                    first_octet = str(subnet.network).split(".")[-1]
-                else:
-                    first_octet = str(subnet.network).split(":")[-1]
-
-                suffix = [f"{first_octet}-{subnet.prefixlen}"] + name_split[1:]
-                zone = ".".join(suffix)
-
-            name_split = name_split[:1] + suffix
-            name = ".".join(name_split)
-
-        return cls(
-            operation=fwd_update.operation,
-            name=name,
-            zone=zone or fwd_update.zone,
-            subnet=str(subnet.cidr),
-            ttl=fwd_update.ttl,
-            answer=f"{fwd_update.name}.{fwd_update.zone}",
-            rectype="PTR",
-            ip=fwd_update.answer,
-        )
-
-    @cached_property
-    def answer_as_ip(self):
-        try:
-            return IPAddress(self.answer)
-        except AddrFormatError:
-            return None
-
-    @cached_property
-    def answer_is_ip(self):
-        return self.answer_as_ip is not None
 
 
 def get_dns_config_dir() -> str:
@@ -209,6 +128,8 @@ def generate_rndc(port=953, key_name="rndc-maas-key"):
     rndc_content = call_and_check(
         [
             "rndc-confgen",
+            "-A",
+            "hmac-sha256",
             "-b",
             "256",
             "-k",
@@ -233,15 +154,6 @@ def get_rndc_conf_path():
     return compose_config_path(MAAS_RNDC_CONF_NAME)
 
 
-def get_nsupdate_key_path():
-    return compose_config_path(MAAS_NSUPDATE_KEY_NAME)
-
-
-def set_up_nsupdate_key():
-    tsig = call_and_check(["tsig-keygen", "-a", "HMAC-SHA512", "maas."])
-    atomic_write(tsig, get_nsupdate_key_path(), overwrite=True, mode=0o644)
-
-
 def clean_old_zone_files():
     for path in get_zone_file_config_dir().glob("zone.*"):
         if path.is_file():
@@ -264,10 +176,41 @@ def set_up_zone_file_dir():
         clean_old_zone_files()
 
 
-def set_up_rndc():
-    """Writes out the two files needed to enable MAAS to use rndc commands:
-    MAAS_RNDC_CONF_NAME and MAAS_NAMED_RNDC_CONF_NAME.
+def _rndc_conf_uses_approved_algorithm(rndc_conf_path: str) -> bool:
+    """Return True if the rndc.conf at *rndc_conf_path* already uses an
+    approved algorithm (hmac-sha256).
+
+    Returns False when the file does not exist, cannot be read, or specifies
+    any other algorithm.  Used to implement idempotent key rotation: a key
+    already on hmac-sha256 is left unchanged; any other state triggers
+    regeneration.
     """
+    try:
+        with open(rndc_conf_path, encoding="ascii") as fh:
+            content = fh.read()
+    except OSError:
+        return False
+    match = re.search(r"\balgorithm\s+([^;]+);", content)
+    if not match:
+        return False
+    return match.group(1).strip().lower() == "hmac-sha256"
+
+
+def set_up_rndc():
+    """Write the two files needed to enable MAAS to use rndc commands:
+    MAAS_RNDC_CONF_NAME and MAAS_NAMED_RNDC_CONF_NAME.
+
+    Idempotent with respect to algorithm upgrades: if the existing
+    rndc.conf.maas already specifies ``algorithm hmac-sha256``, neither file
+    is regenerated so the current key material is preserved across restarts.
+    If the file is missing or uses any other algorithm (e.g. hmac-md5 from a
+    pre-3.7 installation) a new hmac-sha256 key is generated and both files
+    are rewritten.  This provides automatic OMAPI/rndc key rotation on the
+    service restart that follows a snap upgrade.
+    """
+    if _rndc_conf_uses_approved_algorithm(get_rndc_conf_path()):
+        return
+
     rndc_content, named_content = generate_rndc(port=get_dns_rndc_port())
 
     target_file = get_rndc_conf_path()
@@ -303,6 +246,28 @@ def set_up_options_conf(overwrite=True, **kwargs):
     # template that uses this value.
     kwargs.setdefault("upstream_dns")
     kwargs.setdefault("dnssec_validation", "auto")
+    kwargs.setdefault("hardening", False)
+    # ``dns_bind`` is a single mixed-family list; split it into the
+    # per-family lists the named.conf.options.inside.maas template uses.
+    kwargs["dns_bind"], kwargs["dns_bind6"] = partition_by_family(
+        kwargs.get("dns_bind") or []
+    )
+    # When hardening is active and no explicit value was provided, fall back
+    # to the safe hardening defaults. Since falsy is the documented
+    # "unconfigured" sentinel (see RegionConfiguration.dns_allow_transfer),
+    # this applies whether the key is missing entirely or was passed in as
+    # an explicit empty string / 0 -- setdefault() alone cannot express
+    # that, since callers always pass these keys explicitly.
+    _hardening = kwargs["hardening"]
+    kwargs["dns_allow_transfer"] = kwargs.get("dns_allow_transfer") or (
+        "none" if _hardening else ""
+    )
+    kwargs["dns_fetches_per_zone"] = kwargs.get("dns_fetches_per_zone") or (
+        100 if _hardening else 0
+    )
+    kwargs["dns_fetches_per_server"] = kwargs.get(
+        "dns_fetches_per_server"
+    ) or (100 if _hardening else 0)
 
     # Parse the options file and make sure MAAS doesn't define any options
     # that the user has already customized.
@@ -422,7 +387,6 @@ class DNSConfig:
             "forwarded_zones": self.forwarded_zones,
             "DNS_CONFIG_DIR": get_dns_config_dir(),
             "named_rndc_conf_path": get_named_rndc_conf_path(),
-            "nsupdate_keys_conf_path": get_nsupdate_key_path(),
             "trusted_networks": trusted_networks,
             "modified": str(datetime.today()),
             "allow_only_trusted_transfers": allow_only_trusted_transfers,

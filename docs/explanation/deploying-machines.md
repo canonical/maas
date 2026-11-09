@@ -16,7 +16,7 @@ Once a machine is allocated, MAAS can drive it through the deployment sequence.
 Two key technologies power MAAS deployments:
 
 - Curtin (“curt installer”): A fast, image-based installer. Curtin runs inside a small ephemeral environment, prepares the hardware (partitioning, RAID, filesystem creation), and writes the target operating system image to disk.
-- Cloud-init: A first-boot configuration tool embedded in the target OS image. Cloud-init handles user-data, networking, package installs, and any customisation you’ve provided.
+- Cloud-init: A first-boot configuration tool embedded in the target OS image. Cloud-init handles user-data, networking, package installs, and any customization you’ve provided.
 
 Together, curtin and cloud-init ensure that machines emerge from deployment both installed and configured.
 
@@ -37,11 +37,11 @@ The following steps trace the boot and installation process for a typical deploy
 
 ## Access to deployed machines
 
-By default, MAAS injects your SSH keys into the deployed machine and enables login for the `ubuntu` user. Other orchestration layers, like [Juju](https://juju.is/), may add additional keys and perform further service-level configuration.
+By default, MAAS injects your SSH keys into the deployed machine and enables login for the `ubuntu` user. Other orchestration layers, like [Juju](https://canonical.com/juju), may add additional keys and perform further service-level configuration.
 
 This makes it possible to log in immediately after deployment without touching the machine’s console.
 
-## Preseeding and customisation
+## Preseeding and customization
 
 Curtin supports preseed files, allowing administrators to influence how storage, networking, or packages are configured during deployment. Cloud-init adds a second layer of flexibility, running scripts and applying configuration on first boot.
 

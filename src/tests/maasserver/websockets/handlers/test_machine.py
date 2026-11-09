@@ -7,7 +7,6 @@ from django.db import transaction
 import pytest
 
 from maasserver.enum import NODE_STATUS, NODE_TYPE, SIMPLIFIED_NODE_STATUS
-from maasserver.rbac import rbac
 from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing.factory import factory
 from maasserver.websockets.base import HandlerValidationError
@@ -24,15 +23,6 @@ from metadataserver.enum import (
 )
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.testing.certificates import get_sample_cert
-
-
-@pytest.fixture
-def force_rbac_off():
-    orig_get_url = rbac._get_rbac_url
-    rbac._get_rbac_url = lambda: None
-    yield
-    # clean up
-    rbac._get_rbac_url = orig_get_url
 
 
 @pytest.mark.usefixtures("maasdb")
@@ -66,8 +56,6 @@ class TestMachineHandler:
                 )
         return owner, session
 
-    # Prevent RBAC from making a query.
-    @pytest.mark.usefixtures("force_rbac_off")
     def test_list_ids_num_queries_is_the_expected_number(self, mocker):
         mocker.patch("maasserver.utils.orm.post_commit_hooks")
         mocker.patch("maasserver.utils.orm.post_commit_do")
@@ -89,8 +77,6 @@ class TestMachineHandler:
             "Number of queries has changed; make sure this is expected."
         )
 
-    # Prevent RBAC from making a query.
-    @pytest.mark.usefixtures("force_rbac_off")
     def test_list_ids_num_queries_with_filter_is_the_expected_number(
         self, mocker
     ):
@@ -120,58 +106,6 @@ class TestMachineHandler:
         # and slowing down the client waiting for the response.
         expected_query_count = 5
 
-        assert queries_one == expected_query_count, (
-            "Number of queries has changed; make sure this is expected."
-        )
-        assert queries_total == expected_query_count, (
-            "Number of queries has changed; make sure this is expected."
-        )
-
-    def test_list_ids_num_queries_is_the_expected_number_with_rbac(
-        self, enable_rbac, mocker
-    ):
-        mocker.patch("maasserver.utils.orm.post_commit_hooks")
-        mocker.patch("maasserver.utils.orm.post_commit_do")
-        owner, session = factory.make_User_with_session()
-        pool = factory.make_ResourcePool()
-        enable_rbac.add_pool(pool)
-        enable_rbac.allow(owner.username, pool, "view")
-        enable_rbac.allow(owner.username, pool, "admin-machines")
-
-        vlan = factory.make_VLAN(space=factory.make_Space())
-        for _ in range(2):
-            node = factory.make_Node_with_Interface_on_Subnet(
-                owner=owner,
-                pool=pool,
-                vlan=vlan,
-            )
-            commissioning_script_set = factory.make_ScriptSet(
-                node=node, result_type=RESULT_TYPE.COMMISSIONING
-            )
-            testing_script_set = factory.make_ScriptSet(
-                node=node, result_type=RESULT_TYPE.TESTING
-            )
-            node.current_commissioning_script_set = commissioning_script_set
-            node.current_testing_script_set = testing_script_set
-            node.save()
-            for __ in range(2):
-                factory.make_ScriptResult(
-                    status=SCRIPT_STATUS.PASSED,
-                    script_set=commissioning_script_set,
-                )
-                factory.make_ScriptResult(
-                    status=SCRIPT_STATUS.PASSED, script_set=testing_script_set
-                )
-
-        handler = MachineHandler(owner, {}, None)
-        queries_one, _ = count_queries(handler.list_ids, {"page_size": 1})
-        queries_total, _ = count_queries(handler.list_ids, {})
-        # This check is to notify the developer that a change was made that
-        # affects the number of queries performed when doing a node listing.
-        # It is important to keep this number as low as possible. A larger
-        # number means regiond has to do more work slowing down its process
-        # and slowing down the client waiting for the response.
-        expected_query_count = 4
         assert queries_one == expected_query_count, (
             "Number of queries has changed; make sure this is expected."
         )
@@ -268,39 +202,6 @@ class TestMachineHandler:
         assert node_data["power_parameters"] == full_power_params
 
         handler = MachineHandler(user, {}, None)
-        node_data = handler.get({"system_id": node.system_id})
-        assert node_data["power_parameters"] == sanitised_power_params
-
-    def test_secret_power_params_only_viewable_with_admin_read_permission_rbac(
-        self,
-        enable_rbac,
-        mocker,
-    ):
-        mocker.patch("maasserver.utils.orm.post_commit_hooks")
-        mocker.patch("maasserver.utils.orm.post_commit_do")
-        user, session = factory.make_User_with_session()
-        other_user, other_user_session = factory.make_User_with_session()
-        pool = factory.make_ResourcePool()
-        enable_rbac.add_pool(pool)
-        enable_rbac.allow(user.username, pool, "view")
-        enable_rbac.allow(user.username, pool, "admin-machines")
-        enable_rbac.allow(other_user.username, pool, "view")
-
-        power_address = factory.make_ip_address()
-        power_id = factory.make_name("power_id")
-        power_pass = factory.make_name("power_pass")
-        sanitised_power_params = {
-            "power_address": power_address,
-            "power_id": power_id,
-        }
-        full_power_params = sanitised_power_params | {"power_pass": power_pass}
-        node = factory.make_Node(pool=pool, power_parameters=full_power_params)
-
-        handler = MachineHandler(user, {}, None)
-        node_data = handler.get({"system_id": node.system_id})
-        assert node_data["power_parameters"] == full_power_params
-
-        handler = MachineHandler(other_user, {}, None)
         node_data = handler.get({"system_id": node.system_id})
         assert node_data["power_parameters"] == sanitised_power_params
 

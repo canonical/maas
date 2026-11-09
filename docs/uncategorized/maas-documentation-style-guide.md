@@ -4,7 +4,7 @@ This page describes the MAAS documentation style in a concise table.
 
 | **Element**                                                                                                               | **Guidelines**                                                                                          |
 |---------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| **Spelling and Grammar**                                                                                                  | Use British English (en-GB), and ensure correct spelling and grammar                                    |
+| **Spelling and Grammar**                                                                                                  | Use US English (en-US), and ensure correct spelling and grammar                                    |
 | **Voice and Tone**                                                                                                        | Use a compact, conversational style. Write to the reader directly                                       |
 | **Hyperlink Hygiene**                                                                                                     | Ensure all hyperlinks are functional and relevant                                                       |
 | **Audience Focus**                                                                                                        | Target intermediate system administrators; avoid overly technical jargon                                |

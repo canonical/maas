@@ -160,6 +160,7 @@ def debian_architecture():
         "x86_64": "amd64",
         "aarch64": "arm64",
         "ppc64le": "ppc64el",
+        "riscv64": "riscv64",
         "s390x": "s390x",
         "mips": "mips",
         "mips64": "mips64el",

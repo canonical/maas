@@ -20,8 +20,6 @@ from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.discoveries import Discovery
 from maasservicelayer.models.fields import MacAddress
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.discoveries import DiscoveriesService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -84,13 +82,12 @@ class TestDiscoveriesApi(ApiCommonTests):
 
     async def test_list_discoveries_one_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.list.return_value = ListResult[Discovery](
             items=[TEST_DISCOVERY], total=1
         )
@@ -103,13 +100,12 @@ class TestDiscoveriesApi(ApiCommonTests):
 
     async def test_list_discoveries_with_next_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.list.return_value = ListResult[Discovery](
             items=[TEST_DISCOVERY], total=2
         )
@@ -122,13 +118,12 @@ class TestDiscoveriesApi(ApiCommonTests):
 
     async def test_get_by_id(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.get_by_id.return_value = TEST_DISCOVERY
         response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 200
@@ -142,13 +137,12 @@ class TestDiscoveriesApi(ApiCommonTests):
 
     async def test_get_by_id_nonexist_id_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.get_by_id.return_value = None
         response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
@@ -160,13 +154,12 @@ class TestDiscoveriesApi(ApiCommonTests):
 
     async def test_clear_all_discoveries(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.clear_all.return_value = None
 
         response = await client.delete(self.BASE_PATH)
@@ -175,13 +168,12 @@ class TestDiscoveriesApi(ApiCommonTests):
 
     async def test_clear_all_discoveries_matching_ip_and_mac(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.clear_by_ip_and_mac.return_value = None
 
         ip = "10.0.0.1"
@@ -202,7 +194,7 @@ class TestDiscoveriesApi(ApiCommonTests):
     )
     async def test_clear_all_discoveries_raises_with_missing_ip_or_mac(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         ip: str | None,
         mac: str | None,
@@ -210,7 +202,6 @@ class TestDiscoveriesApi(ApiCommonTests):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.discoveries = Mock(DiscoveriesService)
         services_mock.discoveries.clear_by_ip_and_mac.return_value = None
 
         query = ""

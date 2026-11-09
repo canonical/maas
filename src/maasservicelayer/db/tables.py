@@ -65,6 +65,7 @@ AgentTable = Table(
         BigInteger,
         ForeignKey(
             "maasserver_node.id",
+            ondelete="CASCADE",
             deferrable=True,
             initially="DEFERRED",
         ),
@@ -997,6 +998,32 @@ InterfaceTable = Table(
     Index("maasserver_interface_switch_id_idx", "switch_id"),
 )
 
+InterfaceRelationshipTable = Table(
+    "maasserver_interfacerelationship",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column(
+        "child_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_interface.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
+    ),
+    Column(
+        "parent_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_interface.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
+    ),
+    Index("maasserver_interfacerelationship_child_id_7be5401e", "child_id"),
+    Index("maasserver_interfacerelationship_parent_id_d3c77c37", "parent_id"),
+)
+
 IPRangeTable = Table(
     "maasserver_iprange",
     METADATA,
@@ -1230,6 +1257,23 @@ NodeGroupToRackControllerTable = Table(
     Index(
         "maasserver_nodegrouptorackcontroller_subnet_id_8ed96f7b", "subnet_id"
     ),
+)
+
+NodeUserDataTable = Table(
+    "maasserver_nodeuserdata",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("data", Text, nullable=False),
+    Column(
+        "node_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
+    ),
+    Column("for_ephemeral_environment", Boolean, nullable=False),
+    UniqueConstraint("node_id", "for_ephemeral_environment"),
 )
 
 NodeTable = Table(
@@ -1687,6 +1731,20 @@ OperationTable = Table(
     ),
     Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
     Index("maasserver_operation_parent_id_idx", "parent_id"),
+    Index(
+        "maasserver_operation_resource_type_resource_id_idx",
+        "resource_type",
+        "resource_id",
+    ),
+    Index(
+        "maasserver_operation_one_in_progress_per_resource_idx",
+        "resource_type",
+        "resource_id",
+        unique=True,
+        postgresql_where=text(
+            "status IN ('ACCEPTED', 'RUNNING', 'CANCELLING')"
+        ),
+    ),
 )
 
 OpenFGATupleTable = Table(
@@ -1872,15 +1930,6 @@ ResourcePoolTable = Table(
 )
 
 
-RootKeyTable = Table(
-    "maasserver_rootkey",
-    METADATA,
-    Column("id", BigInteger, Identity(), primary_key=True),
-    Column("created", DateTime(timezone=True), nullable=False),
-    Column("updated", DateTime(timezone=True), nullable=False),
-    Column("expiration", DateTime(timezone=True), nullable=False),
-)
-
 ScriptResultTable = Table(
     "maasserver_scriptresult",
     METADATA,
@@ -1972,7 +2021,7 @@ ScriptSetTable = Table(
         nullable=False,
     ),
     Column("power_state_before_transition", String(10), nullable=False),
-    Column("tags", Text, nullable=True),
+    Column("tags", ARRAY(Text), nullable=True),
     Index("metadataserver_scriptset_node_id_72b6537b", "node_id"),
 )
 
@@ -1984,7 +2033,7 @@ ScriptTable = Table(
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("name", String(255), nullable=False, unique=True),
     Column("description", Text, nullable=False),
-    Column("tags", Text, nullable=True),
+    Column("tags", ARRAY(Text), nullable=True),
     Column("script_type", Integer, nullable=False),
     Column("timeout", Interval, nullable=False),
     Column("destructive", Boolean, nullable=False),
@@ -2006,7 +2055,7 @@ ScriptTable = Table(
     Column("parallel", Integer, nullable=False),
     Column("parameters", JSONB, nullable=False),
     Column("results", JSONB, nullable=False),
-    Column("for_hardware", String(255), nullable=False),
+    Column("for_hardware", ARRAY(String(255)), nullable=False),
     Column("may_reboot", Boolean, nullable=False),
     Column("recommission", Boolean, nullable=False),
     Column("apply_configured_networking", Boolean, nullable=False),
@@ -2366,7 +2415,6 @@ UserProfileTable = Table(
     METADATA,
     Column("id", BigInteger, Identity(), primary_key=True),
     Column("completed_intro", Boolean, nullable=False),
-    Column("auth_last_check", DateTime(timezone=True), nullable=True),
     Column("is_local", Boolean, nullable=False),
     Column(
         "user_id",

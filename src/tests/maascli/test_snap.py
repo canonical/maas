@@ -207,6 +207,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "db",
                 "database_user": "maas",
                 "database_pass": "pwd",
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             }
         )
 
@@ -265,6 +269,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "dbname",
                 "database_user": "dbuser",
                 "database_pass": "pwd",
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             },
             settings,
         )
@@ -281,6 +289,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "dbname",
                 "database_user": "dbuser",
                 "database_pass": "pwd",
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             },
             settings,
         )
@@ -296,6 +308,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "maasdb",
                 "database_user": "maas",
                 "database_pass": None,
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             },
             settings,
         )
@@ -310,6 +326,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "foo",
                 "database_user": "foo",
                 "database_pass": None,
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             },
             settings,
         )
@@ -325,6 +345,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "maasdb",
                 "database_user": "maas",
                 "database_pass": None,
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             },
             settings,
         )
@@ -340,6 +364,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "myuser",
                 "database_user": "myuser",
                 "database_pass": None,
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
             },
             settings,
         )
@@ -359,6 +387,10 @@ class TestCmdInit(MAASTestCase):
                 "database_name": "mydb",
                 "database_user": "myuser",
                 "database_pass": "pwd",
+                "database_sslmode": "prefer",
+                "database_sslcert": "",
+                "database_sslkey": "",
+                "database_sslrootcert": "",
                 "database_port": 1234,
             },
             settings,
@@ -665,6 +697,145 @@ class TestCmdConfig(MAASTestCase):
         config_manager.update.assert_not_called()
         self.assertEqual(stdout.getvalue(), "")
         mock_restart_pebble.assert_not_called()
+
+
+class TestGetDatabaseSettingsSslmode(MAASTestCase):
+    """Tests for sslmode handling in get_database_settings()."""
+
+    def setUp(self):
+        super().setUp()
+        self.parser = ArgumentParser()
+        snap.cmd_init(self.parser)
+        self.patch(os, "environ", {"SNAP_COMMON": self.make_dir()})
+
+    def _parse(self, uri):
+        options = self.parser.parse_args(
+            ["region+rack", "--database-uri", uri]
+        )
+        return snap.get_database_settings(options)
+
+    def test_missing_sslmode_defaults_to_prefer(self):
+        settings = self._parse("postgres://myuser@myhost/")
+        self.assertEqual("prefer", settings["database_sslmode"])
+
+    def test_sslmode_is_included_in_returned_dict(self):
+        # Regression: sslmode was previously treated as an unsupported parameter.
+        settings = self._parse("postgres://myuser@myhost/?sslmode=require")
+        self.assertEqual("require", settings["database_sslmode"])
+
+    def test_all_valid_sslmodes_accepted(self):
+        valid_modes = [
+            "disable",
+            "allow",
+            "prefer",
+            "require",
+            "verify-ca",
+            "verify-full",
+        ]
+        for mode in valid_modes:
+            settings = self._parse(f"postgres://myuser@myhost/?sslmode={mode}")
+            self.assertEqual(
+                mode,
+                settings["database_sslmode"],
+                f"Expected sslmode={mode!r} to be accepted",
+            )
+
+    def test_invalid_sslmode_raises_error(self):
+        error = self.assertRaises(
+            snap.DatabaseSettingsError,
+            self._parse,
+            "postgres://myuser@myhost/?sslmode=bogus",
+        )
+        self.assertEqual("Invalid sslmode: bogus", str(error))
+
+
+class TestPrintConfig(MAASTestCase):
+    """print_config() emits SSL settings for region modes."""
+
+    def _run_print_config(self, config_data):
+        self.patch(snap, "get_current_mode").return_value = "region+rack"
+        mock_config = self.patch(snap, "MAASConfiguration").return_value
+        mock_config.get.return_value = config_data
+        out = io.StringIO()
+        self.patch(snap, "print_msg", lambda msg: out.write(msg + "\n"))
+        snap.print_config()
+        return out.getvalue()
+
+    def test_database_sslmode_printed_in_region_mode(self):
+        output = self._run_print_config(
+            {
+                "maas_url": "http://localhost:5240/MAAS",
+                "database_host": "localhost",
+                "database_port": 5432,
+                "database_name": "maasdb",
+                "database_sslmode": "verify-full",
+                "database_user": "maas",
+                "database_pass": "secret",
+            }
+        )
+        self.assertIn("database_sslmode=verify-full", output)
+
+    def test_cert_paths_printed_in_region_mode(self):
+        output = self._run_print_config(
+            {
+                "maas_url": "http://localhost:5240/MAAS",
+                "database_host": "localhost",
+                "database_port": 5432,
+                "database_name": "maasdb",
+                "database_sslmode": "verify-full",
+                "database_sslcert": "/etc/maas/db.crt",
+                "database_sslkey": "/etc/maas/db.key",
+                "database_sslrootcert": "/etc/maas/ca.crt",
+                "database_user": "maas",
+                "database_pass": "secret",
+            }
+        )
+        self.assertIn("database_sslcert=/etc/maas/db.crt", output)
+        self.assertIn("database_sslkey=/etc/maas/db.key", output)
+        self.assertIn("database_sslrootcert=/etc/maas/ca.crt", output)
+
+
+class TestGetDatabaseSettingsCerts(MAASTestCase):
+    """Tests for sslcert/sslkey/sslrootcert handling in get_database_settings()."""
+
+    def setUp(self):
+        super().setUp()
+        self.parser = ArgumentParser()
+        snap.cmd_init(self.parser)
+        self.patch(os, "environ", {"SNAP_COMMON": self.make_dir()})
+
+    def _parse(self, uri):
+        options = self.parser.parse_args(
+            ["region+rack", "--database-uri", uri]
+        )
+        return snap.get_database_settings(options)
+
+    def test_cert_params_absent_default_to_empty_string(self):
+        settings = self._parse("postgres://myuser@myhost/")
+        self.assertEqual("", settings["database_sslcert"])
+        self.assertEqual("", settings["database_sslkey"])
+        self.assertEqual("", settings["database_sslrootcert"])
+
+    def test_cert_params_extracted_from_uri(self):
+        settings = self._parse(
+            "postgres://myuser@myhost/"
+            "?sslmode=verify-full"
+            "&sslcert=/etc/maas/db.crt"
+            "&sslkey=/etc/maas/db.key"
+            "&sslrootcert=/etc/maas/ca.crt"
+        )
+        self.assertEqual("/etc/maas/db.crt", settings["database_sslcert"])
+        self.assertEqual("/etc/maas/db.key", settings["database_sslkey"])
+        self.assertEqual("/etc/maas/ca.crt", settings["database_sslrootcert"])
+
+    def test_rootcert_only_without_client_cert(self):
+        """sslrootcert alone is valid (server-verification without mTLS)."""
+        settings = self._parse(
+            "postgres://myuser@myhost/?sslmode=verify-ca&sslrootcert=/etc/maas/ca.crt"
+        )
+        self.assertEqual("", settings["database_sslcert"])
+        self.assertEqual("", settings["database_sslkey"])
+        self.assertEqual("/etc/maas/ca.crt", settings["database_sslrootcert"])
 
 
 class TestDBNeedInit(MAASTestCase):
