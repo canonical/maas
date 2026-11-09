@@ -9,15 +9,17 @@
 # skipped. Only legacy server connections are allowed, not insecure
 # renegotiation itself.
 
-openssl_conf = openssl_init
-
 .include /usr/lib/ssl/openssl.cnf
 
+# After an .include, keys belong to the last section of the included file.
+[default]
+openssl_conf = openssl_init
+
 [openssl_init]
-ssl_conf = maas_amt_ssl_sect
+ssl_conf = ssl_sect
 
-[maas_amt_ssl_sect]
-system_default = maas_amt_system_default_sect
+[ssl_sect]
+system_default = system_default_sect
 
-[maas_amt_system_default_sect]
+[system_default_sect]
 Options = UnsafeLegacyServerConnect
