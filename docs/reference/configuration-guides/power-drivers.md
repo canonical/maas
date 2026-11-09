@@ -2,40 +2,6 @@
 
 The following page catalogs the fields in the `create machine` dialogue for each supported power driver. Note that most of the multiple-choice fields have drop-down menus to assist with your choice. In the next section we introduce configuring power drivers using the UI. In [CLI parameter expressions](#cli-parameter-expressions), you will find how to configure them using the CLI.
 
-## Removed drivers
-
-The following power drivers are no longer supported:
-
-- Digital Loggers, Inc. PDU (`dli`)
-- Eaton PDU (`eaton`)
-- HP Moonshot - iLO Chassis Manager (`mscm`)
-- Microsoft OCS - Chassis Manager (`msftocs`)
-- OpenStack Nova (`nova`)
-- OpenBMC (`openbmc`)
-- Cisco UCS Manager (`ucsm`)
-- Facebook's Wedge (`wedge`)
-
-Chassis discovery using `mscm`, `msftocs`, or `ucsm` is also no longer
-supported. The separate HP Moonshot IPMI driver (`moonshot`) remains supported.
-
-During upgrade, MAAS removes the affected machines' power-driver associations and
-stored power parameters, including credentials. The machines remain in MAAS
-with no power driver configured; they are not switched to manual power or
-automatically converted to Webhook.
-
-Affected installations receive a dismissible warning for users and
-administrators through the existing notification system. The warning remains
-available after the upgrade cleanup, including at the next login.
-
-Before upgrading, retain any configuration you need to set up a replacement
-service securely. To restore power control, configure a supported driver or
-use the Webhook driver with a compatible external service. See
-[Creating a web service for the MAAS Webhook power driver](https://discourse.maas.io/t/creating-a-web-service-for-the-maas-webhook-power-driver/3756)
-for a sample implementation; it is an example, not a driver-specific replacement.
-
-For a worked Eaton PDU example, follow
-[Replace a power driver with a webhook](/tutorials/write-a-webhook-power-driver.md).
-
 ## UI parameter expressions
 
 ### Intel AMT

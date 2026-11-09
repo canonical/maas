@@ -1,17 +1,17 @@
 <!-- Copyright 2026 Canonical Ltd.  This software is licensed under the
 GNU Affero General Public License version 3 (see the file LICENSE). -->
 
-# Replace a power driver with a webhook
+# Power-control a non-supported BMC
 
 MAAS's Webhook power driver lets you supply the hardware-specific power-control
-code outside MAAS. Use it to replace a removed driver or integrate hardware that
+code outside MAAS. Use it to power-control or integrate hardware that
 MAAS does not support natively.
 
 In this tutorial, you will write and run a small web service for an **Eaton PDU**,
 then configure MAAS to call it. The service controls the outlet supplying a
 server, not the entire PDU. You do not install a new driver inside MAAS.
 
-MAAS no longer includes the native `eaton` driver. This example uses its SNMP
+MAAS does not support the native `eaton` driver. This example uses its SNMP
 commands and default power-on sequence.
 
 ```text
@@ -22,7 +22,7 @@ MAAS rack controller --HTTP--> your webhook service --SNMP--> Eaton PDU outlet
 
 :::{warning}
 This tutorial uses plain HTTP and SNMPv1 on an isolated, trusted management
-network. Neither encrypts credentials or traffic. Restrict access to the webhook
+network. Neither credentials nor traffic is encrypted. Restrict access to the webhook
 and PDU to the management hosts; do not expose them to the Internet. This is a
 learning example, not a hardened deployment.
 
@@ -74,9 +74,7 @@ Otherwise, enabling its outlet may leave the server off. An outlet state reports
 AC supply, not whether the OS is running. A server with redundant power supplies
 needs all its feeds handled together; this example controls only one outlet.
 
-Do not host the webhook on the server or outlet it controls. Before upgrading
-from a removed driver, retain the PDU address, outlet number and any settings you
-need: MAAS does not automatically convert the old configuration to Webhook.
+Do not host the webhook on the server or outlet it controls.
 
 ## 3. Write the hardware-specific service
 
@@ -89,10 +87,10 @@ cd ~/eaton-webhook
 ```
 
 Save the following code as `eaton_webhook_example.py`, or download
-{download}`the example file <../../utilities/webhook-power-driver/eaton_webhook_example.py>`.
-In a MAAS source checkout, it is also under `utilities/webhook-power-driver/`.
+{download}`the example file <webhook-power-driver/eaton_webhook_example.py>`.
+In a MAAS source checkout, it is also under `docs/tutorials/webhook-power-driver/`.
 
-```{literalinclude} ../../utilities/webhook-power-driver/eaton_webhook_example.py
+```{literalinclude} webhook-power-driver/eaton_webhook_example.py
 :language: python
 ```
 
