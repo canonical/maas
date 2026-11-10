@@ -57,6 +57,16 @@ def validate_power_params_fips(
                 code="fips_violation",
             )
 
+    if (
+        power_type == "amt"
+        and power_parameters.get("allow_legacy_renegotiation") == "true"
+    ):
+        raise ValidationError(
+            "Legacy TLS renegotiation cannot be enabled for 'amt' in "
+            "FIPS mode.",
+            code="fips_violation",
+        )
+
 
 def validate_power_pass_complexity(power_parameters: dict) -> None:
     """Raise ValidationError if power_pass fails complexity requirements.
