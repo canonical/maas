@@ -17,6 +17,7 @@ from provisioningserver.drivers.power import (
     PowerActionError,
     PowerConnError,
     PowerFatalError,
+    PowerSettingError,
 )
 from provisioningserver.drivers.power.amt import (
     AMT_DEFAULT_PORT,
@@ -1021,6 +1022,22 @@ class TestAMTPowerDriver(MAASTestCase):
         self.assertRaises(
             PowerFatalError, amt_power_driver._get_ip_address, None, None
         )
+
+    def test_power_on_rejects_legacy_renegotiation_in_fips(self):
+        self.patch(amt_module, "is_fips_enabled").return_value = True
+        amt_power_driver = AMTPowerDriver()
+        _get_amt_command_mock = self.patch(
+            amt_power_driver, "_get_amt_command"
+        )
+        context = make_context()
+
+        self.assertRaises(
+            PowerSettingError,
+            amt_power_driver.power_on,
+            context["system_id"],
+            context,
+        )
+        _get_amt_command_mock.assert_not_called()
 
     def test_power_on_without_user_port(self):
         # user and port were introduced in 3.6.
