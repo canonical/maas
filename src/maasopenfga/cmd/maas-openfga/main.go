@@ -17,29 +17,30 @@ package main
 
 import (
 	"context"
-	"log"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	openfgav1 "github.com/openfga/api/proto/openfga/v1"
 	"github.com/openfga/openfga/pkg/logger"
 	openfgaServer "github.com/openfga/openfga/pkg/server"
 	"github.com/openfga/openfga/pkg/storage/postgres"
 	"github.com/openfga/openfga/pkg/storage/sqlcommon"
+	"log"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
+	"time"
 
 	"maas.io/core/src/maasopenfga/internal/config"
 	"maas.io/core/src/maasopenfga/internal/dbcredentials"
 )
 
-func getPostgresDSN(dbHost, user, pass, name string) string {
+func getPostgresDSN(dbHost string, port int, user, pass, name string) string {
 	q := url.Values{}
 	q.Set("host", dbHost)
+	q.Set("port", strconv.Itoa(port))
 	q.Set("search_path", "openfga")
 
 	u := url.URL{
@@ -82,7 +83,7 @@ func main() {
 	dbCreds := dbcredentials.Resolve(ctx, regionCfg)
 
 	psqlDataStore, err := postgres.New(
-		getPostgresDSN(regionCfg.DatabaseHost, dbCreds.User, dbCreds.Pass, dbCreds.Name),
+		getPostgresDSN(regionCfg.DatabaseHost, regionCfg.DatabasePort, dbCreds.User, dbCreds.Pass, dbCreds.Name),
 		sqlcommon.NewConfig(
 			sqlcommon.WithMaxOpenConns(regionCfg.OpenFGAMaxOpenConns),
 			sqlcommon.WithMaxIdleConns(regionCfg.OpenFGAMaxIdleConns),

@@ -29,6 +29,7 @@ import (
 )
 
 const (
+	defaultDatabasePort      = 5432
 	defaultMaxOpenConns      = 3
 	defaultMaxIdleConns      = 1
 	defaultVaultSecretsMount = "secret"
@@ -38,6 +39,7 @@ const (
 // OpenFGA wrapper.
 type RegionConfig struct {
 	DatabaseHost        string `yaml:"database_host"`
+	DatabasePort        int    `yaml:"database_port"`
 	DatabaseName        string `yaml:"database_name"`
 	DatabasePass        string `yaml:"database_pass"`
 	DatabaseUser        string `yaml:"database_user"`
@@ -76,6 +78,10 @@ func ReadRegionConfig() (*RegionConfig, error) {
 
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse region config file: %w", err)
+	}
+
+	if cfg.DatabasePort <= 0 {
+		cfg.DatabasePort = defaultDatabasePort
 	}
 
 	if cfg.OpenFGAMaxOpenConns <= 0 {
