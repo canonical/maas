@@ -28,6 +28,12 @@ AMT_ERRORS = {
         ),
         "exception": PowerAuthError,
     },
+    "response code = 401": {
+        "message": (
+            "Incorrect password.  Check BMC configuration and try again."
+        ),
+        "exception": PowerAuthError,
+    },
     "500 Can't connect": {
         "message": (
             "Could not connect to BMC.  Check BMC configuration and try again."
@@ -49,6 +55,7 @@ HTTP_OR_HTTPS = [
 REQUIRED_PACKAGES = [["wsman", "wsmancli"]]
 
 AMT_OPENSSL_CONF = join(dirname(__file__), "amt.openssl.cnf")
+AMT_HTTPS_CACERT = "/etc/ssl/certs/ca-certificates.crt"
 
 
 class AMTPowerDriver(PowerDriver):
@@ -165,11 +172,9 @@ class AMTPowerDriver(PowerDriver):
                 ),
             ),
         }
-        wsman_opts = (
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
+        wsman_opts = self._get_wsman_connection_args(
+            ip_address, power_user, power_pass, port
+        ) + (
             "--input",
             "-",
             "invoke",
@@ -240,11 +245,8 @@ class AMTPowerDriver(PowerDriver):
             "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/"
             "CIM_AssociatedPowerManagementService"
         )
-        command_args = (
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
+        command_args = self._get_wsman_connection_args(
+            ip_address, power_user, power_pass, port
         )
         if power_change in ("on", "off", "restart"):
             stdin = self._render_wsman_state_xml(power_change)
@@ -440,10 +442,9 @@ class AMTPowerDriver(PowerDriver):
         # If so, we need wsman, not amttool
         command = self._get_wsman_command(
             "identify",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
+            *self._get_wsman_connection_args(
+                ip_address, power_user, power_pass, port
+            ),
         )
         result = shell.run_command(
             *command, extra_environ={"OPENSSL_CONF": AMT_OPENSSL_CONF}
@@ -470,6 +471,32 @@ class AMTPowerDriver(PowerDriver):
                     return "wsman"
                 else:
                     return "amttool"
+
+    def _get_wsman_connection_args(
+        self, ip_address, power_user, power_pass, port
+    ) -> tuple:
+        # Credentials are passed as separate options rather than embedded in
+        # an --endpoint URI because openwsman's URI parser can't handle
+        # special characters such as '@' in the password (LP: #2173566).
+        args = (
+            "--hostname",
+            ip_address,
+            "--port",
+            str(port),
+            "--username",
+            power_user,
+            "--password",
+            power_pass,
+            "--noverifypeer",
+            "--noverifyhost",
+            "--non-interactive",
+        )
+        if str(port) == AMT_HTTPS_PORT:
+            # DO NOT use --endpoint with HTTPS scheme because wsman's URI parser can't handle special characters such as '@' in the password (LP: #2173566).
+            # Instead, pass the CA cert via --cacert. This will trick wsman into using HTTPS, even though the endpoint URI is HTTP. This is a workaround for LP: #2173566.
+            # Note that we pass --noverify peer and --noverifyhost to avoid certificate verification issues, so the CA cert is not actually used for verification. It is only used to force wsman to use HTTPS.
+            args += ("--cacert", AMT_HTTPS_CACERT)
+        return args
 
     def _get_wsman_command(self, *args):
         base_path = snap.SnapPaths.from_environ().snap or "/"

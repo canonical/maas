@@ -22,6 +22,8 @@ from provisioningserver.drivers.power.amt import (
     AMT_DEFAULT_PORT,
     AMT_DEFAULT_USER,
     AMT_ERRORS,
+    AMT_HTTP_PORT,
+    AMT_HTTPS_PORT,
     AMTPowerDriver,
 )
 from provisioningserver.utils.shell import has_command_available, ProcessResult
@@ -89,6 +91,57 @@ class TestAMTPowerDriver(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.patch(amt_module, "sleep")
+
+    def _expected_connection_args(
+        self, ip_address, power_user, power_pass, port
+    ):
+        args = (
+            "--hostname",
+            ip_address,
+            "--port",
+            str(port),
+            "--username",
+            power_user,
+            "--password",
+            power_pass,
+            "--noverifypeer",
+            "--noverifyhost",
+            "--non-interactive",
+        )
+        if str(port) == AMT_HTTPS_PORT:
+            args += ("--cacert", "/etc/ssl/certs/ca-certificates.crt")
+        return args
+
+    def test_get_wsman_connection_args_passes_special_chars_verbatim(self):
+        amt_power_driver = AMTPowerDriver()
+        args = amt_power_driver._get_wsman_connection_args(
+            "192.168.1.10", "admin", "p@ss:w/rd!", AMT_HTTP_PORT
+        )
+        self.assertEqual(
+            args,
+            (
+                "--hostname",
+                "192.168.1.10",
+                "--port",
+                AMT_HTTP_PORT,
+                "--username",
+                "admin",
+                "--password",
+                "p@ss:w/rd!",
+                "--noverifypeer",
+                "--noverifyhost",
+                "--non-interactive",
+            ),
+        )
+
+    def test_get_wsman_connection_args_forces_https_with_cacert(self):
+        amt_power_driver = AMTPowerDriver()
+        args = amt_power_driver._get_wsman_connection_args(
+            "192.168.1.10", "admin", "p@ss", AMT_HTTPS_PORT
+        )
+        self.assertEqual(
+            args[-2:], ("--cacert", "/etc/ssl/certs/ca-certificates.crt")
+        )
 
     def patch_run_command(
         self, stdout=b"", stderr=b"", returncode=0, decode=False
@@ -221,10 +274,9 @@ class TestAMTPowerDriver(MAASTestCase):
         wsman_opts = (
             "-C",
             "/etc/openwsman/openwsman_client.conf",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
+            *self._expected_connection_args(
+                ip_address, power_user, power_pass, port
+            ),
             "--input",
             "-",
         )
@@ -288,10 +340,9 @@ class TestAMTPowerDriver(MAASTestCase):
             "wsman",
             "-C",
             "/etc/openwsman/openwsman_client.conf",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
+            *self._expected_connection_args(
+                ip_address, power_user, power_pass, port
+            ),
             "--input",
             "-",
             "invoke",
@@ -326,10 +377,9 @@ class TestAMTPowerDriver(MAASTestCase):
         wsman_opts = (
             "-C",
             "/etc/openwsman/openwsman_client.conf",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
+            *self._expected_connection_args(
+                ip_address, power_user, power_pass, port
+            ),
         )
         wsman_query_opts = wsman_opts + ("--optimize", "--encoding", "utf-8")
         action = ("enumerate", wsman_query_schema_uri)
@@ -801,10 +851,9 @@ class TestAMTPowerDriver(MAASTestCase):
             "-C",
             "/etc/openwsman/openwsman_client.conf",
             "identify",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
+            *self._expected_connection_args(
+                ip_address, power_user, power_pass, port
+            ),
             extra_environ={"OPENSSL_CONF": amt_module.AMT_OPENSSL_CONF},
         )
         self.assertEqual(result, "amttool")
@@ -829,10 +878,9 @@ class TestAMTPowerDriver(MAASTestCase):
             "-C",
             "/etc/openwsman/openwsman_client.conf",
             "identify",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
+            *self._expected_connection_args(
+                ip_address, power_user, power_pass, port
+            ),
             extra_environ={"OPENSSL_CONF": amt_module.AMT_OPENSSL_CONF},
         )
         self.assertEqual(result, "wsman")
