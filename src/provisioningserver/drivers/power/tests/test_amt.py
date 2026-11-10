@@ -245,6 +245,23 @@ class TestAMTPowerDriver(MAASTestCase):
             ]
         )
 
+    def test_set_pxe_boot_logs_warning_and_continues_on_failure(self):
+        amt_power_driver = AMTPowerDriver()
+        ip_address = factory.make_ipv4_address()
+        _run_mock = self.patch(amt_power_driver, "_run")
+        _run_mock.side_effect = PowerActionError()
+        maaslog = self.patch(amt_module, "maaslog")
+        amt_power_driver._set_pxe_boot(
+            ip_address,
+            factory.make_name("power_user"),
+            factory.make_name("power_pass"),
+            factory.pick_port(),
+        )
+        self.assertEqual(2, _run_mock.call_count)
+        maaslog.warning.assert_called_with(
+            f"Failed to change the boot order to PXE {ip_address}"
+        )
+
     def test_issue_amttool_command_calls__run(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
