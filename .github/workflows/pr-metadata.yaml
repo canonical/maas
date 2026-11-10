@@ -3,12 +3,15 @@ name: PR metadata check
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review]
+  merge_group:
+    types: [checks_requested]
 
 permissions:
   contents: read
 
 jobs:
   validate-conventional-commit:
+    if: ${{ github.event_name == 'pull_request' }}
     name: Validate Conventional Commit standard
     runs-on: ubuntu-slim
     steps:
