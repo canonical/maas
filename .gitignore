@@ -5,7 +5,6 @@
 /.mypy_cache
 /.db.lock
 /.hypothesis
-/.pybuild/
 /.run
 /.tox
 /.ve
@@ -18,8 +17,6 @@
 /api-docs.rst
 /openapi.yaml
 /junit.xml
-/release.macaroon
-/release.lp
 /snap/.snapcraft
 /src/maasui/build
 /src/maasui/tarballs

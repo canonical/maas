@@ -2,8 +2,8 @@
 # Copyright 2016-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-# Utility script to wrap `tcpdump`, so that this script can be called with
-# `sudo` without allowing MAAS access to read arbitrary network traffic.
+# Utility script to wrap `tcpdump` with a fixed filter, so that MAAS can
+# capture beacon traffic without reading arbitrary network traffic.
 # This script is designed to be as minimal as possible, to prevent arbitrary
 # code execution.
 
