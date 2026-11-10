@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -37,9 +38,10 @@ import (
 	"maas.io/core/src/maasopenfga/internal/dbcredentials"
 )
 
-func getPostgresDSN(dbHost, user, pass, name string) string {
+func getPostgresDSN(dbHost string, port int, user, pass, name string) string {
 	q := url.Values{}
 	q.Set("host", dbHost)
+	q.Set("port", strconv.Itoa(port))
 	q.Set("search_path", "openfga")
 
 	u := url.URL{
@@ -84,7 +86,7 @@ func main() {
 	dbCreds := dbcredentials.Resolve(ctx, regionCfg)
 
 	psqlDataStore, err := postgres.New(
-		getPostgresDSN(regionCfg.DatabaseHost, dbCreds.User, dbCreds.Pass, dbCreds.Name),
+		getPostgresDSN(regionCfg.DatabaseHost, regionCfg.DatabasePort, dbCreds.User, dbCreds.Pass, dbCreds.Name),
 		sqlcommon.NewConfig(
 			sqlcommon.WithMaxOpenConns(regionCfg.OpenFGAMaxOpenConns),
 			sqlcommon.WithMaxIdleConns(regionCfg.OpenFGAMaxIdleConns),
