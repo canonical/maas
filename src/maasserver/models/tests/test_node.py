@@ -7412,6 +7412,16 @@ class TestNodeErase(MAASServerTestCase):
         release_mock.assert_called_once_with(owner, None)
         erase_mock.assert_not_called()
 
+    def test_start_releasing_with_scripts_cancels_deploy_workflow(self):
+        owner = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING, owner=owner)
+        script = factory.make_Script(script_type=SCRIPT_TYPE.RELEASE)
+        self.patch(node, "_start").return_value = succeed(None)
+        stop_workflow = self.patch(node_module, "stop_workflow")
+        node.start_releasing(owner, scripts=[script.name])
+        stop_workflow.assert_called_once_with(f"deploy:{node.system_id}")
+        self.assertEqual(NODE_STATUS.RELEASING, node.status)
+
 
 class TestNodeParentRelationShip(MAASServerTestCase):
     def test_children_field_returns_children(self):
