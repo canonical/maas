@@ -40,6 +40,7 @@ database_pass: secret
 	require.NoError(t, err)
 
 	assert.Equal(t, "localhost", cfg.DatabaseHost)
+	assert.Equal(t, 5432, cfg.DatabasePort)
 	assert.Equal(t, defaultMaxOpenConns, cfg.OpenFGAMaxOpenConns)
 	assert.Equal(t, defaultMaxIdleConns, cfg.OpenFGAMaxIdleConns)
 	assert.Equal(t, defaultVaultSecretsMount, cfg.VaultSecretsMount)
@@ -52,6 +53,7 @@ func TestReadRegionConfigKeepsExplicitValues(t *testing.T) {
 
 	confPath := filepath.Join(dir, "regiond.conf")
 	require.NoError(t, os.WriteFile(confPath, []byte(`
+database_port: 5433
 openfga_max_open_conns: 7
 openfga_max_idle_conns: 2
 vault_url: http://vault:8200
@@ -63,6 +65,7 @@ vault_secret_id: secret
 	cfg, err := ReadRegionConfig()
 	require.NoError(t, err)
 
+	assert.Equal(t, 5433, cfg.DatabasePort)
 	assert.Equal(t, 7, cfg.OpenFGAMaxOpenConns)
 	assert.Equal(t, 2, cfg.OpenFGAMaxIdleConns)
 	assert.Equal(t, "custom-mount", cfg.VaultSecretsMount)
