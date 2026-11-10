@@ -39,7 +39,6 @@ const (
 // OpenFGA wrapper.
 type RegionConfig struct {
 	DatabaseHost        string `yaml:"database_host"`
-	DatabasePort        int    `yaml:"database_port"`
 	DatabaseName        string `yaml:"database_name"`
 	DatabasePass        string `yaml:"database_pass"`
 	DatabaseUser        string `yaml:"database_user"`
@@ -48,6 +47,7 @@ type RegionConfig struct {
 	VaultSecretsPath    string `yaml:"vault_secrets_path"`
 	VaultApproleID      string `yaml:"vault_approle_id"`
 	VaultSecretID       string `yaml:"vault_secret_id"`
+	DatabasePort        int    `yaml:"database_port"`
 	OpenFGAMaxOpenConns int    `yaml:"openfga_max_open_conns"`
 	OpenFGAMaxIdleConns int    `yaml:"openfga_max_idle_conns"`
 }

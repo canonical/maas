@@ -17,12 +17,6 @@ package main
 
 import (
 	"context"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	openfgav1 "github.com/openfga/api/proto/openfga/v1"
-	"github.com/openfga/openfga/pkg/logger"
-	openfgaServer "github.com/openfga/openfga/pkg/server"
-	"github.com/openfga/openfga/pkg/storage/postgres"
-	"github.com/openfga/openfga/pkg/storage/sqlcommon"
 	"log"
 	"net"
 	"net/http"
@@ -32,6 +26,13 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	openfgav1 "github.com/openfga/api/proto/openfga/v1"
+	"github.com/openfga/openfga/pkg/logger"
+	openfgaServer "github.com/openfga/openfga/pkg/server"
+	"github.com/openfga/openfga/pkg/storage/postgres"
+	"github.com/openfga/openfga/pkg/storage/sqlcommon"
 
 	"maas.io/core/src/maasopenfga/internal/config"
 	"maas.io/core/src/maasopenfga/internal/dbcredentials"
