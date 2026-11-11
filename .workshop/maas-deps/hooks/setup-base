@@ -1,0 +1,33 @@
+#!/bin/bash
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
+# Runs once per SDK revision, before the project is mounted, so the package
+# list is read from the SDK's own staged files rather than /project.
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+packages_file="$SDK/files/apt-packages"
+
+apt-get update
+apt-get install -y --no-install-recommends software-properties-common gpg-agent
+
+while read -r ppa; do
+    add-apt-repository -y "$ppa"
+done < <(grep '^ppa:' "$packages_file")
+apt-get update
+
+mapfile -t packages < <(grep -vE '^(#|ppa:|$)' "$packages_file")
+apt-get install -y --no-install-recommends "${packages[@]}"
+
+# Installed for tooling and tests, not for running in the workshop. Units are
+# stopped and disabled so they don't claim ports or state on every launch.
+services=(named.service squid.service isc-dhcp-server.service isc-dhcp-server6.service nginx.service)
+while read -r unit; do
+    services+=("$unit")
+done < <(systemctl list-unit-files --no-legend 'postgresql@*.service' 'postgresql.service' | awk '{print $1}')
+for unit in "${services[@]}"; do
+    if systemctl cat "$unit" >/dev/null 2>&1; then
+        systemctl disable --now "$unit"
+    fi
+done

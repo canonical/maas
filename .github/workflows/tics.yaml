@@ -19,69 +19,32 @@ defaults:
 
 permissions:
   contents: read
-  packages: read
 
 jobs:
   test-coverage:
     name: Run tests with coverage
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    container:
-      image: ghcr.io/${{ github.repository }}-build-env:master
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - uses: ./.github/actions/ci-setup
+      - uses: canonical/launch-workshop@b9e184e38f49808ced78e25de19483fe02484c46 # v1.0.1
+        with:
+          cache: |
+            go:mod-cache
+            uv:cache
 
-      - name: Prepare container
-        run: |
-          mkdir -p "$GITHUB_WORKSPACE/.coverage"
-          chown -R ubuntu:ubuntu "$GITHUB_WORKSPACE/.coverage"
+      - name: Build
+        run: workshop run -- build
 
-      - name: Run Python tests with coverage
-        run: |
-          apt update
-          apt install -y python3-coverage
+      - name: Run tests with coverage
+        run: workshop run -- test-coverage
 
-          declare -A py_tests=(
-              [legacy]=".ve/bin/python -m coverage run bin/test.region.legacy"
-              [region]=".ve/bin/python -m coverage run bin/test.region"
-              [rack]=".ve/bin/python -m coverage run bin/test.rack"
-              [pytest]=".ve/bin/coverage run -m pytest -n auto --dist=load"
-          )
-
-          # Run all suites and generate per-suite XML
-          for mod in "${!py_tests[@]}"; do
-              sudo -u ubuntu bash -lc \
-              "COVERAGE_FILE=$GITHUB_WORKSPACE/.coverage/coverage-$mod.py.cover ${py_tests[$mod]}"
-          done
-
-          ls -lah "$GITHUB_WORKSPACE/.coverage"
-
-      - name: Run Go tests with coverage
-        run: |
-          su ubuntu -c "cd '$GITHUB_WORKSPACE' && make test-go-cover"
-
-          mapfile -t covers < <(find "$GITHUB_WORKSPACE/src" -type f -name cover.out | sort)
-
-          shopt -s nullglob
-
-          for cover in "${covers[@]}"; do
-            mod_dir="$(dirname "$cover")"
-            mod_name="$(basename "$mod_dir")"
-            out="$GITHUB_WORKSPACE/.coverage/coverage-$mod_name.go.cover"
-
-            mv "$mod_dir/cover.out" "$out"
-          done
-
-          ls -lah "$GITHUB_WORKSPACE/.coverage"
+      - name: List coverage reports
+        run: ls -lah .coverage
 
       - name: Upload coverage
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

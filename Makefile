@@ -4,14 +4,6 @@ snapcraft := SNAPCRAFT_BUILD_INFO=1 snapcraft -v
 BIN_DIR := bin
 VENV := .ve
 
-# PPA used by MAAS dependencies. It can be overridden by the env.
-#
-# This uses an explicit empty check (rather than ?=) since Jenkins defines
-# variables for parameters even when not passed.
-ifeq ($(MAAS_PPA),)
-	MAAS_PPA = ppa:maas-committers/latest-deps
-endif
-
 export PATH := $(PWD)/$(BIN_DIR):$(PATH)
 
 # pkg_resources makes some incredible noise about version numbers. They
@@ -84,26 +76,9 @@ $(BIN_DIR)/golangci-lint: utilities/get_golangci-lint | $(BIN_DIR)
 	GOBIN="$(realpath $(dir $@))"
 	utilities/get_golangci-lint "v$(GOLANGCI_VERSION)"
 
-# Install all packages required for MAAS development & operation on
-# the system. This may prompt for a password.
-install-dependencies: required_deps_files := base dev
-# list package names from a required-packages/ file
-install-dependencies: list_packages = $(shell sort -u required-packages/$1 | sed '/^\#/d')
-install-dependencies: apt := sudo DEBIAN_FRONTEND=noninteractive apt -y
-install-dependencies: apt_install := $(apt) install --no-install-recommends
-install-dependencies:
-	$(apt_install) software-properties-common gpg-agent
-ifneq ($(MAAS_PPA),)
-	sudo apt-add-repository -y $(MAAS_PPA)
-endif
-	$(apt_install) $(foreach deps,$(required_deps_files),$(call list_packages,$(deps)))
-	$(apt) purge $(call list_packages,forbidden)
-	if [ -x /usr/bin/snap ]; then xargs -L1 sudo snap install < required-packages/snaps; fi
-.PHONY: install-dependencies
-
-$(VENV):
-	python3 -m venv --system-site-packages --clear $@
-	$(VENV)/bin/pip install --upgrade --no-build-isolation --force-reinstall -e .[testing]
+$(VENV): pyproject.toml
+	uv venv --system-site-packages --clear $@
+	VIRTUAL_ENV=$(CURDIR)/$@ uv pip install --upgrade --no-build-isolation --reinstall -e ".[testing]"
 
 $(BIN_DIR):
 	mkdir $@
@@ -193,7 +168,7 @@ sec: sec-py
 sec-py:
 	@tox -e bandit
 
-lint: lint-py-builders lint-py check-types lint-py-imports lint-py-linefeeds lint-go lint-oapi lint-shell
+lint: lint-py-builders lint-py check-types lint-py-imports lint-py-linefeeds lint-go lint-oapi lint-shell lint-workshop-deps
 .PHONY: lint
 
 # Check if service layer builders must be re-generated
@@ -259,10 +234,18 @@ lint-shell:
 		utilities/run-perf-tests-ci \
 		utilities/run-performanced \
 		utilities/run-py-tests-ci \
+		utilities/run-tests-coverage \
 		utilities/schemaspy \
 		utilities/update-initial-sql \
-		utilities/version-bump.sh
+		utilities/version-bump.sh \
+		.workshop/maas-deps/hooks/setup-base \
+		.workshop/maas-py/hooks/setup-project
 .PHONY: lint-shell
+
+# Workshop apt packages must cover snap/snapcraft.yaml runtime packages
+lint-workshop-deps:
+	@utilities/check-workshop-deps
+.PHONY: lint-workshop-deps
 
 check-types: bin/pyright
 	bin/pyright --stats
@@ -400,6 +383,8 @@ snap-clean:
 	$(snapcraft) clean
 .PHONY: snap-clean
 
+# Run on the host, not inside a workshop: snapcraft manages its own build
+# environment. Workshops are for the dev/test loop only.
 snap:
 	$(snapcraft) pack
 .PHONY: snap

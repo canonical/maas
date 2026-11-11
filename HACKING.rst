@@ -49,17 +49,30 @@ Then go into the directory where you want the code to reside and run::
 
     $ git clone https://git.launchpad.net/maas && cd maas
 
-MAAS depends on Postgres, isc-dhcp, bind9, and many other packages. To install
-everything that's needed for running and developing MAAS, run::
+MAAS depends on Postgres, isc-dhcp, bind9, and many other packages. The
+development environment for these is a Workshop defined in ``workshop.yaml``.
+Install Workshop and launch it from the repository root::
 
-    $ make install-dependencies
+    $ sudo snap install workshop --classic
+    $ workshop launch
 
-Careful: this will ``apt install`` many packages on your system, via
-``sudo``. It may prompt you for your password.
+Dependencies are installed inside the workshop, not on your host. The services
+it installs (bind9, PostgreSQL, squid, isc-dhcp, nginx) are stopped and
+disabled in systemd.
 
-This will install ``bind9``. As a result you will have an extra daemon
-running. If you are a developer and don't intend to run BIND locally, you can
-disable the daemon via ``sudo systemctl disable --now named``.
+Unless stated otherwise, every command in the rest of this document runs
+**inside** the workshop. Either invoke a named action::
+
+    $ workshop run -- lint
+
+(``workshop actions`` lists them all), or open a shell and use ``make`` and
+``bin/`` directly::
+
+    $ workshop shell
+
+Changing ``.workshop/maas-deps/files/apt-packages`` requires recreating the
+workshop (``workshop remove && workshop launch``); ``workshop refresh`` does
+not re-run the ``setup-base`` hook.
 
 Python development dependencies are pulled automatically from `PyPI`_ in a
 virtualenv located under ``.ve``.
@@ -115,6 +128,10 @@ Running tests
 =============
 
 To run the whole suite::
+
+    $ workshop run -- test
+
+Or, from a ``workshop shell``::
 
     $ make test
 
@@ -439,13 +456,15 @@ Viewing Workflows
 Prerequisites
 -------------
 
-- The MAAS development environment setup and running, as outlined in the
-  `MAAS-dev GitHub repository <https://github.com/canonical/maas-dev-setup>`_.
-- Docker installed on your host, i.e. outside your LXD container. Docker won't
-  work if running in a lxd container, so it needs to run on your host. If it's
-  not installed, the easiest installation is as a
-  `snap <https://snapcraft.io/install/docker/ubuntu>`_. 
-- `Go <https://golang.org/dl/>`_ installed on your host machine: 
+- The MAAS development environment set up and running, as outlined in
+  `Dependencies`_ above.
+- Docker installed on your host, i.e. outside the workshop. Docker won't work
+  inside an LXD container, so it needs to run on your host. If it's not
+  installed, the easiest installation is as a
+  `snap <https://snapcraft.io/install/docker/ubuntu>`_.
+- `Go <https://golang.org/dl/>`_ on your host machine, for the ``tctl``
+  install below. Inside the workshop Go is provided by the ``go`` SDK listed
+  in ``workshop.yaml``.
   ::
 
     sudo apt update
