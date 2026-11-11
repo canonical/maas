@@ -124,5 +124,5 @@ def get_running_version() -> MAASVersion:
 
 
 def get_versions_info():
-    """Get a versions info object based on the install type."""
+    """Get a versions info object for the installed snap."""
     return snap.get_snap_versions_info()

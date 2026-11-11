@@ -17,7 +17,7 @@ from fixtures import EnvironmentVariableFixture
 import httplib2
 
 from apiclient.creds import convert_string_to_tuple
-from maascli import cli, init, snap
+from maascli import cli, snap
 from maascli.auth import UnexpectedResponse
 from maascli.cli import CERTS_DIR
 from maascli.config import ProfileConfig
@@ -100,18 +100,9 @@ class TestRegisterCommands(MAASTestCase):
         subparser = parser.subparsers.choices.get("init")
         self.assertIsInstance(subparser.get_default("execute"), snap.cmd_init)
 
-    def test_load_init_command_no_snap(self):
+    def test_no_init_command_without_snap(self):
         environ = {}
         self.patch(os, "environ", environ)
-        parser = ArgumentParser()
-        cli.register_cli_commands(parser)
-        subparser = parser.subparsers.choices.get("init")
-        self.assertIsInstance(subparser.get_default("execute"), cli.cmd_init)
-
-    def test_load_init_command_no_snap_no_maasserver(self):
-        environ = {}
-        self.patch(os, "environ", environ)
-        self.patch(cli, "is_maasserver_available").return_value = None
         parser = ArgumentParser()
         cli.register_cli_commands(parser)
         subparser = parser.subparsers.choices.get("init")
@@ -272,34 +263,6 @@ class TestLogin(MAASTestCase):
                 sample_cert.certificate_pem(), config[profile_name]["cacerts"]
             )
             del config[profile_name]
-
-
-class TestCmdInit(MAASTestCase):
-    def setUp(self):
-        super().setUp()
-        self.parser = ArgumentParser()
-        self.cmd = cli.cmd_init(self.parser)
-        self.maas_region_path = init.get_maas_region_bin_path()
-        self.call_mock = self.patch(init.subprocess, "call")
-        # avoid printouts
-        self.mock_stdout = self.patch(init.sys, "stdout", StringIO())
-        self.mock_stderr = self.patch(init.sys, "stderr", StringIO())
-
-    def test_defaults(self):
-        options = self.parser.parse_args([])
-        self.assertFalse(options.skip_admin)
-        self.assertIsNone(options.admin_username)
-        self.assertIsNone(options.admin_password)
-        self.assertIsNone(options.admin_email)
-        self.assertIsNone(options.admin_ssh_import)
-
-    def test_init_maas_calls_subcommands(self):
-        options = self.parser.parse_args([])
-        self.cmd(options)
-        [createadmin_call] = self.call_mock.mock_calls
-        _, args, kwargs = createadmin_call
-        self.assertEqual(([self.maas_region_path, "createadmin"],), args)
-        self.assertEqual({}, kwargs)
 
 
 class TestLogout(MAASTestCase):

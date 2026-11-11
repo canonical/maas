@@ -215,8 +215,8 @@ class TestRegionServer(MAASTransactionServerTestCase):
         # The log was written to.
         self.assertEqual(
             "Rack controller 'None' could not be authenticated; dropping "
-            "connection. Check that /var/lib/maas/secret on the controller "
-            "contains the correct shared key.",
+            "connection. Check that /var/snap/maas/common/maas/secret on "
+            "the controller contains the correct shared key.",
             logger.dump(),
         )
 
