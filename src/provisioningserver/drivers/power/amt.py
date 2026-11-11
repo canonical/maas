@@ -55,6 +55,7 @@ HTTP_OR_HTTPS = [
 REQUIRED_PACKAGES = [["wsman", "wsmancli"]]
 
 AMT_OPENSSL_CONF = join(dirname(__file__), "amt.openssl.cnf")
+AMT_HTTPS_CACERT = "/etc/ssl/certs/ca-certificates.crt"
 
 AMT_ALLOW_LEGACY_RENEGOTIATION_YES = "true"
 AMT_ALLOW_LEGACY_RENEGOTIATION_NO = "false"
@@ -70,10 +71,6 @@ def _get_openssl_environ(allow_legacy_renegotiation: bool) -> dict:
     if allow_legacy_renegotiation:
         return {"OPENSSL_CONF": AMT_OPENSSL_CONF}
     return {}
-
-
-AMT_OPENSSL_CONF = join(dirname(__file__), "amt.openssl.cnf")
-AMT_HTTPS_CACERT = "/etc/ssl/certs/ca-certificates.crt"
 
 
 class AMTPowerDriver(PowerDriver):
