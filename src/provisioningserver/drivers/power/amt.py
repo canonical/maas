@@ -71,6 +71,7 @@ def _get_openssl_environ(allow_legacy_renegotiation: bool) -> dict:
         return {"OPENSSL_CONF": AMT_OPENSSL_CONF}
     return {}
 
+
 AMT_OPENSSL_CONF = join(dirname(__file__), "amt.openssl.cnf")
 AMT_HTTPS_CACERT = "/etc/ssl/certs/ca-certificates.crt"
 
