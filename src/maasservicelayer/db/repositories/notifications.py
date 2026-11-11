@@ -13,7 +13,7 @@ from maasservicelayer.builders.notifications import (
     NotificationDismissalBuilder,
 )
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import AnyQuerySpec, Clause, ClauseFactory
 from maasservicelayer.db.mappers.default import DefaultDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
@@ -21,7 +21,10 @@ from maasservicelayer.db.tables import (
     NotificationTable,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.notifications import Notification
+from maasservicelayer.models.notifications import (
+    Notification,
+    NotificationDismissal,
+)
 from maasservicelayer.utils.date import utcnow
 
 
@@ -39,7 +42,7 @@ class NotificationsRepository(BaseRepository[Notification]):
     def __init__(self, context: Context):
         super().__init__(context)
         self.notificationdismissal_mapper = DefaultDomainDataMapper(
-            NotificationDismissalTable
+            NotificationDismissal, NotificationDismissalTable
         )
 
     def get_repository_table(self) -> Table:
@@ -165,9 +168,9 @@ class NotificationsRepository(BaseRepository[Notification]):
         await self.execute_stmt(stmt)
 
     @override
-    async def _delete(self, query: QuerySpec) -> List[Notification]:
+    async def _delete(self, query: AnyQuerySpec) -> List[Notification]:
         stmt = delete(NotificationTable).returning(self.get_repository_table())
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
         results = (await self.execute_stmt(stmt)).all()
         deleted = [Notification(**row._asdict()) for row in results]
         cascade_stmt = delete(NotificationDismissalTable).where(

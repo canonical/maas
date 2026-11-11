@@ -9,7 +9,7 @@ from sqlalchemy import delete, Table
 from sqlalchemy.dialects.postgresql import insert
 
 from maasservicelayer.builders.nodeuserdata import NodeUserDataBuilder
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import AnyQuerySpec, Clause, ClauseFactory
 from maasservicelayer.db.mappers.base import BaseDomainDataMapper
 from maasservicelayer.db.mappers.nodeuserdata import (
     NodeUserDataDomainDataMapper,
@@ -41,7 +41,9 @@ class NodeUserDataRepository(BaseRepository[NodeUserData]):
         return NodeUserData
 
     def get_mapper(self) -> BaseDomainDataMapper:
-        return NodeUserDataDomainDataMapper(self.get_repository_table())
+        return NodeUserDataDomainDataMapper(
+            NodeUserData, self.get_repository_table()
+        )
 
     async def upsert(self, builder: NodeUserDataBuilder) -> NodeUserData:
         resource = self.mapper.build_resource(builder)
@@ -57,7 +59,7 @@ class NodeUserDataRepository(BaseRepository[NodeUserData]):
         result = (await self.execute_stmt(upsert_stmt)).one()
         return self._to_model(result._asdict())
 
-    async def _get(self, query: QuerySpec) -> List[NodeUserData]:
+    async def _get(self, query: AnyQuerySpec) -> List[NodeUserData]:
         """
         This override is required to convert the string-based,
         base64-encoded data that the database uses, to a valid `bytes`
@@ -66,18 +68,18 @@ class NodeUserDataRepository(BaseRepository[NodeUserData]):
         This is called by `get_one`, `get_by_id`, and `get_many`.
         """
         stmt = self.select_all_statement()
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return [self._to_model(row._asdict()) for row in result]
 
-    async def _delete(self, query: QuerySpec) -> List[NodeUserData]:
+    async def _delete(self, query: AnyQuerySpec) -> List[NodeUserData]:
         """Decode `data` on deleted rows, as `_get` does.
 
         This is called by `delete_one`, `delete_by_id`, and `delete_many`.
         """
         stmt = delete(NodeUserDataTable).returning(NodeUserDataTable)
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         return [self._to_model(row._asdict()) for row in result]

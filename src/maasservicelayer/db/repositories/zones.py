@@ -8,7 +8,12 @@ from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import eq
 
 from maascommon.enums.node import NodeTypeEnum
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import (
+    Clause,
+    ClauseFactory,
+    QuerySpec,
+    SQLQuerySpec,
+)
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     DefaultResourceTable,
@@ -51,7 +56,10 @@ class ZonesRepository(BaseRepository[Zone]):
     ) -> ListResult[ZoneWithStatistics]:
         total_stmt = select(count()).select_from(self.get_repository_table())
         if query:
-            total_stmt = query.enrich_stmt(total_stmt)
+            translated = self._translate(query)
+            total_stmt = SQLQuerySpec(where=translated.where).enrich_stmt(
+                total_stmt
+            )
 
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
@@ -90,7 +98,7 @@ class ZonesRepository(BaseRepository[Zone]):
         )
 
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
 
         result = await self.execute_stmt(stmt)
         return ListResult[ZoneWithStatistics](

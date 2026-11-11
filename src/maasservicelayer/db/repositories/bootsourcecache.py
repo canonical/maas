@@ -210,6 +210,6 @@ class BootSourceCacheRepository(BaseRepository[BootSourceCache]):
             .select_from(self.get_repository_table())
         )
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
         result = (await self.execute_stmt(stmt)).all()
         return [row[0] for row in result]

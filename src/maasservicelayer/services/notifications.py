@@ -3,7 +3,7 @@
 
 from maasservicelayer.builders.notifications import NotificationBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.filters import AnyQuerySpec
 from maasservicelayer.db.repositories.notifications import (
     NotificationsRepository,
 )
@@ -101,7 +101,7 @@ class NotificationsService(
         )
 
     async def create_or_update(
-        self, query: QuerySpec, builder: NotificationBuilder
+        self, query: AnyQuerySpec, builder: NotificationBuilder
     ) -> Notification:
         """Create a new notification or update an existing one.
 

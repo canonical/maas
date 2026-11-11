@@ -9,7 +9,12 @@ from sqlalchemy import Table, update
 from sqlalchemy.dialects.postgresql import insert
 
 from maasservicelayer.builders.filestorage import FileStorageBuilder
-from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
+from maasservicelayer.db.filters import (
+    AnyQuerySpec,
+    Clause,
+    ClauseFactory,
+    QuerySpec,
+)
 from maasservicelayer.db.mappers.base import BaseDomainDataMapper
 from maasservicelayer.db.mappers.filestorage import FileStorageDomainDataMapper
 from maasservicelayer.db.repositories.base import BaseRepository
@@ -45,7 +50,9 @@ class FileStorageRepository(BaseRepository[FileStorage]):
         return FileStorage
 
     def get_mapper(self) -> BaseDomainDataMapper:
-        return FileStorageDomainDataMapper(self.get_repository_table())
+        return FileStorageDomainDataMapper(
+            FileStorage, self.get_repository_table()
+        )
 
     async def create(self, builder):
         raise NotImplementedError(
@@ -100,7 +107,7 @@ class FileStorageRepository(BaseRepository[FileStorage]):
         result_dict["content"] = b64decode(result_dict["content"])
         return self.get_model_factory()(**result_dict)
 
-    async def _get(self, query: QuerySpec) -> List[FileStorage]:
+    async def _get(self, query: AnyQuerySpec) -> List[FileStorage]:
         """
         This override is required to convert the string-based, base64-encoded
         file content that the database uses, to a valid `bytes` representation
@@ -111,7 +118,7 @@ class FileStorageRepository(BaseRepository[FileStorage]):
         overriding also.
         """
         stmt = self.select_all_statement()
-        stmt = query.enrich_stmt(stmt)
+        stmt = self._translate(query).enrich_stmt(stmt)
 
         result = (await self.execute_stmt(stmt)).all()
         stored_files = []

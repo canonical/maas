@@ -18,6 +18,7 @@ from maasservicelayer.db.filters import (
     OrderByClause,
     OrderByClauseFactory,
     QuerySpec,
+    SQLQuerySpec,
 )
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
@@ -240,7 +241,10 @@ class BootResourcesRepository(BaseRepository[BootResource]):
             .where(BootResourceTable.c.rtype == BootResourceType.UPLOADED)
         )
         if query:
-            total_stmt = query.enrich_stmt(total_stmt)
+            translated = self._translate(query)
+            total_stmt = SQLQuerySpec(where=translated.where).enrich_stmt(
+                total_stmt
+            )
 
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
@@ -250,7 +254,7 @@ class BootResourcesRepository(BaseRepository[BootResource]):
             .limit(size)
         )
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
         result = await self.execute_stmt(stmt)
 
         return ListResult(
@@ -388,7 +392,10 @@ class BootResourcesRepository(BaseRepository[BootResource]):
             .where(BootResourceTable.c.rtype == BootResourceType.UPLOADED)
         )
         if query:
-            total_stmt = query.enrich_stmt(total_stmt)
+            translated = self._translate(query)
+            total_stmt = SQLQuerySpec(where=translated.where).enrich_stmt(
+                total_stmt
+            )
 
         total = (await self.execute_stmt(total_stmt)).scalar_one()
 
@@ -399,7 +406,7 @@ class BootResourcesRepository(BaseRepository[BootResource]):
             .limit(size)
         )
         if query:
-            stmt = query.enrich_stmt(stmt)
+            stmt = self._translate(query).enrich_stmt(stmt)
         result = await self.execute_stmt(stmt)
 
         return ListResult(

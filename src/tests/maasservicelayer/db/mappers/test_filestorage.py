@@ -16,7 +16,7 @@ class TestFileStorageDomainDataMapper:
             owner_id=None,
         )
 
-        mapper = FileStorageDomainDataMapper(FileStorageTable)
+        mapper = FileStorageDomainDataMapper(FileStorage, FileStorageTable)
         builder = FileStorageBuilder(
             filename=file.filename,
             content=file.content,

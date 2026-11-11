@@ -5,11 +5,11 @@ import abc
 
 import pytest
 
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.exceptions.catalog import (
     NotFoundException,
     PreconditionFailedException,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.services.base import BaseService, ReadOnlyService
 
