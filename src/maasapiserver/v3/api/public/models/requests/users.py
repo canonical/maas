@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from maascommon.password_policy import enforce_password_complexity
 from maasservicelayer.builders.users import UserBuilder
-from maasservicelayer.db.filters import Clause
-from maasservicelayer.db.repositories.users import UserClauseFactory
+from maasservicelayer.filters.base import Filter
+from maasservicelayer.filters.users import UserFilters
 from maasservicelayer.models.base import UNSET
 
 
@@ -26,11 +26,11 @@ class UsersFiltersParams(BaseModel):
         Query(default=None, title="Filter by username or email")
     )
 
-    def to_clause(self) -> Clause | None:
+    def to_filter(self) -> Filter | None:
         if self.ids:
-            return UserClauseFactory.with_ids(self.ids)
+            return UserFilters.with_ids(self.ids)
         if self.username_or_email:
-            return UserClauseFactory.with_username_or_email_like(
+            return UserFilters.with_username_or_email_like(
                 self.username_or_email
             )
         return None

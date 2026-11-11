@@ -5,28 +5,12 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.context import Context
-from maasservicelayer.db.repositories.sslkeys import (
-    SSLKeyClauseFactory,
-    SSLKeysRepository,
-)
+from maasservicelayer.db.repositories.sslkeys import SSLKeysRepository
 from maasservicelayer.models.sslkeys import SSLKey
 from tests.fixtures import get_test_data_file
 from tests.fixtures.factories.sslkey import create_test_sslkey
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestSSLKeyClauseFactory:
-    def test_builder(self) -> None:
-        clause = SSLKeyClauseFactory.with_user_id(user_id=1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_sslkey.user_id = 1")
-
-        clause = SSLKeyClauseFactory.with_id(id=1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("maasserver_sslkey.id = 1")
 
 
 class TestSSLKeyRepository(RepositoryCommonTests[SSLKey]):

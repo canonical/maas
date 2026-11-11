@@ -5,41 +5,18 @@ from typing import Sequence
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
-from sqlalchemy.sql.operators import eq
 
 from maasservicelayer.builders.consumers import ConsumerBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import Clause, QuerySpec
 from maasservicelayer.db.repositories.base import MultipleResultsException
-from maasservicelayer.db.repositories.consumers import (
-    ConsumerClauseFactory,
-    ConsumersRepository,
-)
+from maasservicelayer.db.repositories.consumers import ConsumersRepository
+from maasservicelayer.filters.base import FieldFilter, Operator
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.consumers import Consumer
 from tests.fixtures.factories.consumer import create_test_user_consumer
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
-
-
-class TestConsumerClauseFactory:
-    def test_with_key(self) -> None:
-        clause = ConsumerClauseFactory.with_key("key")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("piston3_consumer.key = 'key'")
-
-    def test_with_secret(self) -> None:
-        clause = ConsumerClauseFactory.with_secret("secret")
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("piston3_consumer.secret = 'secret'")
-
-    def test_with_user_id(self) -> None:
-        clause = ConsumerClauseFactory.with_user_id(1)
-        assert str(
-            clause.condition.compile(compile_kwargs={"literal_binds": True})
-        ) == ("piston3_consumer.user_id = 1")
 
 
 class TestConsumersRepository(RepositoryCommonTests[Consumer]):
@@ -119,11 +96,8 @@ class TestConsumersRepository(RepositoryCommonTests[Consumer]):
         created_resource = await repository_instance.create(instance_builder)
         updated_resource = await repository_instance.update_one(
             QuerySpec(
-                where=Clause(
-                    eq(
-                        repository_instance.get_repository_table().c.id,
-                        created_resource.id,
-                    )
+                where=FieldFilter(
+                    Consumer, "id", Operator.EQ, created_resource.id
                 )
             ),
             ConsumerBuilder(name=created_resource.name + "new"),

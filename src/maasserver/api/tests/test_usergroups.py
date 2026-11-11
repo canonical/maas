@@ -13,10 +13,8 @@ from maasserver.auth.tests.test_auth import OpenFGAMockMixin
 from maasserver.sqlalchemy import service_layer
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.openfga_tuples import (
-    OpenFGATuplesClauseFactory,
-)
+from maasservicelayer.filters.openfga_tuples import OpenFGATuplesFilters
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.openfga_tuple import OpenFGATuple
 
 
@@ -38,12 +36,12 @@ def get_openfga_tuple(
 ) -> OpenFGATuple | None:
     tuples = service_layer.services.openfga_tuples.get_many(
         QuerySpec(
-            where=OpenFGATuplesClauseFactory.and_clauses(
+            where=OpenFGATuplesFilters.and_filters(
                 [
-                    OpenFGATuplesClauseFactory.with_user(user),
-                    OpenFGATuplesClauseFactory.with_relation(relation),
-                    OpenFGATuplesClauseFactory.with_object_type(object_type),
-                    OpenFGATuplesClauseFactory.with_object_id(object_id),
+                    OpenFGATuplesFilters.with_user(user),
+                    OpenFGATuplesFilters.with_relation(relation),
+                    OpenFGATuplesFilters.with_object_type(object_type),
+                    OpenFGATuplesFilters.with_object_id(object_id),
                 ]
             )
         )

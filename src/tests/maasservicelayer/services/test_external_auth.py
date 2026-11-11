@@ -29,11 +29,9 @@ from maasservicelayer.auth.external_oauth import (
 from maasservicelayer.builders.external_auth import OAuthProviderBuilder
 from maasservicelayer.builders.users import UserBuilder, UserProfileBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.external_auth import (
     ExternalOAuthRepository,
 )
-from maasservicelayer.db.repositories.users import UserClauseFactory
 from maasservicelayer.exceptions.catalog import (
     BadGatewayException,
     ConflictException,
@@ -47,6 +45,8 @@ from maasservicelayer.exceptions.constants import (
     PRECONDITION_FAILED,
     PROVIDER_COMMUNICATION_FAILED_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.users import UserFilters
 from maasservicelayer.models.external_auth import (
     AccessTokenType,
     OAuthProvider,
@@ -290,7 +290,7 @@ class TestExternalOAuthService(ServiceCommonTests):
     ) -> None:
         await service_instance._update_connected_users_active_status(1, True)
         service_instance.users_service.update_many.assert_awaited_once_with(
-            query=QuerySpec(where=UserClauseFactory.with_provider_id(1)),
+            query=QuerySpec(where=UserFilters.with_provider_id(1)),
             builder=UserBuilder(is_active=True),
         )
 
@@ -648,9 +648,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         )
         service_instance.users_service.get_or_create.assert_awaited_once_with(
             query=QuerySpec(
-                UserClauseFactory.with_username_or_email_like(
-                    "user@example.com"
-                )
+                UserFilters.with_username_or_email_like("user@example.com")
             ),
             builder=UserBuilder(
                 username="user@example.com",
@@ -745,9 +743,7 @@ class TestExternalOAuthService(ServiceCommonTests):
         )
         service_instance.users_service.get_or_create.assert_awaited_once_with(
             query=QuerySpec(
-                UserClauseFactory.with_username_or_email_like(
-                    "user@example.com"
-                )
+                UserFilters.with_username_or_email_like("user@example.com")
             ),
             builder=UserBuilder(
                 username="user@example.com",
