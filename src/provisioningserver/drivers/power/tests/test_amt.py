@@ -960,10 +960,18 @@ class TestAMTPowerDriver(MAASTestCase):
             "-C",
             "/etc/openwsman/openwsman_client.conf",
             "identify",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
+            "--hostname",
+            ip_address,
+            "--port",
+            str(port),
+            "--username",
+            power_user,
+            "--password",
+            power_pass,
             "--noverifypeer",
             "--noverifyhost",
+            "--non-interactive",
+            extra_environ={},
         )
         self.assertEqual(result, "amttool")
 
@@ -987,10 +995,18 @@ class TestAMTPowerDriver(MAASTestCase):
             "-C",
             "/etc/openwsman/openwsman_client.conf",
             "identify",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
+            "--hostname",
+            ip_address,
+            "--port",
+            str(port),
+            "--username",
+            power_user,
+            "--password",
+            power_pass,
             "--noverifypeer",
             "--noverifyhost",
+            "--non-interactive",
+            extra_environ={},
         )
         self.assertEqual(result, "wsman")
 
