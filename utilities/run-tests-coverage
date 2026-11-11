@@ -1,0 +1,35 @@
+#!/bin/bash
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
+# Runs the Python and Go suites with coverage and writes per-suite files to
+# .coverage/, the layout the TiCS analyzer job downloads.
+#
+# This deliberately does not reuse utilities/run-py-tests-ci: that script runs
+# the suites through bin/test.parallel, which cannot attribute coverage data
+# per suite. Keep the suite inventory below in sync with it.
+#
+# The first failing suite aborts the run, matching how the TiCS workflow used
+# to skip later steps.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+venv=.ve
+coverage_dir="$PWD/.coverage"
+mkdir -p "$coverage_dir"
+
+declare -A py_tests=(
+    [legacy]="$venv/bin/python -m coverage run bin/test.region.legacy"
+    [region]="$venv/bin/python -m coverage run bin/test.region"
+    [rack]="$venv/bin/python -m coverage run bin/test.rack"
+    [pytest]="$venv/bin/coverage run -m pytest -n auto --dist=load"
+)
+for mod in "${!py_tests[@]}"; do
+    COVERAGE_FILE="$coverage_dir/coverage-$mod.py.cover" ${py_tests[$mod]}
+done
+
+make test-go-cover
+while IFS= read -r cover; do
+    module="$(basename "$(dirname "$cover")")"
+    mv "$cover" "$coverage_dir/coverage-$module.go.cover"
+done < <(find "$PWD/src" -type f -name cover.out)
