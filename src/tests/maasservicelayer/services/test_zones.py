@@ -8,11 +8,7 @@ from pytest_mock import MockerFixture
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.zones import (
-    ZonesClauseFactory,
-    ZonesRepository,
-)
+from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     PreconditionFailedException,
@@ -21,6 +17,8 @@ from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
     ETAG_PRECONDITION_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
+from maasservicelayer.filters.zones import ZonesFilters
 from maasservicelayer.models.base import MaasBaseModel
 from maasservicelayer.models.zones import Zone
 from maasservicelayer.services import NodesService, ZonesService
@@ -92,7 +90,7 @@ class TestZonesService:
         )
 
         await zones_service.delete_one(
-            query=QuerySpec(ZonesClauseFactory.with_ids([TEST_ZONE.id]))
+            query=QuerySpec(ZonesFilters.with_ids([TEST_ZONE.id]))
         )
         zones_repository.delete_by_id.assert_awaited_once_with(id=TEST_ZONE.id)
 

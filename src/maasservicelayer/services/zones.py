@@ -5,7 +5,6 @@ from typing import List
 
 from maasservicelayer.builders.zones import ZoneBuilder
 from maasservicelayer.context import Context
-from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
@@ -14,6 +13,7 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
 )
+from maasservicelayer.filters.query import QuerySpec
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.zones import Zone, ZoneWithStatistics
 from maasservicelayer.services.base import BaseService, Service, ServiceCache
