@@ -10,6 +10,7 @@ The following page catalogs the fields in the `create machine` dialogue for each
 |:-----|:-----|:-----|
 | Power password | Password to access unit | Optional |
 | Power address | IP address of unit | Required |
+| Allow legacy TLS renegotiation | Allow TLS connections to old AMT firmwares that lack RFC 5746 secure renegotiation. Insecure; rejected in FIPS mode | Optional, default=No |
 
 ### American Power Conversion (APC) PDU
 
@@ -244,6 +245,7 @@ All parameters are entered as `key=value`, e.g., `power_type=amt`. The MAAS CLI 
 | `power_type` | `amt` | Required |
 | `power_address` | IP address of unit | Required |
 | `power_pass` | Password to access unit | Optional |
+| `allow_legacy_renegotiation` | `true` to allow TLS connections to old AMT firmwares that lack RFC 5746 secure renegotiation. Insecure; rejected in FIPS mode | Optional, default=`false` |
 
 ### American Power Conversion (APC) PDU
 

@@ -29,6 +29,7 @@ import (
 )
 
 const (
+	defaultDatabasePort      = 5432
 	defaultMaxOpenConns      = 3
 	defaultMaxIdleConns      = 1
 	defaultVaultSecretsMount = "secret"
@@ -46,6 +47,7 @@ type RegionConfig struct {
 	VaultSecretsPath    string `yaml:"vault_secrets_path"`
 	VaultApproleID      string `yaml:"vault_approle_id"`
 	VaultSecretID       string `yaml:"vault_secret_id"`
+	DatabasePort        int    `yaml:"database_port"`
 	OpenFGAMaxOpenConns int    `yaml:"openfga_max_open_conns"`
 	OpenFGAMaxIdleConns int    `yaml:"openfga_max_idle_conns"`
 }
@@ -76,6 +78,10 @@ func ReadRegionConfig() (*RegionConfig, error) {
 
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse region config file: %w", err)
+	}
+
+	if cfg.DatabasePort <= 0 {
+		cfg.DatabasePort = defaultDatabasePort
 	}
 
 	if cfg.OpenFGAMaxOpenConns <= 0 {

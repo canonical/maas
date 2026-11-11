@@ -149,7 +149,7 @@ On a FIPS host, MAAS validates power configuration when you create or update a m
 
 | Driver | FIPS status | Reason |
 |---|---|---|
-| `amt` | Supported | |
+| `amt` | Supported | Requires legacy TLS renegotiation disabled |
 | `hmc` | Supported | |
 | `hmcz` | Supported | Requires SSL verification |
 | `ipmi` | Supported | Requires cipher suite 17 |
@@ -180,6 +180,7 @@ On a FIPS host, MAAS validates power configuration when you create or update a m
 |---|---|---|
 | `ipmi` | `cipher_suite_id` | `17`. If unset, `17` is assumed. Cipher suite 17 uses HMAC-SHA256 and AES-CBC-128. |
 | `webhook`, `proxmox`, `hmcz` | `power_verify_ssl` | `y` |
+| `amt` | `allow_legacy_renegotiation` | `false`. If unset, `false` is assumed. Legacy renegotiation lacks RFC 5746 protection. |
 
 The `maas_auto_ipmi_cipher_suite_id` configuration, which commissioning writes into each IPMI machine's `cipher_suite_id`, defaults to `17` on a FIPS host and to `3` otherwise. On a FIPS host:
 

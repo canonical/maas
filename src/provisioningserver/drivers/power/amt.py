@@ -55,6 +55,23 @@ HTTP_OR_HTTPS = [
 REQUIRED_PACKAGES = [["wsman", "wsmancli"]]
 
 AMT_OPENSSL_CONF = join(dirname(__file__), "amt.openssl.cnf")
+
+AMT_ALLOW_LEGACY_RENEGOTIATION_YES = "true"
+AMT_ALLOW_LEGACY_RENEGOTIATION_NO = "false"
+AMT_ALLOW_LEGACY_RENEGOTIATION_CHOICES = [
+    [AMT_ALLOW_LEGACY_RENEGOTIATION_NO, "No"],
+    [AMT_ALLOW_LEGACY_RENEGOTIATION_YES, "Yes"],
+]
+
+
+def _get_openssl_environ(allow_legacy_renegotiation: bool) -> dict:
+    # Old AMT firmwares do not support RFC 5746 secure renegotiation, which
+    # OpenSSL 3 requires by default. Relax it only when explicitly allowed.
+    if allow_legacy_renegotiation:
+        return {"OPENSSL_CONF": AMT_OPENSSL_CONF}
+    return {}
+
+AMT_OPENSSL_CONF = join(dirname(__file__), "amt.openssl.cnf")
 AMT_HTTPS_CACERT = "/etc/ssl/certs/ca-certificates.crt"
 
 
@@ -77,6 +94,13 @@ class AMTPowerDriver(PowerDriver):
             default=AMT_DEFAULT_PORT,
         ),
         make_setting_field("power_address", "Power address", required=True),
+        make_setting_field(
+            "allow_legacy_renegotiation",
+            "Allow legacy TLS renegotiation (insecure)",
+            field_type="choice",
+            choices=AMT_ALLOW_LEGACY_RENEGOTIATION_CHOICES,
+            default=AMT_ALLOW_LEGACY_RENEGOTIATION_NO,
+        ),
     ]
     ip_extractor = make_ip_extractor("power_address")
 
@@ -92,7 +116,17 @@ class AMTPowerDriver(PowerDriver):
         port = context.get("port")
         if port is None:
             port = AMT_DEFAULT_PORT
-        return ip_address, power_user, power_pass, port
+        allow_legacy_renegotiation = (
+            context.get("allow_legacy_renegotiation")
+            == AMT_ALLOW_LEGACY_RENEGOTIATION_YES
+        )
+        return (
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation,
+        )
 
     def detect_missing_packages(self):
         missing_packages = []
@@ -150,7 +184,14 @@ class AMTPowerDriver(PowerDriver):
         )
         return state
 
-    def _set_pxe_boot(self, ip_address, power_user, power_pass, port):
+    def _set_pxe_boot(
+        self,
+        ip_address,
+        power_user,
+        power_pass,
+        port,
+        allow_legacy_renegotiation=False,
+    ):
         """Set to PXE for next boot."""
         wsman_pxe_options = {
             "ChangeBootOrder": (
@@ -186,13 +227,19 @@ class AMTPowerDriver(PowerDriver):
                 command = self._get_wsman_command(
                     *wsman_opts, method, schema_uri
                 )
-                self._run(command, power_pass, stdin=fd.read())
+                self._run(
+                    command,
+                    power_pass,
+                    stdin=fd.read(),
+                    allow_legacy_renegotiation=allow_legacy_renegotiation,
+                )
 
     def _run(
         self,
         command: tuple,
         power_pass: str,
         stdin: bytes = None,
+        allow_legacy_renegotiation: bool = False,
     ) -> bytes:
         """Run a subprocess with stdin."""
         result = shell.run_command(
@@ -200,7 +247,7 @@ class AMTPowerDriver(PowerDriver):
             stdin=stdin,
             extra_environ={
                 "AMT_PASSWORD": power_pass,
-                "OPENSSL_CONF": AMT_OPENSSL_CONF,
+                **_get_openssl_environ(allow_legacy_renegotiation),
             },
             decode=False,
         )
@@ -218,12 +265,18 @@ class AMTPowerDriver(PowerDriver):
         power_pass: str,
         port: int,
         stdin=None,
+        allow_legacy_renegotiation: bool = False,
     ) -> bytes:
         """Perform a command using amttool."""
         command = ("amttool", f"{ip_address}:{port}", cmd)
         if cmd in ("power-cycle", "powerup"):
             command += ("pxe",)
-        return self._run(command, power_pass, stdin=stdin)
+        return self._run(
+            command,
+            power_pass,
+            stdin=stdin,
+            allow_legacy_renegotiation=allow_legacy_renegotiation,
+        )
 
     def _issue_wsman_command(
         self,
@@ -232,6 +285,7 @@ class AMTPowerDriver(PowerDriver):
         power_user: str,
         power_pass: str,
         port: str,
+        allow_legacy_renegotiation: bool = False,
     ) -> bytes:
         """Perform a command using wsman."""
         wsman_power_schema_uri = (
@@ -268,14 +322,30 @@ class AMTPowerDriver(PowerDriver):
                 wsman_query_schema_uri,
             )
         command = self._get_wsman_command(*command_args)
-        return self._run(command, power_pass, stdin=stdin)
+        return self._run(
+            command,
+            power_pass,
+            stdin=stdin,
+            allow_legacy_renegotiation=allow_legacy_renegotiation,
+        )
 
-    def amttool_query_state(self, ip_address, power_user, power_pass, port):
+    def amttool_query_state(
+        self,
+        ip_address,
+        power_user,
+        power_pass,
+        port,
+        allow_legacy_renegotiation=False,
+    ):
         """Ask for node's power state: 'on' or 'off', via amttool."""
         # Retry the state if it fails because it often fails the first time
         for _ in range(10):
             output = self._issue_amttool_command(
-                "info", ip_address, power_pass, port
+                "info",
+                ip_address,
+                power_pass,
+                port,
+                allow_legacy_renegotiation=allow_legacy_renegotiation,
             )
             if output:
                 break
@@ -299,12 +369,24 @@ class AMTPowerDriver(PowerDriver):
                 return "on"
         raise PowerActionError("Got unknown power state from node: %s" % state)
 
-    def wsman_query_state(self, ip_address, power_user, power_pass, port):
+    def wsman_query_state(
+        self,
+        ip_address,
+        power_user,
+        power_pass,
+        port,
+        allow_legacy_renegotiation=False,
+    ):
         """Ask for node's power state: 'on' or 'off', via wsman."""
         # Retry the state if it fails because it often fails the first time.
         for _ in range(10):
             output = self._issue_wsman_command(
-                "query", ip_address, power_user, power_pass, port
+                "query",
+                ip_address,
+                power_user,
+                power_pass,
+                port,
+                allow_legacy_renegotiation=allow_legacy_renegotiation,
             )
             if output:
                 break
@@ -340,7 +422,14 @@ class AMTPowerDriver(PowerDriver):
                     "Got unknown power state from node: %s" % state
                 )
 
-    def amttool_restart(self, ip_address, power_user, power_pass, port):
+    def amttool_restart(
+        self,
+        ip_address,
+        power_user,
+        power_pass,
+        port,
+        allow_legacy_renegotiation=False,
+    ):
         """Restart the node via amttool."""
         self._issue_amttool_command(
             "power_cycle",
@@ -348,9 +437,17 @@ class AMTPowerDriver(PowerDriver):
             power_pass,
             port,
             stdin=b"yes",
+            allow_legacy_renegotiation=allow_legacy_renegotiation,
         )
 
-    def amttool_power_on(self, ip_address, power_user, power_pass, port):
+    def amttool_power_on(
+        self,
+        ip_address,
+        power_user,
+        power_pass,
+        port,
+        allow_legacy_renegotiation=False,
+    ):
         """Power on the node via amttool."""
         # Try several times.  Power commands often fail the first time.
         for _ in range(10):
@@ -361,10 +458,15 @@ class AMTPowerDriver(PowerDriver):
                 power_pass,
                 port,
                 stdin=b"yes",
+                allow_legacy_renegotiation=allow_legacy_renegotiation,
             )
             if (
                 self.amttool_query_state(
-                    ip_address, power_user, power_pass, port
+                    ip_address,
+                    power_user,
+                    power_pass,
+                    port,
+                    allow_legacy_renegotiation=allow_legacy_renegotiation,
                 )
                 == "on"
             ):
@@ -373,20 +475,41 @@ class AMTPowerDriver(PowerDriver):
         raise PowerActionError("Machine is not powering on.  Giving up.")
 
     def wsman_power_on(
-        self, ip_address, power_user, power_pass, port, restart=False
+        self,
+        ip_address,
+        power_user,
+        power_pass,
+        port,
+        restart=False,
+        allow_legacy_renegotiation=False,
     ):
         """Power on the node via wsman."""
         power_command = "restart" if restart else "on"
-        self._set_pxe_boot(ip_address, power_user, power_pass, port)
+        self._set_pxe_boot(
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=allow_legacy_renegotiation,
+        )
         self._issue_wsman_command(
-            power_command, ip_address, power_user, power_pass, port
+            power_command,
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=allow_legacy_renegotiation,
         )
         # Check power state several times.  It usually takes a second or
         # two to get the correct state.
         for _ in range(10):
             if (
                 self.wsman_query_state(
-                    ip_address, power_user, power_pass, port
+                    ip_address,
+                    power_user,
+                    power_pass,
+                    port,
+                    allow_legacy_renegotiation=allow_legacy_renegotiation,
                 )
                 == "on"
             ):
@@ -394,13 +517,24 @@ class AMTPowerDriver(PowerDriver):
             sleep(1)
         raise PowerActionError("Machine is not powering on.  Giving up.")
 
-    def amttool_power_off(self, ip_address, power_user, power_pass, port):
+    def amttool_power_off(
+        self,
+        ip_address,
+        power_user,
+        power_pass,
+        port,
+        allow_legacy_renegotiation=False,
+    ):
         """Power off the node via amttool."""
         # Try several times.  Power commands often fail the first time.
         for _ in range(10):
             if (
                 self.amttool_query_state(
-                    ip_address, power_user, power_pass, port
+                    ip_address,
+                    power_user,
+                    power_pass,
+                    port,
+                    allow_legacy_renegotiation=allow_legacy_renegotiation,
                 )
                 == "off"
             ):
@@ -408,23 +542,44 @@ class AMTPowerDriver(PowerDriver):
                 return
                 # Issue the AMT command; amttool will prompt for confirmation.
             self._issue_amttool_command(
-                "powerdown", ip_address, power_pass, port, stdin=b"yes"
+                "powerdown",
+                ip_address,
+                power_pass,
+                port,
+                stdin=b"yes",
+                allow_legacy_renegotiation=allow_legacy_renegotiation,
             )
             sleep(1)
         raise PowerActionError("Machine is not powering off.  Giving up.")
 
-    def wsman_power_off(self, ip_address, power_user, power_pass, port):
+    def wsman_power_off(
+        self,
+        ip_address,
+        power_user,
+        power_pass,
+        port,
+        allow_legacy_renegotiation=False,
+    ):
         """Power off the node via wsman."""
         # Issue the wsman command to change power state.
         self._issue_wsman_command(
-            "off", ip_address, power_user, power_pass, port
+            "off",
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=allow_legacy_renegotiation,
         )
         # Check power state several times.  It usually takes a second or
         # two to get the correct state.
         for _ in range(10):
             if (
                 self.wsman_query_state(
-                    ip_address, power_user, power_pass, port
+                    ip_address,
+                    power_user,
+                    power_pass,
+                    port,
+                    allow_legacy_renegotiation=allow_legacy_renegotiation,
                 )
                 == "off"
             ):
@@ -433,7 +588,14 @@ class AMTPowerDriver(PowerDriver):
                 sleep(1)
         raise PowerActionError("Machine is not powering off.  Giving up.")
 
-    def _get_amt_command(self, ip_address, power_user, power_pass, port):
+    def _get_amt_command(
+        self,
+        ip_address,
+        power_user,
+        power_pass,
+        port,
+        allow_legacy_renegotiation=False,
+    ):
         """Retrieve AMT command to use, either amttool or wsman
         (if AMT version > 8), for the given system.
         """
@@ -447,7 +609,8 @@ class AMTPowerDriver(PowerDriver):
             ),
         )
         result = shell.run_command(
-            *command, extra_environ={"OPENSSL_CONF": AMT_OPENSSL_CONF}
+            *command,
+            extra_environ=_get_openssl_environ(allow_legacy_renegotiation),
         )
         if not result.stdout:
             for error, error_info in AMT_ERRORS.items():
@@ -524,72 +687,62 @@ class AMTPowerDriver(PowerDriver):
 
     def power_on(self, system_id, context):
         """Power on AMT node."""
-        ip_address, power_user, power_pass, port = self._parse_context(context)
-        amt_command = self._get_amt_command(
-            ip_address, power_user, power_pass, port
-        )
+        (
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation,
+        ) = self._parse_context(context)
+        args = (ip_address, power_user, power_pass, port)
+        kwargs = {"allow_legacy_renegotiation": allow_legacy_renegotiation}
+        amt_command = self._get_amt_command(*args, **kwargs)
         if amt_command == "amttool":
-            if (
-                self.amttool_query_state(
-                    ip_address, power_user, power_pass, port
-                )
-                == "on"
-            ):
-                self.amttool_restart(ip_address, power_user, power_pass, port)
+            if self.amttool_query_state(*args, **kwargs) == "on":
+                self.amttool_restart(*args, **kwargs)
             else:
-                self.amttool_power_on(ip_address, power_user, power_pass, port)
+                self.amttool_power_on(*args, **kwargs)
         elif amt_command == "wsman":
-            if (
-                self.wsman_query_state(
-                    ip_address, power_user, power_pass, port
-                )
-                == "on"
-            ):
-                self.wsman_power_on(
-                    ip_address, power_user, power_pass, port, restart=True
-                )
+            if self.wsman_query_state(*args, **kwargs) == "on":
+                self.wsman_power_on(*args, restart=True, **kwargs)
             else:
-                self.wsman_power_on(ip_address, power_user, power_pass, port)
+                self.wsman_power_on(*args, **kwargs)
 
     def power_off(self, system_id, context):
         """Power off AMT node."""
-        ip_address, power_user, power_pass, port = self._parse_context(context)
-        amt_command = self._get_amt_command(
-            ip_address, power_user, power_pass, port
-        )
+        (
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation,
+        ) = self._parse_context(context)
+        args = (ip_address, power_user, power_pass, port)
+        kwargs = {"allow_legacy_renegotiation": allow_legacy_renegotiation}
+        amt_command = self._get_amt_command(*args, **kwargs)
         if amt_command == "amttool":
-            if (
-                self.amttool_query_state(
-                    ip_address, power_user, power_pass, port
-                )
-                != "off"
-            ):
-                self.amttool_power_off(
-                    ip_address, power_user, power_pass, port
-                )
+            if self.amttool_query_state(*args, **kwargs) != "off":
+                self.amttool_power_off(*args, **kwargs)
         elif amt_command == "wsman":
-            if (
-                self.wsman_query_state(
-                    ip_address, power_user, power_pass, port
-                )
-                != "off"
-            ):
-                self.wsman_power_off(ip_address, power_user, power_pass, port)
+            if self.wsman_query_state(*args, **kwargs) != "off":
+                self.wsman_power_off(*args, **kwargs)
 
     def power_query(self, system_id, context):
         """Power query AMT node."""
-        ip_address, power_user, power_pass, port = self._parse_context(context)
-        amt_command = self._get_amt_command(
-            ip_address, power_user, power_pass, port
-        )
+        (
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation,
+        ) = self._parse_context(context)
+        args = (ip_address, power_user, power_pass, port)
+        kwargs = {"allow_legacy_renegotiation": allow_legacy_renegotiation}
+        amt_command = self._get_amt_command(*args, **kwargs)
         if amt_command == "amttool":
-            return self.amttool_query_state(
-                ip_address, power_user, power_pass, port
-            )
+            return self.amttool_query_state(*args, **kwargs)
         elif amt_command == "wsman":
-            return self.wsman_query_state(
-                ip_address, power_user, power_pass, port
-            )
+            return self.wsman_query_state(*args, **kwargs)
 
     def power_reset(self, system_id, context):
         """Power reset AMT node."""
