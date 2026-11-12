@@ -11,7 +11,6 @@ import secrets
 from tempfile import mkstemp
 from typing import NamedTuple, Optional, Self, Tuple
 
-from cryptography.hazmat.primitives import serialization
 from OpenSSL import crypto
 
 from maascommon.fips import is_fips_enabled
@@ -309,15 +308,9 @@ class Certificate(NamedTuple):
 
     @staticmethod
     def _check_key_match(key: crypto.PKey, cert: crypto.X509):
-        def public_key_der(public_key) -> bytes:
-            return public_key.public_bytes(
-                serialization.Encoding.DER,
-                serialization.PublicFormat.SubjectPublicKeyInfo,
-            )
-
         key_public = key.to_cryptography_key().public_key()
         cert_public = cert.to_cryptography().public_key()
-        if public_key_der(key_public) != public_key_der(cert_public):
+        if key_public != cert_public:
             raise CertificateError("Private and public keys don't match")
 
     @staticmethod
