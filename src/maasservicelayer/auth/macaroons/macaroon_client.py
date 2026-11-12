@@ -147,8 +147,9 @@ class RbacAsyncClient(MacaroonAsyncClient):
         """
         url = self._get_resource_type_url(resource_type) + "/allowed-for-user"
 
-        params = [("u", quote(user))]
-        params += [("p", quote(perm)) for perm in permissions]
+        # aiohttp encodes query params itself, so they must be passed raw.
+        params = [("u", user)]
+        params += [("p", perm.value) for perm in permissions]
 
         result = await self._request(method="GET", url=url, params=params)
 
