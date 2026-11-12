@@ -170,6 +170,55 @@ sudo systemctl restart haproxy
 
 Use port 80 instead of 5240 for API/UI access.
 
+### Boot resource uploads behind a load balancer
+
+The MAAS CLI uploads custom images (`maas <profile> boot-resources create ... content@=<file>`) as a series of 4 MiB chunks, each sent as a separate `PUT` request to the same upload URL:
+
+```text
+/MAAS/api/2.0/boot-resources/<resource-id>/upload/<file-id>/
+```
+
+Each region controller tracks the upload offset locally. All chunks of one file must therefore reach the same region controller. If a load balancer spreads the chunks across regions, no region receives the complete file. Every region keeps a partial `<filename>.incomplete` file in its image storage, the image never finishes syncing, and the CLI still exits with status 0.
+
+Configure the load balancer to route all requests for a given upload URL to the same region controller. Because the URL is identical for every chunk of a file, hashing on the URI is enough.
+
+With HAProxy, send upload requests to a dedicated backend that balances on the URI:
+
+```yaml
+frontend maas
+    bind    *:80
+    acl is_boot_resource_upload path_reg ^/MAAS/api/2\.0/boot-resources/[^/]+/upload/[^/]+/?$
+    use_backend maas_uploads if is_boot_resource_upload
+    default_backend maas
+
+backend maas
+    balance source
+    server maas-api-1 $PRIMARY_API_SERVER_IP:5240 check
+    server maas-api-2 $SECONDARY_API_SERVER_IP:5240 check
+
+backend maas_uploads
+    balance uri whole
+    hash-type consistent
+    server maas-api-1 $PRIMARY_API_SERVER_IP:5240 check
+    server maas-api-2 $SECONDARY_API_SERVER_IP:5240 check
+```
+
+The example uses two regions. Add one `server` line to both backends for each additional region controller. `hash-type consistent` limits how many upload URLs move to a different region when you add or remove one.
+
+The `balance source` setting in the default backend, shown in [Highly-available API with HAProxy](#highly-available-api-with-haproxy), also keeps uploads on one region as long as the client IP address doesn't change. Other load balancers need an equivalent rule: hash on the request path, or on the client IP address.
+
+If a server in the pool goes down during an upload, the remaining chunks are routed to a different region and the upload is corrupted. Restart the upload after the region recovers.
+
+To verify an upload after it finishes, read the resource and check that its file reports `"complete": true`:
+
+```shell
+maas $PROFILE boot-resource read $RESOURCE_ID
+```
+
+The CLI exits with status 0 even when an upload was split across regions. In that case the file reports `"complete": false` and a `progress` value below 100.
+
+To recover, delete the resource and wait for the deletion to finish. Then remove the leftover files for that image (`*.incomplete`, or the file named by `filename_on_disk`) from the image storage on every region controller, and upload again. Uploading again while partial files remain appends the new chunks to them and fails with a 400 error or a SHA256 mismatch. Alternatively, upload directly to a single region controller, bypassing the load balancer.
+
 ## Safety nets
 
 - Always back up PostgreSQL before modifying configs.
