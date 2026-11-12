@@ -3,9 +3,14 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509 import (
+    CertificateBuilder,
+    Name,
+    NameAttribute,
+    random_serial_number,
+)
 from cryptography.x509.oid import NameOID
 from fixtures import EnvironmentVariable, TempDir
 from OpenSSL import crypto
@@ -191,14 +196,14 @@ class TestCertificate(MAASTestCase):
 
     def _generate_ec_certificate_pem(self) -> tuple[str, str]:
         key = ec.generate_private_key(ec.SECP256R1())
-        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "maas")])
+        name = Name([NameAttribute(NameOID.COMMON_NAME, "maas")])
         now = datetime.now(timezone.utc)
         cert = (
-            x509.CertificateBuilder()
+            CertificateBuilder()
             .subject_name(name)
             .issuer_name(name)
             .public_key(key.public_key())
-            .serial_number(x509.random_serial_number())
+            .serial_number(random_serial_number())
             .not_valid_before(now)
             .not_valid_after(now + timedelta(days=1))
             .sign(key, hashes.SHA256())
