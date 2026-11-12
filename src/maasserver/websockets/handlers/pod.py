@@ -30,6 +30,7 @@ from maasserver.vmhost import (
 )
 from maasserver.websockets.base import (
     dehydrate_certificate,
+    HandlerError,
     HandlerPermissionError,
     HandlerValidationError,
 )
@@ -185,6 +186,10 @@ class PodHandler(TimestampedModelHandler):
         pod_type = params.pop("type")
         results = await discover_pod_projects(pod_type, params)
         projects = get_best_discovered_result(results)
+        if projects is None:
+            raise HandlerError(
+                "Unable to discover LXD projects. No rack controllers connected."
+            )
         return [attr.asdict(project) for project in projects]
 
     async def create(self, params):
