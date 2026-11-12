@@ -26,10 +26,10 @@ const (
 	DHCPv6
 )
 
-var pebbleServiceName = map[DHCPVersion]string{DHCPv4: "dhcpd", DHCPv6: "dhcpd6"}
+var serviceNames = map[DHCPVersion]string{DHCPv4: "dhcpd", DHCPv6: "dhcpd6"}
 
 func GetServiceName(v DHCPVersion) string {
-	return pebbleServiceName[v]
+	return serviceNames[v]
 }
 
 type Controller interface {
@@ -49,7 +49,3 @@ const (
 	StatusStopped
 	StatusError
 )
-
-func NewController(service string) (Controller, error) {
-	return NewPebbleController(service)
-}

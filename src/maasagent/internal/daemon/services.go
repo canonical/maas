@@ -112,12 +112,12 @@ func newExternalDHCPService(c dhcpSvcConfig) (*dhcp.DHCPService, error) {
 	v4 := servicecontroller.GetServiceName(servicecontroller.DHCPv4)
 	v6 := servicecontroller.GetServiceName(servicecontroller.DHCPv6)
 
-	controllerV4, err := servicecontroller.NewController(v4)
+	controllerV4, err := servicecontroller.NewPebbleController(v4)
 	if err != nil {
 		return nil, fmt.Errorf("DHCP v4 controller initialization failed: %w", err)
 	}
 
-	controllerV6, err := servicecontroller.NewController(v6)
+	controllerV6, err := servicecontroller.NewPebbleController(v6)
 	if err != nil {
 		return nil, fmt.Errorf("DHCP v6 controller initialization failed: %w", err)
 	}

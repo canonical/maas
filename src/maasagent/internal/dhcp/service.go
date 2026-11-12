@@ -57,8 +57,6 @@ var (
 	ErrFailedToPostNotifications = errors.New("error processing lease notifications")
 )
 
-var writeConfigFile = atomicfile.WriteFile
-
 // DHCPService is a service that is responsible for setting up DHCP on MAAS Agent.
 type DHCPService struct {
 	logger             *slog.Logger
@@ -522,7 +520,7 @@ func (s *DHCPService) configureViaFile(ctx context.Context) error {
 			continue
 		}
 
-		if err := writeConfigFile(path, data, mode); err != nil {
+		if err := atomicfile.WriteFile(path, data, mode); err != nil {
 			return err
 		}
 	}
