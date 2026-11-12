@@ -157,6 +157,7 @@ frontend maas
 
 backend maas
     balance source
+    hash-type consistent
     server localhost localhost:5240 check
     server maas-api-1 $PRIMARY_API_SERVER_IP:5240 check
     server maas-api-2 $SECONDARY_API_SERVER_IP:5240 check
@@ -170,65 +171,9 @@ sudo systemctl restart haproxy
 
 Use port 80 instead of 5240 for API/UI access.
 
-### Boot resource uploads behind a load balancer
+`balance source` sends every request from the same client IP address to the same region controller. This matters, for example, for uploading custom images with the MAAS CLI (`boot-resources create`). The CLI sends the file in chunks, each as a separate request, and each region only tracks the chunks it receives itself. If the chunks of one upload reach different regions, no region ever receives the complete file. The image never finishes syncing, and the CLI still exits with status 0.
 
-The MAAS CLI uploads custom images (`maas <profile> boot-resources create ... content@=<file>`) as a series of 4 MiB chunks, each sent as a separate `PUT` request to the same upload URL:
-
-```text
-/MAAS/api/2.0/boot-resources/<resource-id>/upload/<file-id>/
-```
-
-Each region controller tracks the upload offset locally. All chunks of one file must therefore reach the same region controller. If a load balancer spreads the chunks across regions, no region receives the complete file. Every region keeps a partial `<filename>.incomplete` file in its image storage, the image never finishes syncing, and the CLI still exits with status 0.
-
-Configure the load balancer to route all requests for a given upload URL to the same region controller. Because the URL is identical for every chunk of a file, hashing on the URI is enough.
-
-With HAProxy, send upload requests to a dedicated backend that balances on the URI. Edit `/etc/haproxy/haproxy.cfg` on the load balancer host. This replaces the `frontend maas` and `backend maas` sections from [Highly-available API with HAProxy](#highly-available-api-with-haproxy) and adds a `backend maas_uploads` section:
-
-```text
-frontend maas
-    bind    *:80
-    acl is_boot_resource_upload path_reg ^/MAAS/api/2\.0/boot-resources/[^/]+/upload/[^/]+/?$
-    use_backend maas_uploads if is_boot_resource_upload
-    default_backend maas
-
-backend maas
-    balance source
-    server maas-api-1 $PRIMARY_API_SERVER_IP:5240 check
-    server maas-api-2 $SECONDARY_API_SERVER_IP:5240 check
-
-backend maas_uploads
-    balance uri whole
-    hash-type consistent
-    server maas-api-1 $PRIMARY_API_SERVER_IP:5240 check
-    server maas-api-2 $SECONDARY_API_SERVER_IP:5240 check
-```
-
-The example uses two regions. Add one `server` line to both backends for each additional region controller. `hash-type consistent` limits how many upload URLs move to a different region when you add or remove one.
-
-The `balance source` setting in the default backend, shown in [Highly-available API with HAProxy](#highly-available-api-with-haproxy), also keeps uploads on one region as long as the client IP address doesn't change. Other load balancers need an equivalent rule: hash on the request path, or on the client IP address.
-
-If a server in the pool goes down during an upload, the remaining chunks are routed to a different region and the upload is corrupted. Restart the upload after the region recovers.
-
-To verify an upload after it finishes, read the resource and check that its file reports `"complete": true`:
-
-```shell
-maas $PROFILE boot-resource read $RESOURCE_ID
-```
-
-The CLI exits with status 0 even when an upload was split across regions. In that case the file reports `"complete": false` and a `progress` value below 100.
-
-To recover, first note the `filename_on_disk` value from `boot-resource read`, because you can't read it after the resource is deleted. Then delete the resource and wait for the deletion to finish. Next, on every region controller, remove the leftover files for that image from the image storage directory and upload again. The leftover file is named by that `filename_on_disk` value (or ends in `.incomplete`, depending on the MAAS version). The image storage directory is:
-
-- Snap: `/var/snap/maas/common/maas/image-storage/`
-- Debian package: `/var/lib/maas/image-storage/`
-
-For example, for a file with `filename_on_disk` set to `99aec68`:
-
-```shell
-sudo rm -f /var/snap/maas/common/maas/image-storage/99aec68*
-```
-
-If partial files remain, the new upload appends to them and fails with a 400 error or a SHA256 mismatch. Alternatively, upload directly to a single region controller, bypassing the load balancer.
+`hash-type consistent` is important for the same reason. Without it, HAProxy picks a server with a simple `hash % number_of_servers` calculation. When a region is added, removed, or fails a health check, that calculation changes for most clients, and an upload in progress is split across regions. With `hash-type consistent`, only the clients that were assigned to the affected region move to another one.
 
 ## Safety nets
 
