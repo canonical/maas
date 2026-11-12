@@ -507,14 +507,7 @@ You have set up a MAAS environment with DHCP and DNS enabled. However, your MAAS
    dig @192.168.178.1 grafana
    ```
 
-6. **Check MAAS DHCP and DNS configuration:**
-   Ensure that MAAS is correctly configured to provide the right DNS settings to its deployed devices.
-
-   ```bash
-   sudo maas <profile> dhcp-snippet read 0
-   ```
-
-7. **Restart network services:**
+6. **Restart network services:**
    Restart network services on your MAAS-deployed device to apply changes.
 
    ```bash
@@ -522,7 +515,7 @@ You have set up a MAAS environment with DHCP and DNS enabled. However, your MAAS
    sudo systemctl restart systemd-networkd
    ```
 
-8. **Update DNS search domain:**
+7. **Update DNS search domain:**
    Ensure that the search domain includes the external domain if needed.
 
    ```bash
@@ -625,19 +618,7 @@ When the network connection between the MAAS region controller and rack controll
 2. **Redundancy:**
    - Set up a secondary region controller to add redundancy. This might not solve the problem during a complete network outage but can help mitigate issues if a single region controller fails.
 
-3. **Extend DHCP Lease Time:**
-   - Extending the DHCP lease time can help mitigate the issue during brief network outages. This can be done using DHCP snippets to modify the lease duration in the MAAS DHCP configuration.
-
-   **Steps to extend DHCP lease time:**
-   - Create a DHCP snippet to extend the lease time.
-
-   ```bash
-   maas $PROFILE dhcpsnippets create name=lease-time \
-       value='default-lease-time 86400; max-lease-time 86400;' \
-       global_snippet=true
-   ```
-
-4. **Use external DHCP servers:**
+3. **Use external DHCP servers:**
    - Configure external DHCP servers on each network segment. This ensures that even if the region controller is unreachable, machines can still obtain IP addresses.
 
    **Steps to configure external DHCP server:**
@@ -666,11 +647,11 @@ When the network connection between the MAAS region controller and rack controll
 
    - Ensure that the DHCP server is detected by MAAS. Configure at least one node to use DHCP so that MAAS can recognize the external DHCP server.
 
-5. **Network maintenance strategy:**
+4. **Network maintenance strategy:**
    - Plan network maintenance during off-peak hours and ensure it does not exceed the DHCP lease duration.
    - Implement network maintenance strategies that minimize the need for complete network downtime, such as using redundant paths or gradual network component replacements.
 
-6. **Troubleshooting external dhcp server detection:**
+5. **Troubleshooting external dhcp server detection:**
    - Ensure that DHCP packets are being sent and received properly.
    - Check the MAAS Web UI under "Controllers" to verify if the external DHCP server is detected.
 

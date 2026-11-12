@@ -74,7 +74,7 @@ In addition to standard events, MAAS generates audit events (`AUDIT` level) that
 
 - Machine lifecycle changes (commissioning, deployment, deletion).
 - User activity (logins, role changes, configuration edits).
-- System settings (DHCP snippets, scripts, and more).
+- System settings (scripts, package repositories, and more).
 
 Audit logs are especially valuable for:
 

@@ -54,7 +54,6 @@ from maasserver.models import (
     Config,
     DefaultResource,
     Device,
-    DHCPSnippet,
     Discovery,
     DNSData,
     DNSResource,
@@ -3408,34 +3407,6 @@ class Factory(maastesting.factory.Factory):
             uuid=uuid,
             filesystem_group=filesystem_group,
         )
-
-    def make_DHCPSnippet(
-        self,
-        name=None,
-        value=None,
-        description=None,
-        enabled=True,
-        node=None,
-        subnet=None,
-        iprange=None,
-    ):
-        if name is None:
-            name = self.make_name("dhcp_snippet")
-        if value is None:
-            value = VersionedTextFile.objects.create(data=self.make_string())
-        if description is None:
-            description = self.make_string()
-
-        with post_commit_hooks:
-            return DHCPSnippet.objects.create(
-                name=name,
-                value=value,
-                description=description,
-                enabled=enabled,
-                node=node,
-                subnet=subnet,
-                iprange=iprange,
-            )
 
     def make_default_PackageRepositories(self):
         factory.make_PackageRepository(

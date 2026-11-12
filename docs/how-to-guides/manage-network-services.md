@@ -51,16 +51,6 @@ Use this when DHCP must be relayed from one VLAN to another — common in enterp
 maas $PROFILE vlan update $FABRIC_ID $VLAN_VID_SRC relay_vlan=$VLAN_ID_TARGET
 ```
 
-## Manage DHCP snippets
-
-Use snippets to customize the DHCP configuration — globally, per-subnet, or per-node. This is useful when:
-
-* You need to inject custom options (like PXE boot settings)
-* You’re integrating with existing infrastructure
-* You need fine-grained control over leases or classes
-
-Note that malformed snippets can break DHCP service on the rack controller. Always test in a development environment first.
-
 ## Manage NTP
 
 If your machines need to maintain accurate time (they usually do), MAAS can configure NTP automatically using its own services or upstream servers. This helps with:

@@ -27,7 +27,6 @@ from maasserver.models import (
     BMC,
     BootResourceFile,
     Config,
-    DHCPSnippet,
     Fabric,
     Machine,
     Node,
@@ -306,16 +305,6 @@ def get_ansible_stats(path=None):
     return {"ansible_installs": n_install}
 
 
-def get_dhcp_snippets_stats():
-    dhcp_snippets = DHCPSnippet.objects.aggregate(
-        node_count=Count("pk", filter=(~Q(node=None) & Q(subnet=None))),
-        subnet_count=Count("pk", filter=(~Q(subnet=None) & Q(node=None))),
-        global_count=Count("pk", filter=(Q(subnet=None) & Q(node=None))),
-    )
-
-    return dhcp_snippets
-
-
 def get_tags_stats():
     return Tag.objects.aggregate(
         total_count=Count("pk"),
@@ -358,7 +347,6 @@ def get_maas_stats():
             "regions": node_types.get(NODE_TYPE.REGION_CONTROLLER, 0),
             "racks": node_types.get(NODE_TYPE.RACK_CONTROLLER, 0),
         },
-        "dhcp_snippets": get_dhcp_snippets_stats(),
         "nodes": {
             "machines": node_types.get(NODE_TYPE.MACHINE, 0),
             "devices": node_types.get(NODE_TYPE.DEVICE, 0),

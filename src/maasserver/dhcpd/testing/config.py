@@ -26,55 +26,18 @@ def fix_shared_networks_failover(shared_networks, failover_peers):
     return shared_networks
 
 
-def make_subnet_pool(
-    network, start_ip=None, end_ip=None, failover_peer=None, dhcp_snippets=None
-):
+def make_subnet_pool(network, start_ip=None, end_ip=None, failover_peer=None):
     """Return a pool entry for a subnet from network."""
     if start_ip is None and end_ip is None:
         start_ip, end_ip = factory.make_ip_range(network)
     if failover_peer is None:
         failover_peer = factory.make_name("failover")
-    if dhcp_snippets is None:
-        dhcp_snippets = make_pool_dhcp_snippets()
     pool = {
         "ip_range_low": str(start_ip),
         "ip_range_high": str(end_ip),
         "failover_peer": failover_peer,
-        "dhcp_snippets": dhcp_snippets,
     }
     return pool
-
-
-def _make_snippets(count, template):
-    names = (factory.make_name("name") for _ in range(count))
-    return [
-        {
-            "name": name,
-            "description": factory.make_name("description"),
-            "value": template % name,
-        }
-        for name in names
-    ]
-
-
-def make_global_dhcp_snippets(allow_empty=True):
-    count = random.randrange((0 if allow_empty else 1), 3)
-    return _make_snippets(count, "group { next-server %s; }")
-
-
-def make_subnet_dhcp_snippets(allow_empty=True):
-    count = random.randrange((0 if allow_empty else 1), 3)
-    return _make_snippets(count, "option pop-server %s;")
-
-
-def make_host_dhcp_snippets(allow_empty=True):
-    count = random.randrange((0 if allow_empty else 1), 3)
-    return _make_snippets(count, "option smtp-server %s;")
-
-
-def make_pool_dhcp_snippets(allow_empty=True):
-    count = random.randrange((0 if allow_empty else 1), 3)
-    return _make_snippets(count, "option nntp-server %s;")
 
 
 def make_host(
@@ -83,7 +46,6 @@ def make_host(
     mac_address=None,
     ip=None,
     ipv6=False,
-    dhcp_snippets=None,
 ):
     """Return a host entry for a subnet from network."""
     if hostname is None:
@@ -94,13 +56,10 @@ def make_host(
         mac_address = factory.make_mac_address()
     if ip is None:
         ip = factory.make_ip_address(ipv6=ipv6)
-    if dhcp_snippets is None:
-        dhcp_snippets = make_host_dhcp_snippets()
     return {
         "host": f"{hostname}-{interface_name}",
         "mac": mac_address,
         "ip": ip,
-        "dhcp_snippets": dhcp_snippets,
     }
 
 
@@ -108,7 +67,6 @@ def make_subnet_config(
     network=None,
     pools=None,
     ipv6=False,
-    dhcp_snippets=None,
     disabled_boot_architectures=None,
 ):
     """Return complete DHCP configuration dict for a subnet."""
@@ -122,8 +80,6 @@ def make_subnet_config(
             network = factory.make_ipv4_network()
     if pools is None:
         pools = [make_subnet_pool(network)]
-    if dhcp_snippets is None:
-        dhcp_snippets = make_subnet_dhcp_snippets()
     domain_name = "%s.example.com" % factory.make_name("domain")
     return {
         "subnet": str(IPAddress(network.first)),
@@ -143,7 +99,6 @@ def make_subnet_config(
         "search_list": [domain_name],
         "router_ip": factory.pick_ip_in_network(network),
         "pools": pools,
-        "dhcp_snippets": dhcp_snippets,
         "disabled_boot_architectures": (
             disabled_boot_architectures if disabled_boot_architectures else []
         ),

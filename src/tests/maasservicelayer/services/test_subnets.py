@@ -15,9 +15,6 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.builders.subnets import SubnetBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dhcpsnippets import (
-    DhcpSnippetsClauseFactory,
-)
 from maasservicelayer.db.repositories.ipranges import IPRangeClauseFactory
 from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersClauseFactory,
@@ -43,7 +40,6 @@ from maasservicelayer.models.base import MaasBaseModel, ResourceBuilder
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.base import BaseService
-from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.dnspublications import DNSPublicationsService
 from maasservicelayer.services.ipranges import IPRangesService
 from maasservicelayer.services.nodegrouptorackcontrollers import (
@@ -160,7 +156,6 @@ class TestCommonSubnetsService(ServiceCommonTests):
             ipranges_service=Mock(IPRangesService),
             staticroutes_service=Mock(StaticRoutesService),
             reservedips_service=Mock(ReservedIPsService),
-            dhcpsnippets_service=Mock(DhcpSnippetsService),
             dnspublications_service=Mock(DNSPublicationsService),
             nodegrouptorackcontrollers_service=Mock(
                 NodeGroupToRackControllersService
@@ -272,7 +267,6 @@ class TestSubnetsService:
             ipranges_service=Mock(IPRangesService),
             staticroutes_service=Mock(StaticRoutesService),
             reservedips_service=Mock(ReservedIPsService),
-            dhcpsnippets_service=Mock(DhcpSnippetsService),
             nodegrouptorackcontrollers_service=Mock(
                 NodeGroupToRackControllersService
             ),
@@ -344,7 +338,6 @@ class TestSubnetsService:
             ipranges_service=Mock(IPRangesService),
             staticroutes_service=Mock(StaticRoutesService),
             reservedips_service=Mock(ReservedIPsService),
-            dhcpsnippets_service=Mock(DhcpSnippetsService),
             dnspublications_service=mock_dnspublications,
             nodegrouptorackcontrollers_service=Mock(
                 NodeGroupToRackControllersService
@@ -411,7 +404,6 @@ class TestSubnetsService:
         ipranges_service_mock = Mock(IPRangesService)
         staticroutes_service_mock = Mock(StaticRoutesService)
         reservedips_service_mock = Mock(ReservedIPsService)
-        dhcpsnippets_service_mock = Mock(DhcpSnippetsService)
         dnspublications_service_mock = Mock(DNSPublicationsService)
         nodegrouptorackcontrollers_service_mock = Mock(
             NodeGroupToRackControllersService
@@ -425,7 +417,6 @@ class TestSubnetsService:
             staticroutes_service=staticroutes_service_mock,
             reservedips_service=reservedips_service_mock,
             subnets_repository=subnets_repository_mock,
-            dhcpsnippets_service=dhcpsnippets_service_mock,
             dnspublications_service=dnspublications_service_mock,
             nodegrouptorackcontrollers_service=nodegrouptorackcontrollers_service_mock,
         )
@@ -461,11 +452,6 @@ class TestSubnetsService:
         reservedips_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
                 where=ReservedIPsClauseFactory.with_subnet_id(subnet.id)
-            )
-        )
-        dhcpsnippets_service_mock.delete_many.assert_called_once_with(
-            query=QuerySpec(
-                where=DhcpSnippetsClauseFactory.with_subnet_id(subnet.id)
             )
         )
         nodegrouptorackcontrollers_service_mock.delete_many.assert_called_once_with(
@@ -519,7 +505,6 @@ class TestSubnetsService:
         ipranges_service_mock = Mock(IPRangesService)
         staticroutes_service_mock = Mock(StaticRoutesService)
         reservedips_service_mock = Mock(ReservedIPsService)
-        dhcpsnippets_service_mock = Mock(DhcpSnippetsService)
         dnspublications_service_mock = Mock(DNSPublicationsService)
         nodegrouptorackcontrollers_service_mock = Mock(
             NodeGroupToRackControllersService
@@ -533,7 +518,6 @@ class TestSubnetsService:
             staticroutes_service=staticroutes_service_mock,
             reservedips_service=reservedips_service_mock,
             subnets_repository=subnets_repository_mock,
-            dhcpsnippets_service=dhcpsnippets_service_mock,
             dnspublications_service=dnspublications_service_mock,
             nodegrouptorackcontrollers_service=nodegrouptorackcontrollers_service_mock,
         )
@@ -569,11 +553,6 @@ class TestSubnetsService:
         reservedips_service_mock.delete_many.assert_called_once_with(
             query=QuerySpec(
                 where=ReservedIPsClauseFactory.with_subnet_id(subnet.id)
-            )
-        )
-        dhcpsnippets_service_mock.delete_many.assert_called_once_with(
-            query=QuerySpec(
-                where=DhcpSnippetsClauseFactory.with_subnet_id(subnet.id)
             )
         )
         nodegrouptorackcontrollers_service_mock.delete_many.assert_called_once_with(
@@ -612,7 +591,6 @@ class TestSubnetsService:
         ipranges_service_mock = Mock(IPRangesService)
         staticroutes_service_mock = Mock(StaticRoutesService)
         reservedips_service_mock = Mock(ReservedIPsService)
-        dhcpsnippets_service_mock = Mock(DhcpSnippetsService)
         dnspublications_service_mock = Mock(DNSPublicationsService)
         nodegrouptorackcontrollers_service_mock = Mock(
             NodeGroupToRackControllersService
@@ -626,7 +604,6 @@ class TestSubnetsService:
             staticroutes_service=staticroutes_service_mock,
             reservedips_service=reservedips_service_mock,
             subnets_repository=subnets_repository_mock,
-            dhcpsnippets_service=dhcpsnippets_service_mock,
             dnspublications_service=dnspublications_service_mock,
             nodegrouptorackcontrollers_service=nodegrouptorackcontrollers_service_mock,
         )
@@ -640,7 +617,6 @@ class TestSubnetsService:
         ipranges_service_mock.delete_many.assert_not_called()
         staticroutes_service_mock.delete_many.assert_not_called()
         reservedips_service_mock.delete_many.assert_not_called()
-        dhcpsnippets_service_mock.delete_many.assert_not_called()
         nodegrouptorackcontrollers_service_mock.delete_many.assert_not_called()
 
     @pytest.mark.parametrize("has_ips_in_use", [True, False])
@@ -675,7 +651,6 @@ class TestSubnetsService:
             staticroutes_service=Mock(StaticRoutesService),
             reservedips_service=Mock(ReservedIPsService),
             subnets_repository=Mock(SubnetsRepository),
-            dhcpsnippets_service=Mock(DhcpSnippetsService),
             dnspublications_service=Mock(DNSPublicationsService),
             nodegrouptorackcontrollers_service=Mock(
                 NodeGroupToRackControllersService

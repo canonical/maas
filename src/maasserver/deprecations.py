@@ -5,7 +5,6 @@ import os
 
 from django.conf import settings
 
-from maasserver.models.controllerinfo import get_maas_version
 from maasserver.utils.orm import get_database_owner, postgresql_major_version
 from provisioningserver.logger import LegacyLogger
 
@@ -44,13 +43,6 @@ DEPRECATIONS = {
         link_text="How to replace Curtin Preseeds",
         dismissable=True,
     ),
-    "DHCP_SNIPPETS": Deprecation(
-        id="MD6",
-        since="3.6",
-        description="DHCP snippets are deprecated and will be removed in the next major release.",
-        link_text="How to replace DHCP snippets",
-        dismissable=True,
-    ),
     "POSTGRES_OLDER_THAN_16": Deprecation(
         id="MD5",
         since="3.6",
@@ -72,13 +64,6 @@ def get_deprecations():
     """Return a list of currently active deprecation notices."""
 
     deprecations = []
-    running_maas_version = get_maas_version()
-    if (
-        running_maas_version
-        and running_maas_version.major == 3
-        and running_maas_version.minor >= 6
-    ):
-        deprecations.append(DEPRECATIONS["DHCP_SNIPPETS"])
     if postgresql_major_version() < 16:
         deprecations.append(DEPRECATIONS["POSTGRES_OLDER_THAN_16"])
     if get_database_owner() == "postgres":
