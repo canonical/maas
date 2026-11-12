@@ -172,7 +172,17 @@ class MAASAuthorizationBackend(ModelBackend):
         )
 
     def _can_edit(self, user, machine):
-        return machine.owner_id == user.id or self._can_admin(user, machine)
+        if machine.pool_id is None:
+            return machine.owner_id == user.id or self._can_admin(
+                user, machine
+            )
+        if machine.owner_id is None or machine.owner_id == user.id:
+            # can_deploy_machines is implied by can_edit_machines in the
+            # OpenFGA model, so admins are covered too.
+            return get_openfga_client().can_deploy_machines_in_pool(
+                user, machine.pool_id
+            )
+        return self._can_admin(user, machine)
 
     def _can_admin(self, user, machine):
         if machine.pool_id is None:
