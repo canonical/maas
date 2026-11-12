@@ -217,7 +217,18 @@ maas $PROFILE boot-resource read $RESOURCE_ID
 
 The CLI exits with status 0 even when an upload was split across regions. In that case the file reports `"complete": false` and a `progress` value below 100.
 
-To recover, delete the resource and wait for the deletion to finish. Then remove the leftover files for that image (`*.incomplete`, or the file named by `filename_on_disk`) from the image storage on every region controller, and upload again. Uploading again while partial files remain appends the new chunks to them and fails with a 400 error or a SHA256 mismatch. Alternatively, upload directly to a single region controller, bypassing the load balancer.
+To recover, first note the `filename_on_disk` value from `boot-resource read`, because you can't read it after the resource is deleted. Then delete the resource and wait for the deletion to finish. Next, on every region controller, remove the leftover files for that image from the image storage directory and upload again. The leftover file is named by that `filename_on_disk` value (or ends in `.incomplete`, depending on the MAAS version). The image storage directory is:
+
+- Snap: `/var/snap/maas/common/maas/image-storage/`
+- Debian package: `/var/lib/maas/image-storage/`
+
+For example, for a file with `filename_on_disk` set to `99aec68`:
+
+```shell
+sudo rm -f /var/snap/maas/common/maas/image-storage/99aec68*
+```
+
+If partial files remain, the new upload appends to them and fails with a 400 error or a SHA256 mismatch. Alternatively, upload directly to a single region controller, bypassing the load balancer.
 
 ## Safety nets
 
