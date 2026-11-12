@@ -129,11 +129,11 @@ class TestInterfaceManager(MAASServerTestCase):
         )
 
     def test_get_interface_or_404_uses_device_perm(self):
-        device = factory.make_Device()
+        user = factory.make_User()
+        device = factory.make_Device(owner=user)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device
         )
-        user = factory.make_User()
         self.assertEqual(
             interface,
             Interface.objects.get_interface_or_404(

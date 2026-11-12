@@ -336,8 +336,8 @@ class MAASAuthorizationBackend(ModelBackend):
     def _can_edit(
         self, rbac_enabled, user, machine, deploy_pools, admin_pools
     ):
-        editable = machine.owner_id is None or machine.owner_id == user.id
         if rbac_enabled:
+            editable = machine.owner_id is None or machine.owner_id == user.id
             can_admin = self._can_admin(
                 rbac_enabled, user, machine, admin_pools
             )
@@ -347,9 +347,18 @@ class MAASAuthorizationBackend(ModelBackend):
                 or can_admin
             )
             return (editable and can_edit) or can_admin
-        return editable or get_openfga_client().can_edit_machines_in_pool(
-            user, machine.pool_id
-        )
+        if machine.pool_id is None:
+            # Devices do not belong to a resource pool, so we check if the user is the owner or an admin.
+            return machine.owner_id == user.id or self._can_admin(
+                user, machine
+            )
+        if machine.owner_id is None or machine.owner_id == user.id:
+            # can_deploy_machines is implied by can_edit_machines in the
+            # OpenFGA model, so admins are covered too.
+            return get_openfga_client().can_deploy_machines_in_pool(
+                user, machine.pool_id
+            )
+        return self._can_admin(user, machine)
 
     def _can_admin(self, rbac_enabled, user, machine, admin_pools):
         if machine.pool_id is None:

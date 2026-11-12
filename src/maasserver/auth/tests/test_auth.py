@@ -342,11 +342,19 @@ class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
             )
         )
 
-    def test_user_can_edit_unowned_node(self):
+    def test_user_can_deploy_unowned_node(self):
         backend = MAASAuthorizationBackend()
         self.assertTrue(
             backend.has_perm(
                 factory.make_User(), NodePermission.edit, factory.make_Node()
+            )
+        )
+
+    def test_admin_can_edit_unowned_node(self):
+        backend = MAASAuthorizationBackend()
+        self.assertTrue(
+            backend.has_perm(
+                factory.make_admin(), NodePermission.edit, factory.make_Node()
             )
         )
 
@@ -1614,6 +1622,55 @@ class TestMAASAuthorizationBackendPodOpenFGAIntegration(
         self.assertTrue(backend.has_perm(user, PodPermission.view, pod))
         self.openfga_client.can_view_available_machines_in_pool.assert_called_once_with(
             user, pool.id
+        )
+
+
+class TestMAASAuthorizationBackendNodeOpenFGAIntegration(
+    OpenFGAMockMixin, MAASServerTestCase
+):
+    def setUp(self):
+        super().setUp()
+        self.openfga_client.can_edit_machines.return_value = False
+        self.openfga_client.can_edit_machines_in_pool.return_value = False
+
+    def test_edit_unowned_node_requires_can_deploy_machines_in_pool(self):
+        self.openfga_client.can_deploy_machines_in_pool.return_value = False
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        node = factory.make_Node()
+        self.assertFalse(backend.has_perm(user, NodePermission.edit, node))
+        self.openfga_client.can_deploy_machines_in_pool.assert_called_once_with(
+            user, node.pool_id
+        )
+
+    def test_edit_unowned_node_with_can_deploy_machines_in_pool(self):
+        self.openfga_client.can_deploy_machines_in_pool.return_value = True
+        backend = MAASAuthorizationBackend()
+        self.assertTrue(
+            backend.has_perm(
+                factory.make_User(), NodePermission.edit, factory.make_Node()
+            )
+        )
+
+    def test_cannot_edit_node_owned_by_others_with_can_deploy(self):
+        self.openfga_client.can_deploy_machines_in_pool.return_value = True
+        backend = MAASAuthorizationBackend()
+        self.assertFalse(
+            backend.has_perm(
+                factory.make_User(), NodePermission.edit, make_allocated_node()
+            )
+        )
+
+    def test_can_edit_node_owned_by_others_with_can_edit_machines_in_pool(
+        self,
+    ):
+        self.openfga_client.can_edit_machines_in_pool.return_value = True
+        self.openfga_client.can_deploy_machines_in_pool.return_value = False
+        backend = MAASAuthorizationBackend()
+        self.assertTrue(
+            backend.has_perm(
+                factory.make_User(), NodePermission.edit, make_allocated_node()
+            )
         )
 
 
