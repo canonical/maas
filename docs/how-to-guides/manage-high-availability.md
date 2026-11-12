@@ -182,9 +182,9 @@ Each region controller tracks the upload offset locally. All chunks of one file 
 
 Configure the load balancer to route all requests for a given upload URL to the same region controller. Because the URL is identical for every chunk of a file, hashing on the URI is enough.
 
-With HAProxy, send upload requests to a dedicated backend that balances on the URI:
+With HAProxy, send upload requests to a dedicated backend that balances on the URI. Edit `/etc/haproxy/haproxy.cfg` on the load balancer host. This replaces the `frontend maas` and `backend maas` sections from [Highly-available API with HAProxy](#highly-available-api-with-haproxy) and adds a `backend maas_uploads` section:
 
-```yaml
+```text
 frontend maas
     bind    *:80
     acl is_boot_resource_upload path_reg ^/MAAS/api/2\.0/boot-resources/[^/]+/upload/[^/]+/?$
