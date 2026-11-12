@@ -1668,6 +1668,7 @@ class TestReleaseAction(MAASServerTestCase):
         )
 
     def test_Release_enters_disk_erasing(self):
+        self.patch(node_module, "stop_workflow")
         user = factory.make_User()
         request = factory.make_fake_request("/")
         request.user = user
