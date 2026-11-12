@@ -248,7 +248,7 @@ MAAS Go code (primarily in `maasagent` and `host-info`) follows the standards do
 
 Key points:
 - Follow standard Go formatting (`gofmt` / `go fmt`)
-- Check `go.mod` for Go version (currently Go 1.24.4 for `maasagent`, Go 1.18 for `host-info`)
+- Check `go.mod` for Go version (currently Go 1.26 across `maasagent`, `maasopenfga` and `host-info`; the workshop `go` SDK tracks `1.26/stable`)
 - Use table-driven tests where appropriate
 - Follow the microcluster patterns in `maasagent`
 
@@ -382,7 +382,7 @@ Key points:
 
 **Purpose**: Go-based MAAS agent using microcluster
 
-- **Technology**: Go 1.24.4, microcluster, Temporal
+- **Technology**: Go 1.26, microcluster, Temporal
 - **Key Patterns**:
     - Microcluster-based architecture
     - DHCP and DNS services
@@ -397,7 +397,7 @@ Key points:
 
 **Purpose**: Collect host hardware information
 
-- **Technology**: Go 1.18, LXD libraries
+- **Technology**: Go 1.26, LXD libraries
 - **Key Patterns**:
     - Hardware detection and reporting
     - Minimal dependencies

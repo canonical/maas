@@ -1,4 +1,47 @@
 name: dev
 base: ubuntu@26.04
 sdks:
-  - name: project-maas-setup
+  - name: project-maas-deps
+  - name: go
+    channel: "1.26/stable"
+  - name: uv
+  - name: project-maas-py
+actions:
+  build: cd /project && make build
+  lint: cd /project && make lint
+  test: cd /project && make test
+  test-py: cd /project && make test-py
+  test-go: cd /project && make test-go
+  test-coverage: cd /project && utilities/run-tests-coverage
+  format: cd /project && make format
+  fix-py: cd /project && make fix-py
+  go-bins: cd /project && make go-bins
+  sec: cd /project && make sec
+  doc: cd /project && make doc
+  syncdb: |
+    cd /project
+    make_args=()
+    if [ $# -gt 0 ]; then
+        make_args+=("DBUPGRADE_ARGS=$*")
+    fi
+    make syncdb "${make_args[@]}"
+  update-initial-sql: cd /project && make update-initial-sql
+  cleandb: cd /project && make cleandb
+  sampledata: |
+    cd /project
+    make_args=()
+    if [ $# -gt 0 ]; then
+        make_args+=("SAMPLEDATA_MACHINES=$1")
+    fi
+    make sampledata "${make_args[@]}"
+  cli-docs: |
+    cd /project
+    make_args=()
+    if [ "${1:-}" = "check" ]; then
+        make_args+=("CHECK_DOCSTRING_SYNC=1")
+    fi
+    make cli-docs "${make_args[@]}"
+  clean: cd /project && make clean
+  clean-go-bins: cd /project && make clean-go-bins
+  clean-ui: cd /project && make clean-ui
+  clean-ui-build: cd /project && make clean-ui-build

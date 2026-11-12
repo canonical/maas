@@ -13,7 +13,6 @@ defaults:
 
 permissions:
   contents: read
-  packages: read
 
 jobs:
   save-pr-number:
@@ -37,15 +36,8 @@ jobs:
       go: ${{ steps.filter.outputs.go }}
       docs: ${{ steps.filter.outputs.docs }}
       lint: ${{ steps.filter.outputs.lint }}
-      image: ${{ steps.image.outputs.tag }}
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-
-      - name: Set build env image tag
-        id: image
-        run: |
-          ref="${{ github.event.merge_group.base_ref || github.base_ref || github.ref_name }}"
-          echo "tag=${ref#refs/heads/}" >> $GITHUB_OUTPUT
 
       - uses: dorny/paths-filter@v3
         id: filter
@@ -64,23 +56,29 @@ jobs:
               - 'src/**/go.sum'
               - 'src/**/Makefile'
               - 'snap/local/tree/usr/bin/*'
+              - 'snap/snapcraft.yaml'
+              - 'workshop.yaml'
+              - '.workshop/**'
             python:
               - 'src/**/*.py'
               - 'utilities/generate_builders.py'
               - 'utilities/run-py-tests-ci'
               - 'pyproject.toml'
               - 'tox.ini'
+              - 'workshop.yaml'
+              - '.workshop/**'
             go:
               - 'src/**/*.go'
               - 'src/**/go.mod'
               - 'src/**/go.sum'
+              - 'workshop.yaml'
+              - '.workshop/**'
             docs:
               - 'docs/**'
               - 'src/**/*.py'
               - 'utilities/run-py-tests-ci'
               - 'pyproject.toml'
               - 'tox.ini'
-              - 'required-packages/base'
               - 'snap/snapcraft.yaml'
 
   lint:
@@ -88,19 +86,19 @@ jobs:
     needs: changes
     if: >-
       ${{ !github.event.pull_request.draft && needs.changes.outputs.lint == 'true' }}
-    container:
-      image: ghcr.io/${{ github.repository }}-build-env:${{ needs.changes.outputs.image }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-      - uses: ./.github/actions/ci-setup
+      - uses: canonical/launch-workshop@b9e184e38f49808ced78e25de19483fe02484c46 # v1.0.1
+        with:
+          cache: |
+            go:mod-cache
+            uv:cache
+
+      - name: Build
+        run: workshop run -- build
 
       - name: Run lint
-        run: |
-          su ubuntu -c "make lint"
+        run: workshop run -- lint
 
   test-python:
     needs: changes
@@ -108,20 +106,19 @@ jobs:
     if: >-
       ${{ !github.event.pull_request.draft && needs.changes.outputs.python == 'true' }}
 
-    container:
-      image: ghcr.io/${{ github.repository }}-build-env:${{ needs.changes.outputs.image }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-      - uses: ./.github/actions/ci-setup
+      - uses: canonical/launch-workshop@b9e184e38f49808ced78e25de19483fe02484c46 # v1.0.1
+        with:
+          cache: |
+            go:mod-cache
+            uv:cache
+
+      - name: Build
+        run: workshop run -- build
 
       - name: Test
-        run: |
-          CACHE_DIR=/home/ubuntu/.cache/pip
-          su ubuntu -c "PIP_CACHE_DIR=$CACHE_DIR make test-py"
+        run: workshop run -- test-py
 
   test-go:
     needs: changes
@@ -129,19 +126,19 @@ jobs:
     if: >-
       ${{ !github.event.pull_request.draft && needs.changes.outputs.go == 'true' }}
 
-    container:
-      image: ghcr.io/${{ github.repository }}-build-env:${{ needs.changes.outputs.image }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-      - uses: ./.github/actions/ci-setup
+      - uses: canonical/launch-workshop@b9e184e38f49808ced78e25de19483fe02484c46 # v1.0.1
+        with:
+          cache: |
+            go:mod-cache
+            uv:cache
+
+      - name: Build
+        run: workshop run -- build
 
       - name: Test
-        run: |
-          su ubuntu -c "make test-go"
+        run: workshop run -- test-go
   test-docs:
     needs: changes
     runs-on: ubuntu-24.04

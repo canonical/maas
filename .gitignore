@@ -2,6 +2,7 @@
 *.egg-info
 *.snap
 *cover.out*
+/.coverage
 /.mypy_cache
 /.db.lock
 /.hypothesis
