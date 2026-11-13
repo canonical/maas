@@ -369,7 +369,7 @@ class UnknownPowerActionException(Exception):
     pass
 
 
-SSH_POWER_DRIVERS = frozenset({"hmc", "mscm", "wedge"})
+SSH_POWER_DRIVERS = frozenset({"hmc"})
 
 
 def fetch_trusted_ssh_host_keys(
