@@ -122,6 +122,12 @@ class TestDNSResource(MAASServerTestCase):
             separate_fqdn("foo.test.example.com", "A"),
         )
 
+    def test_separate_fqdn_splits_wildcard(self):
+        self.assertEqual(
+            ("*", "test.example.com"),
+            separate_fqdn("*.test.example.com", "A"),
+        )
+
     def test_separate_fqdn_returns_atsign_for_top_of_domain(self):
         name = "{}.{}.{}".format(
             factory.make_name("a"),
