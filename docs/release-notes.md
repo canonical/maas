@@ -237,6 +237,19 @@ documentation, available at /MAAS/docs in the region controller.
 
 ## Version 3.7 release notes
 
+### MAAS 3.7.5 has been released
+
+We are happy to announce that MAAS 3.7.5 has been released, with the following bug fixes:
+
+- [2170206](https://launchpad.net/maas/+bug/2170206): Web UI stuck in "Trying to reconnect…": websocket rejects a valid CSRF token when the request carries an unrelated malformed cookie (switched from `SimpleCookie()` to `parse_cookie()` so a single malformed cookie no longer invalidates valid ones)
+- [2141588](https://launchpad.net/maas/+bug/2141588): `ip=` kernel command line option did not explicitly set the DHCP type, which is required by `systemd-network-generator`
+- [2172210](https://launchpad.net/maas/+bug/2172210): `CustomJsonFormatter` lived in `maasservicelayer`, conflicting with the rack controller's dependency definitions
+- [2152210](https://launchpad.net/maas/+bug/2152210): Deleting a boot source selection did not stop the in-flight Temporal sync-selection workflow
+- [2171421](https://launchpad.net/maas/+bug/2171421): NGINX API rate/connection limiting enabled by default on non-hardened MAAS
+- [2170207](https://launchpad.net/maas/+bug/2170207): `dbupgrade` built PostgreSQL DSNs without URL-encoding the username/password, breaking migrations when either contained reserved characters such as `@`
+- Keyring filename hashing (`calculate_keyring_name()`) used `hashlib.md5()` without `usedforsecurity=False`, aborting under FIPS-enabled OpenSSL
+- LXD power driver now uses the `/1.0/instances` endpoint
+
 ### MAAS 3.7.4 has been released
 
 #### FIPS STIG/CIS
@@ -259,7 +272,6 @@ expected and validated cryptography is mandatory.
 
 #### Bug Fixes
 
-- [2152210](https://launchpad.net/maas/+bug/2152210): Deleting boot source selection does not cancel in-flight Temporal download workflows, causing worker starvation
 - [2158480](https://launchpad.net/maas/+bug/2158480): MAAS keeps an s390x LPAR config to boot from disk
 - [2160731](https://launchpad.net/maas/+bug/2160731): Redfish power driver fails on upgraded Dell iDRAC 10
 - [2158318](https://launchpad.net/maas/+bug/2158318): not able to boot s390x LPAR with FCP disk
@@ -272,8 +284,6 @@ expected and validated cryptography is mandatory.
 - [2169702](https://launchpad.net/maas/+bug/2169702): MAAS DNS is not getting any update because the zones are already frozen
 - [2169602](https://launchpad.net/maas/+bug/2169602): Attempt to create and enlist new s390 machine in MAAS fails
 - [2169714](https://launchpad.net/maas/+bug/2169714): Performance issue in Node.save() calling \_remove_orphaned_bmcs()
-- [2170207](https://launchpad.net/maas/+bug/2170207): dbupgrade fails during 3.6 -> 3.7 snap refresh when the PostgreSQL password contains "@" or "%" (alembic DSN built without escaping) and leaves the database half-migrated
-- [2171421](https://launchpad.net/maas/+bug/2171421): NGINX API rate/connection limiting enabled by default on non-hardened MAAS
 - [2161119](https://launchpad.net/maas/+bug/2161119): Virtual machines show up in wrong LXD host in UI
 - [2162993](https://launchpad.net/maas/+bug/2162993): MAAS fails to reassign machine.default_gateways when an interface's IP assignment mode is set to Unconfigured
 - [2143381](https://launchpad.net/maas/+bug/2143381): MAAS 3.6.3 ‘NoneType’ object has no attribute ‘fqdn’
@@ -281,7 +291,6 @@ expected and validated cryptography is mandatory.
 - [1771777](https://launchpad.net/maas/+bug/1771777): Node is stuck "exiting rescue mode" from failed deployment
 - [1783889](https://launchpad.net/maas/+bug/1783889): COMMISSION S.M.A.R.T Tests fail unnecessarily on code 64 (past log entries)
 - [2143941](https://launchpad.net/maas/+bug/2143941): LXD 6.7-1f11451 power settings broken due to pylxd API schema
-- [2170206](https://launchpad.net/maas/+bug/2170206): Web UI stuck in "Trying to reconnect…": websocket rejects a valid CSRF token when the request carries an unrelated malformed cookie (http.cookies.SimpleCookie)
 
 ### MAAS 3.7.3 has been released
 
