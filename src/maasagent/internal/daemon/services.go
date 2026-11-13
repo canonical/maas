@@ -21,7 +21,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -110,23 +109,15 @@ func newDHCPService(c dhcpSvcConfig, logger *slog.Logger) (*dhcp.DHCPService, er
 }
 
 func newExternalDHCPService(c dhcpSvcConfig) (*dhcp.DHCPService, error) {
-	serviceName := func() string {
-		if _, ok := os.LookupEnv("SNAP"); ok {
-			return "dhcpd"
-		}
+	v4 := servicecontroller.GetServiceName(servicecontroller.DHCPv4)
+	v6 := servicecontroller.GetServiceName(servicecontroller.DHCPv6)
 
-		return "maas-dhcpd"
-	}
-
-	v4 := serviceName()
-	v6 := v4 + "6"
-
-	controllerV4, err := servicecontroller.NewController(v4)
+	controllerV4, err := servicecontroller.NewPebbleController(v4)
 	if err != nil {
 		return nil, fmt.Errorf("DHCP v4 controller initialization failed: %w", err)
 	}
 
-	controllerV6, err := servicecontroller.NewController(v6)
+	controllerV6, err := servicecontroller.NewPebbleController(v6)
 	if err != nil {
 		return nil, fmt.Errorf("DHCP v6 controller initialization failed: %w", err)
 	}
