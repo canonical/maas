@@ -53,13 +53,13 @@ flowchart LR
 
 ### Access to the region controller
 
-Administrators, users, and API clients only interact with the region controller, through the web UI, the CLI, or the API. Users authenticate with a password, an API key, or [single sign-on](/how-to-guides/sso.md), and each request is authorized against the user's [entitlements](#fine-grained-authorization).
+Administrators, users, and API clients only interact with the region controller, through the web UI, the CLI, or the API. Users authenticate with a password, an API key, or [single sign-on](/how-to-guides/sso.md), and each request is authorized against the user's [entitlements](#role-based-access-control-rbac).
 
 By default, the web UI and the API use HTTP. To encrypt this traffic, [enable TLS](/how-to-guides/enhance-maas-security.md#use-tls-termination-maas-33). When TLS is enabled, the region controller still serves an internal HTTP endpoint for the rack controllers.
 
 ### External services
 
-The region controller downloads boot images from image repositories and verifies them with a GPG keyring. See [Configure boot sources](/how-to-guides/manage-images.md#configure-boot-sources). When single sign-on is configured, the region controller also trusts an external OIDC identity provider to authenticate users.
+The region controller downloads boot images from image repositories and verifies them with a GPG keyring. When single sign-on is configured, the region controller also trusts an external OIDC identity provider to authenticate users.
 
 ### Communication between controllers
 
@@ -191,7 +191,7 @@ Some risks come from the way MAAS works, and MAAS cannot remove them on its own.
 
 * **Keep MAAS and its hosts up to date.** Use a [supported MAAS version](https://canonical.com/maas/docs/release-information/supported-maas-versions/). The MAAS snap is refreshed automatically to new point releases of its track (for example, from x.y.1 to x.y.2). Upgrading to a new version (for example, from x.6 to x.7) is manual, including when your version reaches the end of its support. Delaying updates might leave vulnerabilities unpatched. See [Upgrade MAAS](/how-to-guides/upgrade-maas.md).
 * **Use strong authentication.** Use [strong passwords](#strong-passwords). If you use [single sign-on](/how-to-guides/sso.md), enable multi-factor authentication in your identity provider.
-* **Limit privileges.** Keep the number of administrators small, and grant other users only the [entitlements](#fine-grained-authorization) they need.
+* **Limit privileges.** Keep the number of administrators small, and grant other users only the [entitlements](#role-based-access-control-rbac) they need.
 * **Enable TLS with a trusted certificate.** See [Enhance MAAS security](/how-to-guides/enhance-maas-security.md#use-tls-termination-maas-33).
 * **Back up MAAS and encrypt the backups.** Store them in a location with restricted access. See [Back up MAAS](/how-to-guides/back-up-maas.md).
 * **Isolate the provisioning network.** Restrict the ports that MAAS exposes with a [firewall](/how-to-guides/enhance-maas-security.md#manage-network-ports), and configure your switches to prevent DHCP and ARP spoofing.

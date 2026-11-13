@@ -157,6 +157,7 @@ adopt-fips-on-an-existing-deployment
 manage-trusted-ssh-host-keys
 deploy-a-real-time-kernel
 deploy-a-fips-kernel
+decommission-maas
 set-up-air-gapped-maas
 script-maas-with-python
 deploy-vms-on-ibm-z
