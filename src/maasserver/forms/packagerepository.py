@@ -6,6 +6,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
+from maascommon.utils.gpg import validate_gpg_public_key
 from maasserver.audit import create_audit_event
 from maasserver.fields import URLOrPPAFormField
 from maasserver.forms import MAASModelForm, UnconstrainedMultipleChoiceField
@@ -109,6 +110,15 @@ class PackageRepositoryForm(MAASModelForm):
             else:
                 arches = PackageRepository.MAIN_ARCHES
         return arches
+
+    def clean_key(self):
+        key = self.cleaned_data.get("key")
+        if key:
+            try:
+                validate_gpg_public_key(key)
+            except ValueError as e:
+                raise ValidationError(str(e)) from e
+        return key
 
     def clean_distributions(self):
         values = []

@@ -3,7 +3,7 @@
 
 from typing import Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from maascommon.enums.package_repositories import (
     ComponentsToDisableEnum,
@@ -13,6 +13,7 @@ from maascommon.enums.package_repositories import (
     PACKAGE_REPO_PORTS_ARCHES,
     PocketsToDisableEnum,
 )
+from maascommon.utils.gpg import validate_gpg_public_key
 from maasservicelayer.builders.package_repositories import (
     PackageRepositoryBuilder,
 )
@@ -55,6 +56,13 @@ class PackageRepositoryCreateRequest(BaseModel):
     enabled: bool = Field(
         description="Whether or not the repository is enabled.", default=True
     )
+
+    @field_validator("key")
+    @classmethod
+    def validate_key(cls, key: str | None) -> str | None:
+        if key:
+            validate_gpg_public_key(key)
+        return key
 
     @model_validator(mode="after")
     def populate_arches_if_empty(self) -> Self:
