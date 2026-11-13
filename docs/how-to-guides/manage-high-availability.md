@@ -157,6 +157,7 @@ frontend maas
 
 backend maas
     balance source
+    hash-type consistent
     server localhost localhost:5240 check
     server maas-api-1 $PRIMARY_API_SERVER_IP:5240 check
     server maas-api-2 $SECONDARY_API_SERVER_IP:5240 check
@@ -169,6 +170,10 @@ sudo systemctl restart haproxy
 ```
 
 Use port 80 instead of 5240 for API/UI access.
+
+`balance source` sends every request from the same client IP address to the same region controller. This matters, for example, for uploading custom images with the MAAS CLI (`boot-resources create`). The CLI sends the file in chunks, each as a separate request, and each region only tracks the chunks it receives itself. If the chunks of one upload reach different regions, no region ever receives the complete file. The image never finishes syncing, and the CLI still exits with status 0.
+
+`hash-type consistent` is important for the same reason. Without it, HAProxy picks a server with a simple `hash % number_of_servers` calculation. When a region is added, removed, or fails a health check, that calculation changes for most clients, and an upload in progress is split across regions. With `hash-type consistent`, only the clients that were assigned to the affected region move to another one.
 
 ## Safety nets
 
