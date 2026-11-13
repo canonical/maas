@@ -116,6 +116,44 @@ class TestIPCMasterServiceGetListenAddresses(MAASTestCase):
             master._getListenAddresses(5250),
         )
 
+    def test_loopback_is_not_advertised_to_racks(self):
+        from maasserver.config import RegionConfiguration
+
+        master = IPCMasterService(
+            reactor, socket_path=os.path.join(self.make_dir(), "ipc.sock")
+        )
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.rpc_bind = ["10.0.0.1", "127.0.0.1", "::1"]
+        mock_open.return_value.__exit__.return_value = False
+
+        self.assertEqual(
+            {("10.0.0.1", 5250)},
+            master._getListenAddresses(5250),
+        )
+
+    def test_loopback_only_bind_is_advertised_verbatim(self):
+        # A co-located rack controller can only reach a loopback-only
+        # region on loopback; advertising discovered addresses the
+        # region isn't listening on would break it.
+        from maasserver.config import RegionConfiguration
+
+        master = IPCMasterService(
+            reactor, socket_path=os.path.join(self.make_dir(), "ipc.sock")
+        )
+        mock_open = self.patch(RegionConfiguration, "open")
+        mock_cfg = mock_open.return_value.__enter__.return_value
+        mock_cfg.rpc_bind = ["127.0.0.1"]
+        mock_open.return_value.__exit__.return_value = False
+        self.patch(ipc, "get_all_interface_source_addresses").return_value = {
+            "10.0.0.9"
+        }
+
+        self.assertEqual(
+            {("127.0.0.1", 5250)},
+            master._getListenAddresses(5250),
+        )
+
     def test_falls_back_to_discovery_when_hardening_inactive_and_unset(self):
         # Outside hardening, `resolve_rpc_bind_addresses` returns an empty
         # list for an unset `rpc_bind` without even attempting to derive
