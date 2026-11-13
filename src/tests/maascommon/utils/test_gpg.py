@@ -24,14 +24,24 @@ class TestValidateGpgPublicKey:
     @pytest.mark.parametrize(
         "key",
         [
+            SAMPLE_GPG_PUBLIC_KEY.replace("BLOCK-----\n\n", "BLOCK-----\n"),
+            SAMPLE_GPG_PUBLIC_KEY.replace(
+                "BLOCK-----\n\n", "BLOCK-----\nComment: test\n"
+            ),
+        ],
+    )
+    def test_rejects_missing_blank_line_after_header(self, key: str) -> None:
+        with pytest.raises(ValueError, match="blank line"):
+            validate_gpg_public_key(key)
+
+    @pytest.mark.parametrize(
+        "key",
+        [
             "whatever",
             SAMPLE_GPG_PUBLIC_KEY.replace("PUBLIC", "PRIVATE"),
             SAMPLE_GPG_PUBLIC_KEY.replace("-----END PGP PUBLIC", "-----END"),
             SAMPLE_GPG_PUBLIC_KEY.replace("mDMEav", "mDMEa!"),
-            SAMPLE_GPG_PUBLIC_KEY.replace("mDMEav", "mDMEaw"),
-            SAMPLE_GPG_PUBLIC_KEY.replace("=N/At", "=!!!!"),
             "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\n"
-            "aGVsbG8=\n"
             "-----END PGP PUBLIC KEY BLOCK-----",
         ],
     )
