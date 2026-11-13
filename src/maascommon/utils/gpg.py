@@ -32,11 +32,11 @@ def validate_gpg_public_key(key: str) -> None:
             "and any header lines."
         )
 
-    # Skip optional "Name: value" armor headers and the "=XXXX" checksum.
+    # Skip the optional "=XXXX" checksum.
     body = "".join(
         line
-        for line in lines[1:-1]
-        if line and ": " not in line and not line.startswith("=")
+        for line in lines[first_body_line + 1 : -1]
+        if line and not line.startswith("=")
     )
     if not body:
         raise ValueError("Key is empty.")
