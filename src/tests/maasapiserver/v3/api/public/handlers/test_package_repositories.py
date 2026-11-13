@@ -28,7 +28,6 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     CANNOT_DELETE_DEFAULT_PACKAGE_REPO_VIOLATION_TYPE,
     ETAG_PRECONDITION_VIOLATION_TYPE,
-    INVALID_ARGUMENT_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -365,14 +364,6 @@ class TestPackageRepositoriesApi(ApiCommonTests):
         response = await client.post(self.BASE_PATH, json=create_request)
         assert response.status_code == 422
         services_mock.package_repositories.create.assert_not_called()
-        BadRequestException(
-            details=[
-                BaseExceptionDetail(
-                    type=INVALID_ARGUMENT_VIOLATION_TYPE,
-                    message="Default package repositories cannot be deleted.",
-                )
-            ]
-        )
 
     async def test_delete_default_package_repository(
         self,
