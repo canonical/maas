@@ -156,6 +156,32 @@ class TestDNSResourcesAPI(APITestCase.ForUser):
         ]
         self.assertEqual(expected_ids, result_ids)
 
+    def test_read_with_wildcard_fqdn(self):
+        domain = factory.make_Domain()
+        wildcard = factory.make_DNSResource(name="*", domain=domain)
+        factory.make_DNSResource(domain=domain)
+        response = self.client.get(
+            get_dnsresources_uri(), {"fqdn": f"*.{domain.name}"}
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        result_ids = [
+            dnsresource["id"]
+            for dnsresource in json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET)
+            )
+        ]
+        self.assertEqual([wildcard.id], result_ids)
+
+    def test_read_with_invalid_fqdn_returns_bad_request(self):
+        response = self.client.get(
+            get_dnsresources_uri(), {"fqdn": "nodomain"}
+        )
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content
+        )
+
     def test_read_with_type(self):
         for _ in range(10):
             factory.make_DNSData()
