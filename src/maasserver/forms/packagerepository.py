@@ -113,9 +113,7 @@ class PackageRepositoryForm(MAASModelForm):
 
     def clean_key(self):
         key = self.cleaned_data.get("key")
-        # Only validate changed keys so existing repositories with a
-        # previously accepted invalid key can still be updated.
-        if key and key != self.instance.key:
+        if key:
             try:
                 validate_gpg_public_key(key)
             except ValueError as e:
