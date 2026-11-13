@@ -138,6 +138,7 @@ from maasservicelayer.services.openfga_tuples import (
 from maasservicelayer.utils.image_local_files import SyncLocalBootResourceFile
 import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
+from maastesting.gpg import SAMPLE_GPG_PUBLIC_KEY
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import (
     HARDWARE_TYPE,
@@ -3445,7 +3446,7 @@ class Factory(maastesting.factory.Factory):
                 random.randint(0, len(PackageRepository.KNOWN_ARCHES)),
             )
         if key is None:
-            key = factory.make_name("key")
+            key = SAMPLE_GPG_PUBLIC_KEY
         return PackageRepository.objects.create(
             name=name,
             url=url,
