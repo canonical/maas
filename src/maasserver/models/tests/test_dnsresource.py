@@ -128,8 +128,8 @@ class TestDNSResource(MAASServerTestCase):
             separate_fqdn("*.test.example.com", "A"),
         )
 
-    def test_separate_fqdn_does_not_split_without_dot(self):
-        self.assertIsNone(separate_fqdn("nodomain"))
+    def test_separate_fqdn_raises_for_invalid_fqdn(self):
+        self.assertRaises(ValidationError, separate_fqdn, "nodomain")
 
     def test_separate_fqdn_returns_atsign_for_top_of_domain(self):
         name = "{}.{}.{}".format(

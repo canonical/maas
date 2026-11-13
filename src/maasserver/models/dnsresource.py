@@ -74,6 +74,8 @@ def separate_fqdn(fqdn, rrtype=None, domainname=None):
 
     Returns (name, domain) where name is appropriate for the resource record in
     the domain.
+
+    Raises ValidationError if the fqdn can't be separated.
     """
     if fqdn is None or fqdn in SPECIAL_NAMES:
         return (fqdn, None)
@@ -94,11 +96,10 @@ def separate_fqdn(fqdn, rrtype=None, domainname=None):
     regexp = rf"^(?P<name>{spec}|\*)\.(?P<domain>{domain.NAMESPEC})$"
     regex = re.compile(regexp)
     result = regex.search(fqdn)
-    if result is not None:
-        answer = result.groupdict()
-        return (answer["name"], answer["domain"])
-    else:
-        return None
+    if result is None:
+        raise ValidationError(f"Invalid fqdn: {fqdn}.")
+    answer = result.groupdict()
+    return (answer["name"], answer["domain"])
 
 
 class DNSResourceQueriesMixin(MAASQueriesMixin):
