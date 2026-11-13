@@ -88,12 +88,26 @@ same requirement thereafter. It cannot be set via `config-hardening set`
 The remaining parameters configure where a service listens. Under
 hardening, a wildcard bind (`0.0.0.0`/`::`) is a violation; when left
 unset, `api_bind`, `agent_api_bind`, and `http_proxy_bind` each derive a
-specific address **per family** from `maas_url` at startup;
-`temporal_bind`, `rpc_bind`, and `syslog_bind` derive a single address
-matching whichever family `maas_url` resolves to. `prometheus_bind`
-instead defaults to loopback (`127.0.0.1`) when left unset, since it's
-scraped locally rather than reached via `maas_url`. All are per-host,
-stored in `regiond.conf` unless noted.
+specific address **per family** from `maas_url` at startup, while
+`rpc_bind` and `syslog_bind` derive a single address matching whichever
+family `maas_url` resolves to.
+
+Every list-valued bind key also binds both loopback addresses
+(`127.0.0.1` and `::1`) while hardening is active, whether its
+address(es) were derived or configured explicitly: a bound address only
+covers the interface it names, while same-host clients dial loopback,
+which the pre-hardening wildcard bind used to cover. Loopback is never
+advertised to rack controllers, unless it is the only address the region
+binds.
+
+The two scalar keys are exceptions. `temporal_bind` derives a single
+address from `maas_url` and takes no loopback, because Temporal's
+`bindOnIP` accepts exactly one address; same-host clients reach it at
+the same derived address via `temporal_server`. `prometheus_bind`
+defaults to loopback (`127.0.0.1`) when left unset, since it's scraped
+locally rather than reached via `maas_url`.
+
+All are per-host, stored in `regiond.conf` unless noted.
 
 - **`api_bind`** — public API bind address(es); comma-separated list, may
   mix IPv4 and IPv6. Left unset: auto-derived from `maas_url` as
@@ -115,10 +129,12 @@ stored in `regiond.conf` unless noted.
   from `maas_url`, the same as `temporal_bind`.
 - **`rpc_bind`** — region RPC service bind address(es); comma-separated
   list, may mix IPv4 and IPv6. Left unset: derived from `maas_url` (the
-  same address rack controllers already use to reach the region), falling
-  back to binding and advertising every interface only if `maas_url`
-  can't be resolved. When set, rack controllers dial exactly the
-  configured address(es).
+  same address rack controllers already use to reach the region) plus
+  loopback, falling back to binding and advertising every interface only
+  if `maas_url` can't be resolved. Rack controllers are told about the
+  non-loopback addresses only; if the region binds loopback alone, that
+  is advertised instead, so a co-located rack controller can still
+  connect.
 - **`agent_api_bind`** — internal API server bind address(es), dialed by
   `maas-agent` on rack controllers (port 5242); comma-separated list, may
   mix IPv4 and IPv6. Same derivation as `rpc_bind`, per family.
@@ -169,13 +185,15 @@ Keys: `hardening_enabled`, `api_bind`, `rpc_bind`, `tftp_bind`,
 `syslog_bind`, `http_proxy_bind`, and (snap installs only) `dns_bind`.
 `api_bind` and `http_proxy_bind` each derive a specific address per
 family from `maas_url` when left unset, the same as their region
-counterparts; `syslog_bind` derives a single address matching
-whichever family `maas_url` resolves to. `rpc_bind`, `tftp_bind`, and
-`dns_bind` have no such derivation: leaving `rpc_bind` unset binds all
-interfaces and is flagged under hardening; `tftp_bind` and `dns_bind`
-must serve every managed subnet rather than just the interface that
-reaches the API, so each takes a comma-separated list — one address
-per subnet/family — and is flagged under hardening when left unset.
+counterparts; `syslog_bind` derives a single address matching whichever
+family `maas_url` resolves to. All three also bind both loopback
+addresses under hardening, derived or explicitly configured, exactly as
+on the region. `rpc_bind`, `tftp_bind`, and `dns_bind` have no such
+derivation: leaving `rpc_bind` unset binds all interfaces and is flagged
+under hardening; `tftp_bind` and `dns_bind` must serve every managed
+subnet rather than just the interface that reaches the API, so each
+takes a comma-separated list — one address per subnet/family — and is
+flagged under hardening when left unset.
 
 `maas-rack config-hardening validate` checks only bind-wildcard rules —
 the rack has no TLS certificate, DH parameters, or database to validate;
