@@ -35,6 +35,7 @@ from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.fields import PackageRepoUrl
 from maasservicelayer.models.package_repositories import PackageRepository
 from maasservicelayer.utils.date import utcnow
+from maastesting.gpg import SAMPLE_GPG_PUBLIC_KEY
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,
@@ -219,7 +220,7 @@ class TestPackageRepositoriesApi(ApiCommonTests):
 
         update_request = {
             "name": "new_name",
-            "key": "test-key",
+            "key": SAMPLE_GPG_PUBLIC_KEY,
             "url": "http://archive.ubuntu.com/ubuntu",
             "distributions": [],
             "components": set(),
@@ -252,7 +253,7 @@ class TestPackageRepositoriesApi(ApiCommonTests):
         services_mock.package_repositories.get_by_id.return_value = None
         update_request = {
             "name": "new_name",
-            "key": "test-key",
+            "key": SAMPLE_GPG_PUBLIC_KEY,
             "url": "http://archive.ubuntu.com/ubuntu",
             "distributions": [],
             "components": set(),
@@ -287,7 +288,7 @@ class TestPackageRepositoriesApi(ApiCommonTests):
 
         create_request = {
             "name": "test-main",
-            "key": "test-key",
+            "key": SAMPLE_GPG_PUBLIC_KEY,
             "url": "http://archive.ubuntu.com/ubuntu",
             "distributions": [],
             "components": set(),
@@ -328,7 +329,7 @@ class TestPackageRepositoriesApi(ApiCommonTests):
         )
         create_request = {
             "name": "test-main",
-            "key": "test-key",
+            "key": SAMPLE_GPG_PUBLIC_KEY,
             "url": "http://archive.ubuntu.com/ubuntu",
             "distributions": [],
             "components": set(),
@@ -346,6 +347,24 @@ class TestPackageRepositoriesApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 409
+
+    async def test_post_422_invalid_key(
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+        )
+        create_request = {
+            "name": "test-main",
+            "key": "whatever",
+            "url": "http://archive.ubuntu.com/ubuntu",
+            "disable_sources": False,
+        }
+        response = await client.post(self.BASE_PATH, json=create_request)
+        assert response.status_code == 422
+        services_mock.package_repositories.create.assert_not_called()
         BadRequestException(
             details=[
                 BaseExceptionDetail(

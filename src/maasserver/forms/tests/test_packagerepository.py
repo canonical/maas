@@ -15,6 +15,7 @@ from maasserver.models import Event, PackageRepository
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maastesting.gpg import SAMPLE_GPG_PUBLIC_KEY
 
 
 class TestPackageRepositoryForm(MAASServerTestCase):
@@ -96,6 +97,26 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         for key, value in params.items():
             self.assertEqual(getattr(package_repository, key), value)
         self.assertTrue(package_repository.enabled)
+
+    def test_accepts_valid_key(self):
+        params = self.make_valid_repo_params()
+        params["key"] = SAMPLE_GPG_PUBLIC_KEY
+        form = PackageRepositoryForm(data=params)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_accepts_empty_key(self):
+        params = self.make_valid_repo_params()
+        params["key"] = ""
+        form = PackageRepositoryForm(data=params)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_rejects_invalid_key(self):
+        package_repository = factory.make_PackageRepository()
+        form = PackageRepositoryForm(
+            instance=package_repository, data={"key": "whatever"}
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("key", form.errors)
 
     def test_fail_validation_on_create_cleans_url(self):
         PackageRepository.objects.all().delete()
