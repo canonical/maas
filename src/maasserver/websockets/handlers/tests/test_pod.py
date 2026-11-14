@@ -22,7 +22,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
-from maasserver.websockets.base import DATETIME_FORMAT
+from maasserver.websockets.base import DATETIME_FORMAT, HandlerError
 from maasserver.websockets.handlers import pod as pod_module
 from maasserver.websockets.handlers.pod import ComposeMachineForm, PodHandler
 from maastesting.crochet import wait_for
@@ -808,6 +808,28 @@ class TestPodHandler(MAASTransactionServerTestCase):
                 "key": "mykey",
             },
         )
+
+    @wait_for_reactor
+    async def test_get_projects_without_connected_rack_controllers(self):
+        def start_rpc_without_racks():
+            self.useFixture(RegionEventLoopFixture("rpc"))
+            self.useFixture(RunningEventLoopFixture())
+            self.useFixture(MockLiveRegionToClusterRPCFixture())
+
+        await deferToThread(start_rpc_without_racks)
+        user = await deferToDatabase(factory.make_admin)
+        handler = PodHandler(user, {}, None)
+        params = {
+            "type": "lxd",
+            "power_address": "1.2.3.4",
+            "certificate": "mycert",
+            "key": "test",
+        }
+        with self.assertRaisesRegex(
+            HandlerError,
+            "Unable to discover LXD projects. No rack controllers connected.",
+        ):
+            await handler.execute("get_projects", params)
 
     @wait_for_reactor
     async def test_refresh(self):
