@@ -113,11 +113,18 @@ def _get_files_map(
 ) -> dict[str, str]:
     exclude = exclude or []
     try:
-        name = f"{osystem}/{oseries}" if osystem != "custom" else oseries
-        boot_resource = BootResource.objects.get(
+        if osystem != "custom":
+            potential_names = [f"{osystem}/{oseries}"]
+        else:
+            # TODO: Settle between bare names or prefixed for custom images
+            # once and for all.
+            potential_names = [oseries, f"custom/{oseries}"]
+        boot_resource = BootResource.objects.filter(
             architecture=f"{arch}/{subarch}",
-            name=name,
-        )
+            name__in=potential_names,
+        ).first()
+        if boot_resource is None:
+            raise ObjectDoesNotExist
         bset = boot_resource.get_latest_complete_set()
         return {
             bfile.filetype: "/".join(
@@ -304,18 +311,23 @@ def get_boot_config_for_machine(
                 # Note: `series` actually contains a name of the
                 # custom image in this context.
                 arch, _ = machine.split_arch()
+                # TODO: Settle between bare names or prefixed for custom images
+                # once and for all.
+                potential_names = [final_series, f"custom/{final_series}"]
                 if arch != "":
                     # LP: #2138312: use the machine architecture to distinguish
                     # between custom images of the same name
-                    install_image = BootResource.objects.get(
-                        name=final_series, architecture__startswith=f"{arch}/"
-                    )
+                    install_image = BootResource.objects.filter(
+                        name__in=potential_names,
+                        architecture__startswith=f"{arch}/",
+                    ).first()
                 else:
-                    install_image = BootResource.objects.get(
-                        name=final_series,
-                    )
+                    install_image = BootResource.objects.filter(
+                        name__in=potential_names,
+                    ).first()
 
-                boot_osystem, boot_series = install_image.split_base_image()
+                if install_image is not None:
+                    boot_osystem, boot_series = install_image.split_base_image()
                 # LP:2013529, machine HWE kernel might not exist for
                 # given base image
                 use_machine_hwe_kernel = False
