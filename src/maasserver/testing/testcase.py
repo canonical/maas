@@ -134,7 +134,11 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         """Set the application name to the current test, for debug."""
         testname = f"{strclass(self.__class__)}.{self._testMethodName}"
         with connection.cursor() as cursor:
-            cursor.execute(f"SET application_name = '{testname}'")
+            # Parameterize rather than interpolate: scenario-multiplied
+            # class names can contain single quotes (e.g. "Default
+            # threshold doesn't warn for /123 IPv6"), which would
+            # otherwise break the SQL string literal.
+            cursor.execute("SET application_name = %s", (testname,))
 
 
 class MAASLegacyServerTestCase(MAASRegionTestCaseBase, DjangoTestCase):

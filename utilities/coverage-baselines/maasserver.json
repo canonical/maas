@@ -1,0 +1,13 @@
+{
+  "package": "maasserver",
+  "metric_version": 2,
+  "captured_at": "2026-11-19T04:59:43.947874Z",
+  "percent_covered": 91.84833628872431,
+  "num_statements": 43904,
+  "num_branches": 13618,
+  "stability_runs": [
+    91.84833628872431,
+    91.89875178192692
+  ],
+  "tolerance_pp": 1.0
+}

@@ -1626,6 +1626,7 @@ class TestThreadPool(MAASTestCase):
 
     @inlineCallbacks
     def test_trace_id_is_copied_if_present(self):
+        self.addCleanup(set_trace_id, "")
         set_trace_id("test-trace-id")
         pool = ThreadPool(
             minthreads=1,

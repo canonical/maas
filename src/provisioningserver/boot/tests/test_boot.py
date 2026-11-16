@@ -24,7 +24,9 @@ from provisioningserver.boot import (
 )
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
+from tests.provisioningserver.tests.test_kernel_opts import (
+    make_kernel_parameters,
+)
 
 TIMEOUT = get_testing_timeout()
 

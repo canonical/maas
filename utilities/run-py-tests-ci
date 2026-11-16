@@ -2,14 +2,12 @@
 #
 # Helpers to run tests in CI.
 #
-# This runs nose- and/or pytest-based tests, and fails if any of the
-# processes fails. Pass "legacy", "pytest" or "all" (default) to pick the
-# suite. If PARENT is set and the git diff with the parent is only about docs
-# changes, then we skip the tests.
+# This runs both nose- and pytest-based tests, and fails if any of the
+# processes fails. If PARENT is set and the git diff with the parent is
+# only about docs changes, then we skip the tests.
 
 set -o pipefail
 
-SUITE="${1:-all}"
 RUN_TESTS=true
 
 if [ -n "$PARENT" ]; then
@@ -38,25 +36,33 @@ if [ "$RUN_TESTS" = true ]; then
     echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
     echo "MAX_PROCESSES=${MAX_PROCESSES}"
 
-    res1=0
-    res2=0
-    if [ "$SUITE" != "pytest" ]; then
-        bin/test.parallel --emit-subunit --subprocesses="${MAX_PROCESSES}" | \
-            bin/subunit-1to2 | \
-            bin/subunit2junitxml --no-passthrough -f -o junit.xml | \
-            bin/subunit2pyunit --no-passthrough
-        res1=$?
-    fi
-    if [ "$SUITE" != "legacy" ]; then
-        bin/pytest -n auto --maxprocesses="${MAX_PROCESSES}" --dist=load --junit-xml=junit-pytest.xml
-        res2=$?
-    fi
-    if [ "$res1" -ne 0 ]; then
-        exit "$res1"
-    elif [ "$res2" -ne 0 ]; then
-        exit "$res2"
-    fi
-    exit 0
+    # Rack-legacy leg: the 39 MAASTwistedRunTest files (idea 004), which
+    # need the process free of the always-on crochet reactor. Runs the
+    # whole src/provisioningserver tree (nose's --select-dir walk finds
+    # exactly these 39 after F05 relocated the rest to src/tests/).
+    MAAS_PYTEST_NO_CROCHET=1 \
+        bin/pytest src/provisioningserver \
+        -n auto --maxprocesses="${MAX_PROCESSES}" --dist=load \
+        --junit-xml=junit-rack-legacy.xml
+    res1=$?
+
+    # Region-legacy leg: the 10 legacy-tagged classes (idea 002), which
+    # need MAAS_PREVENT_MIGRATIONS=1 and a Django-migrate (not dbupgrade)
+    # test DB. File list is computed so it stays correct as the carve-out
+    # shrinks.
+    mapfile -t LEGACY_FILES < <(grep -rl \
+        'MAASLegacyServerTestCase\|MAASLegacyTransactionServerTestCase\|DjangoTestCase\|DjangoTransactionTestCase' \
+        src/maasserver src/metadataserver --include='test_*.py')
+    MAAS_PREVENT_MIGRATIONS=1 \
+        bin/pytest "${LEGACY_FILES[@]}" \
+        -n auto --maxprocesses="${MAX_PROCESSES}" --dist=load \
+        --junit-xml=junit-region-legacy.xml
+    res2=$?
+
+    # Main suite: everything under src/tests/.
+    bin/pytest -n auto --maxprocesses="${MAX_PROCESSES}" --dist=load --junit-xml=junit-pytest.xml
+    res3=$?
+    exit $((res1 + res2 + res3))
 else
     echo "Skipping tests because only docs/ changed."
     exit 0

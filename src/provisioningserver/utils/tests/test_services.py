@@ -40,7 +40,6 @@ from provisioningserver.refresh.maas_api_helper import SignalException
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )
-from provisioningserver.tests.test_security import SharedSecretTestCase
 from provisioningserver.utils import services
 from provisioningserver.utils.beaconing import (
     BeaconPayload,
@@ -61,6 +60,7 @@ from provisioningserver.utils.services import (
     ProtocolForObserveBeacons,
     SingleInstanceService,
 )
+from tests.provisioningserver.tests.test_security import SharedSecretTestCase
 
 TIMEOUT = get_testing_timeout()
 

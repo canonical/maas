@@ -11,9 +11,6 @@ from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing.factory import factory
 from maasserver.websockets.base import HandlerValidationError
 from maasserver.websockets.handlers.machine import MachineHandler
-from maasserver.websockets.handlers.tests.test_machine import (
-    TestMachineHandlerUtils,
-)
 from maastesting.djangotestcase import count_queries
 from metadataserver.enum import (
     HARDWARE_TYPE,
@@ -23,6 +20,9 @@ from metadataserver.enum import (
 )
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.testing.certificates import get_sample_cert
+from tests.maasserver.websockets.handlers.tests.test_machine import (
+    TestMachineHandlerUtils,
+)
 
 
 @pytest.mark.usefixtures("maasdb")

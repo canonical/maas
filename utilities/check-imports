@@ -171,6 +171,7 @@ TestingLibraries = Pattern(
     "subunit|subunit.**",
     "testresources|testresources.**",
     "testscenarios|testscenarios.**",
+    "tests|tests.**",
     "testtools|testtools.**",
     "zhmcclient_mock.**",
 )

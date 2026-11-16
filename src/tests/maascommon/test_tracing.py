@@ -16,6 +16,13 @@ from maascommon.tracing import (
 )
 
 
+@pytest.fixture(autouse=True)
+def reset_trace_id():
+    token = TRACE_ID.set("")
+    yield
+    TRACE_ID.reset(token)
+
+
 class TestTracing:
     def test_get_trace_id_default(self):
         assert get_trace_id() == "", (

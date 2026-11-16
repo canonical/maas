@@ -1,0 +1,12 @@
+{
+  "package": "metadataserver",
+  "captured_at": "2026-11-16T19:38:52.309678Z",
+  "percent_covered": 95.05131532381739,
+  "num_statements": 14792,
+  "num_branches": 2162,
+  "stability_runs": [
+    95.19877315087885,
+    95.05131532381739
+  ],
+  "tolerance_pp": 1.0
+}

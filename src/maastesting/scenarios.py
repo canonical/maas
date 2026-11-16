@@ -14,10 +14,10 @@ class WithScenarios(testscenarios.WithScenarios):
     that testscenarios_' ``WithScenarios``, which customises ``run`` only,
     does not work correctly.
 
-    If you're using the `maastesting.noseplug.Scenarios` plugin with Nose
-    (``--with-scenarios``) then this won't do anything because scenarios will
-    have already been expanded. This remains here for use with other test
-    runners.
+    Under the retired `nose` runner's ``--with-scenarios`` plugin this
+    did nothing because scenarios were already expanded. It remains here
+    for use with other test runners (pytest expands scenarios itself, at
+    collection time).
 
     .. testscenarios_: https://launchpad.net/testscenarios
     """
