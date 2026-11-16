@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64encode
-from unittest.mock import Mock
 
 from pydantic import ValidationError
 import pytest
@@ -16,7 +15,6 @@ from maasapiserver.v3.api.public.models.requests.boot_sources import (
 )
 from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.bootsources import BootSource
-from maasservicelayer.services.boot_sources import BootSourcesService
 from maasservicelayer.utils.date import utcnow
 
 
@@ -42,7 +40,6 @@ class TestValidators:
 
     @pytest.mark.asyncio
     async def test_negative_priority_raises(self, services_mock):
-        services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.exists.return_value = False
         with pytest.raises(ValidationException) as e:
             await validate_priority(-1, services_mock)
@@ -53,7 +50,6 @@ class TestValidators:
 
     @pytest.mark.asyncio
     async def test_priority_already_exists_raises(self, services_mock):
-        services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.exists.return_value = True
         with pytest.raises(ValidationException) as e:
             await validate_priority(2, services_mock)
@@ -148,7 +144,6 @@ class TestBootSourceRequest:
 class TestBootSourceCreateRequest:
     @pytest.mark.asyncio
     async def test_to_builder(self, services_mock) -> None:
-        services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.exists.return_value = False
         bootsource_request = BootSourceCreateRequest(
             name="My Boot Source",
@@ -185,7 +180,6 @@ class TestBootSourceUpdateRequest:
 
     @pytest.mark.asyncio
     async def test_to_builder(self, services_mock) -> None:
-        services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.exists.return_value = False
         instance = BootSource(
             id=1,
@@ -216,7 +210,6 @@ class TestBootSourceUpdateRequest:
 
     @pytest.mark.asyncio
     async def test_to_builder_rejects_url_change(self, services_mock) -> None:
-        services_mock.boot_sources = Mock(BootSourcesService)
         instance = BootSource(
             id=1,
             created=utcnow(),
@@ -247,7 +240,6 @@ class TestBootSourceUpdateRequest:
     async def test_to_builder_skips_priority_validation_when_unchanged(
         self, services_mock
     ) -> None:
-        services_mock.boot_sources = Mock(BootSourcesService)
         instance = BootSource(
             id=1,
             created=utcnow(),

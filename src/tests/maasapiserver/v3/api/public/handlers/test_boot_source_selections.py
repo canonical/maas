@@ -37,13 +37,6 @@ from maasservicelayer.models.bootsourceselections import (
     BootSourceSelectionStatistic,
     BootSourceSelectionStatus,
 )
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.bootsourceselections import (
-    BootSourceSelectionsService,
-    BootSourceSelectionStatusService,
-)
-from maasservicelayer.services.configurations import ConfigurationsService
-from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -92,14 +85,11 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
         )
         services_mock.boot_source_selections.list.return_value = ListResult[
             BootSourceSelection
@@ -114,7 +104,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -123,9 +113,6 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         selection_2 = TEST_BOOTSOURCESELECTION.model_copy()
         selection_2.id = 2
 
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
         services_mock.boot_source_selections.list.return_value = ListResult[
             BootSourceSelection
         ](items=[TEST_BOOTSOURCESELECTION, selection_2], total=2)
@@ -147,14 +134,11 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
 
     async def test_list_empty(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
         )
         services_mock.boot_source_selections.list.return_value = ListResult[
             BootSourceSelection
@@ -169,19 +153,15 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
 
     async def test_bulk_create_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
         )
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
         services_mock.boot_source_selections.create_many.return_value = [
             TEST_BOOTSOURCESELECTION
         ]
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = False
 
         bulk_create_request = [
@@ -213,14 +193,11 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
 
     async def test_bulk_create_409(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
         )
         services_mock.boot_source_selections.create_many.side_effect = (
             AlreadyExistsException()
@@ -263,14 +240,11 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
     async def test_bulk_create_422(
         self,
         bulk_create_request: list,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
         )
         response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(bulk_create_request)
@@ -282,7 +256,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
     async def test_bulk_create_starts_image_sync_if_auto_sync_enabled(
         self,
         auto_sync_enabled: bool,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -291,16 +265,11 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         s1 = TEST_BOOTSOURCESELECTION.model_copy()
         s2 = TEST_BOOTSOURCESELECTION.model_copy()
         s2.id = 2
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
         services_mock.boot_source_selections.create_many.return_value = [
             s1,
             s2,
         ]
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = auto_sync_enabled
-        services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.register_workflow_call.return_value = None
 
         bulk_create_request = [
@@ -337,7 +306,7 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
 
     async def test_bulk_delete(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -346,14 +315,10 @@ class TestBootSourceSelectionsApi(ApiCommonTests):
         s1 = TEST_BOOTSOURCESELECTION.model_copy()
         s2 = TEST_BOOTSOURCESELECTION.model_copy()
         s2.id = 2
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
         services_mock.boot_source_selections.delete_many.return_value = [
             s1,
             s2,
         ]
-        services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.terminate_workflow.return_value = None
 
         response = await client.delete(f"{self.BASE_PATH}?id=1&id=2")
@@ -388,14 +353,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
 
     async def test_get_selection_status_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selection_status = Mock(
-            BootSourceSelectionStatusService
         )
         services_mock.boot_source_selection_status.get_by_id.return_value = (
             BootSourceSelectionStatus(
@@ -420,14 +382,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
 
     async def test_get_selection_status_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selection_status = Mock(
-            BootSourceSelectionStatusService
         )
         services_mock.boot_source_selection_status.get_by_id.return_value = (
             None
@@ -438,14 +397,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
 
     async def test_list_selection_status_one_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selection_status = Mock(
-            BootSourceSelectionStatusService
         )
         services_mock.boot_source_selection_status.list.return_value = (
             ListResult[BootSourceSelectionStatus](
@@ -477,14 +433,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
 
     async def test_list_selection_status_another_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selection_status = Mock(
-            BootSourceSelectionStatusService
         )
         services_mock.boot_source_selection_status.list.return_value = (
             ListResult[BootSourceSelectionStatus](
@@ -515,14 +468,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
 
     async def test_list_selection_status_empty(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selection_status = Mock(
-            BootSourceSelectionStatusService
         )
         services_mock.boot_source_selection_status.list.return_value = (
             ListResult[BootSourceSelectionStatus](
@@ -540,14 +490,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
 
     async def test_list_selection_status_filter_by_ids(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selection_status = Mock(
-            BootSourceSelectionStatusService
         )
         services_mock.boot_source_selection_status.list.return_value = (
             ListResult[BootSourceSelectionStatus](
@@ -579,14 +526,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
 
     async def test_list_selection_status_only_selected(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selection_status = Mock(
-            BootSourceSelectionStatusService
         )
         services_mock.boot_source_selection_status.list.return_value = (
             ListResult[BootSourceSelectionStatus](
@@ -620,14 +564,11 @@ class TestBootSourceSelectionStatusesApi(ApiCommonTests):
 
     async def test_list_selection_status_filter_selected_only_and_id(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selection_status = Mock(
-            BootSourceSelectionStatusService
         )
         services_mock.boot_source_selection_status.list.return_value = (
             ListResult[BootSourceSelectionStatus](
@@ -685,14 +626,11 @@ class TestBootSourceSelectionStatisticsApi(ApiCommonTests):
 
     async def test_get_selection_statistic_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
         )
         services_mock.boot_source_selections.get_selection_statistic_by_id.return_value = BootSourceSelectionStatistic(
             id=TEST_BOOTSOURCESELECTION.id,
@@ -715,14 +653,11 @@ class TestBootSourceSelectionStatisticsApi(ApiCommonTests):
 
     async def test_get_selection_statistic_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
         )
         services_mock.boot_source_selections.get_selection_statistic_by_id.return_value = None
 
@@ -731,14 +666,11 @@ class TestBootSourceSelectionStatisticsApi(ApiCommonTests):
 
     async def test_list_selection_statistics_one_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
         )
         services_mock.boot_source_selections.list_selections_statistics.return_value = ListResult[
             BootSourceSelectionStatus
@@ -767,14 +699,11 @@ class TestBootSourceSelectionStatisticsApi(ApiCommonTests):
 
     async def test_list_selection_statistics_another_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_BOOT_ENTITIES,
-        )
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
         )
         services_mock.boot_source_selections.list_selections_statistics.return_value = ListResult[
             BootSourceSelectionStatus

@@ -16,6 +16,7 @@ from maasservicelayer.db.filters import Clause, ClauseFactory
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
+    InterfaceRelationshipTable,
     InterfaceTable,
     NodeConfigTable,
     NodeTable,
@@ -130,6 +131,19 @@ class InterfaceRepository(BaseRepository):
             for data in [
                 build_interface_links(row._asdict()) for row in result
             ]
+        ]
+
+    async def get_parents(self, interface_id: int) -> list[Interface]:
+        parent_ids = select(InterfaceRelationshipTable.c.parent_id).where(
+            InterfaceRelationshipTable.c.child_id == interface_id
+        )
+        stmt = self._select_all_statement().where(
+            InterfaceTable.c.id.in_(parent_ids)
+        )
+        rows = (await self.execute_stmt(stmt)).all()
+        return [
+            Interface(**build_interface_links(row._asdict()))  # pyright: ignore [reportArgumentType]
+            for row in rows
         ]
 
     async def get_interfaces_in_fabric(
@@ -425,6 +439,41 @@ class InterfaceRepository(BaseRepository):
             return None
 
         return [Interface(**r._asdict()) for r in result]
+
+    async def get_for_ips(
+        self, ip_ids: list[int]
+    ) -> dict[int, list[Interface]]:
+        """Return interfaces linked to each of the given static IP ids."""
+        interfaces_by_ip: dict[int, list[Interface]] = {}
+        if not ip_ids:
+            return interfaces_by_ip
+        stmt = (
+            select(
+                InterfaceIPAddressTable.c.staticipaddress_id,
+                InterfaceTable,
+            )
+            .select_from(StaticIPAddressTable)
+            .join(
+                InterfaceIPAddressTable,
+                eq(
+                    StaticIPAddressTable.c.id,
+                    InterfaceIPAddressTable.c.staticipaddress_id,
+                ),
+            )
+            .join(
+                InterfaceTable,
+                eq(
+                    InterfaceIPAddressTable.c.interface_id, InterfaceTable.c.id
+                ),
+            )
+            .filter(StaticIPAddressTable.c.id.in_(ip_ids))
+        )
+        result = (await self.execute_stmt(stmt)).all()
+        for row in result:
+            data = row._asdict()
+            ip_id = data.pop("staticipaddress_id")
+            interfaces_by_ip.setdefault(ip_id, []).append(Interface(**data))
+        return interfaces_by_ip
 
     async def unlink_interfaces_from_ips(
         self, interface_ids: list[int]

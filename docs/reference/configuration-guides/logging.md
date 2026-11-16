@@ -13,7 +13,7 @@ You can also account for user activities with audit logs.
 
 ## Firewall logs
 
-Ubuntu's UncomplicatedFirewall ([UFW](https://wiki.ubuntu.com/UncomplicatedFirewall)) serves as a front-end for [iptables](https://help.ubuntu.com/community/IptablesHowTo). To secure your MAAS setup, regularly review logs located in `/var/log/ufw*`.
+Ubuntu's UncomplicatedFirewall ([UFW](https://wiki.ubuntu.com/UncomplicatedFirewall)) serves as a front-end for [iptables](https://wiki.ubuntu.com/IptablesHowTo). To secure your MAAS setup, regularly review logs located in `/var/log/ufw*`.
 
 Find red flags in UFW and iptables logs by looking for key patterns:
 
@@ -48,10 +48,7 @@ Use a log analysis tool, or inspect raw logs stored in paths like `/var/log/http
 
 ## MAAS logs
 
-| Pkg Fmt  | Look for failed logins in...           |
-|----------|-----------------------------------------|
-| Snap     | `/var/snap/maas/common/log/regiond.log` |
-| Packages | `/var/log/maas/regiond.log`             |
+Look for failed logins in the region controller log in the system journal (`journalctl -u snap.maas.pebble -t maas-regiond`).
 
 For example, a legitimate login request might resemble:
 
@@ -86,7 +83,6 @@ Read the following information from MAAS audit logs.
 | NODE          | API      | `system_id`  | "Deleted bcache cache set."                                    |
 | NODE          | API      | `system_id`  | "Updated bcache cache set."                                    |
 |               | API      | None         | "Deleted script `script.name`."                                |
-|               | API      | None         | "Deleted DHCP snippet `dhcp_snippet.name`."                    |
 |               | API      | None         | "Deleted package repository `package_repository.name`."        |
 | SETTINGS      | API      | None         | "Reverted script `script.name` to revision `revision_number`." |
 |               | API      | None         | "Added tag `tag` to script `script.name`."                     |
@@ -100,7 +96,6 @@ Read the following information from MAAS audit logs.
 |               | API      | None         | "Created SSH key."                                             |
 |               | API      | None         | "Deleted SSH key."                                             |
 | AUTHORISATION |          | None         | "Created SSL key."                                             |
-|               |          | None         | "Updated `dhcp_snippet.name`."                                 |
 |               |          | None         | "Updated `package_repository.name`."                           |
 | SETTINGS      |          | None         | "Saved script `script.name`."                                  |
 | SETTINGS      | CLI      | None         | "Updated configuration setting `key`."                         |

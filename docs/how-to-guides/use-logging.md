@@ -16,27 +16,27 @@ Understanding what MAAS is doing under the hood is critical when troubleshooting
 
 ### Region controller logs
 
-- Snap: `journalctl -u snap.maas.pebble -t maas-regiond`
-
-- Debian: `journalctl -u maas-regiond`
+```
+journalctl -u snap.maas.pebble -t maas-regiond
+```
 
 ### Rack controller logs
 
-- `Snap: journalctl -u snap.maas.pebble -t maas-rackd`
-
-- `Debian: journalctl -u maas-rackd`
+```
+journalctl -u snap.maas.pebble -t maas-rackd
+```
 
 ### Agent logs
 
-- Snap: `journalctl -u snap.maas.pebble -t maas-agent`
-
-- Debian: `journalctl -u maas-agent`
+```
+journalctl -u snap.maas.pebble -t maas-agent
+```
 
 ### API server logs
 
-- Snap: `journalctl -u snap.maas.pebble -t maas-apiserver`
-
-- Debian: `journalctl -u maas-apiserver`
+```
+journalctl -u snap.maas.pebble -t maas-apiserver
+```
 
 ### Filtering logs by machine name
 
@@ -46,10 +46,18 @@ To search for logs by machine name (hostname):
 journalctl -u snap.maas.pebble -t maas-machine --since "-15m" MAAS_MACHINE_HOSTNAME=ace-cougar
 ```
 
-### Using the less command to read logs
+### Following and paging logs
+
+`journalctl` pages its output through `less` by default. To follow new entries as they arrive, add `-f`:
 
 ```
-less /var/snap/maas/common/log/regiond.log
+journalctl -u snap.maas.pebble -t maas-regiond -f
+```
+
+To pipe the output to another tool instead, add `--no-pager`:
+
+```
+journalctl -u snap.maas.pebble -t maas-regiond --no-pager | less
 ```
 
 ## How to read event logs

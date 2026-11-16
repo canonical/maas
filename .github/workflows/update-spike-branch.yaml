@@ -1,0 +1,46 @@
+name: Update Spike Branch
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    
+permissions: 
+  contents: write
+
+concurrency:
+  group: sync-spike-MAASENG-6349
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+        with:
+          token: ${{ secrets.LANDER_GH_TOKEN }}
+          fetch-depth: 0
+
+      - name: Merge master into spike branch
+        env:
+          GIT_USER_NAME: ${{ vars.LANDER_USERNAME }}
+          GIT_USER_EMAIL: ${{ vars.LANDER_EMAIL }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "$GIT_USER_NAME"
+          git config user.email "$GIT_USER_EMAIL"
+
+          git checkout -B spike-MAASENG-6349 origin/spike-MAASENG-6349
+
+          if git merge --no-edit origin/master; then
+            git push origin HEAD:spike-MAASENG-6349
+          else
+            status=$?
+            conflicted_files=$(git diff --name-only --diff-filter=U || true)
+            git merge --abort || true
+            echo "::error title=Merge error::Could not merge master into spike-MAASENG-6349"
+            printf 'Conflicting files:\n%s\n' "$conflicted_files"
+            exit "$status"
+          fi

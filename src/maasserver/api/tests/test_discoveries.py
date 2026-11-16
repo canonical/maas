@@ -125,24 +125,26 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         self.assertEqual(0, len(results))
 
     def test_by_unknown_ip(self):
-        rack = factory.make_RackController()
-        iface = factory.make_Interface(node=rack)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/8")
+        rack = factory.make_RackController(subnet=subnet)
+        iface = rack.current_config.interface_set.first()
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
         results = self.get_api_results({"op": "by_unknown_ip"})
         self.assertEqual(1, len(results))
-        factory.make_StaticIPAddress(ip=discovery.ip, cidr="10.0.0.0/8")
+        factory.make_StaticIPAddress(ip=discovery.ip, subnet=subnet)
         # Now that we have a known IP address that matches, the discovery
         # should disappear from this query.
         results = self.get_api_results({"op": "by_unknown_ip"})
         self.assertEqual(0, len(results))
 
     def test_by_unknown_ip_and_mac__known_ip(self):
-        rack = factory.make_RackController()
-        iface = factory.make_Interface(node=rack)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/8")
+        rack = factory.make_RackController(subnet=subnet)
+        iface = rack.current_config.interface_set.first()
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
         results = self.get_api_results({"op": "by_unknown_ip_and_mac"})
         self.assertEqual(1, len(results))
-        factory.make_StaticIPAddress(ip=discovery.ip, cidr="10.0.0.0/8")
+        factory.make_StaticIPAddress(ip=discovery.ip, subnet=subnet)
         # Known IP address, unexpected MAC.
         results = self.get_api_results({"op": "by_unknown_ip_and_mac"})
         self.assertEqual(0, len(results))

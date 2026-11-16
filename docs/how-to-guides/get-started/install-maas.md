@@ -1,6 +1,6 @@
 # Install MAAS
 
-There are multiple approaches to installing MAAS, depending on your needs, use case, and operating system. This document outlines how to install MAAS on a single machine in region+rack mode.
+MAAS is distributed as a snap. This document outlines how to install MAAS on a single machine in region+rack mode.
 
 ## Prerequisites
 

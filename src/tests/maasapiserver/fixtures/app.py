@@ -1,8 +1,8 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from datetime import timedelta
-from typing import AsyncIterator, Awaitable, Callable, Iterator
+from typing import AsyncIterator, Awaitable, Callable, Iterator, override
 from unittest.mock import Mock
 
 from aioresponses import aioresponses
@@ -27,10 +27,15 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.client_certificate import (
     RequireClientCertMiddleware,
 )
-from maascommon.openfga.base import MAASResourceEntitlement
+from maascommon.openfga.async_client import OpenFGAClient
+from maascommon.openfga.base import (
+    MAASResourceEntitlement,
+    OpenFGAEntitlementResourceType,
+    PoolResourceEntitlements,
+)
 from maasservicelayer.db import Database
 from maasservicelayer.models.users import User
-from maasservicelayer.services import OpenFGATupleService, ServiceCollectionV3
+from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 from maasservicelayer.utils.session_hash import get_session_auth_hash
 from tests.fixtures.factories.user import create_test_user
@@ -40,14 +45,23 @@ from tests.maasapiserver.fixtures.db import Fixture
 def create_app_with_mocks(
     mocked_services: ServiceCollectionV3,
     with_user: bool = False,
-):
+) -> FastAPI:
+    """Build a dedicated app, for tests that need to modify it."""
+    app = _build_app_with_mocks(with_user)
+    app.state.services_mock = mocked_services
+    return app
+
+
+def _build_app_with_mocks(with_user: bool) -> FastAPI:
+    # The services mock is read from the app state on each request, so that
+    # the same app can be shared between tests (see SharedMockedApps).
     class InjectServicesMocks(BaseHTTPMiddleware):
         async def dispatch(
             self,
             request: Request,
             call_next: Callable[[Request], Awaitable[Response]],
         ) -> Response:
-            request.state.services = mocked_services
+            request.state.services = request.app.state.services_mock
             return await call_next(request)
 
     class InjectUserInRequest(BaseHTTPMiddleware):
@@ -104,18 +118,78 @@ def create_internal_app_with_mocks(
     return app
 
 
-@pytest.fixture
-def app_with_mocked_services(services_mock: ServiceCollectionV3):
-    yield create_app_with_mocks(services_mock)
+def _shared_app_fingerprint(app: FastAPI) -> tuple:
+    return (
+        tuple(app.router.routes),
+        tuple(app.user_middleware),
+        dict(app.dependency_overrides),
+        dict(app.exception_handlers),
+        # Starlette keeps app.state attributes in this dict.
+        set(app.state._state),
+    )
+
+
+class SharedMockedApps:
+    """Apps with mocked services, built once per test session.
+
+    Building the app registers every API route, which is the most expensive
+    part of setting up a test. Each test binds its own services mock to the
+    shared app and gets it removed afterwards. Modifying a shared app fails
+    the test at teardown and discards the app, so the change can't leak into
+    other tests; such tests should use `create_app_with_mocks()` instead.
+    """
+
+    def __init__(self) -> None:
+        self._apps: dict[bool, FastAPI] = {}
+
+    @contextmanager
+    def bind(
+        self, services_mock: Mock, with_user: bool = False
+    ) -> Iterator[FastAPI]:
+        if with_user not in self._apps:
+            self._apps[with_user] = _build_app_with_mocks(with_user)
+        app = self._apps[with_user]
+        fingerprint = _shared_app_fingerprint(app)
+        app.state.services_mock = services_mock
+        try:
+            yield app
+        finally:
+            if hasattr(app.state, "services_mock"):
+                del app.state.services_mock
+            if _shared_app_fingerprint(app) != fingerprint:
+                del self._apps[with_user]
+                pytest.fail(
+                    "The test modified a shared app (routes, middleware, "
+                    "dependency overrides, exception handlers or state). "
+                    "Use create_app_with_mocks() to get a dedicated app.",
+                    pytrace=False,
+                )
+
+
+@pytest.fixture(scope="session")
+def shared_mocked_apps() -> SharedMockedApps:
+    return SharedMockedApps()
 
 
 @pytest.fixture
-def app_with_mocked_services_user(services_mock: ServiceCollectionV3):
-    yield create_app_with_mocks(services_mock, with_user=True)
+def app_with_mocked_services(
+    shared_mocked_apps: SharedMockedApps, services_mock: Mock
+) -> Iterator[FastAPI]:
+    with shared_mocked_apps.bind(services_mock) as app:
+        yield app
 
 
 @pytest.fixture
-def internal_app_with_mocked_services(services_mock: ServiceCollectionV3):
+def app_with_mocked_services_user(
+    shared_mocked_apps: SharedMockedApps, services_mock: Mock
+) -> Iterator[FastAPI]:
+    with shared_mocked_apps.bind(services_mock, with_user=True) as app:
+        yield app
+
+
+@pytest.fixture
+def internal_app_with_mocked_services(services_mock: Mock):
+    # Not shared: tests add middleware to it.
     yield create_internal_app_with_mocks(services_mock)
 
 
@@ -152,33 +226,41 @@ async def mocked_api_client_user(
         yield client
 
 
-class AsyncOpenFGAClientMock:
+class AsyncOpenFGAClientMock(OpenFGAClient):
     def __init__(
         self,
         permissions: set[MAASResourceEntitlement] | None = None,
+        permissions_on_pools: dict[PoolResourceEntitlements, list[int]]
+        | None = None,
     ):
         self._permissions = permissions or set()
+        self._permissions_on_pools = permissions_on_pools or {}
 
-    async def has_permission_on_maas(
-        self, permission: MAASResourceEntitlement, user_id: int
-    ) -> bool:
-        return permission in self._permissions
+    def _unformat_pool(self, obj: str) -> int:
+        return int(obj.removeprefix(f"{OpenFGAEntitlementResourceType.POOL}:"))
 
-    def __getattr__(self, item):
-        """Mock the OpenFGA client methods for checking permissions."""
-        if item == "has_permission_on_maas":
-            return self.has_permission_on_maas
+    @override
+    async def _check(self, user_id: int, relation: str, obj: str) -> bool:
+        if obj.startswith(OpenFGAEntitlementResourceType.POOL):
+            pool_id = self._unformat_pool(obj)
+            return pool_id in self._permissions_on_pools.get(
+                PoolResourceEntitlements(relation), []
+            )
+        return relation in self._permissions
 
-        async def _has_permission(*args, **kwargs) -> bool:
-            return item in self._permissions
-
-        return _has_permission
+    @override
+    async def _list_objects(
+        self, user_id: int, relation: str, obj_type: str
+    ) -> list[int]:
+        return self._permissions_on_pools.get(
+            PoolResourceEntitlements(relation), []
+        )
 
 
 @pytest.fixture
 def mocked_api_client_user_with_permissions(
     mocked_api_client_user: AsyncClient,
-    services_mock: ServiceCollectionV3,
+    services_mock: Mock,
 ) -> Callable[..., AsyncClient]:
     """
     Returns a factory that grants the given OpenFGA permissions to the
@@ -195,10 +277,11 @@ def mocked_api_client_user_with_permissions(
 
     def _with_permissions(
         *permissions: MAASResourceEntitlement,
+        permissions_on_pools: dict[PoolResourceEntitlements, list[int]]
+        | None = None,
     ) -> AsyncClient:
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.get_client.return_value = (
-            AsyncOpenFGAClientMock(set(permissions))
+            AsyncOpenFGAClientMock(set(permissions), permissions_on_pools)
         )
         return mocked_api_client_user
 

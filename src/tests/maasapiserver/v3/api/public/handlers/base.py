@@ -30,6 +30,16 @@ class ApiCommonTests(abc.ABC):
         """The subclass should return a list of endpoints that need authentication only."""
         return []
 
+    # Here we are just testing authorization/authentication.
+    # When the request is allowed to pass through the handler, we will execute
+    # methods from services which are mocked. We ignore the 'coroutine was never
+    # awaited' warning, as it happens when accessing methods/fields of objects
+    # returned by a service method. Since the service methods are async, calling
+    # the method of an object that should be returned by an async method,
+    # raises the aforementioned warning.
+    @pytest.mark.filterwarnings(
+        "ignore:coroutine .* was never awaited:RuntimeWarning"
+    )
     async def test_endpoints_require_authorization_ok(
         self,
         endpoints_with_authorization: list[Endpoint],
@@ -48,6 +58,10 @@ class ApiCommonTests(abc.ABC):
                 f"Endpoint {endpoint.method} {endpoint.path} should be accessible with correct permissions, but got {response.status_code}"
             )
 
+    # See the comment above
+    @pytest.mark.filterwarnings(
+        "ignore:coroutine .* was never awaited:RuntimeWarning"
+    )
     async def test_endpoints_require_authorization_forbidden(
         self,
         endpoints_with_authorization: list[Endpoint],
@@ -68,6 +82,10 @@ class ApiCommonTests(abc.ABC):
                 f"Endpoint {endpoint.method} {endpoint.path} should require authorization, but got {response.status_code}"
             )
 
+    # See the comment above
+    @pytest.mark.filterwarnings(
+        "ignore:coroutine .* was never awaited:RuntimeWarning"
+    )
     async def test_endpoints_require_authentication_only(
         self,
         endpoints_with_authentication_only: list[Endpoint],

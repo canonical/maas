@@ -47,13 +47,7 @@ from maasservicelayer.models.base import ListResult, UNSET
 from maasservicelayer.models.openfga_tuple import OpenFGATuple
 from maasservicelayer.models.usergroups import UserGroup, UserGroupsByUser
 from maasservicelayer.models.users import User, UserProfile, UserStatistics
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.openfga_tuples import OpenFGATupleService
-from maasservicelayer.services.usergroups import (
-    UserGroupNotFound,
-    UserGroupsService,
-)
-from maasservicelayer.services.users import UsersService
+from maasservicelayer.services.usergroups import UserGroupNotFound
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -176,9 +170,8 @@ class TestUsersApi(ApiCommonTests):
 
     # GET /users/me
     async def test_get_user_info(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+        self, services_mock: Mock, mocked_api_client_user
     ) -> None:
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_one.return_value = User(
             id=1,
             username="username",
@@ -221,14 +214,12 @@ class TestUsersApi(ApiCommonTests):
 
     # GET /users/me:get_entitlements
     async def test_get_user_entitlements(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+        self, services_mock: Mock, mocked_api_client_user
     ) -> None:
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={USER_1.id: [GROUP_1, GROUP_2]})
         )
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.list_entitlements_for_groups.return_value = [
             OpenFGATuple(
                 object_type="maas",
@@ -273,14 +264,12 @@ class TestUsersApi(ApiCommonTests):
         )
 
     async def test_get_user_entitlements_no_groups(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+        self, services_mock: Mock, mocked_api_client_user
     ) -> None:
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={})
         )
-        services_mock.openfga_tuples = Mock(OpenFGATupleService)
         services_mock.openfga_tuples.list_entitlements_for_groups.return_value = []
 
         response = await mocked_api_client_user.get(
@@ -309,13 +298,12 @@ class TestUsersApi(ApiCommonTests):
     # GET /users
     async def test_list_users_has_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.list.return_value = ListResult[User](
             items=[USER_1], total=2
         )
@@ -341,13 +329,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_list_users_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.list.return_value = ListResult[User](
             items=[USER_1, USER_2], total=2
         )
@@ -372,13 +359,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_list_users_with_username_or_email_filter(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.list.return_value = ListResult[User](
             items=[USER_1], total=2
         )
@@ -408,13 +394,12 @@ class TestUsersApi(ApiCommonTests):
     # GET /users/{user_id}
     async def test_get_user_can_view_identities(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={USER_1.id: [GROUP_1]})
@@ -434,13 +419,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_get_user_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = None
         response = await client.get(f"{self.BASE_PATH}/99")
         assert response.status_code == 404
@@ -452,13 +436,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_get_user_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.side_effect = RequestValidationError(
             errors=[]
         )
@@ -473,7 +456,7 @@ class TestUsersApi(ApiCommonTests):
     # POST /users/{user_id}
     async def test_post_user(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -499,12 +482,10 @@ class TestUsersApi(ApiCommonTests):
             date_joined=utcnow(),
         )
 
-        services_mock.users = Mock(UsersService)
         services_mock.users.create.return_value = new_user
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={new_user.id: []})
         )
-        services_mock.usergroups = Mock(UserGroupsService)
 
         response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_user_request)
@@ -526,7 +507,7 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_post_user_with_groups(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -553,12 +534,10 @@ class TestUsersApi(ApiCommonTests):
             date_joined=utcnow(),
         )
 
-        services_mock.users = Mock(UsersService)
         services_mock.users.create.return_value = new_user
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={new_user.id: [GROUP_1, GROUP_2]})
         )
-        services_mock.usergroups = Mock(UserGroupsService)
 
         response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(create_user_request)
@@ -581,7 +560,7 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_post_user_with_unknown_group(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -608,9 +587,7 @@ class TestUsersApi(ApiCommonTests):
             date_joined=utcnow(),
         )
 
-        services_mock.users = Mock(UsersService)
         services_mock.users.create.return_value = new_user
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.add_user_to_group_by_id.side_effect = (
             UserGroupNotFound()
         )
@@ -626,7 +603,7 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_post_user_409(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -652,11 +629,9 @@ class TestUsersApi(ApiCommonTests):
             date_joined=utcnow(),
         )
 
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={new_user.id: []})
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.users.create.side_effect = [
             new_user,
             AlreadyExistsException(
@@ -689,14 +664,13 @@ class TestUsersApi(ApiCommonTests):
     @pytest.mark.parametrize("user_request", [{"username": None}])
     async def test_post_user_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         user_request: dict[str, str],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.create.return_value = None
 
         response = await client.post(
@@ -713,7 +687,7 @@ class TestUsersApi(ApiCommonTests):
 
     # PUT /users/me
     async def test_put_user_me(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+        self, services_mock: Mock, mocked_api_client_user
     ) -> None:
         updated_user = User(
             id=0,
@@ -727,7 +701,6 @@ class TestUsersApi(ApiCommonTests):
             email="updated@example.com",
             date_joined=utcnow(),
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = updated_user
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={updated_user.id: [GROUP_1]})
@@ -763,7 +736,7 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.change_password_checks.assert_not_called()
 
     async def test_put_user_me_changes_password(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+        self, services_mock: Mock, mocked_api_client_user
     ) -> None:
         updated_user = User(
             id=0,
@@ -777,7 +750,6 @@ class TestUsersApi(ApiCommonTests):
             email="updated@example.com",
             date_joined=utcnow(),
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = updated_user
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={updated_user.id: []})
@@ -818,7 +790,7 @@ class TestUsersApi(ApiCommonTests):
         assert error_response.code == 401
 
     async def test_put_user_me_cannot_set_groups(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+        self, services_mock: Mock, mocked_api_client_user
     ) -> None:
         """PUT /users/me uses UserUpdateRequestSelf which has no groups field."""
         updated_user = User(
@@ -833,7 +805,6 @@ class TestUsersApi(ApiCommonTests):
             email="updated@example.com",
             date_joined=utcnow(),
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = updated_user
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={updated_user.id: []})
@@ -866,7 +837,7 @@ class TestUsersApi(ApiCommonTests):
     # PUT /users/{user_id}
     async def test_put_user(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -883,12 +854,10 @@ class TestUsersApi(ApiCommonTests):
             last_name="new_last_name",
             email="new_email@example.com",
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = updated_user
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={updated_user.id: []})
         )
-        services_mock.usergroups = Mock(UserGroupsService)
 
         user_request = UserUpdateRequestAdmin(
             username="new_user",
@@ -919,7 +888,7 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_put_user_reconciles_groups(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -936,14 +905,12 @@ class TestUsersApi(ApiCommonTests):
             last_name="new_last_name",
             email="new_email@example.com",
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = updated_user
         # The user currently belongs to GROUP_1, and we request GROUP_2.
         services_mock.users.get_groups_for_users.side_effect = [
             UserGroupsByUser(groups_by_user={updated_user.id: [GROUP_1]}),
             UserGroupsByUser(groups_by_user={updated_user.id: [GROUP_2]}),
         ]
-        services_mock.usergroups = Mock(UserGroupsService)
 
         user_request = UserUpdateRequestAdmin(
             username="new_user",
@@ -973,7 +940,7 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_put_user_with_unknown_group(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -990,12 +957,10 @@ class TestUsersApi(ApiCommonTests):
             last_name="new_last_name",
             email="new_email@example.com",
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = updated_user
         services_mock.users.get_groups_for_users.return_value = (
             UserGroupsByUser(groups_by_user={updated_user.id: []})
         )
-        services_mock.usergroups = Mock(UserGroupsService)
         services_mock.usergroups.add_user_to_group_by_id.side_effect = (
             UserGroupNotFound()
         )
@@ -1021,13 +986,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_put_user_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.side_effect = NotFoundException()
 
         user_request = UserUpdateRequestAdmin(
@@ -1053,13 +1017,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_put_user_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.update_by_id.return_value = None
 
         user_request = UserUpdateRequestAdmin(
@@ -1085,13 +1048,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_delete_204(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
         services_mock.users.delete_by_id.return_value = USER_1
 
@@ -1100,13 +1062,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_delete_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.exists.return_value = False
 
         response = await client.delete(f"{self.BASE_PATH}/1")
@@ -1114,13 +1075,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_delete_with_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.exists.return_value = True
         services_mock.users.delete_by_id.side_effect = PreconditionFailedException(
             details=[
@@ -1145,7 +1105,7 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_delete_self(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -1154,7 +1114,6 @@ class TestUsersApi(ApiCommonTests):
         user = USER_1.model_copy()
         # the api client we use has an authenticated user with id=0
         user.id = 0
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = user
 
         response = await client.delete(f"{self.BASE_PATH}/0")
@@ -1162,13 +1121,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_delete_with_resources_allocated(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
         services_mock.users.delete_by_id.side_effect = PreconditionFailedException(
             details=[
@@ -1183,13 +1141,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_delete_with_transfer_resources(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
         services_mock.users.transfer_resources.return_value = None
         services_mock.users.delete_by_id.return_value = USER_1
@@ -1202,13 +1159,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_delete_with_transfer_resources_nonexistent_user(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id.return_value = USER_1
         services_mock.users.transfer_resources.side_effect = BadRequestException(
             details=[
@@ -1227,13 +1183,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_list_statistics(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.list_statistics.return_value = ListResult[
             UserStatistics
         ](
@@ -1269,13 +1224,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_list_statistics_filters(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.list_statistics.return_value = ListResult[
             UserStatistics
         ](
@@ -1311,9 +1265,8 @@ class TestUsersApi(ApiCommonTests):
         )
 
     async def test_complete_intro(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+        self, services_mock: Mock, mocked_api_client_user
     ) -> None:
-        services_mock.users = Mock(UsersService)
         services_mock.users.complete_intro.return_value = Mock(UserProfile)
 
         response = await mocked_api_client_user.post(
@@ -1325,9 +1278,8 @@ class TestUsersApi(ApiCommonTests):
         services_mock.users.complete_intro.assert_called_once_with(0)
 
     async def test_change_password_user(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+        self, services_mock: Mock, mocked_api_client_user
     ) -> None:
-        services_mock.users = Mock(UsersService)
         services_mock.users.change_password_checks.return_value = None
         services_mock.users.update_by_id.return_value = USER_1
 
@@ -1349,13 +1301,12 @@ class TestUsersApi(ApiCommonTests):
 
     async def test_change_password_admin(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
         )
-        services_mock.users = Mock(UsersService)
         services_mock.users.change_password_checks.return_value = None
         services_mock.users.update_by_id.return_value = USER_1
 
@@ -1374,9 +1325,8 @@ class TestUsersApi(ApiCommonTests):
         assert PBKDF2PasswordHasher().verify("foo", builder.password)
 
     async def test_user_statistics(
-        self, services_mock: ServiceCollectionV3, mocked_api_client_user
+        self, services_mock: Mock, mocked_api_client_user
     ) -> None:
-        services_mock.users = Mock(UsersService)
         services_mock.users.get_by_id_statistics.return_value = UserStatistics(
             id=0,
             completed_intro=True,

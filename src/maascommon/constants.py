@@ -17,6 +17,7 @@ MAAS_USER_EMAIL = "maas@localhost"
 
 
 BOOTLOADERS_DIR = "bootloaders"
+CUSTOM_BOOTLOADERS_DIR = "custom-bootloaders"
 
 KEYRINGS_PATH = (
     "/snap/maas/current/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"

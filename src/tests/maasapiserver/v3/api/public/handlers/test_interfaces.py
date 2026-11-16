@@ -17,8 +17,6 @@ from maascommon.enums.ipaddress import IpAddressType
 from maascommon.openfga.base import MAASResourceEntitlement
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface, Link
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -76,13 +74,12 @@ class TestInterfaceApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_MACHINES,
         )
-        services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.list_for_node.return_value = ListResult[
             Interface
         ](items=[TEST_INTERFACE_2], total=2)
@@ -95,13 +92,12 @@ class TestInterfaceApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_MACHINES,
         )
-        services_mock.interfaces = Mock(InterfacesService)
         services_mock.interfaces.list_for_node.return_value = ListResult[
             Interface
         ](items=[TEST_INTERFACE_2, TEST_INTERFACE], total=2)

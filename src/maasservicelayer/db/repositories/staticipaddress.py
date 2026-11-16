@@ -91,6 +91,22 @@ class StaticIPAddressClauseFactory(ClauseFactory):
         )
 
     @classmethod
+    def with_alloc_type_in(cls, alloc_types: list[IpAddressType]) -> Clause:
+        return Clause(
+            condition=StaticIPAddressTable.c.alloc_type.in_(alloc_types)
+        )
+
+    @classmethod
+    def with_temp_expires_on_is_null(cls) -> Clause:
+        return Clause(
+            condition=StaticIPAddressTable.c.temp_expires_on.is_(None)
+        )
+
+    @classmethod
+    def with_interface_enabled(cls, enabled: bool) -> Clause:
+        return Clause(condition=eq(InterfaceTable.c.enabled, enabled))
+
+    @classmethod
     def with_ip_not_null(cls) -> Clause:
         return Clause(condition=StaticIPAddressTable.c.ip.isnot(None))
 

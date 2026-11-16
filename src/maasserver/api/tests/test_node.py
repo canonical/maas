@@ -12,7 +12,7 @@ from django.urls import reverse
 from twisted.internet.defer import succeed
 
 from maasserver.auth.tests.test_auth import OpenFGAMockMixin
-from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES
+from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES, NODE_TYPE
 from maasserver.models import Config, Node, NodeKey
 from maasserver.models import node as node_module
 from maasserver.models.scriptset import get_status_from_qs
@@ -591,7 +591,11 @@ class TestSetWorkloadAnnotations(APITestCase.ForUser):
         }
         params["op"] = "set_workload_annotations"
         response = self.client.post(self.get_node_uri(node), params)
-        self.assertEqual(http.client.CONFLICT, response.status_code)
+
+        if node.node_type == NODE_TYPE.MACHINE:
+            self.assertEqual(http.client.CONFLICT, response.status_code)
+        else:
+            self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_adds_data(self):
         node = self.maker(status=NODE_STATUS.ALLOCATED, owner=self.user)

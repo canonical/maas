@@ -25,9 +25,6 @@ class BIND9Service(AlwaysOnService):
     service_name = "bind9"
     snap_service_name = "bind9"
 
-    # Pass SIGKILL directly to parent.
-    kill_extra_opts = ("-s", "SIGKILL")
-
 
 class NTPServiceOnRegion(AlwaysOnService):
     """Monitored NTP service on a region controller host."""

@@ -1,0 +1,25 @@
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+#
+# OpenSSL configuration used by wsman when talking to Intel AMT.
+#
+# AMT's TLS stack does not implement RFC 5746 secure renegotiation, which
+# OpenSSL 3 requires by default. The system configuration is included first
+# so the configured providers (e.g. FIPS) are preserved; a missing file is
+# skipped. Only legacy server connections are allowed, not insecure
+# renegotiation itself.
+
+.include /usr/lib/ssl/openssl.cnf
+
+# After an .include, keys belong to the last section of the included file.
+[default]
+openssl_conf = openssl_init
+
+[openssl_init]
+ssl_conf = ssl_sect
+
+[ssl_sect]
+system_default = system_default_sect
+
+[system_default_sect]
+Options = UnsafeLegacyServerConnect

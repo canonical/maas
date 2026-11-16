@@ -37,7 +37,7 @@ The following steps trace the boot and installation process for a typical deploy
 
 ## Access to deployed machines
 
-By default, MAAS injects your SSH keys into the deployed machine and enables login for the `ubuntu` user. Other orchestration layers, like [Juju](https://juju.is/), may add additional keys and perform further service-level configuration.
+By default, MAAS injects your SSH keys into the deployed machine and enables login for the `ubuntu` user. Other orchestration layers, like [Juju](https://canonical.com/juju), may add additional keys and perform further service-level configuration.
 
 This makes it possible to log in immediately after deployment without touching the machine’s console.
 

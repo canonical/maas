@@ -32,8 +32,6 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -106,7 +104,7 @@ class TestVlanApi(ApiCommonTests):
     # POST /fabrics/{fabric_id}/vlans
     async def test_post_201(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -119,7 +117,6 @@ class TestVlanApi(ApiCommonTests):
             mtu=TEST_VLAN.mtu,
             space_id=TEST_VLAN.space_id,
         )
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.create.return_value = TEST_VLAN
         response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(vlan_request)
@@ -165,27 +162,25 @@ class TestVlanApi(ApiCommonTests):
     )
     async def test_post_invalid_parameters(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         vlan_request: dict,
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.create.return_value = TEST_VLAN
         response = await client.post(self.BASE_PATH, json=vlan_request)
         assert response.status_code == 422
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.list.return_value = ListResult[Vlan](
             items=[TEST_VLAN], total=1
         )
@@ -198,13 +193,12 @@ class TestVlanApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.list.return_value = ListResult[Vlan](
             items=[TEST_VLAN_2], total=2
         )
@@ -218,13 +212,12 @@ class TestVlanApi(ApiCommonTests):
     # GET /vlans/{vlan_id}
     async def test_get_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.get_one.return_value = TEST_VLAN
         response = await client.get(f"{self.BASE_PATH}/{TEST_VLAN.id}")
         assert response.status_code == 200
@@ -242,13 +235,12 @@ class TestVlanApi(ApiCommonTests):
 
     async def test_get_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.get_one.return_value = None
         response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
@@ -260,13 +252,12 @@ class TestVlanApi(ApiCommonTests):
 
     async def test_get_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.get_by_id.side_effect = RequestValidationError(
             errors=[]
         )
@@ -280,7 +271,7 @@ class TestVlanApi(ApiCommonTests):
 
     async def test_put_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -288,7 +279,6 @@ class TestVlanApi(ApiCommonTests):
         )
         updated_vlan = TEST_VLAN.model_copy()
         updated_vlan.name = "newname"
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.update_one.return_value = updated_vlan
         update_vlan_request = VlanUpdateRequest(
             name="newname",
@@ -312,7 +302,7 @@ class TestVlanApi(ApiCommonTests):
     # All the validations are covered in the VlanUpdateRequest tests.
     async def test_put_422_dhcp_on_incompatible_with_relay(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -343,13 +333,12 @@ class TestVlanApi(ApiCommonTests):
 
     async def test_delete(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.delete_one.return_value = None
         response = await client.delete(f"{self.BASE_PATH}/1")
         assert response.status_code == 204
@@ -367,13 +356,12 @@ class TestVlanApi(ApiCommonTests):
 
     async def test_delete_with_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.delete_one.side_effect = PreconditionFailedException(
             details=[
                 BaseExceptionDetail(

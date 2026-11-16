@@ -3674,6 +3674,12 @@ class Node(CleanSave, TimestampedModel):
             self.release(user, comment)
             return
 
+        # _release() runs only once the release scripts have finished, when
+        # the node is no longer DEPLOYING, so the deploy workflow must be
+        # cancelled now.
+        if self.status == NODE_STATUS.DEPLOYING:
+            stop_workflow(f"deploy:{self.system_id}")
+
         self.current_release_script_set = (
             ScriptSet.objects.create_release_script_set(
                 self, scripts=scripts, script_input=script_input

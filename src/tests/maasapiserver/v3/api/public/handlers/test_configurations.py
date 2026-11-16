@@ -31,12 +31,6 @@ from maasservicelayer.models.configurations import (
     UseRackProxyConfig,
 )
 from maasservicelayer.models.events import EndpointChoicesEnum
-from maasservicelayer.services import (
-    ConfigurationsService,
-    EventsService,
-    HookedConfigurationsService,
-    ServiceCollectionV3,
-)
 
 
 @pytest.mark.asyncio
@@ -45,11 +39,10 @@ class TestConfigurationsApi:
 
     async def test_get_configurations_unrestricted_without_entitlement(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(None)
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get_many.return_value = {
             ThemeConfig.name: ThemeConfig.default,
         }
@@ -63,11 +56,10 @@ class TestConfigurationsApi:
 
     async def test_get_configurations_restricted_without_entitlement(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(None)
-        services_mock.configurations = Mock(ConfigurationsService)
         response = await client.get(
             f"{self.BASE_PATH}?name={ThemeConfig.name}&name={UseRackProxyConfig.name}"
         )
@@ -79,13 +71,12 @@ class TestConfigurationsApi:
 
     async def test_get_configurations_restricted_with_entitlement(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
         )
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get_many.return_value = {
             UseRackProxyConfig.name: UseRackProxyConfig.default,
         }
@@ -103,13 +94,12 @@ class TestConfigurationsApi:
 
     async def test_get_configurations_empty(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
         )
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get_many.return_value = {}
         response = await client.get(f"{self.BASE_PATH}")
         assert response.status_code == 200
@@ -120,13 +110,12 @@ class TestConfigurationsApi:
 
     async def test_get_configurations(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
         )
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get_many.return_value = {
             ThemeConfig.name: ThemeConfig.default,
             MAASNameConfig.name: MAASNameConfig.default,
@@ -160,7 +149,6 @@ class TestConfigurationsApi:
     )
     async def test_get_private_configs(
         self,
-        services_mock: ServiceCollectionV3,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         name: str,
     ):
@@ -176,11 +164,10 @@ class TestConfigurationsApi:
 
     async def test_get_configuration_unrestricted_without_entitlement(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(None)
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = "test"
         response = await client.get(f"{self.BASE_PATH}/{ThemeConfig.name}")
         assert response.status_code == 200
@@ -191,11 +178,10 @@ class TestConfigurationsApi:
 
     async def test_get_configuration_restricted_without_entitlement(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(None)
-        services_mock.configurations = Mock(ConfigurationsService)
         response = await client.get(
             f"{self.BASE_PATH}/{UseRackProxyConfig.name}"
         )
@@ -207,13 +193,12 @@ class TestConfigurationsApi:
 
     async def test_get_configuration_restricted_with_entitlement(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
         )
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = (
             UseRackProxyConfig.default
         )
@@ -227,13 +212,12 @@ class TestConfigurationsApi:
 
     async def test_get_configuration(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
         )
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = "test"
         response = await client.get(f"{self.BASE_PATH}/theme")
         assert response.status_code == 200
@@ -244,13 +228,12 @@ class TestConfigurationsApi:
 
     async def test_get_unexisting_config(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
         )
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = None
         response = await client.get(f"{self.BASE_PATH}/unexisting")
         assert response.status_code == 422
@@ -268,14 +251,13 @@ class TestConfigurationsApi:
     )
     async def test_get_private_config(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         name: str,
     ):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_CONFIGURATIONS,
         )
-        services_mock.configurations = Mock(ConfigurationsService)
         services_mock.configurations.get.return_value = None
         response = await client.get(f"{self.BASE_PATH}/{name}")
         assert response.status_code == 422
@@ -293,7 +275,7 @@ class TestConfigurationsApi:
     )
     async def test_set_private_config(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         name: str,
     ):
@@ -310,7 +292,7 @@ class TestConfigurationsApi:
 
     async def test_set_config_forbidden_for_users_without_permissions(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(None)
@@ -325,14 +307,12 @@ class TestConfigurationsApi:
 
     async def test_set_config_for_admins(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
         )
-        services_mock.hooked_configurations = Mock(HookedConfigurationsService)
-        services_mock.events = Mock(EventsService)
         response = await client.put(
             f"{self.BASE_PATH}/theme",
             json=jsonable_encoder(UpdateConfigurationRequest(value=None)),
@@ -357,7 +337,7 @@ class TestConfigurationsApi:
 
     async def test_set_config_type_mismatch(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(
@@ -375,14 +355,13 @@ class TestConfigurationsApi:
     async def test_set_config_validator_error_message(
         self,
         monkeypatch,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         monkeypatch.setattr(configurations, "is_fips_enabled", lambda: True)
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
         )
-        services_mock.hooked_configurations = Mock(HookedConfigurationsService)
         response = await client.put(
             f"{self.BASE_PATH}/maas_auto_ipmi_cipher_suite_id",
             json=jsonable_encoder(UpdateConfigurationRequest(value="3")),
@@ -395,7 +374,7 @@ class TestConfigurationsApi:
 
     async def test_set_configs_forbidden_for_users(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(None)
@@ -418,14 +397,12 @@ class TestConfigurationsApi:
 
     async def test_set_configs_for_admins(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_CONFIGURATIONS,
         )
-        services_mock.hooked_configurations = Mock(HookedConfigurationsService)
-        services_mock.events = Mock(EventsService)
         response = await client.put(
             self.BASE_PATH,
             json=jsonable_encoder(
@@ -477,7 +454,7 @@ class TestConfigurationsApi:
 
     async def test_set_configs_type_mismatch(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ):
         client = mocked_api_client_user_with_permissions(

@@ -149,7 +149,7 @@ You may also want to try using a local copy of MAAS with real hardware, which is
 
 If you're brave, you can try that in your homelab, with some simple, off-the-shelf NUCs or mini-PCs, using the instructions found [in this GitHub repository](https://github.com/canonical/maas-hw-tutorial).
 
-Learn more at: <https://maas.io>
+Learn more at: <https://canonical.com/maas>
 
 ## More tutorials
 

@@ -8,7 +8,6 @@
 __all__ = [
     "ConfigHandler",
     "ControllerHandler",
-    "DHCPSnippetHandler",
     "DeviceHandler",
     "DiscoveryHandler",
     "DomainHandler",
@@ -36,7 +35,6 @@ __all__ = [
 from maasserver.websockets.handlers.config import ConfigHandler
 from maasserver.websockets.handlers.controller import ControllerHandler
 from maasserver.websockets.handlers.device import DeviceHandler
-from maasserver.websockets.handlers.dhcpsnippet import DHCPSnippetHandler
 from maasserver.websockets.handlers.discovery import DiscoveryHandler
 from maasserver.websockets.handlers.domain import DomainHandler
 from maasserver.websockets.handlers.event import EventHandler

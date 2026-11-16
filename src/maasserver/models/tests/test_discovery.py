@@ -39,21 +39,23 @@ class TestDiscoveryModel(MAASServerTestCase):
         self.assertEqual(0, Discovery.objects.by_unknown_mac().count())
 
     def test_query_by_unknown_ip(self):
-        rack = factory.make_RackController()
-        iface = factory.make_Interface(node=rack)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/8")
+        rack = factory.make_RackController(subnet=subnet)
+        iface = rack.current_config.interface_set.first()
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
         self.assertEqual(1, Discovery.objects.by_unknown_ip().count())
-        factory.make_StaticIPAddress(ip=discovery.ip, cidr="10.0.0.0/8")
+        factory.make_StaticIPAddress(ip=discovery.ip, subnet=subnet)
         # Now that we have a known IP address that matches, the discovery
         # should disappear from this query.
         self.assertEqual(0, Discovery.objects.by_unknown_ip().count())
 
     def test_query_by_unknown_ip_and_mac__known_ip(self):
-        rack = factory.make_RackController()
-        iface = factory.make_Interface(node=rack)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/8")
+        rack = factory.make_RackController(subnet=subnet)
+        iface = rack.current_config.interface_set.first()
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
         self.assertEqual(1, Discovery.objects.by_unknown_ip_and_mac().count())
-        factory.make_StaticIPAddress(ip=discovery.ip, cidr="10.0.0.0/8")
+        factory.make_StaticIPAddress(ip=discovery.ip, subnet=subnet)
         # Known IP address, unexpected MAC.
         self.assertEqual(0, Discovery.objects.by_unknown_ip_and_mac().count())
 
@@ -73,16 +75,16 @@ class TestDiscoveryModel(MAASServerTestCase):
         self.assertIsNone(Discovery.objects.first().subnet)
 
     def test_associates_known_subnet(self):
-        rack = factory.make_RackController()
-        iface = factory.make_Interface(node=rack)
-        subnet = factory.make_Subnet(cidr="10.0.0.0/8", vlan=iface.vlan)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/8")
+        rack = factory.make_RackController(subnet=subnet)
+        iface = rack.current_config.interface_set.first()
         factory.make_Discovery(interface=iface, ip="10.0.0.1")
         self.assertEqual(subnet, Discovery.objects.first().subnet)
 
     def test_is_external_dhcp(self):
-        rack = factory.make_RackController()
-        iface = factory.make_Interface(node=rack)
-        factory.make_Subnet(cidr="10.0.0.0/8", vlan=iface.vlan)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/8")
+        rack = factory.make_RackController(subnet=subnet)
+        iface = rack.current_config.interface_set.first()
         factory.make_Discovery(interface=iface, ip="10.0.0.1")
         discovery = Discovery.objects.first()
         self.assertFalse(discovery.is_external_dhcp)
