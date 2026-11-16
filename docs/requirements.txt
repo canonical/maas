@@ -20,6 +20,7 @@ sphinx-roles==0.1.0
 sphinx-terminal==1.0.3
 sphinx-ubuntu-images==0.1.0
 sphinx-youtube-links==0.1.0
+sphinxcontrib-mermaid==2.0.2
 
 # Vale
 rst2html==2020.7.4
