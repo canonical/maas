@@ -1,6 +1,7 @@
 # Copyright 2023-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 import importlib
+import os
 from pathlib import Path
 from shutil import copytree
 
@@ -59,6 +60,26 @@ def setup_testenv(monkeypatch, tmpdir):
     version.get_running_version.cache_clear()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _rack_legacy_secret():
+    """Provision MAAS_SECRET once per worker for the rack-legacy leg.
+
+    Under nose, `rack_script.py` reads the shared secret and installs it
+    in `MAAS_SECRET` at process start, so every test sees it regardless
+    of order. The 2 certificate tests in `test_clusterservice.py` call
+    `fernet_encrypt_psk`, which raises `MissingSharedSecret` when no
+    prior test in the worker set it. At high xdist worker counts those
+    tests can land in a worker where nothing set it first, making them
+    flaky on worker distribution. Set a deterministic secret at session
+    start (this mode only) so it's present in every worker; the
+    per-test `clean_globals` clear is also skipped in this mode (below),
+    so it persists for the whole worker session.
+    """
+    if os.environ.get("MAAS_PYTEST_NO_CROCHET"):
+        MAAS_SECRET.set(b"rack-legacy-test-secret")
+    yield
+
+
 @pytest.fixture(autouse=True)
 def clean_globals(tmpdir):
     base_path = Path(tmpdir)
@@ -66,5 +87,13 @@ def clean_globals(tmpdir):
         var.clear_cached()
         var._path = lambda: base_path / var.name  # noqa: B023
 
-    MAAS_SECRET.set(None)
+    # Under nose the in-memory MAAS_SECRET persists across tests in a
+    # process (set by an earlier test's side effect). The rack-legacy leg
+    # (run with MAAS_PYTEST_NO_CROCHET=1) relies on that
+    # persistence: 2 certificate tests in test_clusterservice.py call
+    # fernet_encrypt_psk, which needs a secret set by a prior test, and
+    # fail with MissingSharedSecret when it's cleared per-test. Skip the
+    # clear in that mode; explicit .set(value) calls still take effect.
+    if not os.environ.get("MAAS_PYTEST_NO_CROCHET"):
+        MAAS_SECRET.set(None)
     yield

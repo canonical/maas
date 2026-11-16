@@ -39,7 +39,13 @@ def load_initial_db_file(cluster, template_name, path):
     if path.suffix == ".sql":
         with connect(cluster) as conn:
             with conn.cursor() as cursor:
-                cursor.execute(f'CREATE DATABASE "{template_name}"')
+                # template0 never has sessions attached, unlike
+                # template1 (the default), so this cannot fail with
+                # ObjectInUse when another worker concurrently holds
+                # a template1 connection (e.g. an unlocked dropdb).
+                cursor.execute(
+                    f'CREATE DATABASE "{template_name}" TEMPLATE template0'
+                )
         cluster.execute(
             "psql",
             "--quiet",
@@ -75,7 +81,7 @@ def load_initial_db_file(cluster, template_name, path):
 
 @contextmanager
 def connect(cluster):
-    conn = cluster.connect()
+    conn = cluster.connect(database="postgres")
     conn.autocommit = True
     yield conn
     conn.close()

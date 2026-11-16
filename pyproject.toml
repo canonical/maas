@@ -38,18 +38,12 @@ optional-dependencies.testing = [
   "pytest-cov>=7,<7.1",
   "pytest-mock>=3.15,<3.16",
   "pytest-xdist>=3.8,<3.9",
-  "python-subunit>=1.4,<1.5",
-  "testresources>=2,<2.1",
   "testscenarios>=0.5,<0.6",
   "testtools>=2.8,<2.9",
 ]
 urls.Documentation = "https://canonical.com/maas/docs"
 urls.Homepage = "https://canonical.com/maas"
 urls.Repository = "https://launchpad.net/maas"
-scripts."test.parallel" = "maastesting.scripts:run_parallel"
-scripts."test.rack" = "maastesting.scripts:run_rack"
-scripts."test.region" = "maastesting.scripts:run_region"
-scripts."test.region.legacy" = "maastesting.scripts:run_region_legacy"
 scripts.maas = "maascli:main"
 scripts.maas-apiserver = "maasapiserver.main:run"
 scripts.maas-common = "provisioningserver.rack_script:run"
@@ -63,6 +57,7 @@ scripts.regiond = "maasserver.server:run"
 entry-points.pytest11.maas-database = "maastesting.pytest.database"
 entry-points.pytest11.maas-django = "maastesting.pytest.django"
 entry-points.pytest11.maas-environment = "maastesting.pytest.environment"
+entry-points.pytest11.maas-legacy = "maastesting.pytest.legacy"
 entry-points.pytest11.maas-perftest = "maastesting.pytest.perftest"
 entry-points.pytest11.maas-seeds = "maastesting.pytest.seeds"
 entry-points.pytest11.maas-sqlalchemy = "maastesting.pytest.sqlalchemy"
@@ -161,6 +156,7 @@ lint.isort.known-first-party = [
   "metadataserver",
   "provisioningserver",
   "snippets",
+  "tests",
 ]
 lint.isort.order-by-type = false
 lint.isort.split-on-trailing-comma = false

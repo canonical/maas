@@ -51,8 +51,10 @@ def build_valid_login_response_stub(
 
 
 def build_valid_self_token_response_stub(
-    expire_time: datetime | None = utcnow() + timedelta(minutes=30),  # noqa: B008
+    expire_time: datetime | None = None,
 ) -> TokenLookupSelfResponse:
+    if expire_time is None:
+        expire_time = utcnow() + timedelta(minutes=30)
     return TokenLookupSelfResponse(
         **get_base_response_dict(),
         data=TokenLookupSelfDetailResponse(

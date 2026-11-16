@@ -15,7 +15,8 @@ from postgresfixture import ClusterFixture
 import psycopg2
 from psycopg2.errorcodes import DUPLICATE_DATABASE
 from psycopg2.errors import ObjectInUse
-from testresources import TestResourceManager
+
+from maastesting.resources import TestResourceManager
 
 here = Path(__file__).parent
 
@@ -107,10 +108,18 @@ class DjangoDatabases(list):
 class DjangoPristineDatabaseManager(TestResourceManager):
     """Resource manager for pristine Django databases."""
 
-    resources = (("cluster", DatabaseClusterManager()),)
-
     setUpCost = 25
     tearDownCost = 1
+
+    resources = (("cluster", DatabaseClusterManager()),)
+
+    def __init__(self):
+        super().__init__()
+        # Migrations are verified once per process, not once per test:
+        # the plain (non-optimising) testresources setup path calls
+        # make() for every test, and re-running the OpenFGA/alembic/
+        # temporal migrators each time costs ~0.2s per Django test.
+        self._migrated = False
 
     def make(self, dependencies):
         cluster = dependencies["cluster"]
@@ -169,12 +178,19 @@ class DjangoPristineDatabaseManager(TestResourceManager):
                         str(initial),
                     )
 
-        # dbupgrade will run all the django and alembic migrations
-
-        # When we execute the unit tests we don't have OpenFGA built binaries available at the location where the migrator
-        # expects them, so we let the unit tests specify where to find them.
-        openfga_path = os.getcwd() + "/src/maasopenfga/build/"
-        call_command("dbupgrade", openfga_path=openfga_path)
+        # dbupgrade will run all the django and alembic migrations.
+        # Under the plain testresources setup path make() runs per
+        # test; only the first make in a process needs to verify
+        # migrations (newly created databases are migrated here, and
+        # pre-existing ones are migrated from an earlier make).
+        if created or not self._migrated:
+            # When we execute the unit tests we don't have OpenFGA
+            # built binaries available at the location where the
+            # migrator expects them, so we let the unit tests specify
+            # where to find them.
+            openfga_path = os.getcwd() + "/src/maasopenfga/build/"
+            call_command("dbupgrade", openfga_path=openfga_path)
+            self._migrated = True
 
         # Ensure that there are no sessions from Django.
         close_all_connections()
@@ -217,45 +233,102 @@ class DjangoDatabasesManager(TestResourceManager):
         super().__init__()
         self._count = count(1)
         self.dirty = assume_dirty
+        # The most recently cleaned non-dirty databases, kept for
+        # reuse by the next make() call (see clean()).
+        self._kept = None
+        self._kept_names = []
 
     def make(self, dependencies):
+        if self._kept is not None:
+            # Reuse the database kept by the previous clean() run:
+            # clean tests run inside a rolled-back transaction, so the
+            # database is pristine and cloning a new one per test is
+            # pure overhead. This restores the reuse OptimisingTestSuite
+            # provided under nose; the plain testresources setup path
+            # used by pytest calls make()/clean() for every test.
+            databases, self._kept = self._kept, None
+            for database, dbname in self._kept_names:
+                database["NAME"] = dbname
+            self._kept_names = []
+            return databases
         databases = dependencies["templates"]
         clusterlock = databases.cluster.lock
-        with connect_no_transaction(databases.cluster) as conn:
-            with conn.cursor() as cursor:
-                for database in databases:
-                    template = database["NAME"]
-                    suffix = next(self._count)
-                    dbname = f"{template}_{os.getpid()}_{suffix}"
-                    assert self.DB_NAME_REGEX.match(dbname), dbname
-                    stmt = f"CREATE DATABASE {dbname} WITH TEMPLATE {template}"
-                    # Create the database with a shared lock to the cluster to
-                    # avoid racing a DjangoPristineDatabaseManager.make in a
-                    # concurrently running test process.
-                    try:
-                        with clusterlock.shared:
-                            cursor.execute(stmt)
-                    except ObjectInUse:
-                        self._log_db_activity(cursor, template)
-                        raise
-                    debug(f"Created {dbname}; statement: {stmt}")
-                    database["NAME"] = dbname
+        # The administrative connection below is made to template1, and
+        # CREATE DATABASE fails if any other session is connected to the
+        # source database. Hold the exclusive lock for the whole block
+        # so the connection can't overlap templatemaasdb/ensuremaasdb
+        # (or this manager) in another worker; the previous inner shared
+        # lock covered only the CREATE statement, leaving the template1
+        # connection itself unprotected.
+        with clusterlock.exclusive:
+            with connect_no_transaction(databases.cluster) as conn:
+                with conn.cursor() as cursor:
+                    for database in databases:
+                        template = database["NAME"]
+                        suffix = next(self._count)
+                        dbname = f"{template}_{os.getpid()}_{suffix}"
+                        assert self.DB_NAME_REGEX.match(dbname), dbname
+                        stmt = (
+                            f"CREATE DATABASE {dbname}"
+                            f" WITH TEMPLATE {template}"
+                        )
+                        while True:
+                            try:
+                                cursor.execute(stmt)
+                                break
+                            except psycopg2.errors.DuplicateDatabase:
+                                # Another manager (clean vs dirty) may
+                                # already have created a DB with this
+                                # suffix; try the next one.
+                                suffix = next(self._count)
+                                dbname = f"{template}_{os.getpid()}_{suffix}"
+                                assert self.DB_NAME_REGEX.match(dbname), dbname
+                                stmt = (
+                                    f"CREATE DATABASE {dbname}"
+                                    f" WITH TEMPLATE {template}"
+                                )
+                            except ObjectInUse:
+                                self._log_db_activity(cursor, template)
+                                raise
+                        debug(f"Created {dbname}; statement: {stmt}")
+                        database["NAME"] = dbname
         return databases
 
     def clean(self, databases):
         close_all_connections()
-        with connect_no_transaction(databases.cluster) as conn:
-            with conn.cursor() as cursor:
-                for database in databases:
-                    dbname = database["NAME"]
-                    maybe_match = re.search(self.DB_NAME_REGEX, dbname)
-                    assert maybe_match is not None, (
-                        f"Unable to extract original name from {dbname}"
-                    )
-                    template = maybe_match.group("template")
-                    self._stopOtherActivity(cursor, dbname)
-                    self._dropDatabase(cursor, dbname)
-                    database["NAME"] = template
+        if not self.dirty:
+            # Keep the per-test database for the next test; nothing
+            # was committed, so it is still pristine. Remember its
+            # NAME and restore the pristine template NAME right away:
+            # the pristine manager derives its target database from
+            # the current NAME, and the per-test name would corrupt
+            # that chain.
+            self._kept = databases
+            self._kept_names = [
+                (database, database["NAME"]) for database in databases
+            ]
+            for database in databases:
+                maybe_match = re.search(self.DB_NAME_REGEX, database["NAME"])
+                assert maybe_match is not None, (
+                    f"Unable to extract original name from {database['NAME']}"
+                )
+                database["NAME"] = maybe_match.group("template")
+            return
+        # Exclusive lock: the administrative connection is made to
+        # template1 and must not overlap a CREATE DATABASE elsewhere.
+        with databases.cluster.lock.exclusive:
+            with connect_no_transaction(databases.cluster) as conn:
+                with conn.cursor() as cursor:
+                    for database in databases:
+                        dbname = database["NAME"]
+                        maybe_match = re.search(self.DB_NAME_REGEX, dbname)
+                        assert maybe_match is not None, (
+                            f"Unable to extract original name from {dbname}"
+                        )
+                        template = maybe_match.group("template")
+                        self._stopOtherActivity(cursor, dbname)
+                        self._dropDatabase(cursor, dbname)
+                        database["NAME"] = template
 
     @staticmethod
     def _log_db_activity(cursor, dbname):

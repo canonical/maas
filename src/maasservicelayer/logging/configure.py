@@ -27,6 +27,9 @@ class CustomJsonFormatter(JsonFormatter):
             )
 
 
+_json_handler: logging.Handler | None = None
+
+
 def configure_logging(level=logging.INFO, query_level=logging.WARNING):
     """
     In order to force third party libraries (uvicorn, sqlalchemy and others) to output JSON logs
@@ -53,10 +56,18 @@ def configure_logging(level=logging.INFO, query_level=logging.WARNING):
         cache_logger_on_first_use=True,
     )
 
-    handler = logging.StreamHandler(stream=sys.stdout)
-    handler.setFormatter(CustomJsonFormatter())
+    global _json_handler
+    if _json_handler is None:
+        # Bind the handler to the process' real stdout: under pytest
+        # sys.stdout is a per-test capture that is closed when the test
+        # ends, which turns any later record (e.g. from the session-long
+        # crochet reactor) into "I/O operation on closed file" errors.
+        # Create it only once, so repeated calls don't stack duplicate
+        # handlers on the root logger.
+        _json_handler = logging.StreamHandler(stream=sys.__stdout__)
+        _json_handler.setFormatter(CustomJsonFormatter())
+        logging.getLogger().addHandler(_json_handler)
     root_logger = logging.getLogger()
-    root_logger.addHandler(handler)
     root_logger.setLevel(level)
 
     # Configure sqlalchemy

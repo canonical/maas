@@ -152,15 +152,23 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Create scenarios for userfactories and clientfactories.
+        # Create scenarios for userfactories and clientfactories. These
+        # default to None only on the abstract base classes themselves
+        # (never on a concrete forUsers()-derived subclass, which always
+        # provides a real dict) - treat that case as "no scenarios to
+        # add" rather than raising, so pytest's unittest collector can
+        # construct the abstract base without error when it enumerates
+        # test ids.
+        userfactories = self.userfactories or {}
         scenarios_users = tuple(
-            ("user=%s" % name, {"userfactory": self.userfactories[name]})
-            for name in sorted(self.userfactories)
+            ("user=%s" % name, {"userfactory": userfactories[name]})
+            for name in sorted(userfactories)
         )
         self.userfactories = ()
+        clientfactories = self.clientfactories or {}
         scenarios_clients = tuple(
-            ("client=%s" % name, {"clientfactory": self.clientfactories[name]})
-            for name in sorted(self.clientfactories)
+            ("client=%s" % name, {"clientfactory": clientfactories[name]})
+            for name in sorted(clientfactories)
         )
         self.clientfactories = ()
         # Merge them into preexisting scenarios.

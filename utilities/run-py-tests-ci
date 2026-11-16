@@ -2,14 +2,12 @@
 #
 # Helpers to run tests in CI.
 #
-# This runs nose- and/or pytest-based tests, and fails if any of the
-# processes fails. Pass "legacy", "pytest" or "all" (default) to pick the
-# suite. If PARENT is set and the git diff with the parent is only about docs
-# changes, then we skip the tests.
+# This runs the pytest test suite, and fails if any of the
+# processes fails. If PARENT is set and the git diff with the parent is
+# only about docs changes, then we skip the tests.
 
 set -o pipefail
 
-SUITE="${1:-all}"
 RUN_TESTS=true
 
 if [ -n "$PARENT" ]; then
@@ -28,6 +26,11 @@ fi
 if [ "$RUN_TESTS" = true ]; then
     echo "Running tests..."
 
+    # Workers are requested explicitly, not via -n auto: xdist's auto
+    # uses psutil.cpu_count(logical=False), i.e. physical cores, which
+    # under-parallelizes on the CI runners (2 physical cores reported).
+    # The suite is IO-bound (DB fixtures, subprocesses, sockets), so a
+    # modest overcommit of workers past the physical core count is a win.
     MAX_PROCESSES=${MAAS_MAX_TEST_PROCESSES:-4}
 
     MAAS_RAND_SEED="$(od -vAn -N8 -tx8 < /dev/urandom | tr -d ' ')"
@@ -38,25 +41,50 @@ if [ "$RUN_TESTS" = true ]; then
     echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
     echo "MAX_PROCESSES=${MAX_PROCESSES}"
 
-    res1=0
-    res2=0
-    if [ "$SUITE" != "pytest" ]; then
-        bin/test.parallel --emit-subunit --subprocesses="${MAX_PROCESSES}" | \
-            bin/subunit-1to2 | \
-            bin/subunit2junitxml --no-passthrough -f -o junit.xml | \
-            bin/subunit2pyunit --no-passthrough
-        res1=$?
+    # Optional coverage mode: when PY_COV_DIR is set, run each leg under
+    # pytest-cov (which covers the xdist workers too), writing one
+    # combined-per-leg data file into that directory.
+    COV_ARGS=()
+    RACK_COV=()
+    REGION_COV=()
+    MAIN_COV=()
+    if [ -n "${PY_COV_DIR:-}" ]; then
+        mkdir -p "${PY_COV_DIR}"
+        COV_ARGS=(--cov=src --cov-branch --cov-report=)
+        RACK_COV=("COVERAGE_FILE=${PY_COV_DIR}/coverage-rack-legacy.py.cover")
+        REGION_COV=("COVERAGE_FILE=${PY_COV_DIR}/coverage-region-legacy.py.cover")
+        MAIN_COV=("COVERAGE_FILE=${PY_COV_DIR}/coverage-main.py.cover")
     fi
-    if [ "$SUITE" != "legacy" ]; then
-        bin/pytest -n auto --maxprocesses="${MAX_PROCESSES}" --dist=load --junit-xml=junit-pytest.xml
-        res2=$?
-    fi
-    if [ "$res1" -ne 0 ]; then
-        exit "$res1"
-    elif [ "$res2" -ne 0 ]; then
-        exit "$res2"
-    fi
-    exit 0
+
+    # Rack-legacy leg: the MAASTwistedRunTest files, which need the
+    # process free of the always-on crochet reactor. Runs the whole
+    # src/provisioningserver tree: all other rack tests were relocated
+    # to src/tests/, so only these files remain there.
+    MAAS_PYTEST_NO_CROCHET=1 env "${RACK_COV[@]}" \
+        bin/pytest src/provisioningserver \
+        -n "${MAX_PROCESSES}" --dist=load \
+        --junit-xml=junit-rack-legacy.xml "${COV_ARGS[@]}"
+    res1=$?
+
+    # Region-legacy leg: the legacy-tagged classes, which need
+    # MAAS_PREVENT_MIGRATIONS=1 and a Django-migrate (not dbupgrade)
+    # test DB. File list is computed so it stays correct as the carve-out
+    # shrinks.
+    mapfile -t LEGACY_FILES < <(grep -rl \
+        'MAASLegacyServerTestCase\|MAASLegacyTransactionServerTestCase\|DjangoTestCase\|DjangoTransactionTestCase' \
+        src/maasserver src/metadataserver --include='test_*.py')
+    MAAS_PREVENT_MIGRATIONS=1 env "${REGION_COV[@]}" \
+        bin/pytest "${LEGACY_FILES[@]}" \
+        -n "${MAX_PROCESSES}" --dist=load \
+        --junit-xml=junit-region-legacy.xml "${COV_ARGS[@]}"
+    res2=$?
+
+    # Main suite: everything under src/tests/.
+    env "${MAIN_COV[@]}" \
+        bin/pytest -n "${MAX_PROCESSES}" --dist=load \
+        --junit-xml=junit-pytest.xml "${COV_ARGS[@]}"
+    res3=$?
+    exit $((res1 + res2 + res3))
 else
     echo "Skipping tests because only docs/ changed."
     exit 0

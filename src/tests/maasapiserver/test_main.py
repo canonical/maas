@@ -42,6 +42,11 @@ def ca_cert():
 
 @pytest.fixture
 async def server(db, ca_cert):
+    """Serve the internal app over mTLS and yield its base URL.
+
+    The port is ephemeral so that concurrent workers (pytest-xdist) or
+    repeated runs can't collide on a fixed one.
+    """
     server_cert = _get_test_file("server.pem")
     server_key = _get_test_file("server.key")
 
@@ -49,7 +54,7 @@ async def server(db, ca_cert):
         db,
         server_config=ServerConfig(
             host="localhost",
-            port=9443,
+            port=0,
             ssl_certfile=str(server_cert),
             ssl_keyfile=str(server_key),
             ssl_ca_certs=str(ca_cert),
@@ -71,9 +76,16 @@ async def server(db, ca_cert):
 
     # inspired from https://github.com/Kludex/uvicorn/blob/b8e65e49bfadf6d5ea30e56d0cd9f47329de606c/tests/utils.py#L9-L18
     cancel_handle = asyncio.ensure_future(server.serve())
-    await asyncio.sleep(0.1)
     try:
-        yield server
+        for _ in range(50):
+            if server.started:
+                break
+            await asyncio.sleep(0.1)
+        assert server.started, "internal app server did not start"
+        # uvicorn has bound its sockets at this point; ask the OS which
+        # ephemeral port it picked.
+        port = server.servers[0].sockets[0].getsockname()[1]
+        yield f"https://localhost:{port}"
     finally:
         await server.shutdown()
         cancel_handle.cancel()
@@ -89,7 +101,7 @@ class TestMTLSInternalServer:
             ca_cert, client_cert, client_key
         )
         async with httpx.AsyncClient(verify=ssl_context) as client:
-            r1 = await client.get("https://localhost:9443/test")
+            r1 = await client.get(f"{server}/test")
         assert r1.status_code == 200
         data1 = r1.json()
         tls_ext1 = data1["tls"]
@@ -101,9 +113,7 @@ class TestMTLSInternalServer:
     async def test_mtls_rack_controller_enrol_endpoint(self, server, ca_cert):
         ssl_context = _create_client_ssl_context(ca_cert)
         async with httpx.AsyncClient(verify=ssl_context) as client:
-            r2 = await client.post(
-                "https://localhost:9443/rack_controllers:enroll"
-            )
+            r2 = await client.post(f"{server}/rack_controllers:enroll")
         assert r2.status_code == 200
         data2 = r2.json()
         tls_ext2 = data2["tls"]
@@ -114,7 +124,7 @@ class TestMTLSInternalServer:
     async def test_mtls_client_certificate_is_required(self, server, ca_cert):
         ssl_context = _create_client_ssl_context(ca_cert)
         async with httpx.AsyncClient(verify=ssl_context) as client:
-            r2 = await client.post("https://localhost:9443/test")
+            r2 = await client.post(f"{server}/test")
         assert r2.status_code == 403
 
     async def test_mtls_with_wrong_ca(self, server):
@@ -129,7 +139,7 @@ class TestMTLSInternalServer:
             (httpx.ConnectError, ssl.SSLError, ssl.SSLCertVerificationError)
         ):
             async with httpx.AsyncClient(verify=ssl_context) as client:
-                await client.get("https://localhost:9443/test")
+                await client.get(f"{server}/test")
 
     async def test_mtls_with_wrong_key(self, server, ca_cert):
         client_cert = _get_test_file("client.pem")
@@ -147,7 +157,7 @@ class TestMTLSInternalServer:
         )
         with pytest.raises(httpx.ReadError):
             async with httpx.AsyncClient(verify=ssl_context) as client:
-                await client.get("https://localhost:9443/test")
+                await client.get(f"{server}/test")
 
     async def test_mtls_with_fake_client_certificate(self, server, ca_cert):
         fake_client_cert = _get_test_file("fake_client.pem")
@@ -158,4 +168,4 @@ class TestMTLSInternalServer:
         )
         with pytest.raises(httpx.ReadError):
             async with httpx.AsyncClient(verify=ssl_context) as client:
-                await client.get("https://localhost:9443/test")
+                await client.get(f"{server}/test")

@@ -14,6 +14,51 @@ import wrapt
 from maastesting import get_testing_timeout
 
 
+def setup_crochet(no_setup=False):
+    """Start (or inhibit starting) the Twisted reactor via Crochet.
+
+    Used by the pytest runner (`maastesting.pytest.legacy`); it was
+    originally shared with the retired `nose` runner so both started the
+    reactor identically: once per process, with the same
+    `EventualResult` patching applied first.
+    """
+    # Remove deprecated crochet APIs.
+    if hasattr(crochet, "wait_for_reactor"):
+        del crochet.wait_for_reactor
+    if hasattr(crochet.EventLoop, "wait_for_reactor"):
+        del crochet.EventLoop.wait_for_reactor
+    if hasattr(crochet, "DeferredResult"):
+        del crochet.DeferredResult
+
+    # Make a default timeout forbidden.
+    class EventualResult(crochet.EventualResult):
+        def _result(self, timeout=None):
+            if timeout is None:
+                raise AssertionError("A time-out must be specified.")
+            else:
+                return super()._result(timeout)
+
+    # Patch it back into crochet.
+    crochet._eventloop.EventualResult = EventualResult
+    crochet.EventualResult = EventualResult
+
+    if no_setup:
+        crochet.no_setup()
+    else:
+        crochet.setup()
+
+    # Prevent the default STDLibLogObserver from forwarding Twisted
+    # log events into Python's logging module, which may try to write
+    # to a closed stream (closed test-capture handler) and crash with
+    # "I/O operation on closed file". Replace the observer with the
+    # production-style one that writes directly to sys.__stdout__.
+    from twisted.logger import globalLogPublisher
+
+    from provisioningserver.logger._twisted import EventLogger
+
+    globalLogPublisher._observers = [EventLogger()]
+
+
 class EventualResultCatchingMixin:
     """A mix-in for tests that checks for unfired/unhandled `EventualResults`.
 

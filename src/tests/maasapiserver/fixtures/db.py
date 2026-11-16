@@ -67,7 +67,8 @@ async def db_connection(
             await conn.close()
             await db.engine.dispose()
             cluster = pytestconfig.stash[cluster_stash]
-            cluster.dropdb(db.config.name)
+            with cluster.lock.exclusive:
+                cluster.dropdb(db.config.name)
     else:
 
         def no_commit():

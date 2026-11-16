@@ -38,3 +38,6 @@ __pycache__
 /.dev-certificates
 /cli.json
 .workshop.lock
+
+# Local-only AI/SDD working artifacts; not for distribution.
+/.ai/

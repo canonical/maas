@@ -7,7 +7,6 @@ __all__ = ["MAASRunTest", "MAASTestCase", "MAASTwistedRunTest"]
 
 
 from collections.abc import Mapping
-from contextlib import contextmanager
 from functools import wraps
 from importlib import import_module
 import os
@@ -18,12 +17,10 @@ from unittest.mock import MagicMock
 
 import crochet
 from fixtures import EnvironmentVariable
-from nose.proxy import ResultProxy
-from nose.tools import nottest
-import testresources
 import testtools
 from testtools.content import text_content
 
+from maastesting import resources
 from maastesting.crochet import EventualResultCatchingMixin
 from maastesting.factory import factory
 from maastesting.fixtures import (
@@ -39,28 +36,6 @@ from maastesting.runtest import (
 )
 from maastesting.scenarios import WithScenarios
 from maastesting.twisted import TwistedLoggerFixture
-
-
-@nottest
-@contextmanager
-def active_test(result, test):
-    """Force nose to report for the test that's running.
-
-    Nose presents a proxy result and passes on results using only the
-    top-level test, rather than the actual running test. This attempts to undo
-    this dubious choice.
-
-    If the result is not a nose proxy then this is a no-op.
-    """
-    if isinstance(result, ResultProxy):
-        orig = result.test.test
-        result.test.test = test
-        try:
-            yield
-        finally:
-            result.test.test = orig
-    else:
-        yield
 
 
 class MAASTestCase(
@@ -174,9 +149,7 @@ class MAASTestCase(
         self.addCleanup(self.tearDownResources)
 
     def setUpResources(self):
-        testresources.setUpResources(
-            self, self.resources, testresources._get_result()
-        )
+        resources.setUpResources(self, self.resources)
 
     def setUpSnapEnviron(self):
         """Simulate a snap environment for the duration of the test.
@@ -229,9 +202,7 @@ class MAASTestCase(
             connection.close()
 
     def tearDownResources(self):
-        testresources.tearDownResources(
-            self, self.resources, testresources._get_result()
-        )
+        resources.tearDownResources(self, self.resources)
 
     def make_dir(self):
         """Create a temporary directory.
@@ -265,14 +236,6 @@ class MAASTestCase(
                 "Mappings cannot be compared with assertSequenceEqual",
             )
         return super().assertSequenceEqual(seq1, seq2, msg, seq_type)
-
-    def run(self, result=None):
-        with active_test(result, self):
-            super().run(result)
-
-    def __call__(self, result=None):
-        with active_test(result, self):
-            super().__call__(result)
 
     def patch(
         self,
