@@ -50,6 +50,7 @@ class TestMAASAPIClient:
         mock_async_client.assert_called_once()
         _, kwargs = mock_async_client.call_args
         assert kwargs["headers"]["User-Agent"] == "MAAS"
+        assert kwargs["timeout"] == httpx.Timeout(90)
 
     @patch("maascommon.apiclient.httpx.AsyncClient")
     def test_create_client_with_proxy(self, mock_async_client, dummy_token):
