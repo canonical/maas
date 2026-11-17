@@ -43,10 +43,9 @@ debian_arch() {
 }
 
 resources_bin=$(mktemp)
+trap 'rm -f "$resources_bin"' EXIT
 [ "$SNAP_ARCH" ] && arch="$SNAP_ARCH" || arch="$(debian_arch)"
 wget "$MAAS_BASE_URL/MAAS/machine-resources/$arch" -O "$resources_bin" >&2
 chmod +x "$resources_bin"
 
 "$resources_bin" | tee "$MAAS_RESOURCES_FILE"
-
-rm "$resources_bin"

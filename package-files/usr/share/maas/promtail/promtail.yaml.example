@@ -53,6 +53,6 @@ scrape_configs:
   - job_name: maas-proxy
     static_configs:
       - labels:
-          __path__: /var/snap/maas/common/log/proxy.log
+          __path__: /var/snap/maas/common/log/{proxy.log,proxy/*.log}
           host: ${HOSTNAME}
           job: "maas-proxy"
