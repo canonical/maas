@@ -183,27 +183,6 @@ on these plain HTTP URLs; no certificate configuration is involved.
 The URI address is the **webhook host**, not the PDU. Do not use `localhost`
 unless the service runs on every rack controller that may manage the machine.
 
-Alternatively, use an authenticated MAAS CLI profile. Replace `admin` and
-`abc123` with your profile and machine system ID, and ensure `WEBHOOK_TOKEN`
-contains the token from the previous step:
-
-```bash
-PROFILE=admin
-SYSTEM_ID=abc123
-
-maas "$PROFILE" machine update "$SYSTEM_ID" \
-  power_type=webhook \
-  power_parameters_power_on_uri=http://192.0.2.10:8000/outlets/3/on \
-  power_parameters_power_off_uri=http://192.0.2.10:8000/outlets/3/off \
-  power_parameters_power_query_uri=http://192.0.2.10:8000/outlets/3/status \
-  power_parameters_power_on_regex='status.*\:.*running' \
-  power_parameters_power_off_regex='status.*\:.*stopped' \
-  power_parameters_power_user= \
-  power_parameters_power_pass= \
-  power_parameters_power_token="$WEBHOOK_TOKEN" \
-  power_parameters_power_verify_ssl=y
-```
-
 For another server on the same PDU, use its outlet number in all three URLs.
 The MAAS system ID and PDU outlet number are unrelated. This service does not
 depend on MAAS's `System_Id` header; the URL identifies the outlet.
@@ -226,22 +205,3 @@ maas "$PROFILE" machine query-power-state "$SYSTEM_ID"
 MAAS now sends HTTP requests to your service instead of using its removed Eaton
 driver. Your service translates those requests into SNMP operations on the PDU.
 The same integration works with the UI's power actions.
-
-## Adapt the example for another power driver
-
-Keep the three HTTP endpoints and replace the hardware-specific functions:
-
-- `query_power()`: read the real hardware state and return `running` or
-  `stopped`. Treat an unreachable device or an unknown state as an error.
-- `set_power()`: call your hardware's API, SDK or command-line tool. Use
-  argument lists and timeouts for external commands, not shell interpolation.
-- `power_on()`: use your hardware's normal power-on behavior. The off/wait/on
-  sequence here is Eaton-specific, not a requirement of the Webhook driver.
-
-For a non-PDU device, replace the outlet URL parameter with an appropriate
-machine identifier and map it to configured devices in the service. Keep
-hardware addresses and credentials on the service host rather than accepting
-arbitrary commands or targets in HTTP requests.
-
-The Webhook driver does not configure PXE boot order or discover chassis.
-Configure network boot separately if required for commissioning and deployment.
