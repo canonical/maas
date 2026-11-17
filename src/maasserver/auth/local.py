@@ -350,7 +350,7 @@ class MAASAuthorizationBackend(ModelBackend):
         if machine.pool_id is None:
             # Devices do not belong to a resource pool, so we check if the user is the owner or an admin.
             return machine.owner_id == user.id or self._can_admin(
-                user, machine
+                rbac_enabled, user, machine, admin_pools
             )
         if machine.owner_id is None or machine.owner_id == user.id:
             # can_deploy_machines is implied by can_edit_machines in the
@@ -358,7 +358,7 @@ class MAASAuthorizationBackend(ModelBackend):
             return get_openfga_client().can_deploy_machines_in_pool(
                 user, machine.pool_id
             )
-        return self._can_admin(user, machine)
+        return self._can_admin(rbac_enabled, user, machine, admin_pools)
 
     def _can_admin(self, rbac_enabled, user, machine, admin_pools):
         if machine.pool_id is None:
