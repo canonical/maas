@@ -150,3 +150,13 @@ You may also want to try using a local copy of MAAS with real hardware, which is
 If you're brave, you can try that in your homelab, with some simple, off-the-shelf NUCs or mini-PCs, using the instructions found [in this GitHub repository](https://github.com/canonical/maas-hw-tutorial).
 
 Learn more at: <https://maas.io>
+
+## More tutorials
+
+- [Harden a MAAS test controller](/tutorials/harden-a-maas-test-controller.md): turn on security hardening and fix the issues that MAAS reports.
+
+```{toctree}
+:hidden:
+
+tutorials/harden-a-maas-test-controller
+```

@@ -288,3 +288,28 @@ class TestRbacAsyncClient:
             params=[("u", "user"), ("p", "admin")],
             headers={"Bakery-Protocol-Version": "3"},
         )
+
+    async def test_allowed_for_user_username_with_special_chars(
+        self, rbac_client, mock_aioresponse
+    ):
+        username = "user@test"
+        expected_response = {"view": [""]}
+
+        mock_aioresponse.get(
+            f"{RBAC_BASE_URL}/resources/resource-pool/allowed-for-user"
+            "?u=user%40test&p=view",
+            payload=expected_response,
+        )
+
+        resp = await rbac_client.allowed_for_user(
+            RbacResourceType.RESOURCE_POOL, username, {RbacPermission.VIEW}
+        )
+
+        assert resp[0].access_all is True
+        # The username is passed un-encoded so aiohttp encodes it only once.
+        mock_aioresponse.assert_called_once_with(
+            method="GET",
+            url=f"{RBAC_BASE_URL}/resources/resource-pool/allowed-for-user",
+            params=[("u", "user@test"), ("p", "view")],
+            headers={"Bakery-Protocol-Version": "3"},
+        )
