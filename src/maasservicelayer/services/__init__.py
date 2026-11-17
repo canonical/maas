@@ -32,9 +32,6 @@ from maasservicelayer.db.repositories.consumers import ConsumersRepository
 from maasservicelayer.db.repositories.database_configurations import (
     DatabaseConfigurationsRepository,
 )
-from maasservicelayer.db.repositories.dhcpsnippets import (
-    DhcpSnippetsRepository,
-)
 from maasservicelayer.db.repositories.discoveries import DiscoveriesRepository
 from maasservicelayer.db.repositories.django_session import (
     DjangoSessionRepository,
@@ -69,6 +66,9 @@ from maasservicelayer.db.repositories.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersRepository,
 )
 from maasservicelayer.db.repositories.nodes import NodesRepository
+from maasservicelayer.db.repositories.nodeuserdata import (
+    NodeUserDataRepository,
+)
 from maasservicelayer.db.repositories.notifications import (
     NotificationsRepository,
 )
@@ -150,7 +150,7 @@ from maasservicelayer.services.consumers import ConsumersService
 from maasservicelayer.services.database_configurations import (
     DatabaseConfigurationsService,
 )
-from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
+from maasservicelayer.services.dhcp import DHCPService
 from maasservicelayer.services.discoveries import DiscoveriesService
 from maasservicelayer.services.django_session import DjangoSessionService
 from maasservicelayer.services.dnsdata import DNSDataService
@@ -184,6 +184,7 @@ from maasservicelayer.services.nodegrouptorackcontrollers import (
     NodeGroupToRackControllersService,
 )
 from maasservicelayer.services.nodes import NodesService
+from maasservicelayer.services.nodeuserdata import NodeUserDataService
 from maasservicelayer.services.notifications import NotificationsService
 from maasservicelayer.services.openfga_tuples import OpenFGATupleService
 from maasservicelayer.services.operations import OperationsService
@@ -195,6 +196,7 @@ from maasservicelayer.services.racks import RacksService
 from maasservicelayer.services.rdns import RDNSService
 from maasservicelayer.services.reservedips import ReservedIPsService
 from maasservicelayer.services.resource_pools import ResourcePoolsService
+from maasservicelayer.services.script_parameters import ScriptParametersService
 from maasservicelayer.services.scriptresult import ScriptResultsService
 from maasservicelayer.services.scripts import ScriptsService
 from maasservicelayer.services.secrets import (
@@ -271,7 +273,7 @@ class ServiceCollectionV3:
     database_configurations: DatabaseConfigurationsService
     configurations: ConfigurationsService
     consumers: ConsumersService
-    dhcpsnippets: DhcpSnippetsService
+    dhcp: DHCPService
     discoveries: DiscoveriesService
     django_session: DjangoSessionService
     dnsdata: DNSDataService
@@ -296,6 +298,7 @@ class ServiceCollectionV3:
     neighbours: NeighboursService
     nodegrouptorackcontrollers: NodeGroupToRackControllersService
     nodes: NodesService
+    nodeuserdata: NodeUserDataService
     notifications: NotificationsService
     oidc_revoked_tokens: OIDCRevokedTokenService
     openfga_tuples: OpenFGATupleService
@@ -307,6 +310,7 @@ class ServiceCollectionV3:
     refresh_tokens: RefreshTokenService
     reservedips: ReservedIPsService
     resource_pools: ResourcePoolsService
+    script_parameters: ScriptParametersService
     scriptresults: ScriptResultsService
     scripts: ScriptsService
     secrets: SecretsService
@@ -413,6 +417,11 @@ class ServiceCollectionV3:
             context=context,
             repository=ScriptsRepository(context),
         )
+        services.script_parameters = ScriptParametersService(
+            context=context,
+            configurations_service=services.configurations,
+            scripts_service=services.scripts,
+        )
         services.dnspublications = DNSPublicationsService(
             context=context,
             dnspublication_repository=DNSPublicationRepository(context),
@@ -452,6 +461,7 @@ class ServiceCollectionV3:
             context=context,
             repository=BootResourcesRepository(context),
             boot_resource_sets_service=services.boot_resource_sets,
+            configurations_service=services.configurations,
         )
         services.boot_source_cache = BootSourceCacheService(
             context=context,
@@ -546,14 +556,9 @@ class ServiceCollectionV3:
             dnsresources_service=services.dnsresources,
             staticipaddress_repository=StaticIPAddressRepository(context),
         )
-        services.dhcpsnippets = DhcpSnippetsService(
-            context=context,
-            dhcpsnippets_repository=DhcpSnippetsRepository(context),
-        )
         services.ipranges = IPRangesService(
             context=context,
             temporal_service=services.temporal,
-            dhcpsnippets_service=services.dhcpsnippets,
             ipranges_repository=IPRangesRepository(context),
         )
         services.sshkeys = SshKeysService(
@@ -642,10 +647,21 @@ class ServiceCollectionV3:
             ipranges_service=services.ipranges,
             staticroutes_service=services.staticroutes,
             reservedips_service=services.reservedips,
-            dhcpsnippets_service=services.dhcpsnippets,
             dnspublications_service=services.dnspublications,
             nodegrouptorackcontrollers_service=services.nodegrouptorackcontrollers,
             subnets_repository=SubnetsRepository(context),
+        )
+        services.dhcp = DHCPService(
+            context=context,
+            configurations_service=services.configurations,
+            domains_service=services.domains,
+            interfaces_service=services.interfaces,
+            ipranges_service=services.ipranges,
+            nodes_service=services.nodes,
+            reservedips_service=services.reservedips,
+            staticipaddress_service=services.staticipaddress,
+            subnets_service=services.subnets,
+            vlans_service=services.vlans,
         )
         services.dnsdata = DNSDataService(
             context=context,
@@ -774,5 +790,9 @@ class ServiceCollectionV3:
         services.power_types = PowerTypesService(
             context=context,
             repository=PowerTypeRepository(),
+        )
+        services.nodeuserdata = NodeUserDataService(
+            context=context,
+            nodeuserdata_repository=NodeUserDataRepository(context),
         )
         return services

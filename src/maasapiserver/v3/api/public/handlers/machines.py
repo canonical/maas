@@ -11,6 +11,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ForbiddenBodyResponse,
     NotFoundBodyResponse,
     UnauthorizedBodyResponse,
+    ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.requests.machines import (
@@ -48,11 +49,14 @@ from maasservicelayer.exceptions.catalog import (
     NotFoundException,
 )
 from maasservicelayer.exceptions.constants import (
+    BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE,
     INVALID_MACHINE_STATUS_VIOLATION_TYPE,
     MACHINE_LOCKED_VIOLATION_TYPE,
+    MISSING_ARCHITECTURE_VIOLATION_TYPE,
     MISSING_PERMISSIONS_VIOLATION_TYPE,
     OPERATION_IN_PROGRESS_VIOLATION_TYPE,
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
+    UNKNOWN_POWER_TYPE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
@@ -304,6 +308,7 @@ class MachinesHandler(Handler):
             403: {"model": ForbiddenBodyResponse},
             404: {"model": NotFoundBodyResponse},
             409: {"model": ConflictBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
         status_code=202,
@@ -370,8 +375,36 @@ class MachinesHandler(Handler):
                 ]
             )
 
-        # TODO: Remainder of the validation phase. Check if power type is configured,
-        # if commissioning boot resources are available for the machine's architecture
+        if not machine.power_type:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNKNOWN_POWER_TYPE_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because its power type is not configured. Configure the power type before commissioning.",
+                    )
+                ]
+            )
+
+        if machine.architecture is None:
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_ARCHITECTURE_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because its architecture is not configured. Set the architecture before commissioning.",
+                    )
+                ]
+            )
+        if not await services.boot_resources.has_commissioning_resource(
+            machine.architecture
+        ):
+            raise ConflictException(
+                details=[
+                    BaseExceptionDetail(
+                        type=BOOT_RESOURCE_UNAVAILABLE_VIOLATION_TYPE,
+                        message=f"Machine '{system_id}' cannot be commissioned because no commissioning boot image is available for its architecture '{machine.architecture}'.",
+                    )
+                ]
+            )
 
         if await services.operations.has_active_operation_for_resource(
             resource_type=OperationResourceType.MACHINE,
@@ -385,6 +418,12 @@ class MachinesHandler(Handler):
                     )
                 ]
             )
+
+        await services.script_parameters.validate_commissioning_input(
+            commissioning_scripts=commission_request.commissioning_scripts,
+            testing_scripts=commission_request.testing_scripts,
+            script_input=commission_request.script_input,
+        )
 
         operation = await services.operations.create_accepted_operation(
             op_type=OperationType.MACHINE_COMMISSION,

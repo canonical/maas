@@ -356,51 +356,6 @@ $$;
 
 
 --
--- Name: dhcpsnippet_create_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.dhcpsnippet_create_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('dhcpsnippet_create',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: dhcpsnippet_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.dhcpsnippet_delete_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('dhcpsnippet_delete',CAST(OLD.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: dhcpsnippet_update_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.dhcpsnippet_update_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('dhcpsnippet_update',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
 -- Name: dnsdata_domain_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -5075,43 +5030,6 @@ ALTER SEQUENCE public.maasserver_defaultresource_id_seq OWNED BY public.maasserv
 
 
 --
--- Name: maasserver_dhcpsnippet; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_dhcpsnippet (
-    id bigint NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    name character varying(255) NOT NULL,
-    description text NOT NULL,
-    enabled boolean NOT NULL,
-    node_id bigint,
-    subnet_id bigint,
-    value_id bigint NOT NULL,
-    iprange_id bigint
-);
-
-
---
--- Name: maasserver_dhcpsnippet_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maasserver_dhcpsnippet_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_dhcpsnippet_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_dhcpsnippet_id_seq OWNED BY public.maasserver_dhcpsnippet.id;
-
-
---
 -- Name: maasserver_fabric; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8622,13 +8540,6 @@ ALTER TABLE ONLY public.maasserver_defaultresource ALTER COLUMN id SET DEFAULT n
 
 
 --
--- Name: maasserver_dhcpsnippet id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet ALTER COLUMN id SET DEFAULT nextval('public.maasserver_dhcpsnippet_id_seq'::regclass);
-
-
---
 -- Name: maasserver_dnsdata id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -9173,7 +9084,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0042
+0043
 \.
 
 
@@ -9982,14 +9893,6 @@ COPY public.maasserver_controllerinfo (created, updated, node_id, version, snap_
 
 COPY public.maasserver_defaultresource (id, created, updated, zone_id) FROM stdin;
 1	2024-03-06 03:31:14.232149+00	2024-03-06 03:31:14.232149+00	1
-\.
-
-
---
--- Data for Name: maasserver_dhcpsnippet; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.maasserver_dhcpsnippet (id, created, updated, name, description, enabled, node_id, subnet_id, value_id, iprange_id) FROM stdin;
 \.
 
 
@@ -11146,13 +11049,6 @@ SELECT pg_catalog.setval('public.maasserver_defaultresource_id_seq', 1, true);
 
 
 --
--- Name: maasserver_dhcpsnippet_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.maasserver_dhcpsnippet_id_seq', 1, false);
-
-
---
 -- Name: maasserver_dnsdata_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -12158,14 +12054,6 @@ ALTER TABLE ONLY public.maasserver_controllerinfo
 
 ALTER TABLE ONLY public.maasserver_defaultresource
     ADD CONSTRAINT maasserver_defaultresource_pkey PRIMARY KEY (id);
-
-
---
--- Name: maasserver_dhcpsnippet maasserver_dhcpsnippet_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet
-    ADD CONSTRAINT maasserver_dhcpsnippet_pkey PRIMARY KEY (id);
 
 
 --
@@ -13884,34 +13772,6 @@ CREATE INDEX maasserver_defaultresource_zone_id_29a5153a ON public.maasserver_de
 
 
 --
--- Name: maasserver_dhcpsnippet_iprange_id_6a257e4d; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_dhcpsnippet_iprange_id_6a257e4d ON public.maasserver_dhcpsnippet USING btree (iprange_id);
-
-
---
--- Name: maasserver_dhcpsnippet_node_id_8f31c564; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_dhcpsnippet_node_id_8f31c564 ON public.maasserver_dhcpsnippet USING btree (node_id);
-
-
---
--- Name: maasserver_dhcpsnippet_subnet_id_f626b848; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_dhcpsnippet_subnet_id_f626b848 ON public.maasserver_dhcpsnippet USING btree (subnet_id);
-
-
---
--- Name: maasserver_dhcpsnippet_value_id_58a6a467; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_dhcpsnippet_value_id_58a6a467 ON public.maasserver_dhcpsnippet USING btree (value_id);
-
-
---
 -- Name: maasserver_dnsdata_dnsresource_id_9a9b5788; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15284,27 +15144,6 @@ CREATE TRIGGER controllerinfo_controllerinfo_update_notify AFTER UPDATE ON publi
 
 
 --
--- Name: maasserver_dhcpsnippet dhcpsnippet_dhcpsnippet_create_notify; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER dhcpsnippet_dhcpsnippet_create_notify AFTER INSERT ON public.maasserver_dhcpsnippet FOR EACH ROW EXECUTE FUNCTION public.dhcpsnippet_create_notify();
-
-
---
--- Name: maasserver_dhcpsnippet dhcpsnippet_dhcpsnippet_delete_notify; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER dhcpsnippet_dhcpsnippet_delete_notify AFTER DELETE ON public.maasserver_dhcpsnippet FOR EACH ROW EXECUTE FUNCTION public.dhcpsnippet_delete_notify();
-
-
---
--- Name: maasserver_dhcpsnippet dhcpsnippet_dhcpsnippet_update_notify; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER dhcpsnippet_dhcpsnippet_update_notify AFTER UPDATE ON public.maasserver_dhcpsnippet FOR EACH ROW EXECUTE FUNCTION public.dhcpsnippet_update_notify();
-
-
---
 -- Name: maasserver_dnsdata dnsdata_dnsdata_domain_delete_notify; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -16419,38 +16258,6 @@ ALTER TABLE ONLY public.maasserver_controllerinfo
 
 ALTER TABLE ONLY public.maasserver_defaultresource
     ADD CONSTRAINT maasserver_defaultre_zone_id_29a5153a_fk_maasserve FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_dhcpsnippet maasserver_dhcpsnippet_iprange_id_6a257e4d_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet
-    ADD CONSTRAINT maasserver_dhcpsnippet_iprange_id_6a257e4d_fk FOREIGN KEY (iprange_id) REFERENCES public.maasserver_iprange(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_dhcpsnippet maasserver_dhcpsnippet_node_id_8f31c564_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet
-    ADD CONSTRAINT maasserver_dhcpsnippet_node_id_8f31c564_fk FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_dhcpsnippet maasserver_dhcpsnippet_subnet_id_f626b848_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet
-    ADD CONSTRAINT maasserver_dhcpsnippet_subnet_id_f626b848_fk FOREIGN KEY (subnet_id) REFERENCES public.maasserver_subnet(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_dhcpsnippet maasserver_dhcpsnippet_value_id_58a6a467_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet
-    ADD CONSTRAINT maasserver_dhcpsnippet_value_id_58a6a467_fk FOREIGN KEY (value_id) REFERENCES public.maasserver_versionedtextfile(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --

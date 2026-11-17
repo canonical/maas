@@ -25,6 +25,10 @@ class ReservedIPsClauseFactory(ClauseFactory):
         return Clause(condition=eq(ReservedIPTable.c.subnet_id, subnet_id))
 
     @classmethod
+    def with_subnet_id_in(cls, subnet_ids: list[int]) -> Clause:
+        return Clause(condition=ReservedIPTable.c.subnet_id.in_(subnet_ids))
+
+    @classmethod
     def with_vlan_id(cls, vlan_id: int) -> Clause:
         return Clause(
             condition=eq(SubnetTable.c.vlan_id, vlan_id),

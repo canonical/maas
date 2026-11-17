@@ -24,7 +24,6 @@ __all__ = [
     "ControllerInfo",
     "DefaultResource",
     "Device",
-    "DHCPSnippet",
     "Discovery",
     "DNSData",
     "DNSPublication",
@@ -121,7 +120,6 @@ from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
 from maasserver.models.controllerinfo import ControllerInfo
 from maasserver.models.defaultresource import DefaultResource
-from maasserver.models.dhcpsnippet import DHCPSnippet
 from maasserver.models.discovery import Discovery
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnspublication import DNSPublication

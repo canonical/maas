@@ -30,6 +30,29 @@ from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
 class TestStaticIPAddressClauseFactory:
+    def test_with_alloc_type_in(self) -> None:
+        clause = StaticIPAddressClauseFactory.with_alloc_type_in(
+            [IpAddressType.AUTO, IpAddressType.STICKY]
+        )
+        assert (
+            str(
+                clause.condition.compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+            == "maasserver_staticipaddress.alloc_type IN (0, 1)"
+        )
+
+    def test_with_temp_expires_on_is_null(self) -> None:
+        clause = StaticIPAddressClauseFactory.with_temp_expires_on_is_null()
+        assert str(clause.condition) == (
+            "maasserver_staticipaddress.temp_expires_on IS NULL"
+        )
+
+    def test_with_interface_enabled(self) -> None:
+        clause = StaticIPAddressClauseFactory.with_interface_enabled(True)
+        assert str(clause.condition) == "maasserver_interface.enabled = true"
+
     def test_with_id(self) -> None:
         clause = StaticIPAddressClauseFactory.with_id(1)
         assert str(

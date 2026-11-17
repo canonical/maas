@@ -34,10 +34,6 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.fields import PackageRepoUrl
 from maasservicelayer.models.package_repositories import PackageRepository
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.package_repositories import (
-    PackageRepositoriesService,
-)
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -131,13 +127,12 @@ class TestPackageRepositoriesApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.list.return_value = ListResult[
             PackageRepository
         ](items=[PORTS_PACKAGE_REPO], total=2)
@@ -155,13 +150,12 @@ class TestPackageRepositoriesApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.list.return_value = ListResult[
             PackageRepository
         ](items=[MAIN_PACKAGE_REPO, PORTS_PACKAGE_REPO], total=2)
@@ -176,13 +170,12 @@ class TestPackageRepositoriesApi(ApiCommonTests):
 
     async def test_get_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.get_by_id.return_value = (
             MAIN_PACKAGE_REPO
         )
@@ -194,13 +187,12 @@ class TestPackageRepositoriesApi(ApiCommonTests):
 
     async def test_get_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.get_by_id.return_value = None
         response = await client.get(f"{self.BASE_PATH}/1")
         assert response.status_code == 404
@@ -212,13 +204,12 @@ class TestPackageRepositoriesApi(ApiCommonTests):
 
     async def test_put_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.get_by_id.return_value = (
             TEST_PACKAGE_REPO
         )
@@ -252,13 +243,12 @@ class TestPackageRepositoriesApi(ApiCommonTests):
 
     async def test_put_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.get_by_id.return_value = None
         update_request = {
             "name": "new_name",
@@ -285,13 +275,12 @@ class TestPackageRepositoriesApi(ApiCommonTests):
 
     async def test_post_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.create.return_value = (
             TEST_PACKAGE_REPO
         )
@@ -323,13 +312,12 @@ class TestPackageRepositoriesApi(ApiCommonTests):
 
     async def test_post_409(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.create.side_effect = AlreadyExistsException(
             details=[
                 BaseExceptionDetail(
@@ -369,13 +357,12 @@ class TestPackageRepositoriesApi(ApiCommonTests):
 
     async def test_delete_default_package_repository(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.delete_by_id.side_effect = BadRequestException(
             details=[
                 BaseExceptionDetail(
@@ -397,26 +384,24 @@ class TestPackageRepositoriesApi(ApiCommonTests):
 
     async def test_delete_resource(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.delete_by_id.side_effect = None
         response = await client.delete(f"{self.BASE_PATH}/100")
         assert response.status_code == 204
 
     async def test_delete_with_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.package_repositories = Mock(PackageRepositoriesService)
         services_mock.package_repositories.delete_by_id.side_effect = [
             PreconditionFailedException(
                 details=[

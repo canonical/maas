@@ -27,7 +27,7 @@ from maasservicelayer.exceptions.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasservicelayer.models.filestorage import FileStorage
-from maasservicelayer.services import FileStorageService, ServiceCollectionV3
+from maasservicelayer.services import FileStorageService
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,
@@ -99,13 +99,12 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_list_files(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.filestorage = Mock(FileStorageService)
         services_mock.filestorage.get_many.return_value = [
             FILE_1,
             FILE_2,
@@ -126,13 +125,12 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_list_files_with_prefix(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.filestorage = Mock(FileStorageService)
         services_mock.filestorage.get_many.return_value = [FILE_3]
 
         response = await client.get(
@@ -148,13 +146,12 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_get_file(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.filestorage = Mock(FileStorageService)
         services_mock.filestorage.get_one.return_value = FILE_1
 
         response = await client.get(
@@ -174,13 +171,12 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_get_file_fails_when_no_match(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.filestorage = Mock(FileStorageService)
         services_mock.filestorage.get_one.return_value = None
 
         response = await client.get(
@@ -197,13 +193,12 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_get_file_attaches_header_on_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.filestorage = Mock(FileStorageService)
         services_mock.filestorage.get_one.return_value = None
 
         response = await client.get(
@@ -223,7 +218,7 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_get_file_by_key(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -232,7 +227,6 @@ class TestFilesApi(ApiCommonTests):
         # If `key_to_get` is None, then there's no way to disambiguate
         # `/files/{key}` and `/files`
         key_to_get = FILE_2.key
-        services_mock.filestorage = Mock(FileStorageService)
         services_mock.filestorage.get_one.return_value = FILE_2
 
         response = await client.get(
@@ -262,13 +256,12 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_get_file_by_key_not_found(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.filestorage = Mock(FileStorageService)
         services_mock.filestorage.get_one.return_value = None
 
         response = await client.get(
@@ -284,7 +277,7 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_create_or_replace_file(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -330,7 +323,7 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_create_or_replace_file_when_filename_contains_slashes(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -348,7 +341,6 @@ class TestFilesApi(ApiCommonTests):
         )
         file_data.seek(0)
 
-        services_mock.filestorage = Mock(FileStorageService)
         services_mock.filestorage.create_or_update.return_value = (
             file_to_return
         )
@@ -376,7 +368,7 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_create_or_replace_file_overwrites_existing_file_with_same_name(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -422,7 +414,7 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_create_or_replace_file_empty_file(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -441,7 +433,6 @@ class TestFilesApi(ApiCommonTests):
             owner_id=0,
         )
 
-        services_mock.filestorage = Mock(FileStorageService)
         services_mock.filestorage.create_or_update.return_value = (
             file_to_return
         )
@@ -460,7 +451,7 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_delete_file(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -468,7 +459,6 @@ class TestFilesApi(ApiCommonTests):
         )
         expected_user_id = 0
 
-        services_mock.filestorage = Mock(FileStorageService)
         services_mock.filestorage.delete_one.return_value = FILE_1
 
         response = await client.delete(
@@ -497,13 +487,12 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_delete_file_with_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.filestorage = Mock(FileStorageService)
         services_mock.filestorage.delete_one.return_value = FILE_1
 
         response = await client.delete(
@@ -531,7 +520,7 @@ class TestFilesApi(ApiCommonTests):
 
     async def test_delete_file_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -544,7 +533,6 @@ class TestFilesApi(ApiCommonTests):
         """
         filename_to_delete = FILE_4.filename
 
-        services_mock.filestorage = Mock(FileStorageService)
         services_mock.filestorage.delete_one.side_effect = NotFoundException(
             details=[
                 BaseExceptionDetail(

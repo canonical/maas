@@ -1,0 +1,11 @@
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
+from maasservicelayer.models.base import generate_builder, MaasBaseModel
+
+
+@generate_builder()
+class NodeUserData(MaasBaseModel):
+    node_id: int
+    data: bytes
+    for_ephemeral_environment: bool

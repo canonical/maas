@@ -4,7 +4,7 @@
 from operator import eq
 from typing import Type
 
-from sqlalchemy import Table
+from sqlalchemy import cast, func, not_, or_, select, Table, Text
 
 from maascommon.enums.script import ScriptType
 from maasservicelayer.db.filters import Clause, ClauseFactory
@@ -45,6 +45,27 @@ class ScriptsClauseFactory(ClauseFactory):
     @classmethod
     def with_tags_overlap(cls, tags: list[str]) -> Clause:
         return Clause(condition=ScriptTable.c.tags.overlap(tags))
+
+    @classmethod
+    def with_tags_overlap_builtin_names(cls) -> Clause:
+        """Match scripts tagged with the name of a built-in script."""
+        builtin = ScriptTable.alias("builtin")
+        builtin_names = (
+            select(func.array_agg(cast(builtin.c.name, Text)))
+            .where(builtin.c.default.is_(True))
+            .scalar_subquery()
+        )
+        return Clause(condition=ScriptTable.c.tags.overlap(builtin_names))
+
+    @classmethod
+    def without_tags_contains(cls, tags: list[str]) -> Clause:
+        """NULL-safe exclude(tags__contains=...)."""
+        return Clause(
+            condition=or_(
+                ScriptTable.c.tags.is_(None),
+                not_(ScriptTable.c.tags.contains(tags)),
+            )
+        )
 
     @classmethod
     def with_empty_for_hardware(cls) -> Clause:

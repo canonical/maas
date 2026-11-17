@@ -446,61 +446,6 @@ DefaultResourceTable = Table(
     Index("maasserver_defaultresource_zone_id_29a5153a", "zone_id"),
 )
 
-DHCPSnippetTable = Table(
-    "maasserver_dhcpsnippet",
-    METADATA,
-    Column("id", BigInteger, Identity(), primary_key=True),
-    Column("created", DateTime(timezone=True), nullable=False),
-    Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(255), nullable=False),
-    Column("description", Text, nullable=False),
-    Column("enabled", Boolean, nullable=False),
-    Column(
-        "node_id",
-        BigInteger,
-        ForeignKey(
-            "maasserver_node.id",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        nullable=True,
-    ),
-    Column(
-        "subnet_id",
-        BigInteger,
-        ForeignKey(
-            "maasserver_subnet.id",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        nullable=True,
-    ),
-    Column(
-        "value_id",
-        BigInteger,
-        ForeignKey(
-            "maasserver_versionedtextfile.id",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        nullable=False,
-    ),
-    Column(
-        "iprange_id",
-        BigInteger,
-        ForeignKey(
-            "maasserver_iprange.id",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        nullable=True,
-    ),
-    Index("maasserver_dhcpsnippet_value_id_58a6a467", "value_id"),
-    Index("maasserver_dhcpsnippet_subnet_id_f626b848", "subnet_id"),
-    Index("maasserver_dhcpsnippet_node_id_8f31c564", "node_id"),
-    Index("maasserver_dhcpsnippet_iprange_id_6a257e4d", "iprange_id"),
-)
-
 DiscoveryView = Table(
     "maasserver_discovery",
     METADATA,
@@ -998,6 +943,32 @@ InterfaceTable = Table(
     Index("maasserver_interface_switch_id_idx", "switch_id"),
 )
 
+InterfaceRelationshipTable = Table(
+    "maasserver_interfacerelationship",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column(
+        "child_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_interface.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
+    ),
+    Column(
+        "parent_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_interface.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
+    ),
+    Index("maasserver_interfacerelationship_child_id_7be5401e", "child_id"),
+    Index("maasserver_interfacerelationship_parent_id_d3c77c37", "parent_id"),
+)
+
 IPRangeTable = Table(
     "maasserver_iprange",
     METADATA,
@@ -1231,6 +1202,23 @@ NodeGroupToRackControllerTable = Table(
     Index(
         "maasserver_nodegrouptorackcontroller_subnet_id_8ed96f7b", "subnet_id"
     ),
+)
+
+NodeUserDataTable = Table(
+    "maasserver_nodeuserdata",
+    METADATA,
+    Column("id", BigInteger, Identity(), primary_key=True),
+    Column("data", Text, nullable=False),
+    Column(
+        "node_id",
+        BigInteger,
+        ForeignKey(
+            "maasserver_node.id", deferrable=True, initially="DEFERRED"
+        ),
+        nullable=False,
+    ),
+    Column("for_ephemeral_environment", Boolean, nullable=False),
+    UniqueConstraint("node_id", "for_ephemeral_environment"),
 )
 
 NodeTable = Table(

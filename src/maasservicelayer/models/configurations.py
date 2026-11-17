@@ -14,6 +14,7 @@ from pydantic import (
     Field,
     field_validator,
     IPvAnyAddress,
+    ValidationError,
 )
 
 from maascommon.constants import NODE_TIMEOUT
@@ -29,6 +30,11 @@ from maascommon.enums.ipmi import (
     IPMIWorkaroundFlags,
 )
 from maascommon.enums.storage import StorageLayoutEnum
+from maascommon.fips import (
+    default_ipmi_cipher_suite_id,
+    FIPS_ALLOWED_IPMI_CIPHERS,
+    is_fips_enabled,
+)
 from maascommon.osystem import UbuntuOS
 from maascommon.utils.dns import NAMESPEC, validate_hostname
 from maascommon.utils.time import systemd_interval_to_seconds
@@ -821,7 +827,9 @@ class MAASAutoIPMIKGBmcKeyConfig(Config[str | None]):
 
 class MAASAutoIPMICipherSuiteIDConfig(Config[IPMICipherSuiteID | None]):
     name: ClassVar[str] = "maas_auto_ipmi_cipher_suite_id"
-    default: ClassVar[IPMICipherSuiteID | None] = IPMICipherSuiteID.SUITE_3
+    default: ClassVar[IPMICipherSuiteID | None] = (
+        default_ipmi_cipher_suite_id()
+    )
     description: ClassVar[str] = "MAAS IPMI Default Cipher Suite ID"
     help_text: ClassVar[str | None] = (
         "The default IPMI cipher suite ID to use when connecting to the BMC via ipmitools"
@@ -829,6 +837,23 @@ class MAASAutoIPMICipherSuiteIDConfig(Config[IPMICipherSuiteID | None]):
     value: IPMICipherSuiteID | None = Field(
         default=default, description=description
     )
+
+    @field_validator("value", mode="after")
+    @classmethod
+    def validate_value(
+        cls, value: IPMICipherSuiteID | None
+    ) -> IPMICipherSuiteID | None:
+        if value is None or not is_fips_enabled():
+            return value
+        if value not in FIPS_ALLOWED_IPMI_CIPHERS:
+            allowed = ", ".join(sorted(FIPS_ALLOWED_IPMI_CIPHERS))
+            suite = f"'{value}'" if value else "'' (freeipmi-tools default)"
+            raise ValueError(
+                f"IPMI cipher suite {suite} is not FIPS-approved, and FIPS "
+                f"mode is enabled on this host. Use {allowed}, or unset the "
+                "value to use the default."
+            )
+        return value
 
 
 class MAASAutoIPMIWorkaroundFlagsConfig(
@@ -1368,3 +1393,19 @@ class ConfigFactory:
         if model:
             return model
         raise ValueError(f"The configuration '{name}' is unknown.")
+
+    @staticmethod
+    def get_validator_message(error: ValidationError) -> str | None:
+        """Return the message raised by a config model's custom validator.
+
+        Returns None when the value failed for another reason, e.g. a type
+        mismatch.
+        """
+        return next(
+            (
+                str(err["ctx"]["error"])
+                for err in error.errors()
+                if err["type"] == "value_error" and "ctx" in err
+            ),
+            None,
+        )

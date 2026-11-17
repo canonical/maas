@@ -22,7 +22,6 @@ from maasserver.dhcpd.config import _get_addresses
 from maasserver.dhcpd.testing.config import (
     fix_shared_networks_failover,
     make_failover_peer_config,
-    make_global_dhcp_snippets,
     make_host,
     make_shared_network,
 )
@@ -73,7 +72,6 @@ def make_sample_params_only(
         "failover_peers": failover_peers,
         "shared_networks": shared_networks,
         "hosts": [make_host(ipv6=ipv6) for _ in range(3)],
-        "global_dhcp_snippets": make_global_dhcp_snippets(),
         "ipv6": ipv6,
     }
 
@@ -388,30 +386,6 @@ class TestGetConfig(MAASTestCase):
             self.assertIn(host["mac"], config_output)
             self.assertIn(host["ip"], config_output)
 
-    def test_renders_global_dhcp_snippets(self):
-        params = make_sample_params(self, ipv6=self.ipv6)
-        config_output = config.get_config(self.template, **params)
-        validate_dhcpd_configuration(self, config_output, self.ipv6)
-        for dhcp_snippet in params["global_dhcp_snippets"]:
-            self.assertIn(dhcp_snippet["value"], config_output)
-
-    def test_renders_subnet_dhcp_snippets(self):
-        params = make_sample_params(self, ipv6=self.ipv6)
-        config_output = config.get_config(self.template, **params)
-        validate_dhcpd_configuration(self, config_output, self.ipv6)
-        for shared_network in params["shared_networks"]:
-            for subnet in shared_network["subnets"]:
-                for dhcp_snippet in subnet["dhcp_snippets"]:
-                    self.assertIn(dhcp_snippet["value"], config_output)
-
-    def test_renders_node_dhcp_snippets(self):
-        params = make_sample_params(self, ipv6=self.ipv6)
-        config_output = config.get_config(self.template, **params)
-        validate_dhcpd_configuration(self, config_output, self.ipv6)
-        for host in params["hosts"]:
-            for dhcp_snippet in host["dhcp_snippets"]:
-                self.assertIn(dhcp_snippet["value"], config_output)
-
     def test_renders_subnet_cidr(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         config_output = config.get_config(self.template, **params)
@@ -443,25 +417,21 @@ class TestGetConfig(MAASTestCase):
                 "host": "valid-gnat-enp5s0",
                 "mac": shared_mac,
                 "ip": "2001:db8:1::10" if self.ipv6 else "10.178.148.10",
-                "dhcp_snippets": [],
             },
             {
                 "host": "valid-gnat-enp5s0-100",
                 "mac": shared_mac,
                 "ip": "2001:db8:2::10" if self.ipv6 else "10.20.0.10",
-                "dhcp_snippets": [],
             },
             {
                 "host": "valid-gnat-enp5s0-200",
                 "mac": shared_mac,
                 "ip": "2001:db8:3::10" if self.ipv6 else "10.30.0.10",
-                "dhcp_snippets": [],
             },
             {
                 "host": "valid-gnat-enp5s0-300",
                 "mac": shared_mac,
                 "ip": "2001:db8:4::10" if self.ipv6 else "10.40.0.10",
-                "dhcp_snippets": [],
             },
         ]
         params["hosts"].extend(vlan_hosts)
@@ -505,19 +475,16 @@ class TestGetConfig(MAASTestCase):
                 "host": "rsvd-4",
                 "mac": reserved_mac,
                 "ip": "2001:db8:2::30" if self.ipv6 else "10.20.0.30",
-                "dhcp_snippets": [],
             },
             {
                 "host": "rsvd-5",
                 "mac": reserved_mac,
                 "ip": "2001:db8:3::30" if self.ipv6 else "10.30.0.30",
-                "dhcp_snippets": [],
             },
             {
                 "host": "rsvd-6",
                 "mac": reserved_mac,
                 "ip": "2001:db8:4::30" if self.ipv6 else "10.40.0.30",
-                "dhcp_snippets": [],
             },
         ]
         params["hosts"].extend(reserved_hosts)
@@ -561,13 +528,11 @@ class TestGetConfig(MAASTestCase):
                 "host": "machine-eth0",
                 "mac": shared_mac,
                 "ip": "2001:db8:1::20" if self.ipv6 else "10.178.148.20",
-                "dhcp_snippets": [],
             },
             {
                 "host": "machine-eth0-100",
                 "mac": shared_mac,
                 "ip": "2001:db8:2::20" if self.ipv6 else "10.20.0.20",
-                "dhcp_snippets": [],
             },
         ]
         params["hosts"].extend(hosts_with_shared_mac)
@@ -595,70 +560,6 @@ class TestGetConfig(MAASTestCase):
                 host_names,
                 f"Expected host name '{expected_name}' not found",
             )
-
-    def test_vlan_interface_hosts_maintain_dhcp_snippets(self):
-        """Test DHCP snippets preserved for VLAN interface hosts.
-
-        When generating multiple host declarations for VLAN interfaces,
-        each should maintain its own DHCP snippets if present.
-        """
-        params = make_sample_params(self, ipv6=self.ipv6)
-
-        shared_mac = "00:16:3e:11:22:33"
-        vlan_hosts = [
-            {
-                "host": "node-eth0",
-                "mac": shared_mac,
-                "ip": "2001:db8:1::60" if self.ipv6 else "10.178.148.60",
-                "dhcp_snippets": [
-                    {
-                        "name": "snippet-vlan0",
-                        "description": "Snippet for untagged VLAN",
-                        "value": "# VLAN 0 configuration",
-                    }
-                ],
-            },
-            {
-                "host": "node-eth0-100",
-                "mac": shared_mac,
-                "ip": "2001:db8:2::60" if self.ipv6 else "10.20.0.60",
-                "dhcp_snippets": [
-                    {
-                        "name": "snippet-vlan100",
-                        "description": "Snippet for VLAN 100",
-                        "value": "# VLAN 100 configuration",
-                    }
-                ],
-            },
-        ]
-        params["hosts"].extend(vlan_hosts)
-
-        config_output = config.get_config(self.template, **params)
-        validate_dhcpd_configuration(self, config_output, self.ipv6)
-
-        # Verify each snippet is present in configuration
-        for host in vlan_hosts:
-            expected_hostname = (
-                f"{host['host']}-{shared_mac.replace(':', '-')}"
-            )
-            host_start = config_output.find(f"host {expected_hostname}")
-            self.assertNotEqual(
-                host_start,
-                -1,
-                f"Host {expected_hostname} not found in configuration",
-            )
-
-            # Verify snippets appear after their host declaration
-            for dhcp_snippet in host["dhcp_snippets"]:
-                snippet_pos = config_output.find(
-                    dhcp_snippet["value"], host_start
-                )
-                self.assertNotEqual(
-                    snippet_pos,
-                    -1,
-                    f"DHCP snippet '{dhcp_snippet['value']}' not found "
-                    f"for host {expected_hostname}",
-                )
 
 
 class Test_process_shared_network_v6(MAASTestCase):
@@ -738,7 +639,6 @@ class Test_process_shared_network_v6(MAASTestCase):
                         "router_ip": "fe80::1",
                         "subnet": "2001:db8:3::",
                         "subnet_cidr": "2001:db8:3::/64",
-                        "dhcp_snippets": [],
                     }
                 ],
             }

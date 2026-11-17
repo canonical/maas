@@ -1,8 +1,6 @@
 #  Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import Mock
-
 from pydantic import ValidationError
 import pytest
 
@@ -20,21 +18,14 @@ from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.service_status import ServiceStatus
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.models.vlans import Vlan
-from maasservicelayer.services import (
-    IPRangesService,
-    NodesService,
-    ServiceCollectionV3,
-    ServiceStatusService,
-    SubnetsService,
-    VlansService,
-)
+from tests.fixtures import create_services_mock
 
 
 class TestVlanCreateRequest:
     @pytest.mark.asyncio
     async def test_to_builder(self):
         resource = await VlanCreateRequest(vid=0).to_builder(
-            Mock(ServiceCollectionV3)
+            create_services_mock()
         )
         assert resource.dhcp_on is False
         assert resource.vid == 0
@@ -81,14 +72,14 @@ class TestVlanUpdateRequest:
     async def test_required_params(self):
         builder = await VlanUpdateRequest(
             vid=0, dhcp_on=False, fabric_id=0
-        ).to_builder(Mock(ServiceCollectionV3), 0)
+        ).to_builder(create_services_mock(), 0)
         assert builder.dhcp_on is False
         assert builder.vid == 0
 
     async def test_dhcp_on_is_not_null(self):
         with pytest.raises(ValidationError) as e:
             await VlanUpdateRequest(vid=0, fabric_id=0).to_builder(
-                Mock(ServiceCollectionV3), 0
+                create_services_mock(), 0
             )
         assert len(e.value.errors()) == 1
         assert e.value.errors()[0]["loc"][0] == "dhcp_on"
@@ -97,7 +88,7 @@ class TestVlanUpdateRequest:
         with pytest.raises(ValidationException) as e:
             await VlanUpdateRequest(
                 vid=0, dhcp_on=True, relay_vlan_id=1, fabric_id=0
-            ).to_builder(Mock(ServiceCollectionV3), 0)
+            ).to_builder(create_services_mock(), 0)
         assert len(e.value.details) == 1
         assert e.value.details[0].field == "relay_vlan_id"
         assert (
@@ -109,7 +100,7 @@ class TestVlanUpdateRequest:
         with pytest.raises(ValidationException) as e:
             await VlanUpdateRequest(
                 vid=0, dhcp_on=False, relay_vlan_id=0, fabric_id=0
-            ).to_builder(Mock(ServiceCollectionV3), 0)
+            ).to_builder(create_services_mock(), 0)
         assert len(e.value.details) == 1
         assert e.value.details[0].field == "relay_vlan_id"
         assert (
@@ -125,7 +116,7 @@ class TestVlanUpdateRequest:
                 relay_vlan_id=1,
                 primary_rack_id=0,
                 fabric_id=0,
-            ).to_builder(Mock(ServiceCollectionV3), 0)
+            ).to_builder(create_services_mock(), 0)
         assert len(e.value.details) == 1
         assert e.value.details[0].field == "primary_rack_id"
         assert (
@@ -141,7 +132,7 @@ class TestVlanUpdateRequest:
                 relay_vlan_id=1,
                 secondary_rack_id=0,
                 fabric_id=0,
-            ).to_builder(Mock(ServiceCollectionV3), 0)
+            ).to_builder(create_services_mock(), 0)
         assert len(e.value.details) == 1
         assert e.value.details[0].field == "secondary_rack_id"
         assert (
@@ -150,8 +141,7 @@ class TestVlanUpdateRequest:
         )
 
     async def test_relay_vlan_does_not_exist(self):
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.vlans = Mock(VlansService)
+        services_mock = create_services_mock()
         services_mock.vlans.get_one.return_value = None
         with pytest.raises(ValidationException) as e:
             await VlanUpdateRequest(
@@ -165,8 +155,7 @@ class TestVlanUpdateRequest:
         )
 
     async def test_relay_vlan_already_relayed(self):
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.vlans = Mock(VlansService)
+        services_mock = create_services_mock()
         services_mock.vlans.get_one.return_value = Vlan(
             id=2,
             vid=0,
@@ -191,7 +180,7 @@ class TestVlanUpdateRequest:
         with pytest.raises(ValidationException) as e:
             await VlanUpdateRequest(
                 vid=0, dhcp_on=True, fabric_id=0
-            ).to_builder(Mock(ServiceCollectionV3), 0)
+            ).to_builder(create_services_mock(), 0)
         assert len(e.value.details) == 1
         assert e.value.details[0].field == "primary_rack_id"
         assert (
@@ -207,7 +196,7 @@ class TestVlanUpdateRequest:
                 primary_rack_id=0,
                 secondary_rack_id=0,
                 fabric_id=0,
-            ).to_builder(Mock(ServiceCollectionV3), 0)
+            ).to_builder(create_services_mock(), 0)
         assert len(e.value.details) == 1
         # assert e.value.details[0].field == "secondary_rack_id"
         assert (
@@ -216,8 +205,7 @@ class TestVlanUpdateRequest:
         )
 
     async def test_dhcp_on_unknown_primary(self):
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.nodes = Mock(NodesService)
+        services_mock = create_services_mock()
         services_mock.nodes.get_many.return_value = []
         with pytest.raises(ValidationException) as e:
             await VlanUpdateRequest(
@@ -231,8 +219,7 @@ class TestVlanUpdateRequest:
         )
 
     async def test_dhcp_on_unknown_secondary(self):
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.nodes = Mock(NodesService)
+        services_mock = create_services_mock()
         services_mock.nodes.get_many.return_value = [
             Node(
                 id=0,
@@ -259,8 +246,7 @@ class TestVlanUpdateRequest:
         )
 
     async def test_dhcp_on_without_dynamic_ranges(self):
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.nodes = Mock(NodesService)
+        services_mock = create_services_mock()
         services_mock.nodes.get_many.return_value = [
             Node(
                 id=0,
@@ -271,7 +257,6 @@ class TestVlanUpdateRequest:
                 hostname="hostname",
             )
         ]
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_many.return_value = [
             Subnet(
                 id=0,
@@ -285,7 +270,6 @@ class TestVlanUpdateRequest:
                 vlan_id=0,
             )
         ]
-        services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_many.return_value = []
 
         with pytest.raises(ValidationException) as e:
@@ -300,8 +284,7 @@ class TestVlanUpdateRequest:
         )
 
     async def test_dhcp_on_when_primary_is_dead(self):
-        services_mock = Mock(ServiceCollectionV3)
-        services_mock.nodes = Mock(NodesService)
+        services_mock = create_services_mock()
         services_mock.nodes.get_many.return_value = [
             Node(
                 id=0,
@@ -320,7 +303,6 @@ class TestVlanUpdateRequest:
                 hostname="hostname2",
             ),
         ]
-        services_mock.subnets = Mock(SubnetsService)
         services_mock.subnets.get_many.return_value = [
             Subnet(
                 id=0,
@@ -334,7 +316,6 @@ class TestVlanUpdateRequest:
                 vlan_id=0,
             )
         ]
-        services_mock.ipranges = Mock(IPRangesService)
         services_mock.ipranges.get_many.return_value = [
             IPRange(
                 id=0,
@@ -345,7 +326,6 @@ class TestVlanUpdateRequest:
                 user_id=0,
             )
         ]
-        services_mock.vlans = Mock(VlansService)
         services_mock.vlans.get_by_id.return_value = Vlan(
             id=0,
             vid=0,
@@ -357,7 +337,6 @@ class TestVlanUpdateRequest:
             secondary_rack_id=1,
         )
 
-        services_mock.service_status = Mock(ServiceStatusService)
         services_mock.service_status.get_one.return_value = ServiceStatus(
             id=0,
             name=ServiceName.RACKD,

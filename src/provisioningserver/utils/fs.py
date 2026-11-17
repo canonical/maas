@@ -28,9 +28,9 @@ from provisioningserver.utils.twisted import retries
 def get_maas_common_command():
     """Return path to the maas-rack command.
 
-    In production mode this will just return 'maas-rack', but in
-    development mode it will return the path for the current development
-    environment.
+    Inside the snap this returns the path to `maas-rack`, but in
+    development mode it will return the path to `maas-common` in the
+    current development environment.
     """
     # Avoid circular imports.
     from provisioningserver.config import is_dev_environment

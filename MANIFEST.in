@@ -4,6 +4,7 @@ graft src/metadataserver/user_data/templates
 graft src/provisioningserver/templates
 graft package-files
 include src/provisioningserver/drivers/power/*.xml
+include src/provisioningserver/drivers/power/*.cnf
 include src/provisioningserver/refresh/*maas-*
 include src/maasserver/storage_custom_schema.yaml
 include src/metadataserver/builtin_scripts/*/*.py

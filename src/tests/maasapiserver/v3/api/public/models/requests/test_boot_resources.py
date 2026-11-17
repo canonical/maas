@@ -1,6 +1,6 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -20,20 +20,13 @@ from maasservicelayer.db.repositories.bootresources import (
 from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsources import BootSourceCacheOSRelease
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.bootresources import BootResourceService
-from maasservicelayer.services.bootsourcecache import BootSourceCacheService
-from maasservicelayer.services.configurations import ConfigurationsService
 from maastesting.factory import factory
+from tests.fixtures import create_services_mock
 
 
 @pytest.fixture
 def mock_services():
-    services_mock = Mock(ServiceCollectionV3)
-    services_mock.boot_source_cache = Mock(BootSourceCacheService)
-    services_mock.boot_resources = Mock(BootResourceService)
-    services_mock.configurations = Mock(ConfigurationsService)
-    return services_mock
+    return create_services_mock()
 
 
 class TestBootResourceCreateRequest:

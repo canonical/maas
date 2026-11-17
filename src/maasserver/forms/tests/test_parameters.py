@@ -3,6 +3,7 @@
 
 import random
 
+from maascommon.enums.ipmi import IPMICipherSuiteID
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
 from maasserver.forms.parameters import (
     DEFAULTS_FROM_MAAS_CONFIG,
@@ -11,7 +12,10 @@ from maasserver.forms.parameters import (
 from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasservicelayer.models.configurations import ConfigFactory
+from maasservicelayer.models.configurations import (
+    ConfigFactory,
+    MAASAutoIPMICipherSuiteIDConfig,
+)
 from provisioningserver.drivers.power.ipmi import IPMI_PRIVILEGE_LEVEL_CHOICES
 
 
@@ -1138,6 +1142,29 @@ class TestParametersForm(MAASServerTestCase):
             form.cleaned_data["input"][0]["maas_auto_ipmi_k_g_bmc_key"][
                 "value"
             ],
+        )
+
+    def test_input_cipher_suite_id_unset_uses_config_default(self):
+        self.patch(
+            MAASAutoIPMICipherSuiteIDConfig,
+            "default",
+            IPMICipherSuiteID.SUITE_17,
+        )
+        Config.objects.set_config(MAASAutoIPMICipherSuiteIDConfig.name, None)
+        script = factory.make_Script(
+            parameters={
+                MAASAutoIPMICipherSuiteIDConfig.name: {"type": "string"}
+            }
+        )
+
+        form = ParametersForm(data={}, script=script, node=factory.make_Node())
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(
+            "17",
+            form.cleaned_data["input"][0][
+                MAASAutoIPMICipherSuiteIDConfig.name
+            ]["value"],
         )
 
     def test_input_string_required(self):

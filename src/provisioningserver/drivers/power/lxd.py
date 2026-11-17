@@ -161,7 +161,10 @@ class LXDPowerDriver(PowerDriver):
         instance_name = context.get("instance_name")
         with self._get_client(system_id, context) as client:
             try:
-                yield client.virtual_machines.get(instance_name)
+                # Use the /1.0/instances endpoint rather than
+                # /1.0/virtual-machines, which was removed in LXD 6.7.
+                # The instances endpoint is available since LXD 4.0.
+                yield client.instances.get(instance_name)
             except NotFound:
                 if fail:
                     raise LXDPowerDriverError(  # noqa: B904

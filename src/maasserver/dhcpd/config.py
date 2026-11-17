@@ -349,7 +349,6 @@ def _get_addresses(*hostnames):
 
 def get_config(
     template_name: str,
-    global_dhcp_snippets: Sequence[dict],
     failover_peers: Sequence[dict],
     shared_networks: Sequence[dict],
     hosts: Sequence[dict],
@@ -366,7 +365,6 @@ def get_config(
     if ipv6:
         return get_config_v6(
             template_name,
-            global_dhcp_snippets,
             failover_peers,
             shared_networks,
             hosts,
@@ -375,7 +373,6 @@ def get_config(
     else:
         return get_config_v4(
             template_name,
-            global_dhcp_snippets,
             failover_peers,
             shared_networks,
             hosts,
@@ -401,7 +398,6 @@ def normalise_any_iterable_to_quoted_comma_list(iterable):
 
 def get_config_v4(
     template_name: str,
-    global_dhcp_snippets: Sequence[dict],
     failover_peers: Sequence[dict],
     shared_networks: Sequence[dict],
     hosts: Sequence[dict],
@@ -432,7 +428,6 @@ def get_config_v4(
 
     try:
         return template.substitute(
-            global_dhcp_snippets=global_dhcp_snippets,
             hosts=hosts,
             failover_peers=failover_peers,
             shared_networks=shared_networks,
@@ -449,7 +444,6 @@ def get_config_v4(
 
 def get_config_v6(
     template_name: str,
-    global_dhcp_snippets: Sequence[dict],
     failover_peers: Sequence[dict],
     shared_networks: Sequence[dict],
     hosts: Sequence[dict],
@@ -475,7 +469,6 @@ def get_config_v6(
 
     try:
         return template.substitute(
-            global_dhcp_snippets=global_dhcp_snippets,
             hosts=hosts,
             failover_peers=failover_peers,
             shared_networks=shared_networks,
