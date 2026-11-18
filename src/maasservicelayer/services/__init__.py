@@ -145,6 +145,7 @@ from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionStatusService,
 )
 from maasservicelayer.services.bootstraptoken import BootstrapTokensService
+from maasservicelayer.services.commissioning import CommissioningService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.consumers import ConsumersService
 from maasservicelayer.services.database_configurations import (
@@ -271,6 +272,7 @@ class ServiceCollectionV3:
     boot_source_selection_status: BootSourceSelectionStatusService
     bootstraptokens: BootstrapTokensService
     database_configurations: DatabaseConfigurationsService
+    commissioning: CommissioningService
     configurations: ConfigurationsService
     consumers: ConsumersService
     dhcp: DHCPService
@@ -794,5 +796,11 @@ class ServiceCollectionV3:
         services.nodeuserdata = NodeUserDataService(
             context=context,
             nodeuserdata_repository=NodeUserDataRepository(context),
+        )
+        services.commissioning = CommissioningService(
+            context=context,
+            interfaces_service=services.interfaces,
+            nodes_service=services.nodes,
+            staticipaddress_service=services.staticipaddress,
         )
         return services

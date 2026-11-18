@@ -274,8 +274,6 @@ async def main() -> None:
                 configure_activity.get_resolver_config,
                 # Commissioning activities
                 commissioning_activity.prepare_commissioning,
-                commissioning_activity.resolve_power_rack_target,
-                commissioning_activity.finalize_commissioning,
                 # Deploy activities
                 deploy_activity.set_node_status,
                 deploy_activity.get_boot_order,

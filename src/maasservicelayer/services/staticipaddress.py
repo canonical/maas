@@ -199,6 +199,16 @@ class StaticIPAddressService(
             await self.post_update_many_hook(updated_resources)
         return updated_resources
 
+    async def get_ids_referenced_by_bmcs(
+        self, staticipaddress_ids: list[int]
+    ) -> set[int]:
+        return await self.repository.get_ids_referenced_by_bmcs(
+            staticipaddress_ids
+        )
+
+    async def unlink_from_interfaces(self, staticipaddress_id: int) -> None:
+        await self.repository.unlink_from_interfaces(staticipaddress_id)
+
     async def get_ips_for_interfaces_without_other_links(
         self, interface_ids: list[int]
     ) -> list[StaticIPAddress]:

@@ -5,9 +5,7 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 from maascommon.workflows.commission import (
-    COMMISSION_N_WORKFLOW_NAME,
     COMMISSION_WORKFLOW_NAME,
-    CommissionNParam,
     CommissionParam,
 )
 from maastemporalworker.workflow.activity import ActivityBase
@@ -20,14 +18,6 @@ from maastemporalworker.workflow.utils import (
 class CommissionActivity(ActivityBase):
     @activity_defn_with_context
     def prepare_commissioning(self) -> None:
-        pass
-
-    @activity_defn_with_context
-    def resolve_power_rack_target(self) -> None:
-        pass
-
-    @activity_defn_with_context
-    def finalize_commissioning(self) -> None:
         pass
 
 

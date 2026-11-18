@@ -14,6 +14,7 @@ from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
+    BMCTable,
     InterfaceIPAddressTable,
     InterfaceTable,
     NodeConfigTable,
@@ -280,6 +281,22 @@ class StaticIPAddressRepository(BaseRepository):
             )
         )
         await self.execute_stmt(stmt)
+
+    async def get_ids_referenced_by_bmcs(
+        self, staticipaddress_ids: list[int]
+    ) -> set[int]:
+        """Return the subset of the given StaticIPAddress ids that are used
+        as the IP address of at least one BMC, i.e. that appear in
+        `maasserver_bmc.ip_address_id`."""
+        if not staticipaddress_ids:
+            return set()
+        stmt = (
+            select(BMCTable.c.ip_address_id)
+            .where(BMCTable.c.ip_address_id.in_(staticipaddress_ids))
+            .distinct()
+        )
+        result = (await self.execute_stmt(stmt)).all()
+        return {row[0] for row in result}
 
     async def get_ips_for_interfaces_without_other_links(
         self, interface_ids: list[int]
