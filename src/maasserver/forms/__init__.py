@@ -2629,7 +2629,7 @@ class BootResourceForm(MAASModelForm):
                 name = release
             elif osystem not in supported_osystems:
                 raise ValidationError(
-                    "Unsupport operating system %s, supported operating "
+                    "Unsupported operating system %s, supported operating "
                     "systems: %s" % (osystem, supported_osystems)
                 )
 
