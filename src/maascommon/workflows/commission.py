@@ -27,6 +27,7 @@ class CommissionResult:
     system_id: str
     status: str
 
+
 @dataclass
 class CommissionNParam:
     params: list[CommissionParam]
