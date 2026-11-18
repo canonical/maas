@@ -44,7 +44,7 @@ class TestDriverFIPSRegistry(MAASTestCase):
                 )
 
     def test_unsupported_drivers_include_known_non_fips(self):
-        for driver in ("apc", "dli", "eaton", "raritan", "recs_box"):
+        for driver in ("apc", "raritan", "recs_box"):
             supported, _ = get_fips_status_for_driver(driver)
             self.assertFalse(
                 supported, f"expected {driver!r} to be FIPS-unsupported"

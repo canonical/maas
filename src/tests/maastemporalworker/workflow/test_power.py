@@ -50,9 +50,12 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 
 class TestFetchTrustedSshHostKeys:
-    def test_non_ssh_driver_returns_none(self):
+    @pytest.mark.parametrize(
+        "driver_type", ["redfish", "mscm", "nova", "wedge"]
+    )
+    def test_non_ssh_driver_returns_none(self, driver_type):
         result = power_workflow.fetch_trusted_ssh_host_keys(
-            "redfish", {"power_address": "10.0.0.1"}
+            driver_type, {"power_address": "10.0.0.1"}
         )
         assert result is None
 
@@ -63,7 +66,7 @@ class TestFetchTrustedSshHostKeys:
         assert result is None
 
     def test_ssh_driver_no_power_address_returns_none(self):
-        result = power_workflow.fetch_trusted_ssh_host_keys("wedge", {})
+        result = power_workflow.fetch_trusted_ssh_host_keys("hmc", {})
         assert result is None
 
     def test_ssh_driver_no_keys_in_db_returns_none(self, mocker):
@@ -76,7 +79,7 @@ class TestFetchTrustedSshHostKeys:
             mocked_manager,
         )
         result = power_workflow.fetch_trusted_ssh_host_keys(
-            "wedge", {"power_address": "10.0.0.1"}
+            "hmc", {"power_address": "10.0.0.1"}
         )
         assert result is None
 
@@ -95,7 +98,7 @@ class TestFetchTrustedSshHostKeys:
             mocked_manager,
         )
         result = power_workflow.fetch_trusted_ssh_host_keys(
-            "wedge", {"power_address": "10.0.0.1"}
+            "hmc", {"power_address": "10.0.0.1"}
         )
         assert len(result) == 2
         assert result[0] == TrustedSshHostKeyEntry(
@@ -310,7 +313,7 @@ class TestGetTemporalQueueForMachine:
     ):
         machine = factory.make_Machine()
         params = namedtuple("params", ["power_type", "power_parameters"])(
-            "wedge", {"power_address": "10.0.0.1"}
+            "hmc", {"power_address": "10.0.0.1"}
         )
 
         mocked_get_temporal_task_queue_for_bmc = mocker.patch.object(
