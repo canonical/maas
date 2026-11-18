@@ -371,20 +371,16 @@ def _prepare_status_events(nodes):
     """Cache the latest status event of `nodes`, see `Node.status_event`."""
     latest_event = (
         Event.objects.filter(
-            node_id=OuterRef("id"), type__level__gte=logging.INFO
+            node_id=OuterRef("node_id"), type__level__gte=logging.INFO
         )
         .order_by("-created", "-id")
         .values("id")[:1]
     )
-    latest_event_ids = (
-        Node.objects.filter(id__in=[node.id for node in nodes])
-        .annotate(event_id=Subquery(latest_event))
-        .values("event_id")
-    )
     events = {
         event.node_id: event
         for event in Event.objects.filter(
-            id__in=latest_event_ids
+            node_id__in=[node.id for node in nodes],
+            id=Subquery(latest_event),
         ).select_related("type")
     }
     for node in nodes:
