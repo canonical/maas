@@ -59,9 +59,7 @@ def construct(self):
     `construct` (working out the rendering plan and dispatching every value,
     including plain strings and numbers, again for each instance) cost about
     4.4s on top of the ~2.4s this version takes to render the same output,
-    nearly doubling the render time. Reverting just this function (leaving
-    the query-count fixes in place) takes the listing from 5.6s to 9.3s for
-    the same 32 queries and byte-identical output.
+    nearly doubling the render time.
     """
     stack = self.stack = []
     anonymous = self.anonymous
