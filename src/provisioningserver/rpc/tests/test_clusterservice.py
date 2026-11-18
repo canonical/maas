@@ -59,15 +59,14 @@ from provisioningserver.rpc.clusterservice import (
     get_scan_all_networks_args,
     spawnProcessAndNullifyStdout,
 )
-from provisioningserver.rpc.common import Client
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing import (
     call_responder,
     MockLiveClusterToRegionRPCFixture,
 )
 from provisioningserver.rpc.testing.doubles import (
-    FakeBusyConnectionToRegion,
     FakeConnection,
+    FakeConnectionToRegion,
 )
 from provisioningserver.security import fernet_encrypt_psk
 from provisioningserver.testing.config import ClusterConfigurationFixture
@@ -161,10 +160,8 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
         )
 
 
-def make_inert_client_service(max_idle_conns=1, max_conns=1, keepalive=1):
-    service = ClusterClientService(
-        Clock(), max_idle_conns, max_conns, keepalive
-    )
+def make_inert_client_service():
+    service = ClusterClientService(Clock())
     # ClusterClientService's superclass, TimerService, creates a
     # LoopingCall with now=True. We neuter it here to allow
     # observation of the behaviour of _update_interval() for
@@ -904,37 +901,6 @@ class TestClusterClientService(MAASTestCase):
         service.add_connection(endpoint, connection)
         service._update_saved_rpc_info_state.assert_called_once_with()
 
-    @inlineCallbacks
-    def test_add_connection_creates_max_idle_connections(self):
-        service = make_inert_client_service(max_idle_conns=2)
-        service.startService()
-        endpoint = Mock()
-        connection = Mock()
-        connection.eventloop = endpoint
-        connection.address = (":::ffff", 2222)
-
-        @inlineCallbacks
-        def mock_connect(ev, addr):
-            new_conn = Mock()
-            new_conn.eventloop = ev
-            new_conn.address = addr
-            yield service.add_connection(ev, new_conn)
-            return new_conn
-
-        self.patch(service.connections, "connect").side_effect = mock_connect
-        self.patch_autospec(service, "_update_saved_rpc_info_state")
-        yield service.add_connection(endpoint, connection)
-        self.assertEqual(
-            len(
-                [
-                    conn
-                    for conns in service.connections.values()
-                    for conn in conns
-                ]
-            ),
-            service.connections._max_idle_connections,
-        )
-
     def test_remove_connection_removes_from_try_connections(self):
         service = make_inert_client_service()
         service.startService()
@@ -983,81 +949,19 @@ class TestClusterClientService(MAASTestCase):
         service.connections.connections = {}
         self.assertRaises(exceptions.NoConnectionsAvailable, service.getClient)
 
-    def test_getClient_returns_a_busy_connection_when_busy_ok_is_True(self):
-        service = ClusterClientService(Clock(), max_conns=1)
-        service.connections.connections = {
-            sentinel.eventloop01: [FakeBusyConnectionToRegion()],
-            sentinel.eventloop02: [FakeBusyConnectionToRegion()],
-            sentinel.eventloop03: [FakeBusyConnectionToRegion()],
-        }
-        client = service.getClient(busy_ok=True)
-        self.assertTrue(client._conn.in_use)
-        self.assertIn(
-            client,
-            {
-                common.Client(conn)
-                for conns in service.connections.values()
-                for conn in conns
-            },
-        )
-
     @inlineCallbacks
-    def test_getClientNow_scales_connections_when_busy(self):
-        service = ClusterClientService(Clock(), max_conns=2)
-        service.connections.connections = {
-            sentinel.eventloop01: [FakeBusyConnectionToRegion()],
-            sentinel.eventloop02: [FakeBusyConnectionToRegion()],
-            sentinel.eventloop03: [FakeBusyConnectionToRegion()],
-        }
-        self.patch(service.connections, "connect").return_value = succeed(
-            FakeConnection()
-        )
+    def test_getClientNow_reuses_connection_with_calls_in_flight(self):
+        service = ClusterClientService(Clock())
+        connection = FakeConnectionToRegion()
+        connection.callRemote = lambda cmd, **kwargs: Deferred()
+        service.connections.connections = {sentinel.eventloop: [connection]}
+        connect = self.patch(service.connections, "connect")
 
-        # skip the connectionMade logic for this test
-        @inlineCallbacks
-        def mock_scale_up_connections():
-            for ev, conns in service.connections.items():
-                if len(conns) < service.connections._max_connections:
-                    conn = yield service.connections.connect()
-                    service.connections[ev].append(conn)
-                    return Client(conn)
+        common.Client(connection)(common.Ping, _timeout=None)
+        client = yield service.getClientNow()
 
-        scale_up = self.patch(service.connections, "scale_up_connections")
-        scale_up.side_effect = mock_scale_up_connections
-
-        original_conns = [
-            conn for conns in service.connections.values() for conn in conns
-        ]
-        new_client = yield service.getClientNow()
-        new_conn = new_client._conn
-        scale_up.assert_called_once()
-        self.assertIsNotNone(new_conn)
-        self.assertNotIn(new_conn, original_conns)
-        self.assertIn(
-            new_conn,
-            [conn for conns in service.connections.values() for conn in conns],
-        )
-
-    @inlineCallbacks
-    def test_getClientNow_returns_an_existing_connection_when_max_are_open(
-        self,
-    ):
-        service = ClusterClientService(Clock(), max_conns=1)
-        service.connections.connections = {
-            sentinel.eventloop01: [FakeBusyConnectionToRegion()],
-            sentinel.eventloop02: [FakeBusyConnectionToRegion()],
-            sentinel.eventloop03: [FakeBusyConnectionToRegion()],
-        }
-        self.patch(service, "_make_connection").return_value = succeed(
-            FakeConnection()
-        )
-        original_conns = [
-            conn for conns in service.connections.values() for conn in conns
-        ]
-        new_client = yield service.getClientNow()
-        new_conn = new_client._conn
-        self.assertIsNotNone(new_conn)
-        self.assertIn(new_conn, original_conns)
+        self.assertIs(client._conn, connection)
+        connect.assert_not_called()
 
     @inlineCallbacks
     def test_getClientNow_returns_current_connection(self):

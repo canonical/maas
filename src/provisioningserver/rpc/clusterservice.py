@@ -568,7 +568,6 @@ class ClusterClient(Cluster):
         # Events for this protocol's life-cycle.
         self.authenticated = DeferredValue()
         self.ready = DeferredValue()
-        self.in_use = False
         self.localIdent = None
 
     @property
@@ -774,14 +773,12 @@ class ClusterClientService(TimerService):
 
     time_started = None
 
-    def __init__(self, reactor, max_idle_conns=1, max_conns=1, keepalive=1000):
+    def __init__(self, reactor):
         super().__init__(self._calculate_interval(None, None), self._tryUpdate)
         self._previous_work = (None, None)
         self.clock = reactor
 
-        self.connections = ConnectionPool(
-            reactor, self, max_idle_conns, max_conns, keepalive
-        )
+        self.connections = ConnectionPool(reactor, self)
 
         # Stored the URL used to connect to the region controller. This will be
         # the URL that was used to get the eventloops.
@@ -803,31 +800,19 @@ class ClusterClientService(TimerService):
         self.time_started = self.clock.seconds()
         super().startService()
 
-    def getClient(self, busy_ok=False):
+    def getClient(self):
         """Returns a :class:`common.Client` connected to a region.
 
-        The client is chosen at random.
+        The client is chosen at random. AMP multiplexes concurrent calls over
+        a single connection, so a connection with calls in flight can still
+        be used.
 
         :raises: :py:class:`~.exceptions.NoConnectionsAvailable` when
             there are no open connections to a region controller.
         """
         if len(self.connections) == 0:
             raise exceptions.NoConnectionsAvailable()
-        else:
-            try:
-                return common.Client(
-                    self.connections.get_random_free_connection()
-                )
-            except exceptions.AllConnectionsBusy as e:
-                if not busy_ok:
-                    for endpoint_conns in self.connections.values():
-                        if (
-                            len(endpoint_conns)
-                            < self.connections._max_connections
-                        ):
-                            raise e
-                # return a busy connection, assume it will free up or timeout
-                return common.Client(self.connections.get_random_connection())
+        return common.Client(self.connections.get_random_connection())
 
     @deferred
     def getClientNow(self):
@@ -846,17 +831,6 @@ class ClusterClientService(TimerService):
             return self.getClient()
         except exceptions.NoConnectionsAvailable:
             return self._tryUpdate().addCallback(call, self.getClient)
-        except exceptions.AllConnectionsBusy:
-            return self.connections.scale_up_connections().addErrback(
-                self._handle_scale_up_failure
-            )
-
-    def _handle_scale_up_failure(self, failure):
-        """If scale-up fails, fall back to returning a busy connection."""
-        log.warn(
-            f"Failed to scale up due to {failure}. Falling back to a busy connection."
-        )
-        return self.getClient(busy_ok=True)
 
     def getAllClients(self):
         """Return a list of all connected :class:`common.Client`s."""
@@ -1356,14 +1330,13 @@ class ClusterClientService(TimerService):
                 self.connections.stage_connection(eventloop, connection)
                 break
 
-    @inlineCallbacks
     def add_connection(self, eventloop, connection):
         """Add the connection to the tracked connections.
 
         Update the saved RPC info state information based on the new
         connection.
         """
-        yield self.connections.add_connection(eventloop, connection)
+        self.connections.add_connection(eventloop, connection)
         self._update_saved_rpc_info_state()
 
     def remove_connection(self, eventloop, connection):
