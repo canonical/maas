@@ -417,8 +417,7 @@ class TestRackProxy(MAASTestCase):
         return frozenset(
             {
                 client.address[0]
-                for _, clients in rpc_service.connections.items()
-                for client in clients
+                for _, client in rpc_service.connections.items()
             }
         )
 
@@ -652,8 +651,7 @@ class TestRackSyslog(MAASTestCase):
         return frozenset(
             {
                 (eventloop, client.address[0])
-                for eventloop, clients in rpc_service.connections.items()
-                for client in clients
+                for eventloop, client in rpc_service.connections.items()
             }
         )
 
