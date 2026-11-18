@@ -99,6 +99,19 @@ def parse_response(response_string):
     return doc
 
 
+def make_api_url(url):
+    """Build the XML API endpoint from the configured power address.
+
+    The power address may be a full URL (``https://ucsm.example.com/``) or a
+    bare IP address or hostname, optionally with a port. A bare address has
+    no scheme, which makes ``urljoin`` drop it entirely, so default to
+    ``https`` in that case.
+    """
+    if "://" not in url:
+        url = "https://" + url
+    return urllib.parse.urljoin(url, "nuova")
+
+
 class UCSM_XML_API:
     """Provides access to a Cisco UCS Manager's XML API. Public methods
     on this class correspond to UCS Manager XML API methods.
@@ -109,7 +122,7 @@ class UCSM_XML_API:
 
     def __init__(self, url, username, password):
         self.url = url
-        self.api_url = urllib.parse.urljoin(self.url, "nuova")
+        self.api_url = make_api_url(self.url)
         self.username = username
         self.password = password
         self.cookie = None

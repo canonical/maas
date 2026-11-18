@@ -232,6 +232,42 @@ class TestCall(MAASTestCase):
         mock_send_request.assert_called_once_with(request)
 
 
+class TestMakeApiUrl(MAASTestCase):
+    scenarios = [
+        ("url", dict(url="http://10.0.0.5", expected="http://10.0.0.5/nuova")),
+        (
+            "url with slash",
+            dict(url="https://10.0.0.5/", expected="https://10.0.0.5/nuova"),
+        ),
+        (
+            "full api url",
+            dict(
+                url="https://10.0.0.5/nuova",
+                expected="https://10.0.0.5/nuova",
+            ),
+        ),
+        ("bare ip", dict(url="10.0.0.5", expected="https://10.0.0.5/nuova")),
+        (
+            "bare ip and port",
+            dict(url="10.0.0.5:8443", expected="https://10.0.0.5:8443/nuova"),
+        ),
+        (
+            "bare hostname",
+            dict(
+                url="ucsm.example.com",
+                expected="https://ucsm.example.com/nuova",
+            ),
+        ),
+    ]
+
+    def test_make_api_url(self):
+        self.assertEqual(self.expected, ucsm.make_api_url(self.url))
+
+    def test_api_uses_make_api_url(self):
+        api = UCSM_XML_API(self.url, "u", "p")
+        self.assertEqual(self.expected, api.api_url)
+
+
 class TestSendRequest(MAASTestCase):
     def test_send_request(self):
         request_data = "foo"
