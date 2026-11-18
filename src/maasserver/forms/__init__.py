@@ -2618,14 +2618,16 @@ class BootResourceForm(MAASModelForm):
     def clean_name(self):
         """Clean the name field.
 
-        Don't strip `custom/` from the boot resource name. This was done
-        previously to deal with boot resource that were `GENERATED`.
+        Custom images are stored without the `custom/` prefix: the deploy
+        and boot paths look them up by release name only.
         """
         supported_osystems = self._get_supported_osystems()
         name = self.cleaned_data["name"]
         if "/" in name:
-            osystem, _ = name.split("/")
-            if osystem not in supported_osystems:
+            osystem, release = name.split("/")
+            if osystem == "custom":
+                name = release
+            elif osystem not in supported_osystems:
                 raise ValidationError(
                     "Unsupport operating system %s, supported operating "
                     "systems: %s" % (osystem, supported_osystems)

@@ -4900,6 +4900,22 @@ class TestNode(MAASServerTestCase):
             f"deploy:{node.system_id}", "deployed-os-ready"
         )
 
+    def test_update_deployment_time_updates_custom_image(self):
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            name="my-image",
+            architecture="amd64/generic",
+        )
+        node = factory.make_Node(
+            osystem="custom",
+            distro_series="my-image",
+            architecture="amd64/generic",
+        )
+
+        node.update_deployment_time()
+
+        self.assertIsNotNone(reload_object(resource).last_deployed)
+
     def test_start_deployment_changes_state_and_creates_sts_msg(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED
