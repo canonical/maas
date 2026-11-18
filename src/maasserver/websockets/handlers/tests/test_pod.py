@@ -827,7 +827,8 @@ class TestPodHandler(MAASTransactionServerTestCase):
         }
         with self.assertRaisesRegex(
             HandlerError,
-            "Unable to discover LXD projects. No rack controllers connected.",
+            "Unable to discover VM host projects. "
+            "No rack controllers connected.",
         ):
             await handler.execute("get_projects", params)
 

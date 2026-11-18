@@ -188,7 +188,8 @@ class PodHandler(TimestampedModelHandler):
         projects = get_best_discovered_result(results)
         if projects is None:
             raise HandlerError(
-                "Unable to discover LXD projects. No rack controllers connected."
+                "Unable to discover VM host projects. "
+                "No rack controllers connected."
             )
         return [attr.asdict(project) for project in projects]
 
