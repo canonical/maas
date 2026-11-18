@@ -78,7 +78,6 @@ class TestBootResourceCreateRequest:
     @pytest.mark.parametrize(
         "name",
         [
-            "custom/my_custom_image",
             "ubuntu-core/my-release",
             "centos/my-release",
             "rhel/my-release",
@@ -105,6 +104,22 @@ class TestBootResourceCreateRequest:
         validated_name = await request._validate_name(name, mock_services)
 
         assert validated_name == name
+
+    async def test_validate_name_strips_custom_prefix(self, mock_services):
+        mock_services.boot_source_cache.get_unique_os_releases.return_value = []
+        request = BootResourceCreateRequest(
+            name="custom/my_custom_image",
+            sha256="a" * 64,
+            architecture="amd64/generic",
+            file_type=BootResourceFileTypeChoice.TGZ,
+            title=None,
+            base_image=None,
+        )
+        validated_name = await request._validate_name(
+            request.name, mock_services
+        )
+
+        assert validated_name == "my_custom_image"
 
     @pytest.mark.parametrize(
         "name,reserved_releases",
