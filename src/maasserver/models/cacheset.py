@@ -171,6 +171,7 @@ class CacheSet(CleanSave, TimestampedModel):
 
     def get_name(self):
         """Return the name of the node."""
+        # Cached by `maasserver.api.nodes.prepare_nodes_for_listing`.
         cache_idx = getattr(self, "_cache_set_idx", None)
         if cache_idx is None:
             cache_idx = CacheSet.objects.get_cache_set_idx(self)

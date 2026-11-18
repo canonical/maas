@@ -86,6 +86,8 @@ NODES_SELECT_RELATED = (
 
 
 # The prefetched objects are linked together by `prepare_nodes_for_listing`.
+# Any relation rendered for a node must be loaded here or there, otherwise
+# the number of queries grows with the number of nodes.
 NODES_PREFETCH = [
     "ownerdata_set",
     "parent",
@@ -120,6 +122,10 @@ NODES_PREFETCH = [
 
 def _prepare_interfaces(nodes):
     """Link the prefetched interfaces of `nodes` to each other.
+
+    Only interfaces of the current configs are loaded. Children or boot
+    interfaces outside of them are left to Django, which queries them per
+    object. Current code never creates such links.
 
     :return: Dict of the interfaces by ID.
     """
@@ -257,7 +263,11 @@ def _prepare_vlans(interfaces):
 
 
 def _prepare_dhcp_ip_addresses(interfaces):
-    """Cache the DISCOVERED IP address related to each DHCP IP address."""
+    """Cache the DISCOVERED IP address related to each DHCP IP address.
+
+    A DHCP IP address linked to an interface outside of `interfaces` isn't
+    cached and is queried by `_get_related_discovered_ip` instead.
+    """
     dhcp_ip_addresses = [
         ip_address
         for interface in interfaces.values()
@@ -388,9 +398,15 @@ def prepare_nodes_for_listing(nodes):
     `NODES_PREFETCH`. The prefetched objects are linked together and the
     values otherwise queried for each node when rendering it are cached, so
     that the number of queries doesn't depend on the number of nodes.
+
+    The cached values are never invalidated: `nodes` must be rendered right
+    away and not modified in between. Models fall back to querying when a
+    value isn't cached, so any change there must be mirrored here.
     """
     if not nodes:
         return
+    # Rendering storage calls `get_node()`, so link the nodes first. VLANs,
+    # DHCP IP addresses and gateways need the interfaces loaded.
     for node in nodes:
         if node.current_config is not None:
             node.current_config.node = node

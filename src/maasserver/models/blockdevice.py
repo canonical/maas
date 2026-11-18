@@ -198,7 +198,7 @@ class BlockDevice(CleanSave, TimestampedModel):
         """Returns this device's partition table (or None, if none exists."""
         if self.pk is None:
             return None
-        # Cached when preparing nodes to be listed.
+        # Cached by `maasserver.api.nodes.prepare_nodes_for_listing`.
         if hasattr(self, "_partitiontable"):
             return self._partitiontable
         try:

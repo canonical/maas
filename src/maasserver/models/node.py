@@ -5216,6 +5216,7 @@ class Node(CleanSave, TimestampedModel):
         :return: List of (interface ID, subnet ID, gateway IP) tuples.
         :rtype: list
         """
+        # Cached by `maasserver.api.nodes.prepare_nodes_for_listing`.
         gateways = getattr(self, "_gateways_by_priority", None)
         if gateways is None:
             gateways = get_gateways_by_priority_for_nodes([self.id])[self.id]
@@ -5223,6 +5224,7 @@ class Node(CleanSave, TimestampedModel):
 
     def _get_best_interface_from_gateway_link(self, gateway_link):
         """Return the best interface for the `gateway_link` and this node."""
+        # Cached by `maasserver.api.nodes.prepare_nodes_for_listing`.
         interface_ids = getattr(self, "_gateway_link_interface_ids", {})
         if gateway_link.id in interface_ids:
             return interface_ids[gateway_link.id]
@@ -5578,6 +5580,7 @@ class Node(CleanSave, TimestampedModel):
 
         None if there are no events.
         """
+        # Cached by `maasserver.api.nodes.prepare_nodes_for_listing`.
         if hasattr(self, "_status_event"):
             return self._status_event
         else:
