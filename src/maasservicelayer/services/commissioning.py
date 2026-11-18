@@ -5,12 +5,10 @@ import structlog
 
 from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.builders.nodes import NodeBuilder
-from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.interfaces import InterfaceClauseFactory
 from maasservicelayer.models.nodes import Node
-from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.services.base import Service
 from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.services.nodes import NodesService
@@ -61,31 +59,8 @@ class CommissioningService(Service):
             )
             if ip.alloc_type != IpAddressType.DISCOVERED
         }
-        bmc_ip_ids = (
-            await self.staticipaddress_service.get_ids_referenced_by_bmcs(
-                list(ips_to_clear)
-            )
-        )
         for ip in ips_to_clear.values():
             logger.info(
                 f"{node.hostname}: IP address automatically unlinked: {ip.ip}"
             )
-            if ip.id in bmc_ip_ids:
-                await self._release_ip_shared_with_bmc(ip)
-            else:
-                await self.staticipaddress_service.delete_by_id(ip.id)
-
-    async def _release_ip_shared_with_bmc(self, ip: StaticIPAddress) -> None:
-        # The BMC foreign key has no ON DELETE action in the database, so
-        # deleting the row would fail at commit. Django deletes it and the BMC
-        # then recreates an unlinked STICKY address for the same IP; keeping
-        # the row reaches that same end state.
-        await self.staticipaddress_service.unlink_from_interfaces(ip.id)
-        await self.staticipaddress_service.update_by_id(
-            ip.id,
-            StaticIPAddressBuilder(
-                alloc_type=IpAddressType.STICKY,
-                user_id=None,
-                temp_expires_on=None,
-            ),
-        )
+            await self.staticipaddress_service.delete_by_id(ip.id)

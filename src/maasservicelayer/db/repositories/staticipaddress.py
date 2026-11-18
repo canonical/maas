@@ -4,7 +4,7 @@
 from ipaddress import IPv4Address, IPv6Address
 from typing import List, Type
 
-from sqlalchemy import and_, delete, func, join, not_, select, Table
+from sqlalchemy import and_, delete, func, join, not_, select, Table, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import eq
 
@@ -282,21 +282,22 @@ class StaticIPAddressRepository(BaseRepository):
         )
         await self.execute_stmt(stmt)
 
-    async def get_ids_referenced_by_bmcs(
-        self, staticipaddress_ids: list[int]
-    ) -> set[int]:
-        """Return the subset of the given StaticIPAddress ids that are used
-        as the IP address of at least one BMC, i.e. that appear in
-        `maasserver_bmc.ip_address_id`."""
-        if not staticipaddress_ids:
-            return set()
-        stmt = (
-            select(BMCTable.c.ip_address_id)
-            .where(BMCTable.c.ip_address_id.in_(staticipaddress_ids))
-            .distinct()
+    async def get_bmc_ids_using_ip(self, staticipaddress_id: int) -> list[int]:
+        stmt = select(BMCTable.c.id).where(
+            eq(BMCTable.c.ip_address_id, staticipaddress_id)
         )
         result = (await self.execute_stmt(stmt)).all()
-        return {row[0] for row in result}
+        return [row[0] for row in result]
+
+    async def reassign_bmcs(
+        self, from_staticipaddress_id: int, to_staticipaddress_id: int
+    ) -> None:
+        stmt = (
+            update(BMCTable)
+            .where(eq(BMCTable.c.ip_address_id, from_staticipaddress_id))
+            .values(ip_address_id=to_staticipaddress_id)
+        )
+        await self.execute_stmt(stmt)
 
     async def get_ips_for_interfaces_without_other_links(
         self, interface_ids: list[int]

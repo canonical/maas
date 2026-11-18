@@ -148,6 +148,7 @@ class StaticIPAddressService(
                 )
 
     async def post_delete_hook(self, resource: StaticIPAddress) -> None:
+        await self._recreate_ip_for_bmcs(resource)
         if (
             resource.alloc_type != IpAddressType.DISCOVERED
             and resource.subnet_id is not None
@@ -165,6 +166,25 @@ class StaticIPAddressService(
         self, resources: List[StaticIPAddress]
     ) -> None:
         raise NotImplementedError("Not implemented yet.")
+
+    async def _recreate_ip_for_bmcs(self, deleted: StaticIPAddress) -> None:
+        # Port of post_delete_remake_sip_for_bmc: BMCs that shared the deleted
+        # address get a fresh, unlinked STICKY address for the same IP. The
+        # BMC foreign key is deferred, so the BMCs can point at the deleted row
+        # until they are reassigned here, before commit.
+        if deleted.ip is None:
+            return
+        if not await self.repository.get_bmc_ids_using_ip(deleted.id):
+            return
+        new_ip = await self.create(
+            StaticIPAddressBuilder(
+                ip=deleted.ip,
+                alloc_type=IpAddressType.STICKY,
+                subnet_id=deleted.subnet_id,
+                lease_time=0,
+            )
+        )
+        await self.repository.reassign_bmcs(deleted.id, new_ip.id)
 
     async def get_discovered_ips_in_family_for_interfaces(
         self,
@@ -198,16 +218,6 @@ class StaticIPAddressService(
         if builder.must_trigger_workflow():
             await self.post_update_many_hook(updated_resources)
         return updated_resources
-
-    async def get_ids_referenced_by_bmcs(
-        self, staticipaddress_ids: list[int]
-    ) -> set[int]:
-        return await self.repository.get_ids_referenced_by_bmcs(
-            staticipaddress_ids
-        )
-
-    async def unlink_from_interfaces(self, staticipaddress_id: int) -> None:
-        await self.repository.unlink_from_interfaces(staticipaddress_id)
 
     async def get_ips_for_interfaces_without_other_links(
         self, interface_ids: list[int]
