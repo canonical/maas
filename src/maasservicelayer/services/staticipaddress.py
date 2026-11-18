@@ -9,9 +9,11 @@ from maascommon.workflows.dhcp import (
     ConfigureDHCPParam,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.builders.bmc import BmcBuilder
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bmcs import BmcClauseFactory
 from maasservicelayer.db.repositories.dnsresources import (
     DNSResourceClauseFactory,
 )
@@ -22,6 +24,7 @@ from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.services.bmcs import BmcsService
 from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.temporal import TemporalService
 
@@ -36,11 +39,13 @@ class StaticIPAddressService(
         context: Context,
         temporal_service: TemporalService,
         dnsresources_service: DNSResourcesService,
+        bmcs_service: BmcsService,
         staticipaddress_repository: StaticIPAddressRepository,
     ):
         super().__init__(context, staticipaddress_repository)
         self.temporal_service = temporal_service
         self.dnsresources_service = dnsresources_service
+        self.bmcs_service = bmcs_service
 
     async def post_create_hook(self, resource: StaticIPAddress) -> None:
         if resource.alloc_type != IpAddressType.DISCOVERED:
@@ -174,7 +179,10 @@ class StaticIPAddressService(
         # until they are reassigned here, before commit.
         if deleted.ip is None:
             return
-        if not await self.repository.get_bmc_ids_using_ip(deleted.id):
+        bmcs_using_ip = QuerySpec(
+            where=BmcClauseFactory.with_ip_address_id(deleted.id)
+        )
+        if not await self.bmcs_service.exists(query=bmcs_using_ip):
             return
         new_ip = await self.create(
             StaticIPAddressBuilder(
@@ -184,7 +192,9 @@ class StaticIPAddressService(
                 lease_time=0,
             )
         )
-        await self.repository.reassign_bmcs(deleted.id, new_ip.id)
+        await self.bmcs_service.update_many(
+            query=bmcs_using_ip, builder=BmcBuilder(ip_address_id=new_ip.id)
+        )
 
     async def get_discovered_ips_in_family_for_interfaces(
         self,

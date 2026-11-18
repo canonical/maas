@@ -4,7 +4,7 @@
 from ipaddress import IPv4Address, IPv6Address
 from typing import List, Type
 
-from sqlalchemy import and_, delete, func, join, not_, select, Table, update
+from sqlalchemy import and_, delete, func, join, not_, select, Table
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.operators import eq
 
@@ -14,7 +14,6 @@ from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import BaseRepository
 from maasservicelayer.db.tables import (
-    BMCTable,
     InterfaceIPAddressTable,
     InterfaceTable,
     NodeConfigTable,
@@ -279,23 +278,6 @@ class StaticIPAddressRepository(BaseRepository):
                 InterfaceIPAddressTable.c.staticipaddress_id,
                 staticipaddress_id,
             )
-        )
-        await self.execute_stmt(stmt)
-
-    async def get_bmc_ids_using_ip(self, staticipaddress_id: int) -> list[int]:
-        stmt = select(BMCTable.c.id).where(
-            eq(BMCTable.c.ip_address_id, staticipaddress_id)
-        )
-        result = (await self.execute_stmt(stmt)).all()
-        return [row[0] for row in result]
-
-    async def reassign_bmcs(
-        self, from_staticipaddress_id: int, to_staticipaddress_id: int
-    ) -> None:
-        stmt = (
-            update(BMCTable)
-            .where(eq(BMCTable.c.ip_address_id, from_staticipaddress_id))
-            .values(ip_address_id=to_staticipaddress_id)
         )
         await self.execute_stmt(stmt)
 
