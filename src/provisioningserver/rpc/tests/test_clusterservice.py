@@ -135,10 +135,8 @@ class TestClusterProtocol_Authenticate(MAASTestCase):
         self.assertEqual(expected_digest, digest)
 
 
-def make_inert_client_service(max_idle_conns=1, max_conns=1, keepalive=1):
-    service = ClusterClientService(
-        Clock(), max_idle_conns, max_conns, keepalive
-    )
+def make_inert_client_service():
+    service = ClusterClientService(Clock())
     # ClusterClientService's superclass, TimerService, creates a
     # LoopingCall with now=True. We neuter it here to allow
     # observation of the behaviour of _update_interval() for
