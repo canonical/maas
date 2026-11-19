@@ -41,6 +41,7 @@ from maasserver.enum import (
     PRESEED_TYPE,
 )
 from maasserver.exceptions import MissingBootImage
+from maasserver.forms import BootResourceForm
 from maasserver.models import (
     BootResource,
     Config,
@@ -61,6 +62,7 @@ from maasserver.preseed import (
     compose_preseed_url,
     curtin_maas_reporter,
     GENERIC_FILENAME,
+    get_base_osystem_series,
     get_curtin_cloud_config,
     get_curtin_config,
     get_curtin_context,
@@ -497,6 +499,32 @@ class TestGetCustomImageDependencyValidation(MAASServerTestCase):
             self.assertIsNotNone(
                 get_custom_image_dependency_validation(machine, osystem)
             )
+
+
+class TestGetBaseOsystemSeries(MAASServerTestCase):
+    def test_resolves_base_image_of_image_uploaded_with_custom_prefix(self):
+        architecture = make_usable_architecture(self)
+        name = factory.make_name("image")
+        base_image = factory.make_base_image_name()
+        form = BootResourceForm(
+            data={
+                "name": f"custom/{name}",
+                "architecture": architecture,
+                "filetype": "tgz",
+                "size": random.randint(1024, 2048),
+                "sha256": factory.make_string(size=64),
+                "base_image": base_image,
+            }
+        )
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        machine = factory.make_Machine(
+            architecture=architecture, osystem="custom", distro_series=name
+        )
+
+        self.assertEqual(
+            tuple(base_image.split("/")), get_base_osystem_series(machine)
+        )
 
 
 class TestLoadPreseedTemplate(MAASServerTestCase):
