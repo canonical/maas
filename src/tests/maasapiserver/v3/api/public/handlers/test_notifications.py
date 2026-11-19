@@ -304,9 +304,7 @@ class TestNotificationsApi(ApiCommonTests):
         response = await client.delete(f"{self.BASE_PATH}?id=1&id=2")
         assert response.status_code == 204
         services_mock.notifications.delete_many.assert_awaited_once_with(
-            query=QuerySpec(
-                where=NotificationsClauseFactory.with_ids([1, 2])
-            )
+            query=QuerySpec(where=NotificationsClauseFactory.with_ids([1, 2]))
         )
 
     async def test_bulk_delete_422_without_ids(

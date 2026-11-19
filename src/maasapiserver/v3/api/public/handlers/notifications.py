@@ -4,7 +4,6 @@
 from typing import Annotated
 
 from fastapi import Depends, Query, Response, status
-from pydantic import Field
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -276,10 +275,12 @@ class NotificationsHandler(Handler):
         self,
         ids: Annotated[
             UniqueList[int],
-            Field(min_length=1),
-        ] = Query(  # noqa: B008
-            description="ids of notifications to delete", alias="id"
-        ),
+            Query(
+                alias="id",
+                description="ids of notifications to delete",
+                min_length=1,
+            ),
+        ],
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         await services.notifications.delete_many(
