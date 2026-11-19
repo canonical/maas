@@ -258,7 +258,9 @@ class Cluster(SecuredRPCProtocol):
     @cluster.Authenticate.responder
     def authenticate(self, message):
         salt = urandom(16)  # 16 bytes of high grade noise.
-        digest = calculate_digest(MAAS_SECRET.get(), message, salt)
+        digest = calculate_digest(
+            MAAS_SECRET.get(), message, b"region-to-rack", salt
+        )
         return {"digest": digest, "salt": salt}
 
     @cluster.DescribePowerTypes.responder
@@ -582,7 +584,9 @@ class ClusterClient(Cluster):
         message = urandom(16)
         response = yield self.callRemote(region.Authenticate, message=message)
         salt, digest = response["salt"], response["digest"]
-        digest_local = calculate_digest(MAAS_SECRET.get(), message, salt)
+        digest_local = calculate_digest(
+            MAAS_SECRET.get(), message, b"rack-to-region", salt
+        )
         return digest == digest_local
 
     @inlineCallbacks

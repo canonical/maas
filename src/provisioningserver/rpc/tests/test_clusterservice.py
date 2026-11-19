@@ -69,7 +69,7 @@ from provisioningserver.rpc.testing.doubles import (
     FakeBusyConnectionToRegion,
     FakeConnection,
 )
-from provisioningserver.security import fernet_encrypt_psk
+from provisioningserver.security import calculate_digest, fernet_encrypt_psk
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import env as utils_env
 from provisioningserver.utils.env import MAAS_ID, MAAS_SECRET, MAAS_UUID
@@ -1549,16 +1549,31 @@ class TestClusterClient(TestClusterClientBase):
         MAAS_SECRET.set(factory.make_bytes())
         client = self.make_running_client()
 
-        def calculate_digest(_, message):
-            # Use the cluster's own authentication responder.
-            response = Cluster().authenticate(message)
-            return succeed(response)
+        def respond_as_region(_, message):
+            salt = os.urandom(16)
+            digest = calculate_digest(
+                MAAS_SECRET.get(), message, b"rack-to-region", salt
+            )
+            return succeed({"digest": digest, "salt": salt})
 
         callRemote = self.patch_autospec(client, "callRemote")
-        callRemote.side_effect = calculate_digest
+        callRemote.side_effect = respond_as_region
 
         d = client.authenticateRegion()
         self.assertTrue(extract_result(d))
+
+    def test_authenticateRegion_rejects_cross_role_digest(self):
+        MAAS_SECRET.set(factory.make_bytes())
+        client = self.make_running_client()
+
+        def respond_with_cluster_digest(_, message):
+            return succeed(Cluster().authenticate(message))
+
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = respond_with_cluster_digest
+
+        d = client.authenticateRegion()
+        self.assertFalse(extract_result(d))
 
     def test_authenticateRegion_rejects_non_matching_digests(self):
         MAAS_SECRET.set(factory.make_bytes())
