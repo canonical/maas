@@ -559,74 +559,6 @@ class TestRegionServer(MAASTransactionServerTestCase):
 
 
 class TestRackClient(MAASTestCase):
-    def test_defined_cache_calls(self):
-        self.assertEqual(
-            [cluster.DescribePowerTypes],
-            RackClient.cache_calls,
-        )
-
-    def test_getCallCache_adds_new_call_cache(self):
-        conn = DummyConnection()
-        cache = {}
-        client = RackClient(conn, cache)
-        call_cache = client._getCallCache()
-        self.assertIs(call_cache, cache["call_cache"])
-
-    def test_getCallCache_returns_existing(self):
-        conn = DummyConnection()
-        cache = {}
-        client = RackClient(conn, cache)
-        call_cache = client._getCallCache()
-        call_cache2 = client._getCallCache()
-        self.assertIs(call_cache, cache["call_cache"])
-        self.assertIs(call_cache2, cache["call_cache"])
-        self.assertIs(call_cache2, call_cache)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_call__returns_cache_value(self):
-        conn = DummyConnection()
-        conn.ident = factory.make_name("ident")
-        client = RackClient(conn, {})
-        call_cache = client._getCallCache()
-        power_types = {"power_types": [{"name": "ipmi"}, {"name": "hmc"}]}
-        call_cache[cluster.DescribePowerTypes] = power_types
-        result = yield client(cluster.DescribePowerTypes)
-        # The result is a copy. It should equal the result but not be
-        # the same object.
-        self.assertEqual(power_types, result)
-        self.assertIsNot(power_types, result)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_call__adds_result_to_cache(self):
-        conn = DummyConnection()
-        conn.ident = factory.make_name("ident")
-        self.patch(conn, "callRemote").return_value = succeed(
-            sentinel.power_types
-        )
-        client = RackClient(conn, {})
-        call_cache = client._getCallCache()
-        result = yield client(cluster.DescribePowerTypes)
-        self.assertIs(sentinel.power_types, result)
-        self.assertIs(
-            sentinel.power_types, call_cache[cluster.DescribePowerTypes]
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_call__doesnt_add_result_to_cache_for_not_cache_call(self):
-        conn = DummyConnection()
-        conn.ident = factory.make_name("ident")
-        self.patch(conn, "callRemote").return_value = succeed(
-            sentinel.boot_images
-        )
-        client = RackClient(conn, {})
-        call_cache = client._getCallCache()
-        result = yield client(cluster.PowerDriverCheck)
-        self.assertIs(sentinel.boot_images, result)
-        self.assertNotIn(cluster.PowerDriverCheck, call_cache)
-
     @wait_for_reactor
     @inlineCallbacks
     def test_call__records_latency_metric(self):
@@ -636,7 +568,7 @@ class TestRackClient(MAASTestCase):
         self.patch(conn, "callRemote").return_value = succeed(
             sentinel.boot_images
         )
-        client = RackClient(conn, {})
+        client = RackClient(conn)
         yield client(cluster.PowerDriverCheck)
         mock_metrics.assert_called_with(
             "maas_region_rack_rpc_call_latency",
@@ -1010,8 +942,7 @@ class TestRegionService(MAASTestCase):
         self.patch(random, "choice", check_choice)
 
         def check(client):
-            self.assertEqual(RackClient(chosen, {}), client)
-            self.assertIs(client.cache, service.connectionsCache[client._conn])
+            self.assertEqual(RackClient(chosen), client)
 
         return service.getClientFor(uuid).addCallback(check)
 
@@ -1054,10 +985,10 @@ class TestRegionService(MAASTestCase):
         self.assertIn(
             (one, two),
             [
-                (RackClient(c1, {}), RackClient(c3, {})),
-                (RackClient(c1, {}), RackClient(c4, {})),
-                (RackClient(c2, {}), RackClient(c3, {})),
-                (RackClient(c2, {}), RackClient(c4, {})),
+                (RackClient(c1), RackClient(c3)),
+                (RackClient(c1), RackClient(c4)),
+                (RackClient(c2), RackClient(c3)),
+                (RackClient(c2), RackClient(c4)),
             ],
         )
 

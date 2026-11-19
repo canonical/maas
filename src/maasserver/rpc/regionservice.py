@@ -4,7 +4,6 @@
 """RPC implementation for regions."""
 
 from collections import defaultdict
-import copy
 import json
 from os import urandom
 import random
@@ -30,7 +29,6 @@ from twisted.internet.threads import deferToThread
 from zope.interface import implementer
 
 from maasserver import eventloop
-from maasserver.dns.config import get_trusted_networks
 from maasserver.models.config import Config
 from maasserver.models.node import RackController
 from maasserver.models.subnet import Subnet
@@ -413,19 +411,6 @@ class Region(SecuredRPCProtocol):
         """
         return deferToDatabase(nodes.get_time_configuration, system_id)
 
-    @region.GetDNSConfiguration.responder
-    def get_dns_configuration(self, system_id):
-        """Get settings to use for configuring DNS.
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.region.GetDNSConfiguration`.
-        """
-        # For consistency `system_id` is passed, but at the moment it is not
-        # used to customise the DNS configuration.
-        d = deferToDatabase(get_trusted_networks)
-        d.addCallback(lambda networks: {"trusted_networks": networks})
-        return d
-
     @region.GetProxyConfiguration.responder
     def get_proxy_configuration(self, system_id):
         """Get settings to use for configuring proxy.
@@ -786,54 +771,14 @@ class RegionServer(Region):
 class RackClient(common.Client):
     """A `common.Client` for communication from region to rack."""
 
-    # Currently the only calls that can be cached are the ones that take
-    # no arguments. More work needs to be done to this class to handle
-    # argument matching.
-    cache_calls = [cluster.DescribePowerTypes]
-
-    def __init__(self, connection, cache):
-        super().__init__(connection)
-        self.cache = cache
-
-    def _getCallCache(self):
-        """Return the call cache."""
-        if "call_cache" not in self.cache:
-            call_cache = {}
-            self.cache["call_cache"] = call_cache
-            return call_cache
-        else:
-            return self.cache["call_cache"]
-
     @PROMETHEUS_METRICS.record_call_latency(
         "maas_region_rack_rpc_call_latency",
         get_labels=lambda args, kwargs, retval: {"call": args[1].__name__},
     )
     @asynchronous
     def __call__(self, cmd, *args, **kwargs):
-        """Call a remote RPC method.
-
-        This caches calls to the rack controller that do not change value,
-        unless the rack controller disconnects and reconnects to the region.
-        """
-        call_cache = self._getCallCache()
-        if cmd not in self.cache_calls:
-            return super().__call__(cmd, *args, **kwargs)
-        if cmd in call_cache:
-            # Call has already been made over this connection, just return
-            # the original result.
-            return succeed(copy.deepcopy(call_cache[cmd]))
-        else:
-            # First time this call has been made so cache the result so
-            # so the next call over this connection will just be returned
-            # from the cache.
-
-            def cb_cache(result):
-                call_cache[cmd] = result
-                return result
-
-            d = super().__call__(cmd, *args, **kwargs)
-            d.addCallback(cb_cache)
-            return d
+        """Call a remote RPC method."""
+        return super().__call__(cmd, *args, **kwargs)
 
 
 class RegionService(service.Service):
@@ -874,7 +819,6 @@ class RegionService(service.Service):
             for port in range(5250, 5260)
         ]
         self.connections = defaultdict(set)
-        self.connectionsCache = defaultdict(dict)
         self.waiters = defaultdict(set)
         self.factory = Factory.forProtocol(RegionServer)
         self.factory.service = self
@@ -953,7 +897,6 @@ class RegionService(service.Service):
     def _removeConnectionFor(self, ident, connection):
         """Removes `connection` from the set of connections for `ident`."""
         self.connections[ident].discard(connection)
-        self.connectionsCache.pop(connection, None)
         self.events.disconnected.fire(ident)
 
     def _savePorts(self, ports):
@@ -1117,7 +1060,7 @@ class RegionService(service.Service):
             )
 
         def cb_client(connection):
-            return RackClient(connection, self.connectionsCache[connection])
+            return RackClient(connection)
 
         return d.addCallbacks(cb_client, cancelled)
 
@@ -1147,7 +1090,7 @@ class RegionService(service.Service):
 
         def cb_client(conns):
             connection = random.choice(conns)
-            return RackClient(connection, self.connectionsCache[connection])
+            return RackClient(connection)
 
         return d.addCallbacks(cb_client, cancelled)
 
@@ -1156,7 +1099,7 @@ class RegionService(service.Service):
         """Return a list with one connection per rack controller."""
 
         def _client(connection):
-            return RackClient(connection, self.connectionsCache[connection])
+            return RackClient(connection)
 
         return [
             _client(random.choice(list(connections)))
@@ -1179,4 +1122,4 @@ class RegionService(service.Service):
             # Make sure a sane set was returned.
             assert len(connection) > 0, "Connection set empty."
             connection = random.choice(list(connection))
-            return RackClient(connection, self.connectionsCache[connection])
+            return RackClient(connection)
