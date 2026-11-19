@@ -37,7 +37,6 @@ from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.clusterservice import ClusterClientService
 from provisioningserver.rpc.region import (
     GetControllerType,
-    GetDNSConfiguration,
     GetProxyConfiguration,
     GetSyslogConfiguration,
     GetTimeConfiguration,
@@ -467,9 +466,6 @@ class RackExternalService(TimerService):
         time_configuration = yield client(
             GetTimeConfiguration, system_id=client.localIdent
         )
-        dns_configuration = yield client(
-            GetDNSConfiguration, system_id=client.localIdent
-        )
         proxy_configuration = yield client(
             GetProxyConfiguration, system_id=client.localIdent
         )
@@ -479,7 +475,6 @@ class RackExternalService(TimerService):
         return _Configuration(
             controller_type=controller_type,
             time_configuration=time_configuration,
-            dns_configuration=dns_configuration,
             proxy_configuration=proxy_configuration,
             syslog_configuration=syslog_configuration,
             connections=self._rpc_service.connections,
@@ -522,9 +517,6 @@ class _Configuration:
     # Time configuration for the controller.
     time_configuration = attr.ib(converter=dict)
 
-    # DNS configuration for the controller.
-    dns_configuration = attr.ib(converter=dict)
-
     # Proxy configuration for the controller.
     proxy_configuration = attr.ib(converter=dict)
 
@@ -543,21 +535,6 @@ class _NTPConfiguration:
     references = attr.ib(converter=frozenset)
     # Addresses of peer time servers.
     peers = attr.ib(converter=frozenset)
-
-    # The type of this controller. It's fair to assume that is_rack is true,
-    # but check nevertheless before applying this configuration.
-    is_region = attr.ib(converter=bool)
-    is_rack = attr.ib(converter=bool)
-
-
-@attr.s
-class _DNSConfiguration:
-    """Configuration for the rack's DNS server."""
-
-    # Addresses of upstream dns servers.
-    upstream_dns = attr.ib(converter=frozenset)
-    # Trusted networks.
-    trusted_networks = attr.ib(converter=frozenset)
 
     # The type of this controller. It's fair to assume that is_rack is true,
     # but check nevertheless before applying this configuration.

@@ -258,22 +258,6 @@ class Cluster(SecuredRPCProtocol):
         digest = calculate_digest(MAAS_SECRET.get(), message, salt)
         return {"digest": digest, "salt": salt}
 
-    @cluster.DescribePowerTypes.responder
-    def describe_power_types(self):
-        """describe_power_types()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.DescribePowerTypes`.
-        """
-        # Detection of missing packages is now done reactively instead of
-        # proactively. When a power check is performed it will raise an error
-        # if their are any missing packages.
-        return {
-            "power_types": list(
-                PowerDriverRegistry.get_schema(detect_missing_packages=False)
-            )
-        }
-
     @cluster.PowerQuery.responder
     def power_query(self, system_id, hostname, power_type, context):
         d = get_power_state(system_id, hostname, power_type, context=context)
