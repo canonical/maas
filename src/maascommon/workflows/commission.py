@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from typing import Any
 
 # Workflows names
-COMMISSION_N_WORKFLOW_NAME = "CommissionNWorkflow"
 COMMISSION_WORKFLOW_NAME = "commission"
 
 
@@ -26,8 +25,3 @@ class CommissionParam:
 class CommissionResult:
     system_id: str
     status: str
-
-
-@dataclass
-class CommissionNParam:
-    params: list[CommissionParam]
