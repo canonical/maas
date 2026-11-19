@@ -173,10 +173,10 @@ class StaticIPAddressService(
         raise NotImplementedError("Not implemented yet.")
 
     async def _recreate_ip_for_bmcs(self, deleted: StaticIPAddress) -> None:
-        # Port of post_delete_remake_sip_for_bmc: BMCs that shared the deleted
-        # address get a fresh, unlinked STICKY address for the same IP. The
-        # BMC foreign key is deferred, so the BMCs can point at the deleted row
-        # until they are reassigned here, before commit.
+        # Mimics the django signal behaviour from
+        # src/maasserver/models/signals/staticipaddress.py:post_delete_remake_sip_for_bmc
+        # BMCs that shared the deleted address get a fresh, unlinked STICKY address for
+        # the same IP.
         if deleted.ip is None:
             return
         bmcs_using_ip = QuerySpec(
