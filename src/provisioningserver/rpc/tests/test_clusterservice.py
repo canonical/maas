@@ -135,31 +135,10 @@ class TestClusterProtocol_Authenticate(MAASTestCase):
         self.assertEqual(expected_digest, digest)
 
 
-class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def test_describe_power_types_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.DescribePowerTypes.commandName
-        )
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_describe_power_types_returns_jsonized_schema(self):
-        response = yield call_responder(
-            Cluster(), cluster.DescribePowerTypes, {}
-        )
-
-        self.assertEqual(response.keys(), {"power_types"})
-        self.assertEqual(
-            PowerDriverRegistry.get_schema(detect_missing_packages=False),
-            response["power_types"],
-        )
-
-
-def make_inert_client_service():
-    service = ClusterClientService(Clock())
+def make_inert_client_service(max_idle_conns=1, max_conns=1, keepalive=1):
+    service = ClusterClientService(
+        Clock(), max_idle_conns, max_conns, keepalive
+    )
     # ClusterClientService's superclass, TimerService, creates a
     # LoopingCall with now=True. We neuter it here to allow
     # observation of the behaviour of _update_interval() for

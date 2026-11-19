@@ -16,7 +16,6 @@ from twisted.protocols.amp import UnknownRemoteError
 from twisted.python.failure import Failure
 
 from maasserver import eventloop
-from maasserver.dns.config import get_trusted_networks
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS
 from maasserver.models import Config, Event, EventType, Node
 from maasserver.models import node as node_module
@@ -52,7 +51,6 @@ from provisioningserver.rpc.region import (
     CreateNode,
     GetBootConfig,
     GetControllerType,
-    GetDNSConfiguration,
     GetProxyConfiguration,
     GetSyslogConfiguration,
     GetTimeConfiguration,
@@ -1130,29 +1128,6 @@ class TestRegionProtocol_GetTimeConfiguration(MAASTransactionServerTestCase):
             rf"^Node with system_id={arguments['system_id']} could not be found\.",
         ):
             yield d
-
-
-class TestRegionProtocol_GetDNSConfiguration(MAASTransactionServerTestCase):
-    def test_get_dns_configuration_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(GetDNSConfiguration.commandName)
-        self.assertIsNotNone(responder)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_get_trusted_networks(self):
-        example_networks = [
-            factory.make_ipv4_address(),
-            factory.make_ipv6_address(),
-        ]
-        deferToDatabase = self.patch(regionservice, "deferToDatabase")
-        deferToDatabase.return_value = succeed(example_networks)
-        system_id = factory.make_name("id")
-        response = yield call_responder(
-            Region(), GetDNSConfiguration, {"system_id": system_id}
-        )
-        self.assertEqual({"trusted_networks": example_networks}, response)
-        deferToDatabase.assert_called_once_with(get_trusted_networks)
 
 
 class TestRegionProtocol_GetProxyConfiguration(MAASTransactionServerTestCase):

@@ -8,7 +8,6 @@ These are commands that a cluster controller ought to respond to.
 
 __all__ = [
     "Authenticate",
-    "DescribePowerTypes",
     "Identify",
     "PowerDriverCheck",
     "PowerQuery",
@@ -24,17 +23,6 @@ from provisioningserver.rpc.arguments import (
     StructureAsJSON,
 )
 from provisioningserver.rpc.common import Authenticate, Identify
-
-
-class DescribePowerTypes(amp.Command):
-    """Get a JSON Schema describing this rack's power types.
-
-    :since: 1.5
-    """
-
-    arguments = []
-    response = [(b"power_types", StructureAsJSON())]
-    errors = []
 
 
 class PowerDriverCheck(amp.Command):
