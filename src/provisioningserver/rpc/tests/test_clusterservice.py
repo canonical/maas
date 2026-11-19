@@ -138,29 +138,6 @@ class TestClusterProtocol_Authenticate(MAASTestCase):
         self.assertEqual(expected_digest, digest)
 
 
-class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def test_describe_power_types_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.DescribePowerTypes.commandName
-        )
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_describe_power_types_returns_jsonized_schema(self):
-        response = yield call_responder(
-            Cluster(), cluster.DescribePowerTypes, {}
-        )
-
-        self.assertEqual(response.keys(), {"power_types"})
-        self.assertEqual(
-            PowerDriverRegistry.get_schema(detect_missing_packages=False),
-            response["power_types"],
-        )
-
-
 def make_inert_client_service(max_idle_conns=1, max_conns=1, keepalive=1):
     service = ClusterClientService(
         Clock(), max_idle_conns, max_conns, keepalive
@@ -2575,203 +2552,32 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             fake_error,
         )
 
-    def test_chassis_type_mscm_calls_probe_mscm_and_enlist(self):
+    def test_removed_chassis_types_are_not_probed(self):
         mock_deferToThread = self.patch_autospec(
             clusterservice, "deferToThread"
         )
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "mscm",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "accept_all": accept_all,
-                "domain": domain,
-            },
-        )
-        mock_deferToThread.assert_called_once_with(
-            clusterservice.probe_and_enlist_mscm,
-            user,
-            hostname,
-            username,
-            password,
-            accept_all,
-            domain,
-        )
-
-    def test_chassis_type_mscm_logs_error_to_maaslog(self):
-        fake_error = factory.make_name("error")
-        self.patch(clusterservice, "maaslog")
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
-        )
-        mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "mscm",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "accept_all": accept_all,
-                "domain": domain,
-            },
-        )
-        clusterservice.maaslog.error.assert_any_call(
-            "Failed to probe and enlist %s nodes: %s",
-            "Moonshot",
-            fake_error,
-        )
-
-    def test_chassis_type_msftocs_calls_probe_msftocs_and_enlist(self):
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
-        )
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        port = random.randint(2000, 4000)
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "msftocs",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "accept_all": accept_all,
-                "domain": domain,
-                "port": port,
-            },
-        )
-        mock_deferToThread.assert_called_once_with(
-            clusterservice.probe_and_enlist_msftocs,
-            user,
-            hostname,
-            port,
-            username,
-            password,
-            accept_all,
-            domain,
-        )
-
-    def test_chassis_type_msftocs_logs_error_to_maaslog(self):
-        fake_error = factory.make_name("error")
-        self.patch(clusterservice, "maaslog")
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
-        )
-        mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        port = random.randint(2000, 4000)
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "msftocs",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "accept_all": accept_all,
-                "domain": domain,
-                "port": port,
-            },
-        )
-        clusterservice.maaslog.error.assert_any_call(
-            "Failed to probe and enlist %s nodes: %s",
-            "MicrosoftOCS",
-            fake_error,
-        )
-
-    def test_chassis_type_ucsm_calls_probe_ucsm_and_enlist(self):
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
-        )
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "ucsm",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "accept_all": accept_all,
-                "domain": domain,
-            },
-        )
-        mock_deferToThread.assert_called_once_with(
-            clusterservice.probe_and_enlist_ucsm,
-            user,
-            hostname,
-            username,
-            password,
-            accept_all,
-            domain,
-        )
-
-    def test_chassis_type_ucsm_logs_error_to_maaslog(self):
-        fake_error = factory.make_name("error")
-        self.patch(clusterservice, "maaslog")
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
-        )
-        mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "ucsm",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "accept_all": accept_all,
-                "domain": domain,
-            },
-        )
-        clusterservice.maaslog.error.assert_any_call(
-            "Failed to probe and enlist %s nodes: %s", "UCS", fake_error
-        )
+        maaslog = self.patch(clusterservice, "maaslog")
+        for chassis_type in (
+            "dli",
+            "eaton",
+            "mscm",
+            "msftocs",
+            "openbmc",
+            "ucsm",
+        ):
+            call_responder(
+                Cluster(),
+                cluster.AddChassis,
+                {
+                    "user": factory.make_name("user"),
+                    "chassis_type": chassis_type,
+                    "hostname": factory.make_hostname(),
+                },
+            )
+            maaslog.error.assert_called_with(
+                f"Unknown chassis type {chassis_type}"
+            )
+        mock_deferToThread.assert_not_called()
 
     def test_chassis_type_unknown_logs_error_to_maaslog(self):
         self.patch(clusterservice, "maaslog")

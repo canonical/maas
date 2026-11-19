@@ -34,12 +34,9 @@ from provisioningserver.config import ClusterConfiguration
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
 )
-from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.power.hmcz import probe_hmcz_and_enlist
-from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
-from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
 from provisioningserver.drivers.power.proxmox import probe_proxmox_and_enlist
 from provisioningserver.drivers.power.recs import probe_and_enlist_recs
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -261,22 +258,6 @@ class Cluster(SecuredRPCProtocol):
         digest = calculate_digest(MAAS_SECRET.get(), message, salt)
         return {"digest": digest, "salt": salt}
 
-    @cluster.DescribePowerTypes.responder
-    def describe_power_types(self):
-        """describe_power_types()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.DescribePowerTypes`.
-        """
-        # Detection of missing packages is now done reactively instead of
-        # proactively. When a power check is performed it will raise an error
-        # if their are any missing packages.
-        return {
-            "power_types": list(
-                PowerDriverRegistry.get_schema(detect_missing_packages=False)
-            )
-        }
-
     @cluster.PowerQuery.responder
     def power_query(self, system_id, hostname, power_type, context):
         d = get_power_state(system_id, hostname, power_type, context=context)
@@ -396,40 +377,6 @@ class Cluster(SecuredRPCProtocol):
             d.addErrback(
                 partial(catch_probe_and_enlist_error, "SeaMicro 15000")
             )
-        elif chassis_type == "mscm":
-            d = deferToThread(
-                probe_and_enlist_mscm,
-                user,
-                hostname,
-                username,
-                password,
-                accept_all,
-                domain,
-            )
-            d.addErrback(partial(catch_probe_and_enlist_error, "Moonshot"))
-        elif chassis_type == "msftocs":
-            d = deferToThread(
-                probe_and_enlist_msftocs,
-                user,
-                hostname,
-                port,
-                username,
-                password,
-                accept_all,
-                domain,
-            )
-            d.addErrback(partial(catch_probe_and_enlist_error, "MicrosoftOCS"))
-        elif chassis_type == "ucsm":
-            d = deferToThread(
-                probe_and_enlist_ucsm,
-                user,
-                hostname,
-                username,
-                password,
-                accept_all,
-                domain,
-            )
-            d.addErrback(partial(catch_probe_and_enlist_error, "UCS"))
         else:
             message = "Unknown chassis type %s" % chassis_type
             maaslog.error(message)

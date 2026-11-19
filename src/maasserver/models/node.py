@@ -1845,9 +1845,14 @@ class Node(CleanSave, TimestampedModel):
         )
         # Update the latest deployment time of all the images with this os/release and architecture
         # Don't bother the sub-architecture.
+        # Custom images are stored by release name only.
+        if self.osystem == "custom":
+            image_name = self.distro_series
+        else:
+            image_name = f"{self.osystem}/{self.distro_series}"
         now = timezone.now()
         BootResource.objects.filter(
-            name=f"{self.osystem}/{self.distro_series}",
+            name=image_name,
             architecture__startswith=self.architecture.split("/", 1)[0],
         ).update(last_deployed=now)
 

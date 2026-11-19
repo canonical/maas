@@ -116,16 +116,18 @@ class BootResourceCreateRequest(BaseModel):
         )
 
         if "/" in name:
-            # Don't strip `custom/` from the boot resource name. This was done
-            # in the past to deal with boot resource that were `GENERATED`.
-            osystem, _ = name.split("/")
-            if osystem == "ubuntu":
+            # Custom images are stored without the `custom/` prefix: the
+            # deploy and boot paths look them up by release name only.
+            osystem, release = name.split("/")
+            if osystem == "custom":
+                name = release
+            elif osystem == "ubuntu":
                 raise ValidationException.build_for_field(
                     field="name",
                     message="To upload an Ubuntu custom image you have to specify 'custom' as the OS",
                     location="header",
                 )
-            if osystem not in supported_osystems:
+            elif osystem not in supported_osystems:
                 raise ValidationException.build_for_field(
                     field="name",
                     message=f"Unsupported operating system {osystem}, supported operating systems: {supported_osystems}",
