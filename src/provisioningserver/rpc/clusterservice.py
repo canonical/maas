@@ -1195,20 +1195,23 @@ class ClusterClientService(TimerService):
                     )
                 )
 
-        # Drop all connections at once, as the are no longer required.
+        # Drop all connections at once, as they are no longer required.
         if len(drop) > 0:
             log.msg(
                 "Dropping connections to event-loops: %s"
                 % (", ".join(drop.keys()))
             )
-            yield DeferredList(
-                [
-                    maybeDeferred(self._drop_connection, connection)
-                    for eventloop, connections in drop.items()
-                    for connection in connections
-                ],
-                consumeErrors=True,
-            )
+            drop_defers = []
+            for eventloop, connections in drop.items():
+                for connection in connections:
+                    # Forget the connection now rather than in connectionLost,
+                    # otherwise a replacement connection to the same
+                    # event-loop could be rejected as a duplicate.
+                    self._forget_connection(eventloop, connection)
+                    drop_defers.append(
+                        maybeDeferred(self._drop_connection, connection)
+                    )
+            yield DeferredList(drop_defers, consumeErrors=True)
 
         # Make all the new connections to each endpoint at the same time.
         if len(connect) > 0:
@@ -1239,11 +1242,11 @@ class ClusterClientService(TimerService):
             if eventloop in self.connections:
                 connection = self.connections[eventloop]
                 if connection.address not in addresses:
-                    drop[eventloop] = [connection]
+                    drop.setdefault(eventloop, []).append(connection)
             if eventloop in self.try_connections:
                 connection = self.try_connections[eventloop]
                 if connection.address not in addresses:
-                    drop[eventloop] = [connection]
+                    drop.setdefault(eventloop, []).append(connection)
 
         # Create new connections to event-loops that the cluster does
         # not yet have a connection to.
@@ -1262,11 +1265,11 @@ class ClusterClientService(TimerService):
         for eventloop in self.connections:
             if eventloop not in eventloops:
                 connection = self.connections[eventloop]
-                drop[eventloop] = [connection]
+                drop.setdefault(eventloop, []).append(connection)
         for eventloop in self.try_connections:
             if eventloop not in eventloops:
                 connection = self.try_connections[eventloop]
-                drop[eventloop] = [connection]
+                drop.setdefault(eventloop, []).append(connection)
 
         return drop, connect
 
@@ -1319,18 +1322,19 @@ class ClusterClientService(TimerService):
         self.connections[eventloop] = connection
         self._update_saved_rpc_info_state()
 
+    def _forget_connection(self, eventloop, connection):
+        if self.try_connections.get(eventloop) is connection:
+            del self.try_connections[eventloop]
+        if self.connections.get(eventloop) is connection:
+            del self.connections[eventloop]
+
     def remove_connection(self, eventloop, connection):
         """Remove the connection from the tracked connections.
 
         If this is the last connection that was keeping rackd connected to
         a regiond then dhcpd and dhcpd6 services will be turned off.
         """
-        if eventloop in self.try_connections:
-            if self.try_connections[eventloop] is connection:
-                del self.try_connections[eventloop]
-        if eventloop in self.connections:
-            if self.connections[eventloop] is connection:
-                del self.connections[eventloop]
+        self._forget_connection(eventloop, connection)
         # Lower and reset the interval so a reconnection happens.
         self._update_interval(0, 0, reset=True)
 

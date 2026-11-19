@@ -834,6 +834,53 @@ class TestClusterClientService(MAASTestCase):
         _disconnect.assert_called_once_with(host2client)
 
     @inlineCallbacks
+    def test_update_connections_replaces_connection_when_address_changes(
+        self,
+    ):
+        service = ClusterClientService(Clock())
+        old_client = ClusterClient(
+            ("::ffff:1.1.1.1", 1111), "host1:pid=1", service
+        )
+        new_client = Mock(address=("::ffff:2.2.2.2", 2222))
+        _connect = self.patch(service, "_make_connection")
+        _connect.return_value = succeed(new_client)
+        # The old connection stays open until connectionLost fires later.
+        _disconnect = self.patch(service, "_drop_connection")
+        service.connections = {old_client.eventloop: old_client}
+
+        yield service._update_connections(
+            {old_client.eventloop: [new_client.address]}
+        )
+
+        _disconnect.assert_called_once_with(old_client)
+        _connect.assert_called_once_with(
+            old_client.eventloop, new_client.address
+        )
+        self.assertEqual({}, service.connections)
+        self.assertEqual(
+            {old_client.eventloop: new_client}, service.try_connections
+        )
+
+    @inlineCallbacks
+    def test_update_connections_drops_both_tracked_and_pending_connections(
+        self,
+    ):
+        service = ClusterClientService(Clock())
+        _disconnect = self.patch(service, "_drop_connection")
+        connected = Mock(address=("::ffff:1.1.1.1", 1111))
+        pending = Mock(address=("::ffff:1.1.1.1", 1111))
+        service.connections = {"host1:pid=1": connected}
+        service.try_connections = {"host1:pid=1": pending}
+
+        yield service._update_connections({})
+
+        self.assertCountEqual(
+            [call(connected), call(pending)], _disconnect.mock_calls
+        )
+        self.assertEqual({}, service.connections)
+        self.assertEqual({}, service.try_connections)
+
+    @inlineCallbacks
     def test_update_only_updates_interval_when_eventloops_are_unknown(self):
         service = ClusterClientService(Clock())
         self.patch_autospec(service, "_get_config_rpc_info_urls")
