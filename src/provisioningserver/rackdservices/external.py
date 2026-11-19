@@ -543,21 +543,6 @@ class _NTPConfiguration:
 
 
 @attr.s
-class _DNSConfiguration:
-    """Configuration for the rack's DNS server."""
-
-    # Addresses of upstream dns servers.
-    upstream_dns = attr.ib(converter=frozenset)
-    # Trusted networks.
-    trusted_networks = attr.ib(converter=frozenset)
-
-    # The type of this controller. It's fair to assume that is_rack is true,
-    # but check nevertheless before applying this configuration.
-    is_region = attr.ib(converter=bool)
-    is_rack = attr.ib(converter=bool)
-
-
-@attr.s
 class _ProxyConfiguration:
     """Configuration for the rack's proxy server."""
 
