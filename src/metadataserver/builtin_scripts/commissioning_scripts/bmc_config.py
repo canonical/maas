@@ -54,7 +54,6 @@
 #   apt:
 #     - freeipmi-tools
 #     - ipmitool
-#     - python3-paramiko
 # timeout: 00:05:00
 # --- End MAAS 1.0 script metadata ---
 
@@ -96,7 +95,6 @@ import traceback
 import urllib
 import urllib.request
 
-from paramiko.client import MissingHostKeyPolicy, SSHClient
 import yaml
 
 # Most commands execute very quickly. A timeout is used to catch commands which
@@ -1023,112 +1021,6 @@ class HPMoonshot(BMCConfig):
         }
 
 
-class IgnoreHostKeyPolicy(MissingHostKeyPolicy):
-    def missing_host_key(self, *args, **kwargs):
-        return
-
-
-# Facebook Wedge devices are really OpenBMC. More devices may work with this
-# method but none are available to test with.
-class Wedge(BMCConfig):
-    """Handle detection and configure of Facebook Wedge device."""
-
-    power_type = "wedge"
-    username = "root"
-    password = "0penBmc"
-
-    _bmc_ip = None
-
-    def __str__(self):
-        return "Facebook Wedge"
-
-    def _detect_known_switch(self):
-        if which("dmidecode") is None:
-            raise ConfigurationError("Missing 'dmidecode' binary")
-
-        # This is based of https://github.com/lool/sonic-snap/blob/master/common/id-switch
-        # try System Information > Manufacturer first
-        # XXX ltrager 2020-09-16 - It would be better to get these values from
-        # /sys but no test system is available.
-        sys_manufacturer = check_output(
-            ["dmidecode", "-s", "system-manufacturer"], timeout=COMMAND_TIMEOUT
-        ).decode()
-        prod_name = check_output(
-            ["dmidecode", "-s", "system-product-name"], timeout=COMMAND_TIMEOUT
-        ).decode()
-        baseboard_prod_name = check_output(
-            ["dmidecode", "-s", "baseboard-product-name"],
-            timeout=COMMAND_TIMEOUT,
-        ).decode()
-        if (
-            (sys_manufacturer == "Intel" and prod_name == "EPGSVR")
-            or (
-                sys_manufacturer == "Joytech"
-                and prod_name == "Wedge-AC-F 20-001329"
-            )
-            or (
-                sys_manufacturer == "To be filled by O.E.M."
-                and baseboard_prod_name == "PCOM-B632VG-ECC-FB-ACCTON-D"
-            )
-        ):
-            return "accton"
-        return None
-
-    def detected(self):
-        # First detect this is a known switch
-        try:
-            switch_type = self._detect_known_switch()
-        except (CalledProcessError, TimeoutExpired, FileNotFoundError) as err:
-            print(
-                f"DEBUG: Exception occurred when trying to detect switch: {str(err)}"
-            )
-            return False
-        else:
-            if switch_type is None:
-                print("DEBUG: Unknown/no switch detected.")
-                return False
-        try:
-            # Second, lets verify if this is a known endpoint
-            # First try to hit the API. This would work on Wedge 100.
-            local_addr = _get_wedge_local_addr()
-            response = urllib.request.urlopen(
-                f"http://[{local_addr}]:8080/api"
-            )
-            if b"Wedge RESTful API Entry" in response.read():
-                return True
-        except Exception:
-            pass
-        if self.get_bmc_ip():
-            # If the above failed, try to hit the SSH. This would work on Wedge 40.
-            return True
-        print("DEBUG: Unable to connect to the Wedge device via SSH or API.")
-        return False
-
-    def get_bmc_ip(self):
-        # cache the result of the IP discovery
-        if self._bmc_ip is None:
-            self._bmc_ip = self._get_bmc_ip()
-        return self._bmc_ip
-
-    def _get_bmc_ip(self):
-        try:
-            client = SSHClient()
-            client.set_missing_host_key_policy(IgnoreHostKeyPolicy)
-            client.connect(
-                _get_wedge_local_addr(),
-                username=self.username,
-                password=self.password,
-            )
-            _, stdout, _ = client.exec_command(
-                "ip -o -4 addr show", timeout=COMMAND_TIMEOUT
-            )
-            return (
-                stdout.read().decode().splitlines()[1].split()[3].split("/")[0]
-            )
-        except Exception:
-            return None
-
-
 class ConfigurationError(Exception):
     """Thrown when there is a known configuration error"""
 
@@ -1471,7 +1363,7 @@ class Redfish(IPMIBase):
 def detect_and_configure(args, bmc_config_path: str) -> None:
     # Order matters here. HPMoonshot is a specical IPMI device, so try to
     # detect it first.
-    bmc_list = [HPMoonshot, Redfish, IPMI, Wedge]
+    bmc_list = [HPMoonshot, Redfish, IPMI]
     for bmc_class in bmc_list:
         try:
             bmc = bmc_class(**vars(args))
@@ -1618,21 +1510,6 @@ def main():
 @lru_cache(maxsize=1)
 def _get_ipmi_locate_output():
     return check_output(["ipmi-locate"], timeout=COMMAND_TIMEOUT).decode()
-
-
-@lru_cache(maxsize=1)
-def _get_wedge_local_addr():
-    try:
-        # "fe80::ff:fe00:2" is the address for the device to the internal
-        # BMC network.
-        output = check_output(
-            ["ip", "-o", "a", "show", "to", "fe80::ff:fe00:2"],
-            timeout=COMMAND_TIMEOUT,
-        ).decode()
-        # fe80::1 is the BMC's LLA.
-        return "fe80::1%%%s" % output.split()[1]
-    except Exception:
-        return None
 
 
 def get_smbios_value(data, key):
