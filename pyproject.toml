@@ -6,7 +6,7 @@ requires = []
 name = "maas"
 version = "3.8.0a1"
 description = "Metal As A Service"
-readme = { file = "README.rst", content-type = "text/x-rst" }
+readme = { file = "README.md", content-type = "text/markdown" }
 license = { file = "LICENSE" }
 authors = [
   { name = "MAAS Developers", email = "maas-devel@lists.launchpad.net" },
