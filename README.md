@@ -4,7 +4,7 @@ MAAS (Metal as a Service) turns your bare-metal servers into an elastic, cloud-l
 
 MAAS discovers, commissions, deploys and recycles physical servers on demand. It provides network boot, DHCP, DNS, image management, storage and network configuration, and power management through a single REST API, CLI and web UI. You tell MAAS which machines to manage, and it boots them, inventories and tests their hardware, and keeps them ready to deploy Ubuntu, other Linux distributions, Windows or custom images.
 
-MAAS scales from a single rack in a lab to large data centres, with highly available controllers and fine-grained access control. It integrates with the tools you already use, such as Terraform, Ansible and Juju, so you can provision bare metal with the same workflows you use for the cloud.
+MAAS scales from a single rack in a lab to large data centers, with highly available controllers and fine-grained access control. It integrates with the tools you already use, such as Terraform, Ansible and Juju, so you can provision bare metal with the same workflows you use for the cloud.
 
 ## Get started
 
@@ -29,7 +29,7 @@ MAAS is distributed as a [snap](https://snapcraft.io/maas):
 sudo snap install maas --channel=<version>/stable
 ```
 
-MAAS requires a PostgreSQL database. For a complete walkthrough, including the database setup, initialisation and the first administrator, see [Install MAAS](https://canonical.com/maas/docs/stable/how-to-guides/get-started/install-maas/).
+MAAS requires a PostgreSQL database. For a complete walkthrough, including the database setup, initialization and the first administrator, see [Install MAAS](https://canonical.com/maas/docs/stable/how-to-guides/get-started/install-maas/).
 
 The snap packaging files are available in the [`snap`](snap) directory. To build and run MAAS from source, see [HACKING.rst](HACKING.rst).
 
@@ -45,13 +45,18 @@ Client          | Link
 ---             | ---
 REST API        | [API reference](https://canonical.com/maas/docs/stable/reference/api-reference/)
 CLI             | `maas`, included in the snap
-Python          | [`python-libmaas`](https://github.com/canonical/python-libmaas)
+Python          | [Script MAAS with Python](https://canonical.com/maas/docs/stable/how-to-guides/script-maas-with-python/)
+Go              | [`gomaasclient`](https://github.com/canonical/gomaasclient)
+
+## Tools for deploying MAAS
+
+To deploy MAAS in high availability with Juju (Charmed MAAS), use the Terraform modules in [`canonical/maas-terraform-modules`](https://github.com/canonical/maas-terraform-modules).
 
 ## Tools for managing MAAS
 
 Tool                  | Link
 ---                   | ---
-Terraform provider    | [`canonical/terraform-provider-maas`](https://github.com/canonical/terraform-provider-maas)
+Terraform provider    | [Terraform](https://canonical.com/maas/docs/stable/reference/configuration-guides/terraform/)
 Ansible collection    | [`maas.maas`](https://galaxy.ansible.com/ui/repo/published/maas/maas/)
 Juju                  | [MAAS cloud](https://documentation.ubuntu.com/juju/latest/reference/cloud/list-of-supported-clouds/the-maas-cloud-and-juju/)
 
