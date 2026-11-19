@@ -599,24 +599,13 @@ This path cannot target the MAAS syslog service on `maas_syslog_port` (default `
 
 1. **Run a syslog collector** that listens on UDP port `514` at an IP the switch can reach on its management network.
 
-2. **Advertise that IP in DHCP.** MAAS does not set `option log-servers` by default. Add it on the switch management subnet with a DHCP snippet, or set the same option on an external DHCP server:
-
-   ```bash
-   maas $PROFILE subnets read
-   maas $PROFILE dhcpsnippets create \
-     name=onie-log-servers \
-     subnet=<subnet-id> \
-     enabled=1 \
-     value='option log-servers <syslog-server-ip>;'
-   ```
-
-   That `value` is the dhcpd option line; use the same option on an external DHCP server.
+2. **Advertise that IP in DHCP.** MAAS does not set `option log-servers`. Serve the switch management subnet from an external DHCP server and set the option there, for example `option log-servers <syslog-server-ip>;` in ISC dhcpd.
 
 3. **Reboot the switch into ONIE** (or renew DHCP in ONIE) so it picks up option 7.
 
 4. **Confirm messages on your collector.** They will not appear in the MAAS journal.
 
-**Note:** DHCP snippets are deprecated as of MAAS 3.6 and will be removed in the next major version. Prefer an external DHCP server for this option when you can. See [Manage network services](manage-network-services.md) and [ONIE: Add a Remote Syslog Server](https://opencomputeproject.github.io/onie/user-guide/index.html#add-a-remote-syslog-server).
+See [Manage network services](manage-network-services.md) and [ONIE: Add a Remote Syslog Server](https://opencomputeproject.github.io/onie/user-guide/index.html#add-a-remote-syslog-server).
 
 ### Typical custom installer workflow
 

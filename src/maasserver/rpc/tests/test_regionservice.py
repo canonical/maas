@@ -218,8 +218,8 @@ class TestRegionServer(MAASTransactionServerTestCase):
         # The log was written to.
         self.assertEqual(
             "Rack controller 'None' could not be authenticated; dropping "
-            "connection. Check that /var/lib/maas/secret on the controller "
-            "contains the correct shared key.",
+            "connection. Check that /var/snap/maas/common/maas/secret on "
+            "the controller contains the correct shared key.",
             logger.dump(),
         )
 
@@ -589,7 +589,7 @@ class TestRackClient(MAASTestCase):
         conn.ident = factory.make_name("ident")
         client = RackClient(conn, {})
         call_cache = client._getCallCache()
-        power_types = {"power_types": [{"name": "ipmi"}, {"name": "wedge"}]}
+        power_types = {"power_types": [{"name": "ipmi"}, {"name": "hmc"}]}
         call_cache[cluster.DescribePowerTypes] = power_types
         result = yield client(cluster.DescribePowerTypes)
         # The result is a copy. It should equal the result but not be

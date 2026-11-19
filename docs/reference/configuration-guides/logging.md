@@ -83,7 +83,6 @@ Read the following information from MAAS audit logs.
 | NODE          | API      | `system_id`  | "Deleted bcache cache set."                                    |
 | NODE          | API      | `system_id`  | "Updated bcache cache set."                                    |
 |               | API      | None         | "Deleted script `script.name`."                                |
-|               | API      | None         | "Deleted DHCP snippet `dhcp_snippet.name`."                    |
 |               | API      | None         | "Deleted package repository `package_repository.name`."        |
 | SETTINGS      | API      | None         | "Reverted script `script.name` to revision `revision_number`." |
 |               | API      | None         | "Added tag `tag` to script `script.name`."                     |
@@ -97,7 +96,6 @@ Read the following information from MAAS audit logs.
 |               | API      | None         | "Created SSH key."                                             |
 |               | API      | None         | "Deleted SSH key."                                             |
 | AUTHORISATION |          | None         | "Created SSL key."                                             |
-|               |          | None         | "Updated `dhcp_snippet.name`."                                 |
 |               |          | None         | "Updated `package_repository.name`."                           |
 | SETTINGS      |          | None         | "Saved script `script.name`."                                  |
 | SETTINGS      | CLI      | None         | "Updated configuration setting `key`."                         |

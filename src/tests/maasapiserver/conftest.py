@@ -18,6 +18,7 @@ from .fixtures.app import (
     mocked_api_client_user,
     mocked_api_client_user_with_permissions,
     mocked_internal_api_client,
+    shared_mocked_apps,
     user_session_id,
 )
 from .fixtures.db import (
@@ -49,6 +50,7 @@ __all__ = [
     "app_with_mocked_services",
     "app_with_mocked_services_user",
     "mocked_api_client_user_with_permissions",
+    "shared_mocked_apps",
     "transaction_middleware_class",
     "user_session_id",
 ]

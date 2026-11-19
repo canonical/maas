@@ -18,10 +18,17 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.drop_constraint(
-        "maasserver_notificat_user_id_87cc11da_fk_auth_user",
-        "maasserver_notificationdismissal",
-        type_="foreignkey",
+    # Databases created by older Django versions use a different name for
+    # this constraint.
+    op.execute(
+        "ALTER TABLE maasserver_notificationdismissal "
+        "DROP CONSTRAINT IF EXISTS "
+        "maasserver_notificat_user_id_87cc11da_fk_auth_user"
+    )
+    op.execute(
+        "ALTER TABLE maasserver_notificationdismissal "
+        "DROP CONSTRAINT IF EXISTS "
+        "maasserver_notificationdismissal_user_id_87cc11da_fk"
     )
     op.create_foreign_key(
         None,

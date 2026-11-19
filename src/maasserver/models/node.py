@@ -1845,9 +1845,14 @@ class Node(CleanSave, TimestampedModel):
         )
         # Update the latest deployment time of all the images with this os/release and architecture
         # Don't bother the sub-architecture.
+        # Custom images are stored by release name only.
+        if self.osystem == "custom":
+            image_name = self.distro_series
+        else:
+            image_name = f"{self.osystem}/{self.distro_series}"
         now = timezone.now()
         BootResource.objects.filter(
-            name=f"{self.osystem}/{self.distro_series}",
+            name=image_name,
             architecture__startswith=self.architecture.split("/", 1)[0],
         ).update(last_deployed=now)
 
@@ -3673,6 +3678,12 @@ class Node(CleanSave, TimestampedModel):
         if not scripts:
             self.release(user, comment)
             return
+
+        # _release() runs only once the release scripts have finished, when
+        # the node is no longer DEPLOYING, so the deploy workflow must be
+        # cancelled now.
+        if self.status == NODE_STATUS.DEPLOYING:
+            stop_workflow(f"deploy:{self.system_id}")
 
         self.current_release_script_set = (
             ScriptSet.objects.create_release_script_set(

@@ -79,6 +79,26 @@ class TestValidatePowerParamsFips(MAASTestCase):
             )
             self.assertEqual("fips_violation", exc.code)
 
+    def test_rejects_amt_legacy_renegotiation(self):
+        with patch(
+            "maasserver.forms.fips_power.is_fips_enabled", return_value=True
+        ):
+            exc = self.assertRaises(
+                ValidationError,
+                validate_power_params_fips,
+                "amt",
+                {"allow_legacy_renegotiation": "true"},
+            )
+            self.assertEqual("fips_violation", exc.code)
+
+    def test_accepts_amt_without_legacy_renegotiation(self):
+        with patch(
+            "maasserver.forms.fips_power.is_fips_enabled", return_value=True
+        ):
+            validate_power_params_fips(
+                "amt", {"allow_legacy_renegotiation": "false"}
+            )
+
     def test_accepts_lxd_driver_in_fips(self):
         with patch(
             "maasserver.forms.fips_power.is_fips_enabled", return_value=True

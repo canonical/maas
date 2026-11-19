@@ -46,10 +46,18 @@ To search for logs by machine name (hostname):
 journalctl -u snap.maas.pebble -t maas-machine --since "-15m" MAAS_MACHINE_HOSTNAME=ace-cougar
 ```
 
-### Using the less command to read logs
+### Following and paging logs
+
+`journalctl` pages its output through `less` by default. To follow new entries as they arrive, add `-f`:
 
 ```
-less /var/snap/maas/common/log/regiond.log
+journalctl -u snap.maas.pebble -t maas-regiond -f
+```
+
+To pipe the output to another tool instead, add `--no-pager`:
+
+```
+journalctl -u snap.maas.pebble -t maas-regiond --no-pager | less
 ```
 
 ## How to read event logs

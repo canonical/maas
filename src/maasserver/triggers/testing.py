@@ -15,7 +15,6 @@ from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import BMC
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
-from maasserver.models.dhcpsnippet import DHCPSnippet
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.dnsresource import DNSResource
@@ -671,21 +670,6 @@ class TransactionalHelpersMixin:
     def delete_region_controller(self, id):
         region = RegionController.objects.get(id=id)
         region.delete()
-
-    @transactional
-    def create_dhcp_snippet(self, params=None):
-        if params is None:
-            params = {}
-        return factory.make_DHCPSnippet(**params)
-
-    @transactional
-    def update_dhcp_snippet(self, id, params, **kwargs):
-        return apply_update_to_model(DHCPSnippet, id, params, **kwargs)
-
-    @transactional
-    def delete_dhcp_snippet(self, id):
-        dhcp_snippet = DHCPSnippet.objects.get(id=id)
-        dhcp_snippet.delete()
 
     @transactional
     def create_package_repository(self, params=None):

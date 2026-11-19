@@ -32,9 +32,6 @@ from maasservicelayer.db.repositories.consumers import ConsumersRepository
 from maasservicelayer.db.repositories.database_configurations import (
     DatabaseConfigurationsRepository,
 )
-from maasservicelayer.db.repositories.dhcpsnippets import (
-    DhcpSnippetsRepository,
-)
 from maasservicelayer.db.repositories.discoveries import DiscoveriesRepository
 from maasservicelayer.db.repositories.django_session import (
     DjangoSessionRepository,
@@ -154,7 +151,6 @@ from maasservicelayer.services.database_configurations import (
     DatabaseConfigurationsService,
 )
 from maasservicelayer.services.dhcp import DHCPService
-from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.discoveries import DiscoveriesService
 from maasservicelayer.services.django_session import DjangoSessionService
 from maasservicelayer.services.dnsdata import DNSDataService
@@ -278,7 +274,6 @@ class ServiceCollectionV3:
     configurations: ConfigurationsService
     consumers: ConsumersService
     dhcp: DHCPService
-    dhcpsnippets: DhcpSnippetsService
     discoveries: DiscoveriesService
     django_session: DjangoSessionService
     dnsdata: DNSDataService
@@ -561,14 +556,9 @@ class ServiceCollectionV3:
             dnsresources_service=services.dnsresources,
             staticipaddress_repository=StaticIPAddressRepository(context),
         )
-        services.dhcpsnippets = DhcpSnippetsService(
-            context=context,
-            dhcpsnippets_repository=DhcpSnippetsRepository(context),
-        )
         services.ipranges = IPRangesService(
             context=context,
             temporal_service=services.temporal,
-            dhcpsnippets_service=services.dhcpsnippets,
             ipranges_repository=IPRangesRepository(context),
         )
         services.sshkeys = SshKeysService(
@@ -657,7 +647,6 @@ class ServiceCollectionV3:
             ipranges_service=services.ipranges,
             staticroutes_service=services.staticroutes,
             reservedips_service=services.reservedips,
-            dhcpsnippets_service=services.dhcpsnippets,
             dnspublications_service=services.dnspublications,
             nodegrouptorackcontrollers_service=services.nodegrouptorackcontrollers,
             subnets_repository=SubnetsRepository(context),

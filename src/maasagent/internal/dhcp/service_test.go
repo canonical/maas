@@ -85,8 +85,6 @@ func (m *MockDHCPController) Status(ctx context.Context) (servicecontroller.Serv
 	return 0, nil
 }
 
-var writeConfigFileTest = writeConfigFileSnap
-
 type DHCPServiceTestSuite struct {
 	suite.Suite
 	workflowEnv            *testsuite.TestWorkflowEnvironment
@@ -134,8 +132,6 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 	mockControllerV4 := NewMockDHCPController(serviceV4)
 	serviceV6 := servicecontroller.GetServiceName(servicecontroller.DHCPv6)
 	mockControllerV6 := NewMockDHCPController(serviceV6)
-
-	writeConfigFile = writeConfigFileTest
 
 	s.svc = NewDHCPService(
 		s.T().Name(),

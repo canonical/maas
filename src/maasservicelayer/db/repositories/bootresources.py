@@ -307,13 +307,20 @@ class BootResourcesRepository(BaseRepository[BootResource]):
             .join(
                 NodeTable,
                 (
-                    # Boot resource name is in the format os/series
+                    # Boot resource name is in the format os/series, except
+                    # for custom images which are stored as series only.
                     eq(
                         BootResourceTable.c.name,
-                        (
-                            NodeTable.c.osystem
-                            + "/"
-                            + NodeTable.c.distro_series
+                        case(
+                            (
+                                eq(NodeTable.c.osystem, "custom"),
+                                NodeTable.c.distro_series,
+                            ),
+                            else_=(
+                                NodeTable.c.osystem
+                                + "/"
+                                + NodeTable.c.distro_series
+                            ),
                         ),
                     )
                     &
