@@ -12,7 +12,7 @@ Create Date: 2026-10-20 00:00:00.000000+00:00
 from typing import Sequence
 
 # revision identifiers, used by Alembic.
-revision: str = "0045"
+revision: str = "0046"
 down_revision: tuple[str, str] = ("0044", "0045")
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
