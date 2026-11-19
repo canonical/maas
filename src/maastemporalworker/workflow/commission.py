@@ -13,10 +13,10 @@ from maascommon.workflows.commission import (
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.nodes import NodeClauseFactory
 from maastemporalworker.workflow.activity import ActivityBase
-from maastemporalworker.workflow.utils import (
-    activity_defn_with_context,
-    workflow_run_with_context,
+from maastemporalworker.workflow.operation import (
+    workflow_run_with_tracked_operation,
 )
+from maastemporalworker.workflow.utils import activity_defn_with_context
 
 PREPARE_COMMISSIONING_ACTIVITY_NAME = "prepare-commissioning"
 
@@ -50,6 +50,6 @@ class CommissionActivity(ActivityBase):
 
 @workflow.defn(name=COMMISSION_WORKFLOW_NAME, sandboxed=False)
 class CommissionWorkflow:
-    @workflow_run_with_context
+    @workflow_run_with_tracked_operation
     async def run(self, param: CommissionParam) -> None:
         pass
