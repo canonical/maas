@@ -100,7 +100,7 @@ Managed solutions and consulting are also available. See [Managed services](http
 
 ## Contributing
 
-Fixes and new features are greatly appreciated. Make sure to read our [contributing guidelines](CONTRIBUTING.md) first!
+Fixes and new features are greatly appreciated. Make sure to read our [contributing guidelines](HACKING.rst) first!
 
 ## License
 
