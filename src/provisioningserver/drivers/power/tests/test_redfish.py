@@ -1022,9 +1022,9 @@ class TestRedfishPowerDriver(MAASTestCase):
         node_id = b"1"
         headers = driver.make_auth_headers(**context)
         self.patch(driver, "get_etag").return_value = None
-        self.patch(
-            driver, "get_boot_endpoint"
-        ).return_value = b"redfish/v1/Systems/1"
+        self.patch(driver, "get_boot_endpoint").return_value = (
+            b"redfish/v1/Systems/1"
+        )
         mock_redfish_request = self.patch(driver, "redfish_request")
         mock_redfish_request.side_effect = RedfishRequestRejectedError("BOOM")
 
