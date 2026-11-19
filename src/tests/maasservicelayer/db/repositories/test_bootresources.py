@@ -307,7 +307,7 @@ class TestBootResourceRepository:
         arch = "amd64/generic"
         resource = await create_test_custom_bootresource_status_entry(
             fixture,
-            name=f"{osystem}/{release}",
+            name=release,
             architecture=arch,
             region_controllers=[region_controller],
         )
