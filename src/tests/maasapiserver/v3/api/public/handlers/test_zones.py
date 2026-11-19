@@ -32,8 +32,6 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.zones import Zone, ZoneWithStatistics
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.zones import ZonesService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -97,13 +95,12 @@ class TestZonesApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.list.return_value = ListResult[Zone](
             items=[TEST_ZONE], total=2
         )
@@ -116,13 +113,12 @@ class TestZonesApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.list.return_value = ListResult[Zone](
             items=[DEFAULT_ZONE, TEST_ZONE], total=2
         )
@@ -135,13 +131,12 @@ class TestZonesApi(ApiCommonTests):
 
     async def test_list_with_filters(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.list.return_value = ListResult[Zone](
             items=[TEST_ZONE], total=2
         )
@@ -163,7 +158,7 @@ class TestZonesApi(ApiCommonTests):
 
     async def test_list_with_statistics_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -177,7 +172,6 @@ class TestZonesApi(ApiCommonTests):
             devices_count=20,
             controllers_count=30,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.list_with_statistics.return_value = ListResult[
             ZoneWithStatistics
         ](items=[zone_with_statistics], total=1)
@@ -197,7 +191,7 @@ class TestZonesApi(ApiCommonTests):
 
     async def test_list_with_statistics_other_page_and_filters(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -211,7 +205,6 @@ class TestZonesApi(ApiCommonTests):
             devices_count=20,
             controllers_count=30,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.list_with_statistics.return_value = ListResult[
             ZoneWithStatistics
         ](items=[zone_with_statistics], total=2)
@@ -240,14 +233,13 @@ class TestZonesApi(ApiCommonTests):
     # GET /zones/{zone_id}
     async def test_get_default(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
         # A "default" zone should be created at startup by the migration scripts.
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.get_by_id.return_value = DEFAULT_ZONE
         response = await client.get(self.DEFAULT_ZONE_PATH)
         assert response.status_code == 200
@@ -258,13 +250,12 @@ class TestZonesApi(ApiCommonTests):
 
     async def test_get_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.get_by_id.return_value = None
         response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
@@ -276,13 +267,12 @@ class TestZonesApi(ApiCommonTests):
 
     async def test_get_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.get_by_id.side_effect = RequestValidationError(
             errors=[]
         )
@@ -297,7 +287,7 @@ class TestZonesApi(ApiCommonTests):
     # PUT /zones/{zone_id}
     async def test_put(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -311,7 +301,6 @@ class TestZonesApi(ApiCommonTests):
             name="new_name",
             description="new_description",
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.update_by_id.return_value = updated_test_zone
 
         response = await client.put(
@@ -332,13 +321,12 @@ class TestZonesApi(ApiCommonTests):
 
     async def test_put_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.update_by_id.return_value = None
 
         update_zone_request = ZoneRequest(
@@ -361,13 +349,12 @@ class TestZonesApi(ApiCommonTests):
 
     async def test_put_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.update_by_id.return_value = None
 
         update_zone_request = ZoneRequest(
@@ -391,7 +378,7 @@ class TestZonesApi(ApiCommonTests):
     # POST /zones
     async def test_post_201(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -400,7 +387,6 @@ class TestZonesApi(ApiCommonTests):
         zone_request = ZoneRequest(
             name=TEST_ZONE.name, description=TEST_ZONE.description
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.create.return_value = TEST_ZONE
         response = await client.post(
             self.BASE_PATH, json=jsonable_encoder(zone_request)
@@ -418,14 +404,13 @@ class TestZonesApi(ApiCommonTests):
 
     async def test_post_default_parameters(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
         zone_request = ZoneRequest(name="myzone", description=None)
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.create.return_value = Zone(
             id=2,
             name="myzone",
@@ -442,14 +427,13 @@ class TestZonesApi(ApiCommonTests):
 
     async def test_post_409(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
         zone_request = ZoneRequest(name="myzone", description=None)
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.create.side_effect = [
             TEST_ZONE,
             AlreadyExistsException(
@@ -488,14 +472,13 @@ class TestZonesApi(ApiCommonTests):
     )
     async def test_post_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         zone_request: dict[str, str],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.create.side_effect = ValueError(
             "Invalid entity name."
         )
@@ -509,13 +492,12 @@ class TestZonesApi(ApiCommonTests):
     # DELETE /zones/{id}
     async def test_delete_default_zone(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.delete_by_id.side_effect = BadRequestException(
             details=[
                 BaseExceptionDetail(
@@ -538,26 +520,24 @@ class TestZonesApi(ApiCommonTests):
 
     async def test_delete_resource(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.delete_by_id.side_effect = None
         response = await client.delete(f"{self.BASE_PATH}/100")
         assert response.status_code == 204
 
     async def test_delete_with_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.zones = Mock(ZonesService)
         services_mock.zones.delete_by_id.side_effect = [
             PreconditionFailedException(
                 details=[

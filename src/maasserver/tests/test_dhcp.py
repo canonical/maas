@@ -13,15 +13,10 @@ from maascommon.workflows.dhcp import CONFIGURE_DHCP_WORKFLOW_NAME
 from maasserver import dhcp
 from maasserver import dhcp as dhcp_module
 from maasserver import server_address as server_address_module
-from maasserver.dhcp import (
-    _get_dhcp_rackcontrollers,
-    generate_omapi_key,
-    get_default_dns_servers,
-)
+from maasserver.dhcp import generate_omapi_key, get_default_dns_servers
 from maasserver.dhcpd.config import compose_conditional_bootloader
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
-from maasserver.models import Config, DHCPSnippet, Domain
-from maasserver.models import dnspublication as dnspublications_module
+from maasserver.models import Config, Domain
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -1355,7 +1350,6 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                 "domain_name",
                 "search_list",
                 "pools",
-                "dhcp_snippets",
                 "next_server",
                 "bootloader",
             },
@@ -1812,12 +1806,10 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                 {
                     "ip_range_low": "10.9.8.11",
                     "ip_range_high": "10.9.8.20",
-                    "dhcp_snippets": [],
                 },
                 {
                     "ip_range_low": "10.9.8.21",
                     "ip_range_high": "10.9.8.30",
-                    "dhcp_snippets": [],
                 },
             ],
             config["pools"],
@@ -1849,13 +1841,11 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                     "ip_range_low": "10.9.8.11",
                     "ip_range_high": "10.9.8.20",
                     "failover_peer": failover_peer,
-                    "dhcp_snippets": [],
                 },
                 {
                     "ip_range_low": "10.9.8.21",
                     "ip_range_high": "10.9.8.30",
                     "failover_peer": failover_peer,
-                    "dhcp_snippets": [],
                 },
             ],
             config["pools"],
@@ -1878,91 +1868,6 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             default_domain,
         )
         self.assertEqual("", config["router_ip"])
-
-    def test_returns_dhcp_snippets(self):
-        rack_controller = factory.make_RackController(interface=False)
-        vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan)
-        factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
-        )
-        default_domain = Domain.objects.get_default_domain()
-        dhcp_snippets = [
-            factory.make_DHCPSnippet(subnet=subnet, enabled=True)
-            for _ in range(3)
-        ]
-        config = dhcp.make_subnet_config(
-            subnet,
-            [factory.make_ipv4_address()],
-            [factory.make_name("ntp")],
-            default_domain,
-            subnets_dhcp_snippets=dhcp_snippets,
-        )
-        self.assertCountEqual(
-            [
-                {
-                    "name": dhcp_snippet.name,
-                    "description": dhcp_snippet.description,
-                    "value": dhcp_snippet.value.data,
-                }
-                for dhcp_snippet in dhcp_snippets
-            ],
-            config["dhcp_snippets"],
-        )
-
-    def test_returns_iprange_dhcp_snippets(self):
-        rack_controller = factory.make_RackController(interface=False)
-        vlan = factory.make_VLAN()
-        subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
-        iprange = subnet.get_dynamic_ranges().first()
-
-        with post_commit_hooks:
-            iprange.save()
-
-        factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
-        )
-        default_domain = Domain.objects.get_default_domain()
-        subnet_snippets = [
-            factory.make_DHCPSnippet(subnet=subnet, enabled=True)
-            for _ in range(3)
-        ]
-        iprange_snippets = [
-            factory.make_DHCPSnippet(
-                subnet=subnet, iprange=iprange, enabled=True
-            )
-            for _ in range(3)
-        ]
-        dhcp_snippets = subnet_snippets + iprange_snippets
-        config = dhcp.make_subnet_config(
-            subnet,
-            [factory.make_ipv4_address()],
-            [factory.make_name("ntp")],
-            default_domain,
-            subnets_dhcp_snippets=dhcp_snippets,
-        )
-        self.assertCountEqual(
-            [
-                {
-                    "name": dhcp_snippet.name,
-                    "description": dhcp_snippet.description,
-                    "value": dhcp_snippet.value.data,
-                }
-                for dhcp_snippet in subnet_snippets
-            ],
-            config["dhcp_snippets"],
-        )
-        self.assertCountEqual(
-            [
-                {
-                    "name": dhcp_snippet.name,
-                    "description": dhcp_snippet.description,
-                    "value": dhcp_snippet.value.data,
-                }
-                for dhcp_snippet in iprange_snippets
-            ],
-            config["pools"][0]["dhcp_snippets"],
-        )
 
     def test_subnet_without_gateway_restricts_nameservers(self):
         network1 = IPNetwork("10.9.8.0/24")
@@ -2207,15 +2112,6 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
             interface=unknown_interface,
         )
 
-        # Add DHCP some DHCP snippets
-        node_dhcp_snippets = [
-            factory.make_DHCPSnippet(node=node, enabled=True) for _ in range(3)
-        ]
-        device_dhcp_snippets = [
-            factory.make_DHCPSnippet(node=device, enabled=True)
-            for _ in range(3)
-        ]
-
         # Make an IP reservation
         reserved_ip = factory.make_ReservedIP(
             factory.pick_ip_in_network(
@@ -2231,60 +2127,32 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
                 "host": f"{node.hostname}-{auto_with_ip_interface.name}",
                 "mac": str(auto_with_ip_interface.mac_address),
                 "ip": str(auto_ip.ip),
-                "dhcp_snippets": [
-                    {
-                        "name": dhcp_snippet.name,
-                        "description": dhcp_snippet.description,
-                        "value": dhcp_snippet.value.data,
-                    }
-                    for dhcp_snippet in node_dhcp_snippets
-                ],
             },
             {
                 "host": f"{node.hostname}-{sticky_ip_interface.name}",
                 "mac": str(sticky_ip_interface.mac_address),
                 "ip": str(sticky_ip.ip),
-                "dhcp_snippets": [
-                    {
-                        "name": dhcp_snippet.name,
-                        "description": dhcp_snippet.description,
-                        "value": dhcp_snippet.value.data,
-                    }
-                    for dhcp_snippet in node_dhcp_snippets
-                ],
             },
             {
                 "host": f"{device.hostname}-{device_interface.name}",
                 "mac": str(device_interface.mac_address),
                 "ip": str(device_ip.ip),
-                "dhcp_snippets": [
-                    {
-                        "name": dhcp_snippet.name,
-                        "description": dhcp_snippet.description,
-                        "value": dhcp_snippet.value.data,
-                    }
-                    for dhcp_snippet in device_dhcp_snippets
-                ],
             },
             {
                 "host": "unknown-%s-%s"
                 % (unknown_interface.id, unknown_interface.name),
                 "mac": str(unknown_interface.mac_address),
                 "ip": str(unknown_reserved_ip.ip),
-                "dhcp_snippets": [],
             },
             {
                 "host": "rsvd-%s" % str(reserved_ip.id),
                 "mac": str(reserved_ip.mac_address),
                 "ip": str(reserved_ip.ip),
-                "dhcp_snippets": [],
             },
         ]
         self.assertCountEqual(
             expected_hosts,
-            dhcp.make_hosts_for_subnets(
-                [subnet], node_dhcp_snippets + device_dhcp_snippets
-            ),
+            dhcp.make_hosts_for_subnets([subnet]),
         )
 
     def tests__returns_hosts_interface_once_when_on_multiple_subnets(self):
@@ -2315,7 +2183,6 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
                 "host": f"{node.hostname}-{interface.name}",
                 "mac": str(interface.mac_address),
                 "ip": str(ip_one.ip),
-                "dhcp_snippets": [],
             }
         ]
         self.assertCountEqual(
@@ -2360,19 +2227,16 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
                 "host": "%s-bond0" % node.hostname,
                 "mac": str(bond0.mac_address),
                 "ip": str(auto_ip.ip),
-                "dhcp_snippets": [],
             },
             {
                 "host": "%s-eth0" % node.hostname,
                 "mac": str(eth0.mac_address),
                 "ip": str(auto_ip.ip),
-                "dhcp_snippets": [],
             },
             {
                 "host": "%s-eth1" % node.hostname,
                 "mac": str(eth1.mac_address),
                 "ip": str(auto_ip.ip),
-                "dhcp_snippets": [],
             },
         ]
 
@@ -2405,7 +2269,6 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
                 "host": f"{node.hostname}-{eth0.name}",
                 "mac": str(eth0.mac_address),
                 "ip": str(auto_ip.ip),
-                "dhcp_snippets": [],
             }
         ]
 
@@ -2441,7 +2304,6 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
                 "host": f"{node.hostname}-{eth0.name}",
                 "mac": str(eth0.mac_address),
                 "ip": str(ip),
-                "dhcp_snippets": [],
             }
         ]
 
@@ -2624,10 +2486,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             vlan=ha_vlan, allow_dns=False, dns_servers=["127.0.0.1"]
         )
         ha_network = ha_subnet.get_ipnetwork()
-        ha_dhcp_snippets = [
-            factory.make_DHCPSnippet(subnet=ha_subnet, enabled=True)
-            for _ in range(3)
-        ]
         primary_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=ha_vlan
         )
@@ -2648,10 +2506,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             vlan=ha_vlan, allow_dns=False, dns_servers=["127.0.0.1"]
         )
         other_network = other_subnet.get_ipnetwork()
-        other_dhcp_snippets = [
-            factory.make_DHCPSnippet(subnet=other_subnet, enabled=True)
-            for _ in range(3)
-        ]
         factory.make_ReservedIP(
             factory.pick_ip_in_network(
                 IPNetwork(ha_subnet.cidr),
@@ -2677,7 +2531,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             ntp_servers,
             default_domain,
             search_list=search_list,
-            dhcp_snippets=DHCPSnippet.objects.all(),
         )
 
         self.assertEqual(
@@ -2705,14 +2558,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                             default_domain.name,
                             "foo.example.com",
                         ],
-                        "dhcp_snippets": [
-                            {
-                                "name": dhcp_snippet.name,
-                                "description": dhcp_snippet.description,
-                                "value": dhcp_snippet.value.data,
-                            }
-                            for dhcp_snippet in ha_dhcp_snippets
-                        ],
                         "next_server": primary_ip.ip,
                         "bootloader": compose_conditional_bootloader(
                             False,
@@ -2725,7 +2570,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                                 "ip_range_high": str(ip_range.end_ip),
                                 "failover_peer": "failover-vlan-%d"
                                 % ha_vlan.id,
-                                "dhcp_snippets": [],
                             }
                             for ip_range in (
                                 ha_subnet.get_dynamic_ranges().order_by("id")
@@ -2745,14 +2589,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                             default_domain.name,
                             "foo.example.com",
                         ],
-                        "dhcp_snippets": [
-                            {
-                                "name": dhcp_snippet.name,
-                                "description": dhcp_snippet.description,
-                                "value": dhcp_snippet.value.data,
-                            }
-                            for dhcp_snippet in other_dhcp_snippets
-                        ],
                         "next_server": primary_ip.ip,
                         "bootloader": compose_conditional_bootloader(
                             False,
@@ -2765,7 +2601,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                                 "ip_range_high": str(ip_range.end_ip),
                                 "failover_peer": "failover-vlan-%d"
                                 % ha_vlan.id,
-                                "dhcp_snippets": [],
                             }
                             for ip_range in (
                                 other_subnet.get_dynamic_ranges().order_by(
@@ -2803,10 +2638,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             "fd38:c341:27da:c831:0:1::",
             "fd38:c341:27da:c831:0:1:ffff:0",
         )
-        ha_dhcp_snippets = [
-            factory.make_DHCPSnippet(subnet=ha_subnet, enabled=True)
-            for _ in range(3)
-        ]
         primary_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=ha_vlan
         )
@@ -2827,10 +2658,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             vlan=ha_vlan, cidr="fd38:c341:27da:c832::/64"
         )
         other_network = other_subnet.get_ipnetwork()
-        other_dhcp_snippets = [
-            factory.make_DHCPSnippet(subnet=other_subnet, enabled=True)
-            for _ in range(3)
-        ]
         factory.make_ReservedIP(
             factory.pick_ip_in_network(
                 IPNetwork(ha_subnet.cidr),
@@ -2854,7 +2681,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             [ha_subnet, other_subnet],
             ntp_servers,
             default_domain,
-            dhcp_snippets=DHCPSnippet.objects.all(),
         )
 
         # Because developers running this unit test might not have an IPv6
@@ -2883,14 +2709,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                         "router_ip": str(ha_subnet.gateway_ip),
                         "ntp_servers": ntp_servers,
                         "domain_name": default_domain.name,
-                        "dhcp_snippets": [
-                            {
-                                "name": dhcp_snippet.name,
-                                "description": dhcp_snippet.description,
-                                "value": dhcp_snippet.value.data,
-                            }
-                            for dhcp_snippet in ha_dhcp_snippets
-                        ],
                         "next_server": primary_ip.ip,
                         "bootloader": compose_conditional_bootloader(
                             True,
@@ -2903,7 +2721,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                                 "ip_range_high": str(ip_range.end_ip),
                                 "failover_peer": "failover-vlan-%d"
                                 % ha_vlan.id,
-                                "dhcp_snippets": [],
                             }
                             for ip_range in (
                                 ha_subnet.get_dynamic_ranges().order_by("id")
@@ -2918,14 +2735,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                         "router_ip": str(other_subnet.gateway_ip),
                         "ntp_servers": ntp_servers,
                         "domain_name": default_domain.name,
-                        "dhcp_snippets": [
-                            {
-                                "name": dhcp_snippet.name,
-                                "description": dhcp_snippet.description,
-                                "value": dhcp_snippet.value.data,
-                            }
-                            for dhcp_snippet in other_dhcp_snippets
-                        ],
                         "next_server": primary_ip.ip,
                         "bootloader": compose_conditional_bootloader(
                             True,
@@ -2938,7 +2747,6 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                                 "ip_range_high": str(ip_range.end_ip),
                                 "failover_peer": "failover-vlan-%d"
                                 % ha_vlan.id,
-                                "dhcp_snippets": [],
                             }
                             for ip_range in (
                                 other_subnet.get_dynamic_ranges().order_by(
@@ -3028,101 +2836,6 @@ class TestGetDHCPConfiguration(MAASServerTestCase):
         )
 
 
-class TestGetDHCPRackcontroller(MAASTransactionServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.patch(dnspublications_module, "post_commit_do")
-
-    def create_dhcp_vlan(self, primary_address, secondary_adress=None):
-        dhcp_vlan = factory.make_VLAN()
-        dhcp_subnet = factory.make_Subnet(
-            vlan=dhcp_vlan, cidr=IPNetwork(primary_address).cidr
-        )
-        primary_rack = factory.make_rack_with_interfaces(
-            eth0=[primary_address]
-        )
-        secondary_rack = None
-        if secondary_adress is not None:
-            secondary_rack = factory.make_rack_with_interfaces(
-                eth0=[secondary_adress]
-            )
-        dhcp_vlan.dhcp_on = True
-        dhcp_vlan.primary_rack = primary_rack
-        dhcp_vlan.secondary_rack = secondary_rack
-
-        with post_commit_hooks:
-            dhcp_vlan.save()
-
-        return dhcp_subnet
-
-    def test_subnet(self):
-        subnet = self.create_dhcp_vlan("10.10.10.2/24")
-        self.create_dhcp_vlan("10.10.20.2/24")
-        snippet = factory.make_DHCPSnippet(subnet=subnet, enabled=True)
-        self.assertCountEqual(
-            [subnet.vlan.primary_rack], _get_dhcp_rackcontrollers(snippet)
-        )
-
-    def test_subnet_includes_secondary(self):
-        subnet = self.create_dhcp_vlan("10.10.10.2/24", "10.10.10.3/24")
-        self.create_dhcp_vlan("10.10.20.0/24")
-        snippet = factory.make_DHCPSnippet(subnet=subnet, enabled=True)
-        self.assertCountEqual(
-            [subnet.vlan.primary_rack, subnet.vlan.secondary_rack],
-            _get_dhcp_rackcontrollers(snippet),
-        )
-
-    def test_subnet_relay(self):
-        dhcp_subnet = self.create_dhcp_vlan("10.10.10.2/24")
-        self.create_dhcp_vlan("10.10.20.2/24")
-        relay_subnet = factory.make_Subnet(cidr="10.10.30.0/24")
-        relay_subnet.vlan.relay_vlan = dhcp_subnet.vlan
-
-        with post_commit_hooks:
-            relay_subnet.vlan.save()
-
-        snippet = factory.make_DHCPSnippet(subnet=relay_subnet, enabled=True)
-        self.assertCountEqual(
-            [dhcp_subnet.vlan.primary_rack], _get_dhcp_rackcontrollers(snippet)
-        )
-
-    def test_node(self):
-        subnet = self.create_dhcp_vlan("10.10.10.2/24")
-        self.create_dhcp_vlan("10.10.20.0/24")
-        node = factory.make_Machine_with_Interface_on_Subnet(subnet=subnet)
-        snippet = factory.make_DHCPSnippet(node=node, enabled=True)
-        self.assertCountEqual(
-            [subnet.vlan.primary_rack], _get_dhcp_rackcontrollers(snippet)
-        )
-
-    def test_node_includes_secondary(self):
-        subnet = self.create_dhcp_vlan("10.10.10.2/24", "10.10.10.3/24")
-        self.create_dhcp_vlan("10.10.20.0/24")
-        node = factory.make_Machine_with_Interface_on_Subnet(subnet=subnet)
-        snippet = factory.make_DHCPSnippet(node=node, enabled=True)
-        self.assertCountEqual(
-            [subnet.vlan.primary_rack, subnet.vlan.secondary_rack],
-            _get_dhcp_rackcontrollers(snippet),
-        )
-
-    def test_node_relay(self):
-        dhcp_subnet = self.create_dhcp_vlan("10.10.10.2/24")
-        self.create_dhcp_vlan("10.10.20.2/24")
-        relay_subnet = factory.make_Subnet(cidr="10.10.30.0/24")
-        relay_subnet.vlan.relay_vlan = dhcp_subnet.vlan
-
-        with post_commit_hooks:
-            relay_subnet.vlan.save()
-
-        node = factory.make_Machine_with_Interface_on_Subnet(
-            subnet=relay_subnet
-        )
-        snippet = factory.make_DHCPSnippet(node=node, enabled=True)
-        self.assertCountEqual(
-            [dhcp_subnet.vlan.primary_rack], _get_dhcp_rackcontrollers(snippet)
-        )
-
-
 class TestConfigureDhcpOnAgents(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
@@ -3189,7 +2902,7 @@ class TestGenerateDHCPConfiguration(MAASTransactionServerTestCase):
         with post_commit_hooks:
             iprange_v4.save()
 
-        iprange_v6 = factory.make_IPRange(
+        factory.make_IPRange(
             subnet_v6,
             "fd38:c341:27da:c831:0:1::",
             "fd38:c341:27da:c831:0:1:ffff:0",
@@ -3217,17 +2930,6 @@ class TestGenerateDHCPConfiguration(MAASTransactionServerTestCase):
                 subnet=subnet_v6,
                 interface=secondary_interface,
             )
-
-        for _ in range(3):
-            factory.make_DHCPSnippet(
-                subnet=subnet_v4, iprange=iprange_v4, enabled=True
-            )
-            factory.make_DHCPSnippet(
-                subnet=subnet_v6, iprange=iprange_v6, enabled=True
-            )
-            factory.make_DHCPSnippet(subnet=subnet_v4, enabled=True)
-            factory.make_DHCPSnippet(subnet=subnet_v6, enabled=True)
-            factory.make_DHCPSnippet(enabled=True)
 
         config = dhcp.get_dhcp_configuration(primary_rack)
         return primary_rack, config
@@ -3257,7 +2959,6 @@ class TestGenerateDHCPConfiguration(MAASTransactionServerTestCase):
         )
         get_config_v4_stub.assert_called_once_with(
             template_name="dhcpd.conf.template",
-            global_dhcp_snippets=dhcp_config.global_dhcp_snippets,
             failover_peers=dhcp_config.failover_peers_v4,
             shared_networks=dhcp_config.shared_networks_v4,
             hosts=dhcp_config.hosts_v4,
@@ -3265,7 +2966,6 @@ class TestGenerateDHCPConfiguration(MAASTransactionServerTestCase):
         )
         get_config_v6_stub.assert_called_once_with(
             template_name="dhcpd6.conf.template",
-            global_dhcp_snippets=dhcp_config.global_dhcp_snippets,
             failover_peers=dhcp_config.failover_peers_v6,
             shared_networks=dhcp_config.shared_networks_v6,
             hosts=dhcp_config.hosts_v6,

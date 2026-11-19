@@ -32,8 +32,6 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.fabrics import Fabric
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
@@ -93,13 +91,12 @@ class TestFabricsApi(ApiCommonTests):
 
     async def test_list_no_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.list.return_value = ListResult[Fabric](
             items=[TEST_FABRIC], total=1
         )
@@ -112,13 +109,12 @@ class TestFabricsApi(ApiCommonTests):
 
     async def test_list_other_page(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.list.return_value = ListResult[Fabric](
             items=[TEST_FABRIC_2], total=2
         )
@@ -131,13 +127,12 @@ class TestFabricsApi(ApiCommonTests):
     # GET /fabric/{ID}
     async def test_get_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.get_by_id.return_value = TEST_FABRIC
         response = await client.get(f"{self.BASE_PATH}/{TEST_FABRIC.id}")
         assert response.status_code == 200
@@ -155,13 +150,12 @@ class TestFabricsApi(ApiCommonTests):
 
     async def test_get_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.get_by_id.return_value = None
         response = await client.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
@@ -173,13 +167,12 @@ class TestFabricsApi(ApiCommonTests):
 
     async def test_get_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
         )
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.get_by_id.side_effect = RequestValidationError(
             errors=[]
         )
@@ -194,7 +187,7 @@ class TestFabricsApi(ApiCommonTests):
     # POST /fabric
     async def test_post_201(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -212,7 +205,6 @@ class TestFabricsApi(ApiCommonTests):
             class_type="new_class_type",
         )
 
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.create.return_value = new_fabric
 
         response = await client.post(
@@ -232,7 +224,7 @@ class TestFabricsApi(ApiCommonTests):
 
     async def test_post_409(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -250,7 +242,6 @@ class TestFabricsApi(ApiCommonTests):
             class_type="new_class_type",
         )
 
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.create.side_effect = [
             new_fabric,
             AlreadyExistsException(
@@ -282,7 +273,7 @@ class TestFabricsApi(ApiCommonTests):
 
     async def test_post_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -290,7 +281,6 @@ class TestFabricsApi(ApiCommonTests):
         )
         new_fabric_request = {"name": None}
 
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.create.return_value = None
 
         response = await client.post(
@@ -308,7 +298,7 @@ class TestFabricsApi(ApiCommonTests):
     # PUT /fabric/{fabric_id}
     async def test_put_200(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -325,7 +315,6 @@ class TestFabricsApi(ApiCommonTests):
             class_type="updated_class_type",
         )
 
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.update_by_id.return_value = updated_fabric
 
         response = await client.put(
@@ -347,7 +336,7 @@ class TestFabricsApi(ApiCommonTests):
 
     async def test_put_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -359,7 +348,6 @@ class TestFabricsApi(ApiCommonTests):
             class_type="updated_class_type",
         )
 
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.update_by_id.side_effect = NotFoundException(
             details=[
                 BaseExceptionDetail(
@@ -391,7 +379,7 @@ class TestFabricsApi(ApiCommonTests):
     )
     async def test_put_422(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
         update_fabric_request: dict[str, str],
     ) -> None:
@@ -404,7 +392,6 @@ class TestFabricsApi(ApiCommonTests):
             class_type="updated_class_type",
         )
 
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.update_by_id.side_effect = (
             RequestValidationError(errors=[])
         )
@@ -424,13 +411,12 @@ class TestFabricsApi(ApiCommonTests):
 
     async def test_delete_204(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.delete_by_id.side_effect = None
 
         response = await client.delete(
@@ -441,7 +427,7 @@ class TestFabricsApi(ApiCommonTests):
 
     async def test_delete_with_etag(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
@@ -449,7 +435,6 @@ class TestFabricsApi(ApiCommonTests):
         )
         fabric_id_to_delete = 1
 
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.delete_by_id.side_effect = PreconditionFailedException(
             details=[
                 BaseExceptionDetail(
@@ -472,13 +457,12 @@ class TestFabricsApi(ApiCommonTests):
 
     async def test_delete_not_default_fabric(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.delete_by_id.side_effect = BadRequestException(
             details=[
                 BaseExceptionDetail(
@@ -502,13 +486,12 @@ class TestFabricsApi(ApiCommonTests):
 
     async def test_delete_404(
         self,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
     ) -> None:
         client = mocked_api_client_user_with_permissions(
             MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
         )
-        services_mock.fabrics = Mock(FabricsService)
         services_mock.fabrics.delete_by_id.side_effect = NotFoundException(
             details=[
                 BaseExceptionDetail(

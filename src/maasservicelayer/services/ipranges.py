@@ -13,9 +13,6 @@ from maascommon.workflows.dhcp import (
 from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
-from maasservicelayer.db.repositories.dhcpsnippets import (
-    DhcpSnippetsClauseFactory,
-)
 from maasservicelayer.db.repositories.ipranges import (
     IPRangeClauseFactory,
     IPRangesRepository,
@@ -29,7 +26,6 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.ipranges import IPRange
 from maasservicelayer.services.base import BaseService
-from maasservicelayer.services.dhcpsnippets import DhcpSnippetsService
 from maasservicelayer.services.temporal import TemporalService
 
 
@@ -42,12 +38,10 @@ class IPRangesService(
         self,
         context: Context,
         temporal_service: TemporalService,
-        dhcpsnippets_service: DhcpSnippetsService,
         ipranges_repository: IPRangesRepository,
     ):
         super().__init__(context, ipranges_repository)
         self.temporal_service = temporal_service
-        self.dhcpsnippets_service = dhcpsnippets_service
         self.ipranges_repository = ipranges_repository
 
     async def get_dynamic_range_for_ip(
@@ -103,11 +97,6 @@ class IPRangesService(
         raise NotImplementedError("Not implemented yet.")
 
     async def post_delete_hook(self, resource: IPRange) -> None:
-        await self.dhcpsnippets_service.delete_many(
-            query=QuerySpec(
-                where=DhcpSnippetsClauseFactory.with_iprange_id(resource.id)
-            )
-        )
         self.temporal_service.register_or_update_workflow_call(
             CONFIGURE_DHCP_WORKFLOW_NAME,
             ConfigureDHCPParam(subnet_ids=[resource.subnet_id]),

@@ -219,7 +219,7 @@ class TestGetErrorMessageForException(MAASServerTestCase):
         exception_class = random.choice(RPC_EXCEPTIONS)
         error_message = (
             "Unexpected exception: %s. See "
-            "/var/log/maas/regiond.log "
+            "`journalctl -u snap.maas.pebble -t maas-regiond` "
             "on the region server for more information."
             % exception_class.__name__
         )

@@ -365,6 +365,42 @@ class TestInterfacesService:
             ip_id=sip.id
         )
 
+    async def test_get_for_ips(self):
+        sips = [
+            StaticIPAddress(
+                id=1,
+                ip=IPv4Address("10.0.0.2"),
+                subnet_id=1,
+                lease_time=80,
+                alloc_type=IpAddressType.AUTO,
+            ),
+            StaticIPAddress(
+                id=2,
+                ip=IPv4Address("10.0.0.3"),
+                subnet_id=1,
+                lease_time=80,
+                alloc_type=IpAddressType.AUTO,
+            ),
+        ]
+        interface_repository_mock = Mock(InterfaceRepository)
+        interface_repository_mock.get_for_ips.return_value = {}
+
+        interface_service = InterfacesService(
+            context=Context(),
+            temporal_service=Mock(TemporalService),
+            dnsresource_service=Mock(DNSResourcesService),
+            dnspublication_service=Mock(DNSPublicationsService),
+            domain_service=Mock(DomainsService),
+            node_service=Mock(NodesService),
+            interface_repository=interface_repository_mock,
+        )
+
+        await interface_service.get_for_ips(sips)
+
+        interface_repository_mock.get_for_ips.assert_called_once_with(
+            ip_ids=[1, 2]
+        )
+
     async def test_link_interface_to_switch(self):
         """Test linking an interface to a switch updates switch_id and type."""
         interface = Interface(

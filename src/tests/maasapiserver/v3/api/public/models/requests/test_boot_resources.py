@@ -1,6 +1,6 @@
 #  Copyright 2025 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -20,20 +20,13 @@ from maasservicelayer.db.repositories.bootresources import (
 from maasservicelayer.exceptions.catalog import ValidationException
 from maasservicelayer.models.bootresources import BootResource
 from maasservicelayer.models.bootsources import BootSourceCacheOSRelease
-from maasservicelayer.services import ServiceCollectionV3
-from maasservicelayer.services.bootresources import BootResourceService
-from maasservicelayer.services.bootsourcecache import BootSourceCacheService
-from maasservicelayer.services.configurations import ConfigurationsService
 from maastesting.factory import factory
+from tests.fixtures import create_services_mock
 
 
 @pytest.fixture
 def mock_services():
-    services_mock = Mock(ServiceCollectionV3)
-    services_mock.boot_source_cache = Mock(BootSourceCacheService)
-    services_mock.boot_resources = Mock(BootResourceService)
-    services_mock.configurations = Mock(ConfigurationsService)
-    return services_mock
+    return create_services_mock()
 
 
 class TestBootResourceCreateRequest:
@@ -78,7 +71,6 @@ class TestBootResourceCreateRequest:
     @pytest.mark.parametrize(
         "name",
         [
-            "custom/my_custom_image",
             "ubuntu-core/my-release",
             "centos/my-release",
             "rhel/my-release",
@@ -105,6 +97,22 @@ class TestBootResourceCreateRequest:
         validated_name = await request._validate_name(name, mock_services)
 
         assert validated_name == name
+
+    async def test_validate_name_strips_custom_prefix(self, mock_services):
+        mock_services.boot_source_cache.get_unique_os_releases.return_value = []
+        request = BootResourceCreateRequest(
+            name="custom/my_custom_image",
+            sha256="a" * 64,
+            architecture="amd64/generic",
+            file_type=BootResourceFileTypeChoice.TGZ,
+            title=None,
+            base_image=None,
+        )
+        validated_name = await request._validate_name(
+            request.name, mock_services
+        )
+
+        assert validated_name == "my_custom_image"
 
     @pytest.mark.parametrize(
         "name,reserved_releases",

@@ -10,7 +10,7 @@ Use a disposable virtual machine. Do not follow this tutorial on a production MA
 
 ## What you need
 
-- A computer that can run [Multipass](https://multipass.run), with at least 4 GB of free memory and 20 GB of free disk space.
+- A computer that can run [Multipass](https://canonical.com/multipass), with at least 4 GB of free memory and 20 GB of free disk space.
 - An internet connection.
 
 ## Create a test machine

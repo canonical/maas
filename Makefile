@@ -160,8 +160,16 @@ test: test-py test-go
 .PHONY: test
 
 test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyunit bin/pytest
-	@utilities/run-py-tests-ci
+	@utilities/run-py-tests-ci all
 .PHONY: test-py
+
+test-py-legacy: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyunit
+	@utilities/run-py-tests-ci legacy
+.PHONY: test-py-legacy
+
+test-py-pytest: bin/pytest
+	@utilities/run-py-tests-ci pytest
+.PHONY: test-py-pytest
 
 test-go:
 	@find src -maxdepth 3 -type f -name go.mod -execdir sh -c "make test" {} +

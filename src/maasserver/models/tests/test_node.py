@@ -4900,6 +4900,22 @@ class TestNode(MAASServerTestCase):
             f"deploy:{node.system_id}", "deployed-os-ready"
         )
 
+    def test_update_deployment_time_updates_custom_image(self):
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            name="my-image",
+            architecture="amd64/generic",
+        )
+        node = factory.make_Node(
+            osystem="custom",
+            distro_series="my-image",
+            architecture="amd64/generic",
+        )
+
+        node.update_deployment_time()
+
+        self.assertIsNotNone(reload_object(resource).last_deployed)
+
     def test_start_deployment_changes_state_and_creates_sts_msg(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED
@@ -7411,6 +7427,16 @@ class TestNodeErase(MAASServerTestCase):
         node.start_releasing(owner)
         release_mock.assert_called_once_with(owner, None)
         erase_mock.assert_not_called()
+
+    def test_start_releasing_with_scripts_cancels_deploy_workflow(self):
+        owner = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING, owner=owner)
+        script = factory.make_Script(script_type=SCRIPT_TYPE.RELEASE)
+        self.patch(node, "_start").return_value = succeed(None)
+        stop_workflow = self.patch(node_module, "stop_workflow")
+        node.start_releasing(owner, scripts=[script.name])
+        stop_workflow.assert_called_once_with(f"deploy:{node.system_id}")
+        self.assertEqual(NODE_STATUS.RELEASING, node.status)
 
 
 class TestNodeParentRelationShip(MAASServerTestCase):

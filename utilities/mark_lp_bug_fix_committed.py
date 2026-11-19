@@ -9,6 +9,7 @@ access_token = os.environ["LANDER_LP_ACCESS_TOKEN"]
 access_token_secret = os.environ["LANDER_LP_ACCESS_TOKEN_SECRET"]
 bug_id = os.environ["BUG_ID"]
 branch = os.environ["BRANCH"]
+fix_url = os.environ["FIX_URL"]
 
 credentials = Credentials(consumer_key)
 credentials.access_token = AccessToken(access_token, access_token_secret)
@@ -45,6 +46,11 @@ for task in bug.bug_tasks:
         print(
             f"Updated LP:#{bug_id}: updated status from '{previous_status}' to 'Fix Committed'"
         )
+        bug.newMessage(
+            content=f"Fix included in {fix_url}",
+            send_notifications=False,
+        )
+        print(f"Added fix link to LP:#{bug_id}: {fix_url}")
         updated = True
         break
 if not updated:

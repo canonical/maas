@@ -41,6 +41,9 @@ class NodesService(BaseService[Node, AbstractNodesRepository, NodeBuilder]):
         self.scriptresults_service = scriptresults_service
         self.dnspublications_service = dnspublications_service
 
+    async def get_url(self, system_id: str) -> str | None:
+        return await self.repository.get_url(system_id)
+
     async def update_by_system_id(
         self, system_id: str, builder: NodeBuilder
     ) -> Node:

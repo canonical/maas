@@ -76,27 +76,8 @@ from maasservicelayer.models.bootsourceselections import BootSourceSelection
 from maasservicelayer.models.image_manifests import ImageManifest
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.staticipaddress import StaticIPAddress
-from maasservicelayer.services import CacheForServices, ServiceCollectionV3
-from maasservicelayer.services.boot_sources import BootSourcesService
-from maasservicelayer.services.bootresourcefiles import (
-    BootResourceFilesService,
-)
-from maasservicelayer.services.bootresourcefilesync import (
-    BootResourceFileSyncService,
-)
-from maasservicelayer.services.bootresources import BootResourceService
-from maasservicelayer.services.bootresourcesets import BootResourceSetsService
-from maasservicelayer.services.bootsourcecache import BootSourceCacheService
-from maasservicelayer.services.bootsourceselections import (
-    BootSourceSelectionsService,
-)
-from maasservicelayer.services.image_manifests import ImageManifestsService
-from maasservicelayer.services.image_sync import ImageSyncService
-from maasservicelayer.services.msm import MSMService, MSMStatus
-from maasservicelayer.services.nodes import NodesService
-from maasservicelayer.services.notifications import NotificationsService
-from maasservicelayer.services.staticipaddress import StaticIPAddressService
-from maasservicelayer.services.temporal import TemporalService
+from maasservicelayer.services import CacheForServices
+from maasservicelayer.services.msm import MSMStatus
 from maasservicelayer.simplestreams.client import SimpleStreamsClientException
 from maasservicelayer.simplestreams.models import (
     BootloaderProduct,
@@ -193,7 +174,7 @@ def boot_activities(
     controller,
     mock_apiclient: Mock,
     mock_temporal_client: Mock,
-    services_mock: ServiceCollectionV3,
+    services_mock: Mock,
 ):
     act = BootResourcesActivity(
         Mock(Database), CacheForServices(), mock_temporal_client
@@ -201,7 +182,6 @@ def boot_activities(
     act.apiclient = mock_apiclient
     act.region_id = controller.system_id
     act.report_progress = AsyncMock(return_value=None)
-    services_mock.msm = Mock(MSMService)
     mocker.patch.object(
         act, "start_transaction"
     ).return_value = AsyncContextManagerMock(services_mock)
@@ -240,11 +220,8 @@ class TestGetSyncedRegionsForFilesActivity:
     async def test_calls_file_sync_service(
         self,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
     ) -> None:
-        services_mock.boot_resource_file_sync = Mock(
-            BootResourceFileSyncService
-        )
         env = ActivityEnvironment()
         env.payload_converter = pydantic_data_converter
         await env.run(boot_activities.get_synced_regions_for_file, 1)
@@ -257,16 +234,14 @@ class TestGetBootresourcefileEndpointsActivity:
     async def test_calls_service_layer(
         self,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
     ) -> None:
-        services_mock.nodes = Mock(NodesService)
         region1, region2, region3 = Mock(Node), Mock(Node), Mock(Node)
         region1.system_id = "abcdef"
         region2.system_id = "ghijkl"
         region3.system_id = "mnopqr"
         services_mock.nodes.get_many.return_value = [region1, region2, region3]
 
-        services_mock.staticipaddress = Mock(StaticIPAddressService)
         ip1, ip2, ip3 = (
             Mock(StaticIPAddress),
             Mock(StaticIPAddress),
@@ -295,16 +270,14 @@ class TestGetBootresourcefileEndpointsActivity:
     async def test_bug_2058037(
         self,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
     ) -> None:
-        services_mock.nodes = Mock(NodesService)
         region1, region2, region3 = Mock(Node), Mock(Node), Mock(Node)
         region1.system_id = "abcdef"
         region2.system_id = "ghijkl"
         region3.system_id = "mnopqr"
         services_mock.nodes.get_many.return_value = [region1, region2, region3]
 
-        services_mock.staticipaddress = Mock(StaticIPAddressService)
         ip2, ip3 = (
             Mock(StaticIPAddress),
             Mock(StaticIPAddress),
@@ -448,7 +421,7 @@ class TestDownloadBootresourcefileActivity:
         mock_local_file: Mock,
         boot_activities: BootResourcesActivity,
         mock_apiclient: Mock,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
     ) -> None:
         mock_local_file.valid.side_effect = [False, True]
         chunked_data = [b"foo", b"bar", b""]
@@ -672,11 +645,10 @@ class TestDeleteBootresourcefileActivity:
         self,
         mocker,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
         mocker.patch("asyncio.sleep")
-        services_mock.boot_resource_files = Mock(BootResourceFilesService)
         services_mock.boot_resource_files.get_many = AsyncMock(return_value=[])
 
         heartbeats = []
@@ -695,10 +667,9 @@ class TestDeleteBootresourcefileActivity:
         self,
         mock_local_file: Mock,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
-        services_mock.boot_resource_files = Mock(BootResourceFilesService)
         services_mock.boot_resource_files.get_many = AsyncMock(return_value=[])
 
         param = ResourceDeleteParam(
@@ -714,13 +685,12 @@ class TestDeleteBootresourcefileActivity:
         self,
         mock_local_file: Mock,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
         # A newer import recreated a BootResourceFile reusing the sha256
         # of the first identifier below, after the delete was scheduled.
         recreated_file = Mock(BootResourceFile, sha256="1" * 64)
-        services_mock.boot_resource_files = Mock(BootResourceFilesService)
         services_mock.boot_resource_files.get_many = AsyncMock(
             return_value=[recreated_file]
         )
@@ -742,28 +712,19 @@ class TestFetchManifestAndUpdateCacheActivity:
     async def test_calls_service_layer(
         self,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
         mock_boot_source = Mock(BootSource)
         mock_boot_source.id = 1
         mock_ss_products_list = Mock(SimpleStreamsProductListType)
         mock_ss_products_list.products = [Mock(BootloaderProduct)]
-        services_mock.image_sync = Mock(ImageSyncService)
         services_mock.image_sync.check_commissioning_series_selected.return_value = True
         services_mock.image_sync.filter_products_for_selection.return_value = [
             mock_ss_products_list
         ]
-        services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.get_many.return_value = [mock_boot_source]
-        services_mock.image_manifests = Mock(ImageManifestsService)
-        services_mock.boot_source_cache = Mock(BootSourceCacheService)
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
-        services_mock.notifications = Mock(NotificationsService)
         services_mock.notifications.delete_one.return_value = None
-        services_mock.temporal = Mock(TemporalService)
         services_mock.temporal.cancel_workflows.return_value = None
 
         heartbeats = []
@@ -789,12 +750,10 @@ class TestFetchManifestAndUpdateCacheActivity:
     async def test_creates_notification_if_exception_is_raised(
         self,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
-        services_mock.image_sync = Mock(ImageSyncService)
         services_mock.image_sync.check_commissioning_series_selected.return_value = True
-        services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.get_many.return_value = [
             BootSource(
                 id=1,
@@ -807,15 +766,9 @@ class TestFetchManifestAndUpdateCacheActivity:
                 enabled=True,
             )
         ]
-        services_mock.image_manifests = Mock(ImageManifestsService)
         services_mock.image_manifests.fetch_and_update.side_effect = (
             SimpleStreamsClientException()
         )
-        services_mock.notifications = Mock(NotificationsService)
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
-        services_mock.temporal = Mock(TemporalService)
 
         await activity_env.run(boot_activities.fetch_manifest_and_update_cache)
 
@@ -843,7 +796,7 @@ class TestGetFilesToDownloadForSelectionActivity:
     async def test_calls_service_layer(
         self,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         activity_env: ActivityEnvironment,
         resource_download_param: ResourceDownloadParam,
         http_proxy: str | None,
@@ -874,9 +827,6 @@ class TestGetFilesToDownloadForSelectionActivity:
         image_manifest = Mock(ImageManifest)
         image_manifest.manifest = [mock_ss_products_list]
 
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
         services_mock.boot_source_selections.get_by_id.return_value = (
             boot_source_selection
         )
@@ -891,17 +841,12 @@ class TestGetFilesToDownloadForSelectionActivity:
             )
         ]
 
-        services_mock.boot_resources = Mock(BootResourceService)
-
-        services_mock.boot_sources = Mock(BootSourcesService)
         services_mock.boot_sources.get_by_id.return_value = boot_source
-        services_mock.image_manifests = Mock(ImageManifestsService)
         services_mock.image_manifests.get_or_fetch.return_value = (
             image_manifest,
             False,
         )
         services_mock.image_manifests._get_http_proxy.return_value = http_proxy
-        services_mock.image_sync = Mock(ImageSyncService)
         services_mock.image_sync.filter_products_for_selection.return_value = [
             mock_ss_products_list
         ]
@@ -963,7 +908,7 @@ class TestGetManuallyUploadedResourcesActivity:
     async def test_calls_service_layer(
         self,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
         boot_resource = BootResource(
@@ -993,16 +938,13 @@ class TestGetManuallyUploadedResourcesActivity:
             )
             for i in range(3)
         ]
-        services_mock.boot_resources = Mock(BootResourceService)
         services_mock.boot_resources.get_many = AsyncMock(
             return_value=[boot_resource]
         )
 
-        services_mock.boot_resource_sets = Mock(BootResourceSetsService)
         services_mock.boot_resource_sets.get_latest_for_boot_resource = (
             AsyncMock(return_value=boot_resource_set)
         )
-        services_mock.boot_resource_files = Mock(BootResourceFilesService)
         services_mock.boot_resource_files.get_files_in_resource_set = (
             AsyncMock(return_value=boot_resource_files)
         )
@@ -1042,11 +984,9 @@ class TestDeletePendingFilesForSelectionActivity:
     async def test_calls_image_sync_service(
         self,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
-        services_mock.boot_resource_files = Mock(BootResourceFilesService)
-
         await activity_env.run(
             boot_activities.delete_pending_files,
             DeletePendingFilesParam(resources=[]),
@@ -1058,12 +998,9 @@ class TestCleanupOldBootResourcesActivity:
     async def test_calls_image_sync_service(
         self,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
-        services_mock.image_sync = Mock(ImageSyncService)
-        services_mock.temporal = Mock(TemporalService)
-
         await activity_env.run(
             boot_activities.cleanup_boot_resource_sets_for_selection,
             CleanupBootResourceSetsParam(selection_id=1),
@@ -1075,13 +1012,9 @@ class TestGetAllHighestPrioritySelectionsActivity:
     async def test_calls_service(
         self,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
-
         await activity_env.run(
             boot_activities.get_all_highest_priority_selections,
         )
@@ -1096,8 +1029,6 @@ class TestRegisterNotificationErrorActivity:
         services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
-        services_mock.notifications = Mock(NotificationsService)
-
         await activity_env.run(
             boot_activities.register_notification,
             RegisterNotificationParam(
@@ -1134,8 +1065,6 @@ class TestDeleteNotificationErrorActivity:
         services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
-        services_mock.notifications = Mock(NotificationsService)
-
         await activity_env.run(
             boot_activities.delete_notification,
             DeleteNotificationParam(
@@ -1156,7 +1085,7 @@ class TestGetStillAvailableSelections:
     async def test_available_selection_is_returned_and_notification_deleted(
         self,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
         selection = BootSourceSelection(
@@ -1178,15 +1107,10 @@ class TestGetStillAvailableSelections:
             extra={},
         )
 
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
         services_mock.boot_source_selections.get_many.return_value = [
             selection
         ]
-        services_mock.boot_source_cache = Mock(BootSourceCacheService)
         services_mock.boot_source_cache.get_many.return_value = [cache_entry]
-        services_mock.notifications = Mock(NotificationsService)
 
         result = await activity_env.run(
             boot_activities.get_still_available_selections, 1
@@ -1207,7 +1131,7 @@ class TestGetStillAvailableSelections:
     async def test_unavailable_selection_is_not_returned_and_notification_created(
         self,
         boot_activities: BootResourcesActivity,
-        services_mock: ServiceCollectionV3,
+        services_mock: Mock,
         activity_env: ActivityEnvironment,
     ) -> None:
         selection = BootSourceSelection(
@@ -1219,15 +1143,10 @@ class TestGetStillAvailableSelections:
             legacyselection_id=2,
         )
 
-        services_mock.boot_source_selections = Mock(
-            BootSourceSelectionsService
-        )
         services_mock.boot_source_selections.get_many.return_value = [
             selection
         ]
-        services_mock.boot_source_cache = Mock(BootSourceCacheService)
         services_mock.boot_source_cache.get_many.return_value = []
-        services_mock.notifications = Mock(NotificationsService)
 
         result = await activity_env.run(
             boot_activities.get_still_available_selections, 1

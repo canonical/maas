@@ -3,7 +3,7 @@
 
 """Calculate selection readiness from the latest resource set
 
-Revision ID: 0043
+Revision ID: 0044
 Revises: 0041
 Create Date: 2026-10-16 00:00:00.000000+00:00
 
@@ -15,7 +15,7 @@ from typing import Sequence
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0043"
+revision: str = "0044"
 down_revision: str | None = "0041"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
