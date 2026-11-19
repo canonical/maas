@@ -43,8 +43,8 @@ optional-dependencies.testing = [
   "testscenarios>=0.5,<0.6",
   "testtools>=2.8,<2.9",
 ]
-urls.Documentation = "https://maas.io/docs"
-urls.Homepage = "https://maas.io/"
+urls.Documentation = "https://canonical.com/maas/docs"
+urls.Homepage = "https://canonical.com/maas"
 urls.Repository = "https://launchpad.net/maas"
 scripts."test.parallel" = "maastesting.scripts:run_parallel"
 scripts."test.rack" = "maastesting.scripts:run_rack"
