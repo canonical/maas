@@ -399,21 +399,15 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
                 )
             )
 
-        @inlineCallbacks
         def _patch(endpoint):
-            @inlineCallbacks
-            def _get_etag():
-                result = yield self.get_etag(
-                    url, node_id, headers, endpoint=endpoint
-                )
-                return result
-
-            yield self.redfish_request(
+            return self.redfish_request(
                 b"PATCH",
                 join(url, endpoint),
                 headers,
                 _get_bodyProducer,
-                _get_etag,
+                lambda: self.get_etag(
+                    url, node_id, headers, endpoint=endpoint
+                ),
             )
 
         system_endpoint = join(REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
@@ -421,9 +415,9 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
             yield _patch(system_endpoint)
         except PowerAuthError:
             raise
-        except Exception as error:
+        except PowerActionError as error:
             # iDRAC10 only accepts boot overrides through the settings object,
-            # while iDRAC9 and Lenovo XCC advertise one that rejects them.
+            # while all others advertise one that rejects them.
             settings_endpoint = yield self.get_boot_endpoint(
                 url, node_id, headers
             )
