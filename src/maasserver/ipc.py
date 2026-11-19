@@ -245,7 +245,7 @@ class IPCMasterService(service.Service):
             self.connections[pid] = {
                 "process_id": process_id,
                 "connection": conn,
-                "rpc": {"port": None, "connections": set()},
+                "rpc": {"port": None, "connections": {}},
             }
             return process_id
 
