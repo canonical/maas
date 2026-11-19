@@ -4754,6 +4754,31 @@ class TestNode(MAASServerTestCase):
         node.update_power_state(POWER_STATE.OFF)
         self.assertEqual(previous_status, node.status)
 
+    def test_update_power_state_exiting_rescue_keeps_owner_if_allocated(
+        self,
+    ):
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.ALLOCATED,
+            owner=owner,
+        )
+        node.update_power_state(POWER_STATE.OFF)
+        node = reload_object(node)
+        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
+        self.assertEqual(owner, node.owner)
+
+    def test_update_power_state_exiting_rescue_clears_owner_if_ready(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.READY,
+            owner=factory.make_User(),
+        )
+        node.update_power_state(POWER_STATE.OFF)
+        node = reload_object(node)
+        self.assertEqual(NODE_STATUS.READY, node.status)
+        self.assertIsNone(node.owner)
+
     def test_update_power_state_sets_status_to_deployed(self):
         node = factory.make_Node(
             status=NODE_STATUS.EXITING_RESCUE_MODE,
@@ -5851,6 +5876,20 @@ class TestNode(MAASServerTestCase):
 
         mock_node_power_cycle.assert_called_once_with()
         self.assertEqual(reload_object(node).status, NODE_STATUS.DEPLOYED)
+
+    def test_stop_rescue_mode_manual_power_keeps_owner_if_allocated(self):
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.RESCUE_MODE,
+            power_type="manual",
+            previous_status=NODE_STATUS.ALLOCATED,
+            owner=owner,
+        )
+        self.patch(node, "_stop")
+        node.stop_rescue_mode(factory.make_admin())
+        node = reload_object(node)
+        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
+        self.assertEqual(owner, node.owner)
 
     def test_stop_rescue_mode_stops_node_from_failed_deployment(self):
         node = factory.make_Node(
