@@ -38,11 +38,9 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import post_commit_hooks, reload_object
-from maastesting.twisted import always_succeed_with
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.enum import POWER_STATE
-from provisioningserver.rpc.cluster import DescribePowerTypes
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
     NodeAlreadyExists,
@@ -59,11 +57,8 @@ class TestCreateNode(MAASTransactionServerTestCase):
         self.useFixture(RunningEventLoopFixture())
 
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        protocol = fixture.makeCluster(rack_controller, DescribePowerTypes)
+        protocol = fixture.makeCluster(rack_controller)
         self.power_types = PowerDriverRegistry.get_schema()
-        protocol.DescribePowerTypes.side_effect = always_succeed_with(
-            {"power_types": self.power_types}
-        )
         return protocol
 
     def test_creates_node(self):

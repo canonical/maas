@@ -37,7 +37,6 @@ from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.clusterservice import ClusterClientService
 from provisioningserver.rpc.region import (
     GetControllerType,
-    GetDNSConfiguration,
     GetProxyConfiguration,
     GetSyslogConfiguration,
     GetTimeConfiguration,
@@ -467,9 +466,6 @@ class RackExternalService(TimerService):
         time_configuration = yield client(
             GetTimeConfiguration, system_id=client.localIdent
         )
-        dns_configuration = yield client(
-            GetDNSConfiguration, system_id=client.localIdent
-        )
         proxy_configuration = yield client(
             GetProxyConfiguration, system_id=client.localIdent
         )
@@ -479,7 +475,6 @@ class RackExternalService(TimerService):
         return _Configuration(
             controller_type=controller_type,
             time_configuration=time_configuration,
-            dns_configuration=dns_configuration,
             proxy_configuration=proxy_configuration,
             syslog_configuration=syslog_configuration,
             connections=self._rpc_service.connections,
@@ -521,9 +516,6 @@ class _Configuration:
 
     # Time configuration for the controller.
     time_configuration = attr.ib(converter=dict)
-
-    # DNS configuration for the controller.
-    dns_configuration = attr.ib(converter=dict)
 
     # Proxy configuration for the controller.
     proxy_configuration = attr.ib(converter=dict)
