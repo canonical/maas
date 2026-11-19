@@ -34,6 +34,10 @@ class NotificationsClauseFactory(ClauseFactory):
     def with_ident(cls, ident: str) -> Clause:
         return Clause(condition=eq(NotificationTable.c.ident, ident))
 
+    @classmethod
+    def with_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=NotificationTable.c.id.in_(ids))
+
 
 class NotificationsRepository(BaseRepository[Notification]):
     def __init__(self, context: Context):

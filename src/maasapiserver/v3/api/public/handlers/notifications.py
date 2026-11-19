@@ -1,7 +1,10 @@
 # Copyright 2025-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from typing import Annotated
+
 from fastapi import Depends, Query, Response, status
+from pydantic import Field
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
@@ -28,8 +31,13 @@ from maasapiserver.v3.auth.base import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.notifications import (
+    NotificationsClauseFactory,
+)
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.fields import UniqueList
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -243,6 +251,40 @@ class NotificationsHandler(Handler):
         services: ServiceCollectionV3 = Depends(services),  # noqa: B008
     ) -> Response:
         await services.notifications.delete_by_id(id=notification_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @handler(
+        path="/notifications",
+        methods=["DELETE"],
+        tags=TAGS,
+        responses={
+            204: {},
+            401: {"model": UnauthorizedBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=204,
+        dependencies=[
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS
+                )
+            )
+        ],
+    )
+    async def bulk_delete_notifications(
+        self,
+        ids: Annotated[
+            UniqueList[int],
+            Field(min_length=1),
+        ] = Query(  # noqa: B008
+            description="ids of notifications to delete", alias="id"
+        ),
+        services: ServiceCollectionV3 = Depends(services),  # noqa: B008
+    ) -> Response:
+        await services.notifications.delete_many(
+            query=QuerySpec(where=NotificationsClauseFactory.with_ids(ids))
+        )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @handler(

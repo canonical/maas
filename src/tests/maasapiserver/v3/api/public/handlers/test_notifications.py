@@ -14,6 +14,10 @@ from maasapiserver.v3.api.public.models.responses.notifications import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.enums.notifications import NotificationCategoryEnum
 from maascommon.openfga.base import MAASResourceEntitlement
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.notifications import (
+    NotificationsClauseFactory,
+)
 from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.notifications import Notification
@@ -55,6 +59,11 @@ class TestNotificationsApi(ApiCommonTests):
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/2",
+                permission=MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS,
+            ),
+            Endpoint(
+                method="DELETE",
+                path=f"{self.BASE_PATH}?id=1&id=2",
                 permission=MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS,
             ),
         ]
@@ -282,6 +291,33 @@ class TestNotificationsApi(ApiCommonTests):
         )
         response = await client.delete(f"{self.BASE_PATH}/1")
         assert response.status_code == 404
+
+    async def test_bulk_delete(
+        self,
+        services_mock: Mock,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS,
+        )
+        services_mock.notifications.delete_many.return_value = None
+        response = await client.delete(f"{self.BASE_PATH}?id=1&id=2")
+        assert response.status_code == 204
+        services_mock.notifications.delete_many.assert_awaited_once_with(
+            query=QuerySpec(
+                where=NotificationsClauseFactory.with_ids([1, 2])
+            )
+        )
+
+    async def test_bulk_delete_422_without_ids(
+        self,
+        mocked_api_client_user_with_permissions: Callable[..., AsyncClient],
+    ) -> None:
+        client = mocked_api_client_user_with_permissions(
+            MAASResourceEntitlement.CAN_EDIT_NOTIFICATIONS,
+        )
+        response = await client.delete(self.BASE_PATH)
+        assert response.status_code == 422
 
     async def test_dismiss(
         self,
