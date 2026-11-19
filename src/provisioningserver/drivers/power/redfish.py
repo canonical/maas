@@ -30,6 +30,7 @@ from provisioningserver.drivers import (
 )
 from provisioningserver.drivers.power import (
     PowerActionError,
+    PowerAuthError,
     PowerDriver,
     PowerFatalError,
 )
@@ -39,6 +40,10 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.twisted import asynchronous, pause
 
 maaslog = get_maas_logger("drivers.power.redfish")
+
+
+class RedfishRequestRejectedError(PowerActionError, PowerFatalError):
+    """The BMC rejected the request itself; retrying it cannot succeed."""
 
 
 # no trailing slashes
@@ -106,6 +111,11 @@ class RedfishPowerDriverBase(PowerDriver):
                         method, uri, headers, get_bodyProducer
                     )
                 )
+            except PowerFatalError as e:
+                # Do not retry on fatal errors such as authentication failures
+                # or requests the BMC rejects outright.
+                maaslog.error("Power action fatal error: %s. Giving up!", e)
+                raise e
             except Exception as e:
                 if retries == MAX_REQUEST_RETRIES:
                     maaslog.error(
@@ -169,24 +179,18 @@ class RedfishPowerDriverBase(PowerDriver):
                 response.code == int(HTTPStatus.PERMANENT_REDIRECT)
             ):
                 # Error out if the response has a status code of 400 or above.
-                if response.code >= int(HTTPStatus.BAD_REQUEST):
-                    # if there was no trailing slash,
-                    # retry with a trailing slash
-                    # because of varying requirements of BMC manufacturers
-                    if response.code == HTTPStatus.NOT_FOUND and (
-                        uri.decode("utf-8")[-1] != "/"
-                    ):
-                        d = agent.request(
-                            method,
-                            uri + b"/",
-                            headers=headers,
-                            bodyProducer=get_bodyProducer(),
-                        )
-                    else:
-                        raise PowerActionError(
-                            "Redfish request failed with response status code:"
-                            " %s." % response.code
-                        )
+                # if there was no trailing slash,
+                # retry with a trailing slash
+                # because of varying requirements of BMC manufacturers
+                if response.code == HTTPStatus.NOT_FOUND and (
+                    uri.decode("utf-8")[-1] != "/"
+                ):
+                    d = agent.request(
+                        method,
+                        uri + b"/",
+                        headers=headers,
+                        bodyProducer=get_bodyProducer(),
+                    )
                 elif response.code == int(HTTPStatus.PERMANENT_REDIRECT):
                     uri = response.headers.getRawHeaders(b"location")[0]
                     if b"http" in uri:
@@ -201,6 +205,24 @@ class RedfishPowerDriverBase(PowerDriver):
                             "Redfish request failed with response status code:"
                             " %s." % response.code
                         )
+                elif (
+                    response.code == HTTPStatus.UNAUTHORIZED
+                    or response.code == HTTPStatus.FORBIDDEN
+                ):
+                    raise PowerAuthError(
+                        f"Redfish request failed with response status code: {response.code}."
+                    )
+                elif response.code in (
+                    HTTPStatus.BAD_REQUEST,
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                ):
+                    raise RedfishRequestRejectedError(
+                        f"Redfish request failed with response status code: {response.code}."
+                    )
+                else:
+                    raise PowerActionError(
+                        f"Redfish request failed with response status code: {response.code}."
+                    )
                 d.addCallback(readBody)
             else:
                 d = readBody(response)
@@ -335,25 +357,31 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
                 )
             )
 
-        # 1. Discover the correct endpoint dynamically
-        target_endpoint = yield self.get_boot_endpoint(url, node_id, headers)
-
-        # 2. Retrieve context-aware ETag for our discovered target endpoint
-        @inlineCallbacks
-        def _get_target_etag():
-            result = yield self.get_etag(
-                url, node_id, headers, endpoint=target_endpoint
+        def _patch(endpoint):
+            return self.redfish_request(
+                b"PATCH",
+                join(url, endpoint),
+                headers,
+                _get_bodyProducer,
+                lambda: self.get_etag(
+                    url, node_id, headers, endpoint=endpoint
+                ),
             )
-            return result
 
-        # 3. Perform the PATCH operation
-        yield self.redfish_request(
-            b"PATCH",
-            join(url, target_endpoint),
-            headers,
-            _get_bodyProducer,
-            _get_target_etag,
-        )
+        system_endpoint = join(REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
+        try:
+            yield _patch(system_endpoint)
+        except PowerAuthError:
+            raise
+        except PowerActionError as error:
+            # iDRAC10 only accepts boot overrides through the settings object,
+            # while all others advertise one that rejects them.
+            settings_endpoint = yield self.get_boot_endpoint(
+                url, node_id, headers
+            )
+            if settings_endpoint == system_endpoint:
+                raise error
+            yield _patch(settings_endpoint)
 
     @inlineCallbacks
     def power(self, power_change: PowerChange, url, node_id, headers):
