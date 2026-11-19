@@ -276,8 +276,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
     def test_authenticateCluster_rejects_non_matching_digests(self):
         server = self.make_running_server()
 
-        def calculate_digest(_, message):
-            # Return some nonsense.
+        def respond_with_invalid_digest(_, message):
             response = {
                 "digest": factory.make_bytes(),
                 "salt": factory.make_bytes(),
@@ -285,7 +284,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             return succeed(response)
 
         callRemote = self.patch_autospec(server, "callRemote")
-        callRemote.side_effect = calculate_digest
+        callRemote.side_effect = respond_with_invalid_digest
 
         d = server.authenticateCluster()
         self.assertFalse(extract_result(d))

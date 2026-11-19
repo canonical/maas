@@ -134,7 +134,9 @@ class TestClusterProtocol_Authenticate(MAASTestCase):
         salt = response["salt"]
 
         self.assertEqual(len(salt), 16)
-        expected_digest = HMAC(secret, message + salt, sha256).digest()
+        expected_digest = HMAC(
+            secret, message + b"region-to-rack" + salt, sha256
+        ).digest()
         self.assertEqual(expected_digest, digest)
 
 
@@ -1556,8 +1558,7 @@ class TestClusterClient(TestClusterClientBase):
         MAAS_SECRET.set(factory.make_bytes())
         client = self.make_running_client()
 
-        def calculate_digest(_, message):
-            # Return some nonsense.
+        def respond_with_invalid_digest(_, message):
             response = {
                 "digest": factory.make_bytes(),
                 "salt": factory.make_bytes(),
@@ -1565,7 +1566,7 @@ class TestClusterClient(TestClusterClientBase):
             return succeed(response)
 
         callRemote = self.patch_autospec(client, "callRemote")
-        callRemote.side_effect = calculate_digest
+        callRemote.side_effect = respond_with_invalid_digest
 
         d = client.authenticateRegion()
         self.assertFalse(extract_result(d))
