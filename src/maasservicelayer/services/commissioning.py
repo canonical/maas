@@ -50,8 +50,7 @@ class CommissioningService(Service):
         if not interfaces:
             return
 
-        # An address linked to more than one interface is returned once per
-        # link.
+        # Collect all IP addresses that are not DISCOVERED and need to be cleared.
         ips_to_clear = {
             ip.id: ip
             for ip in await self.staticipaddress_service.get_for_interfaces(
