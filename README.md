@@ -23,11 +23,11 @@ License       | AGPL-3.0    | [![License: AGPL v3](https://img.shields.io/badge/
 
 ## Installing MAAS
 
-MAAS is distributed as a snap.
+MAAS is distributed as a [snap](https://snapcraft.io/maas):
 
-OS            | Format                                  | Command
----           | ---                                     | ---
-Ubuntu        | [Snap](https://snapcraft.io/maas)       | `sudo snap install maas --channel=<version>/stable`
+```bash
+sudo snap install maas --channel=<version>/stable
+```
 
 MAAS requires a PostgreSQL database. For a complete walkthrough, including the database setup, initialisation and the first administrator, see [Install MAAS](https://canonical.com/maas/docs/stable/how-to-guides/get-started/install-maas/).
 
