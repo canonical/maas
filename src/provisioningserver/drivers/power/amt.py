@@ -19,7 +19,10 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerSettingError,
 )
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import shell, snap
+
+maaslog = get_maas_logger("drivers.power.amt")
 
 AMT_ERRORS = {
     "401 Unauthorized": {
@@ -225,12 +228,18 @@ class AMTPowerDriver(PowerDriver):
                 command = self._get_wsman_command(
                     *wsman_opts, method, schema_uri
                 )
-                self._run(
-                    command,
-                    power_pass,
-                    stdin=fd.read(),
-                    allow_legacy_renegotiation=allow_legacy_renegotiation,
-                )
+                try:
+                    self._run(
+                        command,
+                        power_pass,
+                        stdin=fd.read(),
+                        allow_legacy_renegotiation=allow_legacy_renegotiation,
+                    )
+                except PowerActionError:
+                    maaslog.warning(
+                        "Failed to change the boot order to PXE %s"
+                        % ip_address
+                    )
 
     def _run(
         self,
@@ -250,9 +259,15 @@ class AMTPowerDriver(PowerDriver):
             decode=False,
         )
         if result.returncode != 0:
+            stderr = result.stderr.decode("utf-8", "replace")
+            for error, error_info in AMT_ERRORS.items():
+                if (
+                    error_info["exception"] == PowerAuthError
+                    and error in stderr
+                ):
+                    raise PowerAuthError(error_info["message"])
             raise PowerActionError(
-                "Failed to run command: %s with error: %s"
-                % (command, result.stderr.decode("utf-8", "replace"))
+                "Failed to run command: %s with error: %s" % (command, stderr)
             )
         return result.stdout
 

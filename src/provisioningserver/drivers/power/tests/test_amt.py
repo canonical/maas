@@ -15,6 +15,7 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import amt as amt_module
 from provisioningserver.drivers.power import (
     PowerActionError,
+    PowerAuthError,
     PowerConnError,
     PowerFatalError,
 )
@@ -263,6 +264,17 @@ class TestAMTPowerDriver(MAASTestCase):
             None,
         )
 
+    def test_run_raises_power_auth_error(self):
+        amt_power_driver = AMTPowerDriver()
+        self.patch_run_command(returncode=1, stderr=b"401 Unauthorized")
+        self.assertRaises(
+            PowerAuthError,
+            amt_power_driver._run,
+            (),
+            factory.make_name("power-pass"),
+            None,
+        )
+
     def test_set_pxe_boot_sets_pxe(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
@@ -326,6 +338,23 @@ class TestAMTPowerDriver(MAASTestCase):
                     allow_legacy_renegotiation=False,
                 ),
             ]
+        )
+
+    def test_set_pxe_boot_logs_warning_and_continues_on_failure(self):
+        amt_power_driver = AMTPowerDriver()
+        ip_address = factory.make_ipv4_address()
+        _run_mock = self.patch(amt_power_driver, "_run")
+        _run_mock.side_effect = PowerActionError()
+        maaslog = self.patch(amt_module, "maaslog")
+        amt_power_driver._set_pxe_boot(
+            ip_address,
+            factory.make_name("power_user"),
+            factory.make_name("power_pass"),
+            factory.pick_port(),
+        )
+        self.assertEqual(2, _run_mock.call_count)
+        maaslog.warning.assert_called_with(
+            f"Failed to change the boot order to PXE {ip_address}"
         )
 
     def test_issue_amttool_command_calls__run(self):
