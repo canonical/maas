@@ -91,7 +91,7 @@ def authenticate_with_secret(secret, message):
     the same shared-secret as the region.
     """
     salt = urandom(16)  # 16 bytes of high grade noise.
-    digest = calculate_digest(secret, message, salt)
+    digest = calculate_digest(secret, message, b"region-to-rack", salt)
     return defer.succeed({"digest": digest, "salt": salt})
 
 
