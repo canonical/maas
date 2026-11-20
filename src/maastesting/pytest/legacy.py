@@ -174,7 +174,7 @@ def _crochet_reactor():
     per process) so `deferToDatabase`/`inlineCallbacks`-based legacy
     tests work under pytest without a reactor-not-started error.
     """
-    # The MAASTwistedRunTest carve-out (idea 004) spins up its own
+    # The MAASTwistedRunTest carve-out spins up its own
     # per-test reactor, which is incompatible with this always-on
     # reactor (Twisted allows only one per process). The dedicated
     # rack-legacy leg runs those files with MAAS_PYTEST_NO_CROCHET=1 to

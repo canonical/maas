@@ -3,8 +3,8 @@
 
 """Gap-free tests for `maasserver.utils.signals`, split out of the legacy
 `src/maasserver/utils/tests/test_signals.py`: the legacy
-`TestConnectToFieldChange` class stays there under nose (idea 002), while
-this class runs under pytest."""
+`TestConnectToFieldChange` class stays there in the region-legacy pytest
+leg, while this class runs in the main pytest suite."""
 
 import random
 from unittest.mock import Mock, sentinel

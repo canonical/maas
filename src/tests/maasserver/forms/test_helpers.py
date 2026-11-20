@@ -3,8 +3,8 @@
 
 """Gap-free tests for `maasserver.forms` helpers, split out of the legacy
 `src/maasserver/forms/tests/test_helpers.py`: the legacy `TestMAASModelForm`
-class stays there under nose (idea 002), while this class runs under
-pytest."""
+class stays there in the region-legacy pytest leg, while this class runs
+in the main pytest suite."""
 
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import (

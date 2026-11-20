@@ -38,7 +38,6 @@ optional-dependencies.testing = [
   "pytest-cov>=7,<7.1",
   "pytest-mock>=3.15,<3.16",
   "pytest-xdist>=3.8,<3.9",
-  "python-subunit>=1.4,<1.5",
   "testscenarios>=0.5,<0.6",
   "testtools>=2.8,<2.9",
 ]

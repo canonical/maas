@@ -4,7 +4,8 @@
 """Gap-free tests for `maasserver.fields`, split out of the legacy
 `src/maasserver/tests/test_fields.py`: the legacy `TestXMLField`,
 `TestLargeObjectField`, `TestCIDRField` and `TestIPv4CIDRField` classes stay
-there under nose (idea 002), while these classes run under pytest."""
+there in the region-legacy pytest leg, while these classes run in the
+main pytest suite."""
 
 from random import choice
 import re

@@ -3,7 +3,7 @@
 """Tests for hardening_check.py (notification sync).
 
 Uses Django ORM (maasserver test suite).  Run via:
-    bin/test.region maasserver.tests.test_hardening_check
+    bin/pytest src/tests/maasserver/test_hardening_check.py
 """
 
 from maasserver.models import Notification

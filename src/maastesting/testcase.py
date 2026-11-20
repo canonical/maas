@@ -20,7 +20,7 @@ from fixtures import EnvironmentVariable
 import testtools
 from testtools.content import text_content
 
-from maastesting import resources as testresources
+from maastesting import resources
 from maastesting.crochet import EventualResultCatchingMixin
 from maastesting.factory import factory
 from maastesting.fixtures import (
@@ -149,7 +149,7 @@ class MAASTestCase(
         self.addCleanup(self.tearDownResources)
 
     def setUpResources(self):
-        testresources.setUpResources(self, self.resources)
+        resources.setUpResources(self, self.resources)
 
     def setUpSnapEnviron(self):
         """Simulate a snap environment for the duration of the test.
@@ -202,7 +202,7 @@ class MAASTestCase(
             connection.close()
 
     def tearDownResources(self):
-        testresources.tearDownResources(self, self.resources)
+        resources.tearDownResources(self, self.resources)
 
     def make_dir(self):
         """Create a temporary directory.

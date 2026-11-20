@@ -3,10 +3,10 @@
 
 """Test custom field types.
 
-Legacy-tagged (`MAASLegacyTransactionServerTestCase`); not yet supported
-under pytest, so this file stays under `nose`'s `bin/test.region.legacy`
-path (see idea 002, 'Run legacy-tagged tests under pytest, not just
-nose'). The gap-free `TestBin` class has already been relocated to
+Legacy-tagged (`MAASLegacyTransactionServerTestCase`): these classes
+need a Django-migrate test DB and run in the dedicated region-legacy
+pytest leg (`MAAS_PREVENT_MIGRATIONS=1`, see utilities/run-py-tests-ci).
+The gap-free `TestBin` class has already been relocated to
 `src/tests/metadataserver/test_fields.py`.
 """
 

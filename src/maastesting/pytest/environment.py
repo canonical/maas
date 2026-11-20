@@ -89,7 +89,7 @@ def clean_globals(tmpdir):
 
     # Under nose the in-memory MAAS_SECRET persists across tests in a
     # process (set by an earlier test's side effect). The rack-legacy leg
-    # (idea 004, run with MAAS_PYTEST_NO_CROCHET=1) relies on that
+    # (run with MAAS_PYTEST_NO_CROCHET=1) relies on that
     # persistence: 2 certificate tests in test_clusterservice.py call
     # fernet_encrypt_psk, which needs a secret set by a prior test, and
     # fail with MissingSharedSecret when it's cleared per-test. Skip the

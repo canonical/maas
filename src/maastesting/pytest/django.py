@@ -74,13 +74,13 @@ def pytest_load_initial_conftests(early_config, parser, args):
 def _legacy_django_db(pytestconfig, worker_id):
     """Build the region-legacy leg's Django-migrate DB, once per worker.
 
-    The 10 `legacy`-tagged classes (idea 002) cannot use the main
-    suite's `dbupgrade`-built pristine template: that seeds
-    `PackageRepository` rows these tests recreate via
-    `factory.make_default_PackageRepositories`, causing
-    `validate_unique` failures (idea 002 gap 2). They instead need a
-    Django-native `migrate`-built DB, mirroring `manage.py test`. This
-    fixture activates only for the region-legacy leg
+    The legacy classes (those based on `MAASLegacyServerTestCase` and
+    friends) cannot use the main suite's `dbupgrade`-built pristine
+    template: that seeds `PackageRepository` rows these tests recreate
+    via `factory.make_default_PackageRepositories`, causing
+    `validate_unique` failures. They instead need a Django-native
+    `migrate`-built DB, mirroring `manage.py test`. This fixture
+    activates only for the region-legacy leg
     (`MAAS_PREVENT_MIGRATIONS=1`, set before `django.setup()`).
 
     A per-worker DB is required under xdist: a single shared DB makes
@@ -99,7 +99,9 @@ def _legacy_django_db(pytestconfig, worker_id):
     cluster = pytestconfig.stash[cluster_stash]
     dbname = f"maas_legacy_{worker_id}"
     with cluster.lock.exclusive:
-        admin = psycopg2.connect("postgresql:///postgres", host="/project/db")
+        admin = psycopg2.connect(
+            "postgresql:///postgres", host=cluster.datadir
+        )
         admin.autocommit = True
         with admin.cursor() as cur:
             cur.execute(f"DROP DATABASE IF EXISTS {dbname}")
@@ -108,6 +110,16 @@ def _legacy_django_db(pytestconfig, worker_id):
         settings.DATABASES["default"]["NAME"] = dbname
         call_command("migrate", run_syncdb=True, verbosity=0)
     yield
+    # Drop the per-worker DB so repeated runs don't accumulate them.
+    close_all_connections()
+    with cluster.lock.exclusive:
+        admin = psycopg2.connect(
+            "postgresql:///postgres", host=cluster.datadir
+        )
+        admin.autocommit = True
+        with admin.cursor() as cur:
+            cur.execute(f"DROP DATABASE IF EXISTS {dbname}")
+        admin.close()
 
 
 @pytest.fixture

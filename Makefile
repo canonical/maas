@@ -48,10 +48,7 @@ bin/postgresfixture \
 bin/pyright \
 bin/pytest \
 bin/rackd \
-bin/regiond \
-bin/subunit-1to2 \
-bin/subunit2junitxml \
-bin/subunit2pyunit
+bin/regiond
 endef
 
 UI_BUILD := src/maasui/build

@@ -5,8 +5,7 @@
 
 """Capture and check per-package branch-coverage baselines.
 
-Used during the coverage-gated pytest cutover (see
-.ai/sdd/specs/004-coverage-baseline-harness/) to gate deleting or
+Used during the coverage-gated pytest cutover to gate deleting or
 relocating a legacy nose-based package's tests: a package's post-cutover
 pytest-only branch coverage must meet or exceed its pre-cutover baseline,
 within a small tolerance band.
@@ -43,12 +42,11 @@ TOLERANCE_PP = 1.0
 METRIC_VERSION = 2
 
 
-# The two remaining nose carve-outs now run under pytest in dedicated legs
-# (spec 010): the 39 MAASTwistedRunTest files under
-# MAAS_PYTEST_NO_CROCHET=1, and the 10 legacy-tagged classes under
-# MAAS_PREVENT_MIGRATIONS=1 with a Django-migrate DB. The legacy files are
-# computed so the list stays correct as the carve-out shrinks. See
-# design.md TD-002.
+# The two remaining nose carve-outs now run under pytest in dedicated
+# legs: the MAASTwistedRunTest files under MAAS_PYTEST_NO_CROCHET=1, and
+# the legacy-tagged classes under MAAS_PREVENT_MIGRATIONS=1 with a
+# Django-migrate DB. The legacy files are computed so the list stays
+# correct as the carve-out shrinks.
 def _legacy_files() -> list:
     result = subprocess.run(
         [
@@ -93,9 +91,9 @@ def _run_suite(package: str, legacy: bool, coverage_file: Path) -> None:
     A non-zero exit from a suite that still produced coverage data is
     tolerated: both pytest and nose/Django's `manage.py test` exit 1 on
     ordinary test failures, and the repo has pre-existing, unrelated
-    failures (NFR-001) that must not block every package's baseline. A
-    suite that produced no coverage data at all (crash before any test
-    ran, DB unreachable, binary missing) aborts with exit 2.
+    failures that must not block every package's baseline. A suite that
+    produced no coverage data at all (crash before any test ran, DB
+    unreachable, binary missing) aborts with exit 2.
     """
     command = (
         LEGACY_SUITE_COMMANDS[package] if legacy else (PYTEST_SUITE_COMMAND)
@@ -122,7 +120,7 @@ def _run_suite(package: str, legacy: bool, coverage_file: Path) -> None:
         print(
             f"note: {package} suite (legacy={legacy}) exited "
             f"{result.returncode} but produced coverage data; "
-            "tolerating per NFR-001 (pre-existing unrelated failures)",
+            "tolerating (pre-existing unrelated failures)",
             file=sys.stderr,
         )
 
@@ -152,8 +150,7 @@ def _combine(coverage_files: list[Path], into: Path) -> None:
 def _package_totals(coverage_file: Path, package: str) -> dict:
     """Return coverage.py's `totals` dict for `package`'s production
     source, attributed from the combined `coverage_file` via an
-    `--include` filter (not by scoping which tests ran). See design.md
-    TD-002.
+    `--include` filter (not by scoping which tests ran).
 
     Test files are omitted. coverage.py expands a trailing `/*`
     recursively, so `--include` alone counts a package's own test files

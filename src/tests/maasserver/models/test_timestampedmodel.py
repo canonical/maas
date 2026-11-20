@@ -3,8 +3,8 @@
 
 """Gap-free tests for `maasserver.models.timestampedmodel`, split out of the
 legacy `src/maasserver/models/tests/test_timestampedmodel.py`: the legacy
-`TestTimestampedModel` class stays there under nose (idea 002), while this
-class runs under pytest."""
+`TestTimestampedModel` class stays there in the region-legacy pytest leg,
+while this class runs in the main pytest suite."""
 
 from datetime import datetime
 
