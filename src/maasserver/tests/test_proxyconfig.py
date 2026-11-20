@@ -241,7 +241,9 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
         self.assertIn("http_port 10.0.0.9:3128 transparent", lines)
+        self.assertIn("http_port 127.0.0.1:3128 transparent", lines)
         self.assertIn("http_port [fd00::9]:3128 transparent", lines)
+        self.assertIn("http_port [::1]:3128 transparent", lines)
 
     @wait_for_reactor
     @inlineCallbacks
