@@ -37,3 +37,14 @@ class OIDCRevokedToken(MaasBaseModel):
     revoked_at: datetime
     user_email: str
     provider_id: int
+
+
+@generate_builder()
+class ApiToken(MaasTimestampedBaseModel):
+    name: str
+    public_id: str
+    secret_hash: str
+    expires_at: datetime
+    last_used_at: datetime | None = None
+    revoked_at: datetime | None = None
+    user_id: int

@@ -7,6 +7,7 @@ from fastapi import Depends
 from starlette.requests import Request
 
 from maasapiserver.v3.api import services
+from maasapiserver.v3.auth.bearer import get_bearer_token
 from maasapiserver.v3.auth.openapi import OpenapiOAuth2PasswordBearer
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
@@ -16,11 +17,13 @@ from maasservicelayer.exceptions.catalog import (
     UnauthorizedException,
 )
 from maasservicelayer.exceptions.constants import (
+    API_TOKEN_NOT_ALLOWED_VIOLATION_TYPE,
     MISSING_PERMISSIONS_VIOLATION_TYPE,
     NOT_AUTHENTICATED_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.utils.api_tokens import is_api_token
 
 # This is used just to generate the openapi spec with the security annotations.
 oauth2_bearer_openapi = OpenapiOAuth2PasswordBearer(
@@ -61,6 +64,30 @@ def check_authentication() -> Callable[..., Awaitable[AuthenticatedUser]]:
                 ]
             )
         return authenticated_user
+
+    return wrapper
+
+
+def reject_api_tokens() -> Callable[..., Awaitable[None]]:
+    """
+    Decorator to reject requests authenticated with a personal access token.
+
+    Used on endpoints that mint credentials, so a leaked token cannot be used
+    to create more tokens. Unauthenticated requests pass through and are
+    handled by the authentication check.
+    """
+
+    async def wrapper(request: Request) -> None:
+        bearer_token = get_bearer_token(request.headers.get("Authorization"))
+        if bearer_token is not None and is_api_token(bearer_token):
+            raise ForbiddenException(
+                details=[
+                    BaseExceptionDetail(
+                        type=API_TOKEN_NOT_ALLOWED_VIOLATION_TYPE,
+                        message="This endpoint cannot be accessed with an API token. Use a login session instead.",
+                    )
+                ]
+            )
 
     return wrapper
 

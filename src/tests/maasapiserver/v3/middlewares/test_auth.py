@@ -1,6 +1,7 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Callable, Iterator
 from unittest.mock import AsyncMock, call, Mock
 
@@ -55,7 +56,9 @@ from maasservicelayer.services import CacheForServices
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.external_auth import ExternalOAuthService
 from maasservicelayer.services.users import UsersService
+from maasservicelayer.utils.api_tokens import generate_api_token
 from maasservicelayer.utils.date import utcnow
+from tests.fixtures.factories.token import create_test_api_token
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -692,3 +695,94 @@ class TestOIDCAuthenticationProvider:
         assert details[0].type == NOT_AUTHENTICATED_VIOLATION_TYPE
         assert details[0].message == "Please sign in again to continue."
         provider._clear_oauth_cookies.assert_called_once_with(request)
+
+
+class TestPATAuthenticationMiddleware:
+    async def test_valid_pat_authenticates(
+        self, auth_client: AsyncClient, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture)
+        generated = generate_api_token()
+        await create_test_api_token(
+            fixture,
+            user_id=user.id,
+            public_id=generated.public_id,
+            secret_hash=generated.secret_hash,
+        )
+
+        response = await auth_client.get(
+            f"{V3_API_PREFIX}/users/me",
+            headers={"Authorization": f"bearer {generated.raw_token}"},
+        )
+
+        assert response.status_code == 200
+        assert AuthenticatedUser(**response.json()).username == user.username
+
+    @pytest.mark.parametrize(
+        "token_details",
+        [
+            {"revoked_at": datetime(2020, 1, 1, tzinfo=timezone.utc)},
+            {"expires_at": datetime(2020, 1, 1, tzinfo=timezone.utc)},
+        ],
+        ids=["revoked", "expired"],
+    )
+    async def test_revoked_or_expired_pat_is_rejected(
+        self, auth_client: AsyncClient, fixture: Fixture, token_details: dict
+    ) -> None:
+        user = await create_test_user(fixture)
+        generated = generate_api_token()
+        await create_test_api_token(
+            fixture,
+            user_id=user.id,
+            public_id=generated.public_id,
+            secret_hash=generated.secret_hash,
+            **token_details,
+        )
+
+        response = await auth_client.get(
+            f"{V3_API_PREFIX}/users/me",
+            headers={"Authorization": f"bearer {generated.raw_token}"},
+        )
+
+        assert response.status_code == 401
+        assert (
+            response.json()["details"][0]["type"]
+            == INVALID_TOKEN_VIOLATION_TYPE
+        )
+
+    async def test_pat_for_inactive_user_is_rejected(
+        self, auth_client: AsyncClient, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture, is_active=False)
+        generated = generate_api_token()
+        await create_test_api_token(
+            fixture,
+            user_id=user.id,
+            public_id=generated.public_id,
+            secret_hash=generated.secret_hash,
+        )
+
+        response = await auth_client.get(
+            f"{V3_API_PREFIX}/users/me",
+            headers={"Authorization": f"bearer {generated.raw_token}"},
+        )
+
+        assert response.status_code == 401
+        assert (
+            response.json()["details"][0]["type"]
+            == INVALID_TOKEN_VIOLATION_TYPE
+        )
+
+    async def test_malformed_pat_is_not_parsed_as_jwt(
+        self, auth_client: AsyncClient
+    ) -> None:
+        response = await auth_client.get(
+            f"{V3_API_PREFIX}/users/me",
+            headers={"Authorization": "bearer maas_pat_nope"},
+        )
+
+        assert response.status_code == 401
+        assert (
+            response.json()["details"][0]["type"]
+            == INVALID_TOKEN_VIOLATION_TYPE
+        )
