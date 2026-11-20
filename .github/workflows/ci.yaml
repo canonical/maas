@@ -167,7 +167,7 @@ jobs:
   ci-check:
     runs-on: ubuntu-slim
     if: always()
-    needs: [lint, test-python, test-python-pytest, test-go, test-docs]
+    needs: [lint, test-python, test-go, test-docs]
     steps:
       - name: Determine overall CI status
         id: status
