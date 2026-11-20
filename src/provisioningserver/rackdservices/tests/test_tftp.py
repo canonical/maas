@@ -53,8 +53,8 @@ from provisioningserver.rackdservices.tftp import (
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.rpc.region import GetBootConfig
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from tests.provisioningserver.boot.tests.test_pxe import compose_config_path
-from tests.provisioningserver.tests.test_kernel_opts import (
+from tests.provisioningserver.boot.test_pxe import compose_config_path
+from tests.provisioningserver.test_kernel_opts import (
     make_kernel_parameters,
 )
 

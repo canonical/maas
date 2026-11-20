@@ -60,7 +60,7 @@ from provisioningserver.utils.services import (
     ProtocolForObserveBeacons,
     SingleInstanceService,
 )
-from tests.provisioningserver.tests.test_security import SharedSecretTestCase
+from tests.provisioningserver.test_security import SharedSecretTestCase
 
 TIMEOUT = get_testing_timeout()
 

@@ -83,7 +83,7 @@ from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import (
     KERNEL_CMDLINE_OUTPUT_NAME,
 )
-from tests.provisioningserver.utils.tests.test_lxd import (
+from tests.provisioningserver.utils.test_lxd import (
     SAMPLE_LXD_NETWORKS,
     SAMPLE_LXD_RESOURCES,
 )

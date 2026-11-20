@@ -24,7 +24,7 @@ from provisioningserver.boot import (
 )
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from tests.provisioningserver.tests.test_kernel_opts import (
+from tests.provisioningserver.test_kernel_opts import (
     make_kernel_parameters,
 )
 

@@ -28,7 +28,7 @@ from provisioningserver.boot.windows import Bcd, WindowsPXEBootMethod
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from tests.provisioningserver.tests.test_kernel_opts import (
+from tests.provisioningserver.test_kernel_opts import (
     make_kernel_parameters,
 )
 

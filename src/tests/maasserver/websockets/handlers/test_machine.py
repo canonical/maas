@@ -20,7 +20,7 @@ from metadataserver.enum import (
 )
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.testing.certificates import get_sample_cert
-from tests.maasserver.websockets.handlers.tests.test_machine import (
+from tests.maasserver.websockets.handlers.test_machine_legacy import (
     TestMachineHandlerUtils,
 )
 
