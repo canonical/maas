@@ -175,6 +175,19 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.addCleanup(lambda: protocol.connectionLost(""))
         mock_authenticate.assert_called_once_with(sessionid, csrftoken)
 
+    def test_connectionMade_ignores_malformed_cookies(self):
+        # See LP:2170206
+        protocol, _ = self.make_protocol(patch_authenticate=False)
+        sessionid = maas_factory.make_name("sessionid")
+        csrftoken = maas_factory.make_name("csrftoken")
+        protocol.transport.cookies = (
+            f'foo; a=x"y; csrftoken={csrftoken}; sessionid={sessionid}'
+        ).encode("ascii")
+        mock_authenticate = self.patch(protocol, "authenticate")
+        protocol.connectionMade()
+        self.addCleanup(lambda: protocol.connectionLost(""))
+        mock_authenticate.assert_called_once_with(sessionid, csrftoken)
+
     def test_connectionLost_removes_self_from_factory(self):
         protocol, factory = self.make_protocol()
         mock_authenticate = self.patch(protocol, "authenticate")

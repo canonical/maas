@@ -5,12 +5,11 @@
 
 from django.core.exceptions import ValidationError
 
-from maascommon.fips import is_fips_enabled
+from maascommon.fips import FIPS_ALLOWED_IPMI_CIPHERS, is_fips_enabled
 from maascommon.hardening import is_hardening_enabled
 from maascommon.logging.security import log_fips_driver_rejected
 from maascommon.password_policy import validate_password_complexity
 from provisioningserver.drivers.power.fips import (
-    FIPS_ALLOWED_IPMI_CIPHERS,
     get_fips_compliant_alternatives,
     get_fips_status_for_driver,
 )
@@ -57,6 +56,16 @@ def validate_power_params_fips(
                 f"'{power_type}' in FIPS mode.",
                 code="fips_violation",
             )
+
+    if (
+        power_type == "amt"
+        and power_parameters.get("allow_legacy_renegotiation") == "true"
+    ):
+        raise ValidationError(
+            "Legacy TLS renegotiation cannot be enabled for 'amt' in "
+            "FIPS mode.",
+            code="fips_violation",
+        )
 
 
 def validate_power_pass_complexity(power_parameters: dict) -> None:

@@ -65,6 +65,7 @@ AgentTable = Table(
         BigInteger,
         ForeignKey(
             "maasserver_node.id",
+            ondelete="CASCADE",
             deferrable=True,
             initially="DEFERRED",
         ),
@@ -1709,6 +1710,9 @@ OIDCProviderTable = Table(
     Column("token_type", Integer, nullable=False),
     Column("enabled", Boolean, nullable=False),
     Column("metadata", JSONB, nullable=False),
+    Column(
+        "config", JSONB, nullable=True
+    ),  # For additional config options specific to the provider
 )
 
 OIDCRevokedTokenTable = Table(

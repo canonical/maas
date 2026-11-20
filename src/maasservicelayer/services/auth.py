@@ -66,7 +66,11 @@ class AuthService(Service):
         user = await self.users_service.get_one(
             QuerySpec(UserClauseFactory.with_username(username))
         )
-        if not user or not user.is_active or not user.check_password(password):
+        if (
+            not user
+            or not user.is_active
+            or not await user.check_password(password)
+        ):
             logger.info(
                 AUTHN_LOGIN_UNSUCCESSFUL,
                 type=SECURITY,

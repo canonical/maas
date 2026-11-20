@@ -1,7 +1,7 @@
 # Copyright 2024-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Callable, Optional
+from typing import Awaitable, Callable, Optional
 
 from fastapi import Depends
 from starlette.requests import Request
@@ -22,10 +22,7 @@ from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
     NOT_AUTHENTICATED_VIOLATION_TYPE,
 )
-from maasservicelayer.models.auth import (
-    AuthenticatedUser,
-    RBACPermissionsPools,
-)
+from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
 # This is used just to generate the openapi spec with the security annotations.
@@ -44,7 +41,7 @@ def get_authenticated_user(request: Request) -> AuthenticatedUser | None:
     return request.state.authenticated_user
 
 
-def check_authentication() -> Callable:
+def check_authentication() -> Callable[..., Awaitable[AuthenticatedUser]]:
     """
     Decorator to check if the request is authenticated.
 
@@ -52,7 +49,7 @@ def check_authentication() -> Callable:
         Callable: Decorator function that checks if the user is authenticated.
     """
 
-    async def wrapper(request: Request) -> None:
+    async def wrapper(request: Request) -> AuthenticatedUser:
         authenticated_user = get_authenticated_user(request)
         if not authenticated_user:
             svc: ServiceCollectionV3 = request.state.services
@@ -72,6 +69,7 @@ def check_authentication() -> Callable:
                     )
                 ]
             )
+        return authenticated_user
 
     return wrapper
 
@@ -79,7 +77,7 @@ def check_authentication() -> Callable:
 def check_permissions(
     openfga_permission: MAASResourceEntitlement | None = None,
     rbac_permissions: Optional[set[RbacPermission]] = None,
-) -> Callable:
+) -> Callable[..., Awaitable[AuthenticatedUser]]:
     """
     Decorator to check if the authenticated user has the required permission to access an endpoint.
 
@@ -163,16 +161,38 @@ def check_permissions(
             external_auth_info
             and external_auth_info.type == ExternalAuthType.RBAC
         ):
-            # Initialize an empty object. The permissions will be populated if the handler has requested some.
-            authenticated_user.rbac_permissions = RBACPermissionsPools()
-            # really pyright?
-            assert authenticated_user.rbac_permissions is not None
+            if authenticated_user.rbac_permissions is None:
+                raise ForbiddenException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                            message="RBAC permissions were not populated during authentication.",
+                        )
+                    ]
+                )
 
-            if rbac_permissions:
+            requested_permissions = rbac_permissions or set()
+            if (
+                RbacPermission.MAAS_ADMIN in requested_permissions
+                and authenticated_user.rbac_permissions.is_admin is not True
+            ):
+                raise ForbiddenException(
+                    details=[
+                        BaseExceptionDetail(
+                            type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                            message=f"The permission '{RbacPermission.MAAS_ADMIN}' is required.",
+                        )
+                    ]
+                )
+
+            pool_permissions = requested_permissions - {
+                RbacPermission.MAAS_ADMIN
+            }
+            if pool_permissions:
                 rbac_client = await services.external_auth.get_rbac_client()
                 pool_responses = await rbac_client.get_resource_pool_ids(
                     user=authenticated_user.username,
-                    permissions=rbac_permissions,
+                    permissions=pool_permissions,
                 )
                 all_resource_pools = set()
                 # if any of the response has the access_all property, we have to fetch all the resource pools ids

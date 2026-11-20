@@ -6,7 +6,10 @@ import logging
 
 import pytest
 
+from maascommon import fips
+from maascommon.enums.ipmi import IPMICipherSuiteID
 from maascommon.fips import (
+    default_ipmi_cipher_suite_id,
     FIPS_SSH_CONFIG,
     get_fips_status,
     validate_fips_ssh_public_key,
@@ -91,6 +94,19 @@ class TestGetFipsStatus:
             get_fips_status()
         assert len(caplog.records) == 1
         assert caplog.records[0].levelno == logging.WARNING
+
+
+class TestDefaultIPMICipherSuiteID:
+    @pytest.mark.parametrize(
+        "fips_enabled, expected",
+        [
+            (True, IPMICipherSuiteID.SUITE_17),
+            (False, IPMICipherSuiteID.SUITE_3),
+        ],
+    )
+    def test_depends_on_fips(self, monkeypatch, fips_enabled, expected):
+        monkeypatch.setattr(fips, "is_fips_enabled", lambda: fips_enabled)
+        assert default_ipmi_cipher_suite_id() == expected
 
 
 class TestFIPSSSHConfig:

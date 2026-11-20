@@ -5,11 +5,14 @@ import re
 from pydantic import ValidationError
 import pytest
 
+from maascommon.enums.ipmi import IPMICipherSuiteID
+from maasservicelayer.models import configurations
 from maasservicelayer.models.configurations import (
     BootImagesImportIntervalMinutesConfig,
     ConfigFactory,
     DNSTrustedAclConfig,
     HttpProxyConfig,
+    MAASAutoIPMICipherSuiteIDConfig,
     MAASAutoIPMIKGBmcKeyConfig,
     MAASProxyPortConfig,
     MAASSyslogPortConfig,
@@ -316,6 +319,27 @@ class TestMAASAutoIPMIKGBmcKeyConfig:
             MAASAutoIPMIKGBmcKeyConfig(value=input_value)
 
 
+class TestMAASAutoIPMICipherSuiteIDConfig:
+    @pytest.mark.parametrize("value", list(IPMICipherSuiteID) + [None])
+    def test_accepts_any_value_without_fips(self, monkeypatch, value):
+        monkeypatch.setattr(configurations, "is_fips_enabled", lambda: False)
+        assert MAASAutoIPMICipherSuiteIDConfig(value=value).value == value
+
+    @pytest.mark.parametrize("value", [IPMICipherSuiteID.SUITE_17, None])
+    def test_accepts_suite_17_or_unset_with_fips(self, monkeypatch, value):
+        monkeypatch.setattr(configurations, "is_fips_enabled", lambda: True)
+        assert MAASAutoIPMICipherSuiteIDConfig(value=value).value == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [s for s in IPMICipherSuiteID if s != IPMICipherSuiteID.SUITE_17],
+    )
+    def test_rejects_non_fips_values_with_fips(self, monkeypatch, value):
+        monkeypatch.setattr(configurations, "is_fips_enabled", lambda: True)
+        with pytest.raises(ValidationError, match="not FIPS-approved"):
+            MAASAutoIPMICipherSuiteIDConfig(value=value)
+
+
 class TestConfigFactory:
     @pytest.mark.parametrize(
         "name",
@@ -351,3 +375,15 @@ class TestConfigFactory:
     def test_parse_config_values(self):
         for name, clazz in ConfigFactory.ALL_CONFIGS.items():
             ConfigFactory.parse(name=name, value=clazz.default)
+
+    def test_get_validator_message_returns_custom_validator_message(self):
+        with pytest.raises(ValidationError) as exc_info:
+            MAASAutoIPMIKGBmcKeyConfig(value="short")
+        message = ConfigFactory.get_validator_message(exc_info.value)
+        assert message is not None
+        assert "K_g must either be 20 characters" in message
+
+    def test_get_validator_message_returns_none_for_type_mismatch(self):
+        with pytest.raises(ValidationError) as exc_info:
+            MAASProxyPortConfig(value="not-a-port")
+        assert ConfigFactory.get_validator_message(exc_info.value) is None

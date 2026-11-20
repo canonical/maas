@@ -339,7 +339,7 @@ class TestGenerateOpenVSwitchConfiguration(MAASServerTestCase):
 class TestGenerateKVMPodConfiguration(MAASServerTestCase):
     def test_yields_configuration_when_machine_install_kvm_true(self):
         password = "123secure"
-        self.patch(vendor_data, "_generate_password").return_value = password
+        self.patch(vendor_data, "generate_password").return_value = password
         self.patch(
             vendor_data.sha512_crypt, "hash"
         ).return_value = "123crypted"
@@ -476,7 +476,7 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
         password = "123secure"
         cert = get_sample_cert()
         self.patch(vendor_data, "generate_certificate").return_value = cert
-        self.patch(vendor_data, "_generate_password").return_value = password
+        self.patch(vendor_data, "generate_password").return_value = password
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
             osystem="ubuntu",
@@ -511,7 +511,7 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
         password = "123secure"
         cert = get_sample_cert()
         self.patch(vendor_data, "generate_certificate").return_value = cert
-        self.patch(vendor_data, "_generate_password").return_value = password
+        self.patch(vendor_data, "generate_password").return_value = password
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
             osystem="ubuntu",

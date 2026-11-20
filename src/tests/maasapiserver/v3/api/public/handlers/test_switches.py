@@ -90,26 +90,31 @@ class TestSwitchesApi(ApiCommonTests):
                 method="GET",
                 path=self.BASE_PATH,
                 permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="GET",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_VIEW_GLOBAL_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=self.BASE_PATH,
                 permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="PATCH",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                rbac_admin_permission=True,
             ),
         ]
 

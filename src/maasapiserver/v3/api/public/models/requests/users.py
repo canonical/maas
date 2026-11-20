@@ -4,7 +4,7 @@
 import re
 
 from fastapi import Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from maascommon.password_policy import enforce_password_complexity
 from maasservicelayer.builders.users import UserBuilder
@@ -83,8 +83,8 @@ class UserCreateRequest(BaseUserRequest):
     def _check_password(cls, v: str) -> str:
         return _enforce_password_complexity(v)
 
-    def to_builder(self) -> UserBuilder:
-        hashed_password = UserBuilder.hash_password(self.password)
+    async def to_builder(self) -> UserBuilder:
+        hashed_password = await UserBuilder.hash_password(self.password)
         return UserBuilder(
             username=self.username,
             password=hashed_password,
@@ -97,20 +97,29 @@ class UserCreateRequest(BaseUserRequest):
         )
 
 
-class UserUpdateRequest(BaseUserRequest):
-    password: str | None = Field(min_length=1, default=None)
+class UserUpdateRequestSelf(BaseUserRequest):
+    current_password: str | None = Field(min_length=1, default=None)
+    new_password: str | None = Field(min_length=1, default=None)
 
-    @field_validator("password")
+    @model_validator(mode="after")
+    def check_passwords(self):
+        if self.new_password is not None and self.current_password is None:
+            raise ValueError(
+                "The current password must be provided when changing password."
+            )
+        return self
+
+    @field_validator("new_password")
     @classmethod
     def _check_password(cls, v: str | None) -> str | None:
         if v is None:
             return v
         return _enforce_password_complexity(v)
 
-    def to_builder(self) -> UserBuilder:
+    async def to_builder(self) -> UserBuilder:
         password = (
-            UserBuilder.hash_password(self.password)
-            if self.password
+            await UserBuilder.hash_password(self.new_password)
+            if self.new_password is not None
             else UNSET
         )
         return UserBuilder(
@@ -124,17 +133,59 @@ class UserUpdateRequest(BaseUserRequest):
         )
 
 
-class UserUpdateRequestAdmin(UserUpdateRequest):
+class UserUpdateRequestAdmin(BaseUserRequest):
+    password: str | None = Field(min_length=1, default=None)
     groups: list[int] = Field(
         default_factory=list,
         description="The IDs of the groups the user will be a member of.",
     )
 
+    @field_validator("password")
+    @classmethod
+    def _check_password(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return _enforce_password_complexity(v)
+
+    async def to_builder(self) -> UserBuilder:
+        password = (
+            await UserBuilder.hash_password(self.password)
+            if self.password is not None
+            else UNSET
+        )
+        return UserBuilder(
+            username=self.username,
+            password=password,
+            is_staff=False,
+            is_active=True,
+            first_name=self.first_name,
+            last_name=self.last_name,
+            email=self.email,
+        )
+
 
 class UserChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=1)
+
+    @field_validator("new_password")
+    @classmethod
+    def _check_password(cls, v: str) -> str:
+        return _enforce_password_complexity(v)
+
+    async def to_builder(self) -> UserBuilder:
+        password = await UserBuilder.hash_password(self.new_password)
+        return UserBuilder(password=password)
+
+
+class UserChangePasswordRequestAdmin(BaseModel):
     password: str = Field(..., min_length=1)
 
     @field_validator("password")
     @classmethod
     def _check_password(cls, v: str) -> str:
         return _enforce_password_complexity(v)
+
+    async def to_builder(self) -> UserBuilder:
+        password = await UserBuilder.hash_password(self.password)
+        return UserBuilder(password=password)

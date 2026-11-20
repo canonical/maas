@@ -29,6 +29,7 @@ from maasservicelayer.db.repositories.staticroutes import (
     StaticRoutesClauseFactory,
 )
 from maasservicelayer.db.repositories.subnets import SubnetClauseFactory
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -119,7 +120,8 @@ class StaticRoutesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -230,7 +232,8 @@ class StaticRoutesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],
@@ -299,7 +302,8 @@ class StaticRoutesHandler(Handler):
         dependencies=[
             Depends(
                 check_permissions(
-                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
                 )
             )
         ],

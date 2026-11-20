@@ -2,6 +2,73 @@
 
 MAAS enforces strict access control and secure secret management to protect system integrity.
 
+## Reporting vulnerabilities
+
+MAAS follows the [Ubuntu disclosure policy](https://ubuntu.com/security/disclosure-policy). If you discover a security issue, see the [MAAS security policy](https://github.com/canonical/maas/blob/master/SECURITY.md) for how to report it.
+
+Because security fixes are included in regular MAAS releases, keeping your system up to date is the best way to stay protected. Check out [Supported MAAS versions](https://canonical.com/maas/docs/release-information/supported-maas-versions/) to see if your current version is still receiving updates.
+
+## Security architecture
+
+A MAAS deployment is made of region controllers, rack controllers, a PostgreSQL database, and the machines that MAAS manages. Each of these components sits on one side of a trust boundary, and every boundary is protected by its own security controls.
+
+```{mermaid}
+flowchart LR
+    subgraph EXT["External"]
+        USERS["Administrators, users<br/>and API clients"]
+        IDP["Identity provider<br/>(OIDC)"]
+        IMG["Image and package<br/>repositories"]
+    end
+
+    subgraph CP["MAAS control plane"]
+        REGION["Region controller<br/>(web UI and API)"]
+        DB[("PostgreSQL")]
+        VAULT[("Vault<br/>(optional)")]
+        RACK["Rack controller"]
+    end
+
+    subgraph PN["Provisioning network"]
+        MACHINES["Machines"]
+        BMC["BMCs"]
+    end
+
+    USERS -->|"HTTP or HTTPS"| REGION
+    IDP -->|"Single sign-on"| REGION
+    IMG -->|"Signed images"| REGION
+    REGION --> DB
+    REGION --> VAULT
+    RACK <-->|"RPC with shared secret"| REGION
+    RACK -->|"DHCP, TFTP and HTTP"| MACHINES
+    RACK -->|"Power drivers"| BMC
+```
+
+### Components
+
+* **Region controller**: serves the web UI and the API, and orchestrates the rest of MAAS. It also runs the Temporal server, which orchestrates MAAS workflows. See [Region controllers](/explanation/controllers.md#region-controllers).
+* **Rack controller**: provides DHCP, TFTP, HTTP boot, and power management to the machines on its fabrics. It also runs the MAAS Agent, which connects to the region controller. See [Rack controllers](/explanation/controllers.md#rack-controllers).
+* **PostgreSQL**: stores the state of MAAS, including credentials. See [PostgreSQL security](#postgresql-security).
+* **HashiCorp Vault**: optionally stores MAAS secrets outside the database. See [HashiCorp Vault](#hashicorp-vault).
+* **Load balancer**: optionally distributes web UI and API requests across region controllers, and can terminate TLS. See [Highly available API with HAProxy](/how-to-guides/manage-high-availability.md#highly-available-api-with-haproxy).
+* **Machines and BMCs**: the servers that MAAS commissions and deploys, and the baseboard management controllers that MAAS uses to power them on and off. See [The machine life cycle](/explanation/the-machine-life-cycle.md).
+
+### Access to the region controller
+
+Administrators, users, and API clients only interact with the region controller, through the web UI, the CLI, or the API. Users authenticate with a password, an API key, or [single sign-on](/how-to-guides/sso.md), and each request is authorized against the user's [entitlements](#role-based-access-control-rbac).
+
+By default, the web UI and the API use HTTP. To encrypt this traffic, [enable TLS](/how-to-guides/enhance-maas-security.md#use-tls-termination-maas-33). When TLS is enabled, the region controller still serves an internal HTTP endpoint for the rack controllers.
+
+### External services
+
+The region controller downloads boot images from image repositories and verifies them with a GPG keyring. When single sign-on is configured, the region controller also trusts an external OIDC identity provider to authenticate users.
+
+### Communication between controllers
+
+Rack controllers have no direct access to the database. They communicate with the region controller over RPC, authenticated with the [shared secret](#shared-secrets), and the MAAS Agent connects to the internal API of the region controller on port 5242.
+
+### Provisioning network
+
+Rack controllers boot machines over DHCP, TFTP, and HTTP, and control them through their BMCs with power drivers. Network boot protocols do not authenticate the machines, so keep the provisioning network isolated from untrusted networks. To restrict the ports that MAAS exposes, see [Manage network ports](/how-to-guides/enhance-maas-security.md#manage-network-ports).
+
 ## TLS termination
 
 SSL should be replaced with Transport Layer Security (TLS).  A TLS-terminated load balancer routes incoming Web UI and API requests across region controllers, reducing workload and latency.  Encryption and decryption occur at the edge of the network; in this case, right at the load balancer. TLS better ensures privacy and data integrity through symmetric cryptography and message authentication codes.
@@ -14,25 +81,11 @@ A certificate expiration check runs every twelve hours. When the certificate has
 
 > Note that MAAS does not auto-renew certificates.
 
-## Security hardening
+## Security hardening and FIPS mode
 
-MAAS security hardening enforces STIG/CIS transport-security controls on the region controller. Hardening is a posture, not a gate: MAAS validates its prerequisites at startup but never refuses to start over an unmet one. A single missing setting on a compliance host is a visible, fixable signal rather than a boot failure that takes a controller offline.
+MAAS can apply STIG- and CIS-aligned transport-security controls to its controllers. These controls activate automatically when a controller's host is in FIPS mode, and you can also activate them on any other host. When a prerequisite is missing, MAAS keeps running and reports the problem as a non-dismissable notification for administrators.
 
-### Activation
-
-Hardening is controlled by the `hardening_enabled` setting. The default value, `auto`, activates hardening when the host is in FIPS mode. An administrator can also activate hardening explicitly on any host with `maas config-hardening enable`, or disable it with `maas config-hardening disable`. On a FIPS host, hardening cannot be turned off. For the relationship between FIPS mode and MAAS, see [FIPS mode](/explanation/fips.md).
-
-### Violations as notifications
-
-When hardening is active, startup validation checks the public-API TLS certificate, DH parameters, service bind addresses, and the PostgreSQL SSL mode. Each unmet prerequisite is posted as an admin-targeted, non-dismissable `error` notification keyed by a stable identifier — the same mechanism the [certificate-expiration check](#certificate-expiration) uses. Because the notifications are non-dismissable, a compliance violation cannot be hidden; it can only be resolved. When the underlying setting is corrected, the notification clears on the next startup. Administrators can also run `maas config-hardening validate` for the same result on demand, which is useful as audit evidence.
-
-This differs from the certificate-expiration notification, which is dismissable — an expiring certificate is a reminder, whereas an active hardening violation is a compliance finding that must be fixed rather than acknowledged.
-
-### Region and rack scope
-
-The notification model lives on the region controller: violations found there are posted as `Notification` rows, visible in the web UI and API. A rack controller applies its own hardening controls locally (its own bind addresses in `rackd.conf`) but has no region-facing channel for posting notifications, so rack-local configuration violations are not surfaced cross-host or recorded in the region database. To audit a rack controller's own hardening posture, run `maas-rack config-hardening validate` on that rack.
-
-See [Security hardening reference](/reference/configuration-guides/security-hardening.md) for the parameters, stores, and violation codes, and [Activate MAAS hardening](/how-to-guides/enhance-maas-security.md#activate-maas-hardening) for setup steps.
+For the concepts, see [FIPS mode and security hardening](/explanation/fips.md). To set up a hardened controller, see [Activate MAAS hardening](/how-to-guides/activate-maas-hardening.md).
 
 ## Shared secrets
 
@@ -64,12 +117,10 @@ You should pick good passwords and store them securely (e.g. in a KeePassX passw
 
 MAAS configuration files should be set to have permission `640`: readable by logins belonging to the `maas` group and writeable only by the `root` user. Currently, the `regiond.conf` file contains the login credentials for the PostgreSQL database used by MAAS to keep track of all machines, networks, and configuration.
 
-| Pkg Fmt  | chmod 640 on files...                | Final Perms  |
-|----------|---------------------------------------|--------------|
-| Snap     | `/var/snap/maas/current/regiond.conf` | `-rw-r-----` |
-|          | `/var/snap/maas/current/rackd.conf`   | `-rw-r-----` |
-| Packages | `/etc/maas/rackd.conf/regiond.conf`   | `-rw-r-----` |
-|          | `/etc/maas/rackd.conf/rackd.conf`     | `-rw-r-----` |
+| File                                   | Permissions  |
+|----------------------------------------|--------------|
+| `/var/snap/maas/current/regiond.conf`  | `-rw-r-----` |
+| `/var/snap/maas/current/rackd.conf`    | `-rw-r-----` |
 
 ## Snap security
 
@@ -125,6 +176,26 @@ RBAC does not check permissions per resource pool—MAAS enforces them based on 
 | Auditor | Read-only access to permitted resource pools. |
 
 MAAS enforces role-based visibility. Users cannot access non-permitted machines, even if they know the system ID.
+
+## Risks and recommended controls
+
+Some risks come from the way MAAS works, and MAAS cannot remove them on its own. You are responsible for the controls that reduce them.
+
+### Inherent risks
+
+* **Network boot is not authenticated.** DHCP, TFTP, and HTTP boot do not authenticate machines or controllers. Any device on the provisioning network can answer boot requests or impersonate a machine.
+* **Administrators have full control.** An administrator can manage every machine, user, and setting in MAAS, including the credentials that MAAS uses to power machines on and off.
+* **MAAS stores credentials.** The database, Vault, and the backups contain BMC credentials, API keys, and other secrets. Anyone who can read them and reach the MAAS API or the management network can control your machines.
+
+### Recommended controls
+
+* **Keep MAAS and its hosts up to date.** Use a [supported MAAS version](https://canonical.com/maas/docs/release-information/supported-maas-versions/). The MAAS snap is refreshed automatically to new point releases of its track (for example, from x.y.1 to x.y.2). Upgrading to a new version (for example, from x.6 to x.7) is manual, including when your version reaches the end of its support. Delaying updates might leave vulnerabilities unpatched. See [Upgrade MAAS](/how-to-guides/upgrade-maas.md).
+* **Use strong authentication.** Use [strong passwords](#strong-passwords). If you use [single sign-on](/how-to-guides/sso.md), enable multi-factor authentication in your identity provider.
+* **Limit privileges.** Keep the number of administrators small, and grant other users only the [entitlements](#role-based-access-control-rbac) they need.
+* **Enable TLS with a trusted certificate.** See [Enhance MAAS security](/how-to-guides/enhance-maas-security.md#use-tls-termination-maas-33).
+* **Back up MAAS and encrypt the backups.** Store them in a location with restricted access. See [Back up MAAS](/how-to-guides/back-up-maas.md).
+* **Isolate the provisioning network.** Restrict the ports that MAAS exposes with a [firewall](/how-to-guides/enhance-maas-security.md#manage-network-ports), and configure your switches to prevent DHCP and ARP spoofing.
+* **Restrict physical access** to the controllers and the machines that MAAS manages.
 
 ## Security consulting
 

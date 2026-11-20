@@ -93,6 +93,20 @@ This section helps you observe and debug your MAAS deployment using tools like P
 
 <!-- * Troubleshooting performance -->
 
+## Secure MAAS
+
+Protect your MAAS controllers and the machines they manage. Learn how to configure TLS, activate STIG- and CIS-aligned hardening, and run MAAS on hosts in FIPS mode.
+
+* [Enhance MAAS security](/how-to-guides/enhance-maas-security.md)
+* [Activate MAAS hardening](/how-to-guides/activate-maas-hardening.md)
+* [Harden a rack controller](/how-to-guides/harden-a-rack-controller.md)
+* [Resolve hardening violations](/how-to-guides/resolve-hardening-violations.md)
+* [Enable FIPS mode on a MAAS controller](/how-to-guides/enable-fips-mode-on-a-controller.md)
+* [Adopt FIPS mode on an existing deployment](/how-to-guides/adopt-fips-on-an-existing-deployment.md)
+* [Manage trusted SSH host keys](/how-to-guides/manage-trusted-ssh-host-keys.md)
+* [Deploy a FIPS kernel](/how-to-guides/deploy-a-fips-kernel.md)
+* [Decommission MAAS](/how-to-guides/decommission-maas.md)
+
 ## Scale and optimize
 
 Ready to grow? Learn how to replicate controllers for high availability, set up VM clusters, combine hardware and virtual setups, and handle complex deployments. This section is essential for production-grade MAAS installations.
@@ -135,8 +149,15 @@ manage-high-availability
 use-logging
 monitor-maas
 enhance-maas-security
+activate-maas-hardening
+harden-a-rack-controller
+resolve-hardening-violations
+enable-fips-mode-on-a-controller
+adopt-fips-on-an-existing-deployment
+manage-trusted-ssh-host-keys
 deploy-a-real-time-kernel
 deploy-a-fips-kernel
+decommission-maas
 set-up-air-gapped-maas
 script-maas-with-python
 deploy-vms-on-ibm-z

@@ -100,51 +100,61 @@ class TestUserGroupsApi(ApiCommonTests):
                 method="GET",
                 path=f"{self.BASE_PATH}",
                 permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="GET",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="GET",
                 path=f"{self.BASE_PATH}/1/members",
                 permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="GET",
                 path=f"{self.BASE_PATH}/1/entitlements",
                 permission=MAASResourceEntitlement.CAN_VIEW_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="PUT",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}/1/members",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/1/members/10",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}/1/entitlements",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="DELETE",
@@ -152,21 +162,25 @@ class TestUserGroupsApi(ApiCommonTests):
                 "?resource_type=maas&resource_id=0"
                 "&entitlement=can_edit_machines",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}/1/members:batch_create",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/1/members?id=10",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}/1/entitlements:batch_delete",
                 permission=MAASResourceEntitlement.CAN_EDIT_IDENTITIES,
+                rbac_admin_permission=True,
             ),
         ]
 

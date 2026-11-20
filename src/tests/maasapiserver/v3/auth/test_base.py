@@ -30,7 +30,10 @@ from maasservicelayer.exceptions.catalog import (
     ForbiddenException,
     UnauthorizedException,
 )
-from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.auth import (
+    AuthenticatedUser,
+    RBACPermissionsPools,
+)
 from maasservicelayer.services import CacheForServices, OpenFGATupleService
 from tests.maasapiserver.fixtures.app import AsyncOpenFGAClientMock
 
@@ -183,6 +186,20 @@ def _build_auth_app(
     ) -> Optional[AuthenticatedUser]:
         return authenticated_user
 
+    @app.post(
+        f"{V3_API_PREFIX}/rbac_maas_admin",
+        dependencies=[
+            Depends(
+                check_permissions(
+                    openfga_permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                    rbac_permissions={RbacPermission.MAAS_ADMIN},
+                )
+            )
+        ],
+    )
+    async def rbac_maas_admin() -> Response:
+        return Response(status_code=200)
+
     return app
 
 
@@ -260,8 +277,21 @@ async def auth_client_rbac(
 
 class TestPermissionsFunctions:
     @staticmethod
-    def _build_request(username: str) -> dict:
-        return jsonable_encoder(AuthenticatedUser(id=0, username=username))
+    def _build_request(
+        username: str, rbac_is_admin: bool | None = None
+    ) -> dict:
+        rbac_permissions = (
+            RBACPermissionsPools(is_admin=rbac_is_admin)
+            if rbac_is_admin is not None
+            else None
+        )
+        return jsonable_encoder(
+            AuthenticatedUser(
+                id=0,
+                username=username,
+                rbac_permissions=rbac_permissions,
+            )
+        )
 
     async def test_check_authentication_ok(
         self, auth_client: AsyncClient
@@ -389,7 +419,7 @@ class TestPermissionsFunctions:
         )
         user_response = await auth_client_rbac.post(
             f"{V3_API_PREFIX}/rbac_pools",
-            json=self._build_request("test"),
+            json=self._build_request("test", rbac_is_admin=False),
         )
         assert user_response.status_code == 200
         authenticated_user = AuthenticatedUser(**user_response.json())
@@ -404,11 +434,12 @@ class TestPermissionsFunctions:
             authenticated_user.rbac_permissions.can_edit_all_resource_pools
             is None
         )
+        assert authenticated_user.rbac_permissions.is_admin is False
 
         mock_allowed_for_user_endpoint([RbacPermission.EDIT], [[""]])
         user_response = await auth_client_rbac.post(
             f"{V3_API_PREFIX}/rbac_admin_pools",
-            json=self._build_request("test"),
+            json=self._build_request("test", rbac_is_admin=False),
         )
         assert user_response.status_code == 200
         authenticated_user = AuthenticatedUser(**user_response.json())
@@ -421,10 +452,11 @@ class TestPermissionsFunctions:
             authenticated_user.rbac_permissions.can_edit_all_resource_pools
             is True
         )
+        assert authenticated_user.rbac_permissions.is_admin is False
 
         user_response = await auth_client_rbac.post(
             f"{V3_API_PREFIX}/rbac_no_permissions",
-            json=self._build_request("test"),
+            json=self._build_request("test", rbac_is_admin=False),
         )
         assert user_response.status_code == 200
         authenticated_user = AuthenticatedUser(**user_response.json())
@@ -438,3 +470,22 @@ class TestPermissionsFunctions:
             authenticated_user.rbac_permissions.can_edit_all_resource_pools
             is None
         )
+        assert authenticated_user.rbac_permissions.is_admin is False
+
+        user_response = await auth_client_rbac.post(
+            f"{V3_API_PREFIX}/rbac_maas_admin",
+            json=self._build_request("test", rbac_is_admin=False),
+        )
+        assert user_response.status_code == 403
+
+        user_response = await auth_client_rbac.post(
+            f"{V3_API_PREFIX}/rbac_maas_admin",
+            json=self._build_request("test", rbac_is_admin=True),
+        )
+        assert user_response.status_code == 200
+
+        user_response = await auth_client_rbac.post(
+            f"{V3_API_PREFIX}/rbac_maas_admin",
+            json=self._build_request("test"),
+        )
+        assert user_response.status_code == 403

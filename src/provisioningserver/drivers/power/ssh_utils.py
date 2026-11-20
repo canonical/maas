@@ -125,25 +125,11 @@ class TrustedHostKeyPolicy(MissingHostKeyPolicy):
         self, hostname: str, key_type: str, key_b64: str
     ) -> bool:
         """Return True iff the host key is trusted via the MAAS region RPC."""
-        global _rpc_client_factory, _rpc_command
-        if _rpc_client_factory is None:
-            from provisioningserver.rpc import getRegionClient
-            from provisioningserver.rpc.region import VerifyTrustedSshHostKey
-
-            _rpc_client_factory = getRegionClient
-            _rpc_command = VerifyTrustedSshHostKey
-        from twisted.internet import reactor
-
-        rpc_client = _rpc_client_factory()
-        result = blockingCallFromThread(
-            reactor,
-            rpc_client,
-            _rpc_command,
-            host=hostname,
-            key_type=key_type,
-            public_key=key_b64,
+        trusted_keys = get_trusted_ssh_host_keys(hostname)
+        return any(
+            entry["key_type"] == key_type and entry["public_key"] == key_b64
+            for entry in trusted_keys
         )
-        return bool(result.get("verified", False))
 
     @staticmethod
     def _lookup_trusted_key_via_env(
@@ -191,6 +177,31 @@ class TrustedHostKeyPolicy(MissingHostKeyPolicy):
             MAAS_TRUSTED_SSH_HOST_KEYS_ENV,
         )
         return False
+
+
+def get_trusted_ssh_host_keys(host: str) -> list[dict[str, str]]:
+    """Return trusted SSH host keys for `host` from the region.
+
+    Each entry is ``{"key_type": ..., "public_key": ...}``; empty when no
+    key is registered for this host in the trusted SSH host keys store.
+    Shared by :class:`TrustedHostKeyPolicy` (paramiko power drivers) and
+    the virsh pod driver, which materializes these into a known_hosts
+    file for the CLI `ssh` binary under FIPS.
+    """
+    global _rpc_client_factory, _rpc_command
+    if _rpc_client_factory is None:
+        from provisioningserver.rpc import getRegionClient
+        from provisioningserver.rpc.region import GetTrustedSshHostKeys
+
+        _rpc_client_factory = getRegionClient
+        _rpc_command = GetTrustedSshHostKeys
+    from twisted.internet import reactor
+
+    rpc_client = _rpc_client_factory()
+    result = blockingCallFromThread(
+        reactor, rpc_client, _rpc_command, host=host
+    )
+    return result["keys"]
 
 
 def make_ssh_client() -> SSHClient:

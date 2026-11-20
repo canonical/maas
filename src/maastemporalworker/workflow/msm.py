@@ -429,9 +429,12 @@ class MSMConnectorActivity(ActivityBase):
                     input.configuration
                 )
             except ValidationException as err:
-                raise ApplicationError(
-                    "Failed to set global configuration", non_retryable=True
-                ) from err
+                message = "Failed to set global configuration"
+                if err.details:
+                    message += ": " + " ".join(
+                        detail.message for detail in err.details
+                    )
+                raise ApplicationError(message, non_retryable=True) from err
 
     @activity_defn_with_context(name=MSM_START_IMAGE_SYNC_ACTIVITY_NAME)
     async def start_image_sync(self) -> None:
@@ -1045,10 +1048,11 @@ class MSMConfigureProfileWorkflow:
                             errors=[f"{key} activity was cancelled."],
                         )
                     elif exc := hdl.exception():
+                        reason = getattr(exc, "cause", None) or exc
                         status = SiteStatus(
                             **{f"{key}_status": TaskStatus.FAILED},
                             clear_errors=False,
-                            errors=[f"{key} activity failed ({exc})."],
+                            errors=[f"{key} activity failed ({reason})."],
                         )
                     else:
                         status = SiteStatus(

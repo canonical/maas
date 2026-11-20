@@ -236,6 +236,7 @@ class TestBootMethod(MAASTestCase):
                 ("uefi_ebc_tftp", "00:09"),
                 ("uefi_arm64_tftp", "00:0B"),
                 ("uefi_arm64_http", "00:13"),
+                ("uefi_riscv64_tftp", "00:1B"),
                 ("open-firmware_ppc64el", "00:0C"),
                 ("powernv", "00:0E"),
                 ("windows", None),

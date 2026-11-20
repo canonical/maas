@@ -12,15 +12,12 @@ from maasservicelayer.builders.ipranges import IPRangeBuilder
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ConflictException,
-    ForbiddenException,
     ValidationException,
 )
 from maasservicelayer.exceptions.constants import (
     CONFLICT_VIOLATION_TYPE,
     INVALID_ARGUMENT_VIOLATION_TYPE,
-    MISSING_PERMISSIONS_VIOLATION_TYPE,
 )
-from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
 
@@ -91,25 +88,12 @@ class IPRangeCreateRequest(BaseModel):
     async def to_builder(
         self,
         subnet: Subnet,
-        authenticated_user: AuthenticatedUser,
         services: ServiceCollectionV3,
+        owner_id: int,
         existing_iprange_id: int | None = None,
     ) -> IPRangeBuilder:
         self._validate_addresses_in_subnet(subnet)
         if self.type == IPRangeType.DYNAMIC:
-            if not (
-                await services.openfga_tuples.get_client().can_edit_global_entities(
-                    authenticated_user.id
-                )
-            ):
-                raise ForbiddenException(
-                    details=[
-                        BaseExceptionDetail(
-                            type=MISSING_PERMISSIONS_VIOLATION_TYPE,
-                            message="Only admins can create/update dynamic IP ranges.",
-                        )
-                    ]
-                )
             has_reserved_ips = (
                 await services.reservedips.exists_within_subnet_iprange(
                     subnet_id=subnet.id,
@@ -177,11 +161,7 @@ class IPRangeCreateRequest(BaseModel):
             end_ip=self.end_ip,
             comment=self.comment,
             subnet_id=subnet.id,
-            user_id=(
-                self.owner_id
-                if self.owner_id is not None
-                else authenticated_user.id
-            ),
+            user_id=owner_id,
         )
 
 

@@ -87,31 +87,37 @@ class TestRacksApi(ApiCommonTests):
                 method="GET",
                 path=self.BASE_PATH,
                 permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="GET",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}",
                 permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="PUT",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}/1/tokens:generate",
                 permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+                rbac_admin_permission=True,
             ),
         ]
 
@@ -420,16 +426,19 @@ class TestRackAgentApi(ApiCommonTests):
                 method="GET",
                 path=f"{self.BASE_PATH}/1/agents",
                 permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="GET",
                 path=f"{self.BASE_PATH}/1/agents/10",
                 permission=MAASResourceEntitlement.CAN_VIEW_CONTROLLERS,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/1/agents/10",
                 permission=MAASResourceEntitlement.CAN_EDIT_CONTROLLERS,
+                rbac_admin_permission=True,
             ),
         ]
 

@@ -8,9 +8,10 @@ import pytest
 from maasapiserver.v3.api.public.models.requests.users import (
     BaseUserRequest,
     UserChangePasswordRequest,
+    UserChangePasswordRequestAdmin,
     UserCreateRequest,
-    UserUpdateRequest,
     UserUpdateRequestAdmin,
+    UserUpdateRequestSelf,
 )
 import maascommon.hardening as _hardening
 from maasservicelayer.models.base import UNSET
@@ -81,7 +82,7 @@ class TestUserCreateRequest:
         assert len(e.value.errors()) == 1
         assert {"password"} == set([f["loc"][0] for f in e.value.errors()])
 
-    def test_to_builder(self) -> None:
+    async def test_to_builder(self) -> None:
         _hardening._hardening_active = False
         u = UserCreateRequest(
             username="test",
@@ -90,7 +91,7 @@ class TestUserCreateRequest:
             last_name="test",
             email="email@example.com",
         )
-        b = u.to_builder()
+        b = await u.to_builder()
         assert u.username == b.username
         assert u.first_name == b.first_name
         assert u.last_name == b.last_name
@@ -121,6 +122,35 @@ class TestUserCreateRequest:
         assert u.groups == [1, 2]
 
 
+class TestUserUpdateRequestSelf:
+    def test_requires_current_password_when_changing_password(self) -> None:
+        with pytest.raises(ValidationError):
+            UserUpdateRequestSelf(
+                username="test",
+                new_password="new-password",
+                first_name="test",
+                last_name="test",
+            )
+
+    async def test_to_builder(self) -> None:
+        u = UserUpdateRequestSelf(
+            username="test",
+            current_password="current-password",
+            new_password="new-password",
+            first_name="test",
+            last_name="test",
+            email="email@example.com",
+        )
+        b = await u.to_builder()
+        assert u.username == b.username
+        assert u.first_name == b.first_name
+        assert u.last_name == b.last_name
+        assert b.is_superuser == UNSET
+        assert b.is_staff is False
+        assert b.is_active is True
+        assert PBKDF2PasswordHasher().verify("new-password", b.password)
+
+
 class TestUserUpdateRequestAdmin:
     def test_groups_default_empty(self) -> None:
         u = UserUpdateRequestAdmin(
@@ -143,36 +173,38 @@ class TestUserUpdateRequestAdmin:
         )
         assert u.groups == [1, 2]
 
-
-class TestUserUpdateRequest:
-    def test_to_builder(self) -> None:
-        u = UserUpdateRequest(
+    async def test_to_builder(self) -> None:
+        u = UserUpdateRequestAdmin(
             username="test",
-            password=None,
+            password="new-password",
             first_name="test",
             last_name="test",
             email="email@example.com",
         )
-        b = u.to_builder()
-        assert u.username == b.username
-        assert u.first_name == b.first_name
-        assert u.last_name == b.last_name
-        assert b.is_superuser == UNSET
-        assert b.is_staff is False
-        assert b.is_active is True
-        assert b.password == UNSET
+        b = await u.to_builder()
 
-    def test_to_builder_with_password(self) -> None:
-        _hardening._hardening_active = False
-        u = UserUpdateRequest(
-            username="test",
-            password="test",
-            first_name="test",
-            last_name="test",
-            email="email@example.com",
+        assert PBKDF2PasswordHasher().verify("new-password", b.password)
+
+
+class TestUserChangePasswordRequest:
+    async def test_to_builder(self) -> None:
+        request = UserChangePasswordRequest(
+            current_password="current-password",
+            new_password="new-password",
         )
-        b = u.to_builder()
-        assert PBKDF2PasswordHasher().verify("test", b.password)
+
+        builder = await request.to_builder()
+
+        assert PBKDF2PasswordHasher().verify("new-password", builder.password)
+
+
+class TestUserChangePasswordRequestAdmin:
+    async def test_to_builder(self) -> None:
+        request = UserChangePasswordRequestAdmin(password="new-password")
+
+        builder = await request.to_builder()
+
+        assert PBKDF2PasswordHasher().verify("new-password", builder.password)
 
 
 _WEAK_PASSWORD = "weak"
@@ -193,15 +225,34 @@ def _base_fields(**overrides):
 _REQUEST_BUILDERS = [
     pytest.param(
         lambda pw: UserCreateRequest(**_base_fields(password=pw)),
+        "password",
         id="UserCreateRequest",
     ),
     pytest.param(
-        lambda pw: UserUpdateRequest(**_base_fields(password=pw)),
-        id="UserUpdateRequest",
+        lambda pw: UserUpdateRequestAdmin(**_base_fields(password=pw)),
+        "password",
+        id="UserUpdateRequestAdmin",
     ),
     pytest.param(
-        lambda pw: UserChangePasswordRequest(password=pw),
+        lambda pw: UserUpdateRequestSelf(
+            **_base_fields(
+                current_password="current-password", new_password=pw
+            )
+        ),
+        "new_password",
+        id="UserUpdateRequestSelf",
+    ),
+    pytest.param(
+        lambda pw: UserChangePasswordRequest(
+            current_password="current-password", new_password=pw
+        ),
+        "new_password",
         id="UserChangePasswordRequest",
+    ),
+    pytest.param(
+        lambda pw: UserChangePasswordRequestAdmin(password=pw),
+        "password",
+        id="UserChangePasswordRequestAdmin",
     ),
 ]
 
@@ -209,20 +260,22 @@ _REQUEST_BUILDERS = [
 class TestPasswordComplexityEnforcement:
     """_enforce_password_complexity is wired into every password field."""
 
-    @pytest.mark.parametrize("build", _REQUEST_BUILDERS)
-    def test_weak_password_rejected_when_hardening_active(self, build) -> None:
+    @pytest.mark.parametrize("build, field", _REQUEST_BUILDERS)
+    def test_weak_password_rejected_when_hardening_active(
+        self, build, field
+    ) -> None:
         _hardening._hardening_active = True
         with pytest.raises(ValidationError) as exc_info:
             build(_WEAK_PASSWORD)
-        assert any(e["loc"] == ("password",) for e in exc_info.value.errors())
+        assert any(e["loc"] == (field,) for e in exc_info.value.errors())
 
-    @pytest.mark.parametrize("build", _REQUEST_BUILDERS)
+    @pytest.mark.parametrize("build, field", _REQUEST_BUILDERS)
     def test_strong_password_accepted_when_hardening_active(
-        self, build
+        self, build, field
     ) -> None:
         _hardening._hardening_active = True
         req = build(_STRONG_PASSWORD)
-        assert req.password == _STRONG_PASSWORD
+        assert getattr(req, field) == _STRONG_PASSWORD
 
     def test_weak_password_accepted_when_hardening_inactive(self) -> None:
         _hardening._hardening_active = False
@@ -230,8 +283,8 @@ class TestPasswordComplexityEnforcement:
         assert req.password == _WEAK_PASSWORD
 
     def test_update_none_password_bypasses_complexity_check(self) -> None:
-        # None is the "no-change" sentinel for UserUpdateRequest; the validator
+        # None is the "no-change" sentinel for admin updates; the validator
         # short-circuits before reaching _enforce_password_complexity.
         _hardening._hardening_active = True
-        req = UserUpdateRequest(**_base_fields(password=None))
+        req = UserUpdateRequestAdmin(**_base_fields(password=None))
         assert req.password is None

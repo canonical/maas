@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 from textwrap import dedent
+from urllib.parse import quote
 
 from alembic import command, config
 from django.core.management import call_command
@@ -229,6 +230,9 @@ class Command(BaseCommand):
         port = conn_params.get("port")
         dbname = _get_dbname(conn_params)
 
+        # URL encode special characters, e.g. "@" -> "%40".
+        user = quote(user, safe="")
+        password = quote(password, safe="")
         auth = f"{user}:{password}@" if password else f"{user}@"
 
         if host.startswith("/"):  # It's a Unix socket
@@ -372,7 +376,10 @@ class Command(BaseCommand):
         alembic_cfg.set_main_option("run_migrations", "true")
         conn_params = conn.get_connection_params()
         dsn = self._build_postgres_dsn(conn_params, "postgresql+asyncpg")
-        alembic_cfg.set_main_option("sqlalchemy.url", dsn)
+
+        # set_main_option() needs % to be escaped as %%
+        # Assumes no variable interpolation is needed for the dsn.
+        alembic_cfg.set_main_option("sqlalchemy.url", dsn.replace("%", "%%"))
         alembic_cfg.attributes["connect_args"] = (
             self._build_alembic_connect_args(conn_params)
         )

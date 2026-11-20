@@ -3,10 +3,8 @@
 
 """vendor-data for cloud-init's use."""
 
-from base64 import b64encode
 from ipaddress import ip_address
 from itertools import chain
-from os import urandom
 import pkgutil
 import re
 from textwrap import dedent
@@ -16,6 +14,7 @@ from passlib.hash import sha512_crypt
 import tempita
 import yaml
 
+from maascommon.utils.password import generate_password
 from maasserver import ntp
 from maasserver.enum import BRIDGE_TYPE, INTERFACE_TYPE
 from maasserver.models import Config, NodeKey, NodeMetadata
@@ -299,7 +298,7 @@ def generate_kvm_pod_configuration(node):
         )
 
     if node.install_kvm:
-        password = _generate_password()
+        password = generate_password(min_length=32, max_length=32)
         deploy_secrets[DEPLOY_SECRETS_VIRSH_KEY] = password
         # Make sure SSH password authentication is enabled.
         yield "ssh_pwauth", True
@@ -536,8 +535,3 @@ def generate_hardware_sync_systemd_configuration(node):
             "systemctl enable maas_hardware_sync.timer",
         ],
     )
-
-
-def _generate_password():
-    """Generate a 32-character password by encoding 24 bytes as base64."""
-    return b64encode(urandom(24), altchars=b".!").decode("ascii")

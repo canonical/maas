@@ -16,6 +16,7 @@ from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
+from maasservicelayer.models import configurations
 
 
 class TestGetConfigField(MAASServerTestCase):
@@ -172,3 +173,23 @@ class TestIPMIKGConfigSettings(MAASServerTestCase):
         input_value = factory.make_hex_string(40)
         field = get_config_field("maas_auto_ipmi_k_g_bmc_key")
         self.assertRaises(ValidationError, field.clean, input_value)
+
+
+class TestIPMICipherSuiteIDConfigSettings(MAASServerTestCase):
+    def test_accepts_non_fips_suite_without_fips(self):
+        self.patch(configurations, "is_fips_enabled").return_value = False
+        field = get_config_field("maas_auto_ipmi_cipher_suite_id")
+        self.assertEqual("3", field.clean("3"))
+
+    def test_accepts_suite_17_with_fips(self):
+        self.patch(configurations, "is_fips_enabled").return_value = True
+        field = get_config_field("maas_auto_ipmi_cipher_suite_id")
+        self.assertEqual("17", field.clean("17"))
+
+    def test_rejects_non_fips_suite_with_fips(self):
+        self.patch(configurations, "is_fips_enabled").return_value = True
+        field = get_config_field("maas_auto_ipmi_cipher_suite_id")
+        for value in ("3", ""):
+            with self.subTest(value=value):
+                error = self.assertRaises(ValidationError, field.clean, value)
+                self.assertIn("not FIPS-approved", str(error))

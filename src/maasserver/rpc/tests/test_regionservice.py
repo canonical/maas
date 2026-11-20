@@ -32,6 +32,7 @@ from twisted.python.reflect import fullyQualifiedName
 from zope.interface.verify import verifyObject
 
 from maasserver.models import RackController, RegionController
+from maasserver.models.trustedsshhostkey import TrustedSshHostKey
 from maasserver.rpc import regionservice
 from maasserver.rpc.regionservice import (
     RackClient,
@@ -1203,3 +1204,57 @@ class TestRegionService(MAASTestCase):
 
         # The waiter has been unregistered.
         self.assertEqual({uuid: set()}, service.waiters)
+
+
+class TestGetTrustedSshHostKeys(MAASTransactionServerTestCase):
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_returns_keys_registered_for_host(self):
+        host = factory.make_hostname()
+        public_key = factory.make_name("public_key")
+        yield deferToDatabase(
+            TrustedSshHostKey.objects.create,
+            host=host,
+            key_type="ecdsa-sha2-nistp256",
+            public_key=public_key,
+        )
+
+        region = Region()
+        result = yield region.get_trusted_ssh_host_keys(host=host)
+
+        self.assertEqual(
+            result,
+            {
+                "keys": [
+                    {
+                        "key_type": "ecdsa-sha2-nistp256",
+                        "public_key": public_key,
+                    }
+                ]
+            },
+        )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_returns_empty_list_for_host_with_no_trusted_keys(self):
+        region = Region()
+        result = yield region.get_trusted_ssh_host_keys(
+            host=factory.make_hostname()
+        )
+        self.assertEqual(result, {"keys": []})
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_does_not_return_keys_registered_for_other_hosts(self):
+        yield deferToDatabase(
+            TrustedSshHostKey.objects.create,
+            host=factory.make_hostname(),
+            key_type="ecdsa-sha2-nistp256",
+            public_key=factory.make_name("public_key"),
+        )
+
+        region = Region()
+        result = yield region.get_trusted_ssh_host_keys(
+            host=factory.make_hostname()
+        )
+        self.assertEqual(result, {"keys": []})

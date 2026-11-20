@@ -34,6 +34,10 @@ from maasapiserver.v3.auth.cookie_manager import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maascommon.openfga.base import MAASResourceEntitlement
 from maascommon.utils.jwt import decode_unverified_jwt
+from maasservicelayer.auth.external_auth import (
+    ExternalAuthConfig,
+    ExternalAuthType,
+)
 from maasservicelayer.auth.external_oauth import (
     OAuth2Client,
     OAuthIDToken,
@@ -144,9 +148,9 @@ class TestAuthApi:
         pre_login_info = PreLoginInfoResponse(**response.json())
         assert pre_login_info.is_authenticated is True
         assert pre_login_info.no_users is True
-        assert pre_login_info.external_legacy_login_url is None
+        assert pre_login_info.external_legacy_login is None
 
-    async def test_get_with_external_legacy_auth(
+    async def test_get_with_external_legacy_auth_candid(
         self,
         authenticated_admin_api_client_v3: AsyncClient,
         enable_candid,
@@ -158,9 +162,47 @@ class TestAuthApi:
         pre_login_info = PreLoginInfoResponse(**response.json())
         assert pre_login_info.is_authenticated is True
         assert pre_login_info.no_users is False
+        assert pre_login_info.external_legacy_login is not None
         assert (
-            pre_login_info.external_legacy_login_url
+            pre_login_info.external_legacy_login.url
             == "http://candid.example.com"
+        )
+        assert (
+            pre_login_info.external_legacy_login.type
+            == ExternalAuthType.CANDID
+        )
+
+    async def test_get_with_external_legacy_auth_rbac(
+        self,
+        mocked_api_client_user_rbac: AsyncClient,
+        services_mock: ServiceCollectionV3,
+    ) -> None:
+        services_mock.external_auth = Mock(ExternalAuthService)
+        services_mock.external_auth.get_external_auth.return_value = (
+            ExternalAuthConfig(
+                type=ExternalAuthType.RBAC,
+                url="http://rbac.example.com",
+                domain="",
+                admin_group="",
+            )
+        )
+        services_mock.users = Mock(UsersService)
+        services_mock.users.has_users.return_value = True
+
+        response = await mocked_api_client_user_rbac.get(
+            f"{self.BASE_PATH}/login"
+        )
+        assert response.status_code == 200
+        pre_login_info = PreLoginInfoResponse(**response.json())
+        assert pre_login_info.is_authenticated is True
+        assert pre_login_info.no_users is False
+        assert pre_login_info.external_legacy_login is not None
+        assert (
+            pre_login_info.external_legacy_login.url
+            == "http://rbac.example.com"
+        )
+        assert (
+            pre_login_info.external_legacy_login.type == ExternalAuthType.RBAC
         )
 
     async def test_post(

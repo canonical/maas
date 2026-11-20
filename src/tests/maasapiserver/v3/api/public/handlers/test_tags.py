@@ -72,21 +72,25 @@ class TestTagsApi(ApiCommonTests):
                 method="PUT",
                 path=f"{self.BASE_PATH}/1",
                 permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}",
                 permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="DELETE",
                 path=f"{self.BASE_PATH}/2",
                 permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                rbac_admin_permission=True,
             ),
             Endpoint(
                 method="POST",
                 path=f"{self.BASE_PATH}/1:evaluate",
                 permission=MAASResourceEntitlement.CAN_EDIT_GLOBAL_ENTITIES,
+                rbac_admin_permission=True,
             ),
         ]
 

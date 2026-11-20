@@ -85,11 +85,7 @@ from maascommon.workflows.dhcp import (
 )
 from maascommon.workflows.power import PowerParam
 from maasserver.clusterrpc.pods import decompose_machine
-from maasserver.clusterrpc.power import (
-    power_driver_check,
-    power_query_all,
-    set_boot_order,
-)
+from maasserver.clusterrpc.power import power_driver_check, power_query_all
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
     BMC_TYPE,
@@ -1416,6 +1412,7 @@ class Node(CleanSave, TimestampedModel):
         self._previous_hostname = None
         self._previous_boot_interface_id = None
         self._previous_domain_id = None
+        self._previous_bmc_id = None
         self._updated = False
 
     def __setattr__(self, name, value):
@@ -1957,9 +1954,14 @@ class Node(CleanSave, TimestampedModel):
         )
         # Update the latest deployment time of all the images with this os/release and architecture
         # Don't bother the sub-architecture.
+        # Custom images are stored by release name only.
+        if self.osystem == "custom":
+            image_name = self.distro_series
+        else:
+            image_name = f"{self.osystem}/{self.distro_series}"
         now = timezone.now()
         BootResource.objects.filter(
-            name=f"{self.osystem}/{self.distro_series}",
+            name=image_name,
             architecture__startswith=self.architecture.split("/", 1)[0],
         ).update(last_deployed=now)
 
@@ -2231,10 +2233,22 @@ class Node(CleanSave, TimestampedModel):
                 task_queue="region",
             )
 
+        # Reset only the BMC change tracking so that orphan cleanup works
+        # correctly across multiple saves on the same instance. The DHCP workflow
+        # currently relies on their lifetime values, so the other fields are left as is.
+        self._previous_bmc_id = None
+
     def _remove_orphaned_bmcs(self):
         from maasserver.models.bmc import BMC
 
-        BMC.objects.filter(node__isnull=True).exclude(
+        previous_bmc_id = self._previous_bmc_id
+        if previous_bmc_id is None or previous_bmc_id == self.bmc_id:
+            # The node's BMC did not change on this save, so there
+            # is nothing to do.
+            return
+        # Only the previously referenced BMC can have been orphaned by this
+        # save.
+        BMC.objects.filter(id=previous_bmc_id, node__isnull=True).exclude(
             bmc_type=BMC_TYPE.POD
         ).delete()
 
@@ -3435,31 +3449,6 @@ class Node(CleanSave, TimestampedModel):
         else:
             return block_devices + interfaces
 
-    def set_boot_order(self, network_boot=None):
-        """Remotely configure the Node to network or local boot.
-
-        If supported by the power driver this function will configure a
-        Node remotely to either boot from the network or boot locally.
-        This isn't done as part of self.set_netboot() as power commands
-        already use self._power_control_node() which figures out which
-        rack controller to issue power commands from.
-        """
-        power_info = self.get_effective_power_info()
-        # Only send RPC call to set boot order if power driver
-        # supports it.
-        if not power_info.can_set_boot_order:
-            return
-
-        boot_order = self._get_boot_order(network_boot)
-
-        @asynchronous
-        def configure_boot_order():
-            return self._power_control_node(
-                succeed(None), None, power_info, boot_order
-            )
-
-        configure_boot_order().wait(120)
-
     def get_effective_special_filesystems(self):
         """Return special filesystems for the node."""
         deployed_statuses = {
@@ -3862,6 +3851,12 @@ class Node(CleanSave, TimestampedModel):
         if not scripts:
             self.release(user, comment)
             return
+
+        # _release() runs only once the release scripts have finished, when
+        # the node is no longer DEPLOYING, so the deploy workflow must be
+        # cancelled now.
+        if self.status == NODE_STATUS.DEPLOYING:
+            stop_workflow(f"deploy:{self.system_id}")
 
         self.current_release_script_set = (
             ScriptSet.objects.create_release_script_set(
@@ -5378,7 +5373,10 @@ class Node(CleanSave, TimestampedModel):
                 subnet.gateway_ip IS NOT NULL AND
                 host(subnet.gateway_ip) != '' AND
                 staticip.alloc_type != 5 AND /* Ignore DHCP */
-                staticip.alloc_type != 6 /* Ignore DISCOVERED */
+                staticip.alloc_type != 6 AND /* Ignore DISCOVERED */
+                /* Ignore LINK_UP / Unconfigured (STICKY with no IP), but keep
+                   AUTO links that have no IP assigned yet (pre-deployment) */
+                NOT (staticip.alloc_type = 1 AND staticip.ip IS NULL)
             ORDER BY
                 family(subnet.gateway_ip),
                 vlan.dhcp_on DESC,
@@ -5447,17 +5445,26 @@ class Node(CleanSave, TimestampedModel):
         """
         all_gateways = self.get_gateways_by_priority()
 
-        # Get the set gateways on the node.
+        # Get the set gateways on the node. Links that are
+        # unconfigured (LINK_UP) should not be used as the gateway.
         gateway_ipv4 = None
         gateway_ipv6 = None
-        if self.gateway_link_ipv4 is not None:
+        if (
+            self.gateway_link_ipv4 is not None
+            and self.gateway_link_ipv4.get_interface_link_type()
+            != INTERFACE_LINK_TYPE.LINK_UP
+        ):
             subnet = self.gateway_link_ipv4.subnet
             if subnet is not None:
                 if subnet.gateway_ip:
                     gateway_ipv4 = self._get_gateway_tuple(
                         self.gateway_link_ipv4
                     )
-        if self.gateway_link_ipv6 is not None:
+        if (
+            self.gateway_link_ipv6 is not None
+            and self.gateway_link_ipv6.get_interface_link_type()
+            != INTERFACE_LINK_TYPE.LINK_UP
+        ):
             subnet = self.gateway_link_ipv6.subnet
             if subnet is not None:
                 if subnet.gateway_ip:
@@ -6536,14 +6543,6 @@ class Node(CleanSave, TimestampedModel):
             if try_fallback:
                 d.addErrback(eb_fallback_clients)
             d.addCallback(cb_check_power_driver, power_info)
-            if order:
-                d.addCallback(
-                    set_boot_order,
-                    self.system_id,
-                    self.hostname,
-                    power_info,
-                    order,
-                )
             if power_method_name:
                 d.addCallback(
                     lambda _: deferToDatabase(
@@ -6552,6 +6551,7 @@ class Node(CleanSave, TimestampedModel):
                         self,
                         power_info,
                         self.is_dpu,
+                        order,
                     ),
                 )
 
@@ -6761,11 +6761,11 @@ class Node(CleanSave, TimestampedModel):
         self.save()
 
         try:
-            if self.previous_status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
-                self._stop(user)
-            elif self.previous_status == NODE_STATUS.DEPLOYED:
+            if self.previous_status == NODE_STATUS.DEPLOYED:
                 # TODO: Power reset when DPU?
                 self._power_cycle()
+            else:
+                self._stop(user)
         except Exception as error:
             self.update_status(old_status)
             self.save()

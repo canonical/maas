@@ -1,6 +1,7 @@
 # Copyright 2024-2025 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import asyncio
 from datetime import datetime
 
 from django.contrib.auth.hashers import PBKDF2PasswordHasher
@@ -23,8 +24,10 @@ class User(MaasBaseModel):
     email: str | None = None
     last_login: datetime | None = None
 
-    def check_password(self, password) -> bool:
-        return PBKDF2PasswordHasher().verify(password, self.password)
+    async def check_password(self, password) -> bool:
+        return await asyncio.to_thread(
+            PBKDF2PasswordHasher().verify, password, self.password
+        )
 
 
 @generate_builder()
