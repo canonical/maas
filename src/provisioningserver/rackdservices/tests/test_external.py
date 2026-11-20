@@ -43,7 +43,6 @@ def prepareRegion(
     is_rack=True,
     servers=None,
     peers=None,
-    trusted_networks=None,
     proxy_enabled=True,
     proxy_port=8000,
     proxy_allowed_cidrs=None,
@@ -53,8 +52,7 @@ def prepareRegion(
     """Set up a mock region controller.
 
     It responds to `GetControllerType`, `GetTimeConfiguration`,
-    `GetDNSConfiguration`, `GetProxyConfiguration`, and
-    `GetSyslogConfiguration`.
+    `GetProxyConfiguration`, and `GetSyslogConfiguration`.
 
     :return: The running RPC service, and the protocol instance.
     """
@@ -62,7 +60,6 @@ def prepareRegion(
     protocol, connecting = fixture.makeEventLoop(
         region.GetControllerType,
         region.GetTimeConfiguration,
-        region.GetDNSConfiguration,
         region.GetProxyConfiguration,
         region.GetSyslogConfiguration,
     )
@@ -76,13 +73,6 @@ def prepareRegion(
         {
             "servers": [] if servers is None else servers,
             "peers": [] if peers is None else peers,
-        }
-    )
-    protocol.GetDNSConfiguration.side_effect = always_succeed_with(
-        {
-            "trusted_networks": (
-                [] if trusted_networks is None else trusted_networks
-            )
         }
     )
     if proxy_allowed_cidrs is None:
@@ -417,8 +407,7 @@ class TestRackProxy(MAASTestCase):
         return frozenset(
             {
                 client.address[0]
-                for _, clients in rpc_service.connections.items()
-                for client in clients
+                for _, client in rpc_service.connections.items()
             }
         )
 
@@ -652,8 +641,7 @@ class TestRackSyslog(MAASTestCase):
         return frozenset(
             {
                 (eventloop, client.address[0])
-                for eventloop, clients in rpc_service.connections.items()
-                for client in clients
+                for eventloop, client in rpc_service.connections.items()
             }
         )
 

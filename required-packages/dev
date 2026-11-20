@@ -5,6 +5,7 @@ curl
 dos2unix
 git
 golang-go
+libcairo2
 libnss-wrapper
 psmisc
 python3-jinja2

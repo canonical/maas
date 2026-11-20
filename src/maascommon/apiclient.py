@@ -9,6 +9,10 @@ import httpx
 from apiclient.maas_client import MAASOAuth
 from maascommon.worker import worker_socket_paths
 
+# httpx defaults to 5 seconds, which is too short for slow region API calls
+# (e.g. rendering DHCP configuration on large deployments).
+UNIX_CLIENT_TIMEOUT_SECONDS = 90
+
 
 class MAASAPIClient:
     def __init__(self, url: str, token: str, user_agent: str = ""):
@@ -24,7 +28,11 @@ class MAASAPIClient:
         headers = {}
         if self.user_agent:
             headers["User-Agent"] = self.user_agent
-        return httpx.AsyncClient(transport=transport, headers=headers)
+        return httpx.AsyncClient(
+            transport=transport,
+            headers=headers,
+            timeout=httpx.Timeout(UNIX_CLIENT_TIMEOUT_SECONDS),
+        )
 
     def _create_client(
         self, http_proxy: str | None, headers: dict[str, str]

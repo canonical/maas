@@ -105,15 +105,6 @@ METRICS_DEFINITIONS = [
     ),
     MetricDefinition(
         "Counter",
-        "maas_rpc_pool_exhaustion_count",
-        """
-        counts the number of occurances of the RPC
-        connection pool allocate its maxmimum number
-        of connections
-        """,
-    ),
-    MetricDefinition(
-        "Counter",
         "maas_dns_full_zonefile_write_count",
         """
         counts the number of times MAAS writes

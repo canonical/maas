@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2026 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -23,6 +23,8 @@ from provisioningserver.drivers.power.amt import (
     AMT_DEFAULT_PORT,
     AMT_DEFAULT_USER,
     AMT_ERRORS,
+    AMT_HTTP_PORT,
+    AMT_HTTPS_PORT,
     AMTPowerDriver,
 )
 from provisioningserver.utils.shell import has_command_available, ProcessResult
@@ -83,6 +85,7 @@ def make_context():
         "power_user": factory.make_name("power_user"),
         "power_pass": factory.make_name("power_pass"),
         "port": factory.pick_port(),
+        "allow_legacy_renegotiation": "true",
     }
 
 
@@ -90,6 +93,57 @@ class TestAMTPowerDriver(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.patch(amt_module, "sleep")
+
+    def _expected_connection_args(
+        self, ip_address, power_user, power_pass, port
+    ):
+        args = (
+            "--hostname",
+            ip_address,
+            "--port",
+            str(port),
+            "--username",
+            power_user,
+            "--password",
+            power_pass,
+            "--noverifypeer",
+            "--noverifyhost",
+            "--non-interactive",
+        )
+        if str(port) == AMT_HTTPS_PORT:
+            args += ("--cacert", "/etc/ssl/certs/ca-certificates.crt")
+        return args
+
+    def test_get_wsman_connection_args_passes_special_chars_verbatim(self):
+        amt_power_driver = AMTPowerDriver()
+        args = amt_power_driver._get_wsman_connection_args(
+            "192.168.1.10", "admin", "p@ss:w/rd!", AMT_HTTP_PORT
+        )
+        self.assertEqual(
+            args,
+            (
+                "--hostname",
+                "192.168.1.10",
+                "--port",
+                AMT_HTTP_PORT,
+                "--username",
+                "admin",
+                "--password",
+                "p@ss:w/rd!",
+                "--noverifypeer",
+                "--noverifyhost",
+                "--non-interactive",
+            ),
+        )
+
+    def test_get_wsman_connection_args_forces_https_with_cacert(self):
+        amt_power_driver = AMTPowerDriver()
+        args = amt_power_driver._get_wsman_connection_args(
+            "192.168.1.10", "admin", "p@ss", AMT_HTTPS_PORT
+        )
+        self.assertEqual(
+            args[-2:], ("--cacert", "/etc/ssl/certs/ca-certificates.crt")
+        )
 
     def patch_run_command(
         self, stdout=b"", stderr=b"", returncode=0, decode=False
@@ -179,6 +233,26 @@ class TestAMTPowerDriver(MAASTestCase):
         )
         self.assertEqual(result, b"stdout")
 
+    def test_run_sets_openssl_conf_when_legacy_renegotiation_allowed(self):
+        amt_power_driver = AMTPowerDriver()
+        command = (factory.make_name("command"),)
+        power_pass = factory.make_name("power_pass")
+        run_command_mock = self.patch_run_command(stdout=b"stdout")
+
+        amt_power_driver._run(
+            command, power_pass, allow_legacy_renegotiation=True
+        )
+
+        run_command_mock.assert_called_once_with(
+            *command,
+            stdin=None,
+            extra_environ={
+                "AMT_PASSWORD": power_pass,
+                "OPENSSL_CONF": amt_module.AMT_OPENSSL_CONF,
+            },
+            decode=False,
+        )
+
     def test_run_raises_power_action_error(self):
         amt_power_driver = AMTPowerDriver()
         self.patch_run_command(returncode=1)
@@ -230,10 +304,9 @@ class TestAMTPowerDriver(MAASTestCase):
         wsman_opts = (
             "-C",
             "/etc/openwsman/openwsman_client.conf",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
+            *self._expected_connection_args(
+                ip_address, power_user, power_pass, port
+            ),
             "--input",
             "-",
         )
@@ -252,8 +325,18 @@ class TestAMTPowerDriver(MAASTestCase):
                 stdins.append(fd.read())
         _run_mock.assert_has_calls(
             [
-                call(commands[0], power_pass, stdin=stdins[0]),
-                call(commands[1], power_pass, stdin=stdins[1]),
+                call(
+                    commands[0],
+                    power_pass,
+                    stdin=stdins[0],
+                    allow_legacy_renegotiation=False,
+                ),
+                call(
+                    commands[1],
+                    power_pass,
+                    stdin=stdins[1],
+                    allow_legacy_renegotiation=False,
+                ),
             ]
         )
 
@@ -293,7 +376,9 @@ class TestAMTPowerDriver(MAASTestCase):
             stdin=stdin,
         )
 
-        _run_mock.assert_called_once_with(command, power_pass, stdin=stdin)
+        _run_mock.assert_called_once_with(
+            command, power_pass, stdin=stdin, allow_legacy_renegotiation=False
+        )
         self.assertEqual(result, b"output")
 
     def test_issue_wsman_command_calls__run_for_power(self):
@@ -314,10 +399,9 @@ class TestAMTPowerDriver(MAASTestCase):
             "wsman",
             "-C",
             "/etc/openwsman/openwsman_client.conf",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
+            *self._expected_connection_args(
+                ip_address, power_user, power_pass, port
+            ),
             "--input",
             "-",
             "invoke",
@@ -336,7 +420,12 @@ class TestAMTPowerDriver(MAASTestCase):
             power_change, ip_address, power_user, power_pass, port
         )
 
-        _run_mock.assert_called_once_with(command, power_pass, stdin=b"stdin")
+        _run_mock.assert_called_once_with(
+            command,
+            power_pass,
+            stdin=b"stdin",
+            allow_legacy_renegotiation=False,
+        )
         self.assertEqual(result, b"output")
 
     def test_issue_wsman_command_calls__run_for_query(self):
@@ -352,10 +441,9 @@ class TestAMTPowerDriver(MAASTestCase):
         wsman_opts = (
             "-C",
             "/etc/openwsman/openwsman_client.conf",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
-            "--noverifypeer",
-            "--noverifyhost",
+            *self._expected_connection_args(
+                ip_address, power_user, power_pass, port
+            ),
         )
         wsman_query_opts = wsman_opts + ("--optimize", "--encoding", "utf-8")
         action = ("enumerate", wsman_query_schema_uri)
@@ -367,7 +455,9 @@ class TestAMTPowerDriver(MAASTestCase):
             "query", ip_address, power_user, power_pass, port
         )
 
-        _run_mock.assert_called_once_with(command, power_pass, stdin=None)
+        _run_mock.assert_called_once_with(
+            command, power_pass, stdin=None, allow_legacy_renegotiation=False
+        )
 
     def test_issue_wsman_has_config_file_from_snap(self):
         self.patch(
@@ -411,7 +501,11 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         _issue_amttool_command_mock.assert_called_once_with(
-            "info", ip_address, power_pass, port
+            "info",
+            ip_address,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
         self.assertEqual(result, "on")
 
@@ -434,7 +528,11 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         _issue_amttool_command_mock.assert_called_once_with(
-            "info", ip_address, power_pass, port
+            "info",
+            ip_address,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
         self.assertEqual(result, "off")
 
@@ -462,7 +560,11 @@ class TestAMTPowerDriver(MAASTestCase):
             port,
         )
         _issue_amttool_command_mock.assert_called_once_with(
-            "info", ip_address, power_pass, port
+            "info",
+            ip_address,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
 
     def test_amttool_query_state_runs_query_loop(self):
@@ -503,6 +605,7 @@ class TestAMTPowerDriver(MAASTestCase):
             power_pass,
             port,
             stdin=b"yes",
+            allow_legacy_renegotiation=False,
         )
 
     def test_amttool_power_on_powers_on(self):
@@ -529,9 +632,14 @@ class TestAMTPowerDriver(MAASTestCase):
             power_pass,
             port,
             stdin=b"yes",
+            allow_legacy_renegotiation=False,
         )
         amttool_query_state_mock.assert_called_once_with(
-            ip_address, power_user, power_pass, port
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
 
     def test_amttool_power_on_raises_power_action_error(self):
@@ -571,7 +679,11 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         amttool_query_state_mock.assert_called_once_with(
-            ip_address, power_user, power_pass, port
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
 
     def test_amttool_power_off_raises_power_action_error(self):
@@ -613,7 +725,12 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         _issue_wsman_command_mock.assert_called_once_with(
-            "query", ip_address, power_user, power_pass, port
+            "query",
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
         self.assertEqual(result, "on")
 
@@ -635,7 +752,12 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         _issue_wsman_command_mock.assert_called_once_with(
-            "query", ip_address, power_user, power_pass, port
+            "query",
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
         self.assertEqual(result, "off")
 
@@ -661,7 +783,12 @@ class TestAMTPowerDriver(MAASTestCase):
             port,
         )
         _issue_wsman_command_mock.assert_called_once_with(
-            "query", ip_address, power_user, power_pass, port
+            "query",
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
 
     def test_wsman_query_state_runs_query_loop(self):
@@ -701,13 +828,26 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         _set_pxe_boot_mock.assert_called_once_with(
-            ip_address, power_user, power_pass, port
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
         _issue_wsman_command_mock.assert_called_once_with(
-            "on", ip_address, power_user, power_pass, port
+            "on",
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
         wsman_query_state_mock.assert_called_once_with(
-            ip_address, power_user, power_pass, port
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
 
     def test_wsman_power_on_powers_restart(self):
@@ -730,13 +870,26 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         _set_pxe_boot_mock.assert_called_once_with(
-            ip_address, power_user, power_pass, port
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
         _issue_wsman_command_mock.assert_called_once_with(
-            "restart", ip_address, power_user, power_pass, port
+            "restart",
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
         wsman_query_state_mock.assert_called_once_with(
-            ip_address, power_user, power_pass, port
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
 
     def test_wsman_power_on_raises_power_action_error(self):
@@ -780,10 +933,19 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         _issue_wsman_command_mock.assert_called_once_with(
-            "off", ip_address, power_user, power_pass, port
+            "off",
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
         wsman_query_state_mock.assert_called_once_with(
-            ip_address, power_user, power_pass, port
+            ip_address,
+            power_user,
+            power_pass,
+            port,
+            allow_legacy_renegotiation=False,
         )
 
     def test_wsman_power_off_raises_power_action_error(self):
@@ -827,10 +989,18 @@ class TestAMTPowerDriver(MAASTestCase):
             "-C",
             "/etc/openwsman/openwsman_client.conf",
             "identify",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
+            "--hostname",
+            ip_address,
+            "--port",
+            str(port),
+            "--username",
+            power_user,
+            "--password",
+            power_pass,
             "--noverifypeer",
             "--noverifyhost",
+            "--non-interactive",
+            extra_environ={},
         )
         self.assertEqual(result, "amttool")
 
@@ -854,12 +1024,40 @@ class TestAMTPowerDriver(MAASTestCase):
             "-C",
             "/etc/openwsman/openwsman_client.conf",
             "identify",
-            "--endpoint",
-            f"{'https' if port == '16993' else 'http'}://{power_user}:{power_pass}@{ip_address}:{port}",
+            "--hostname",
+            ip_address,
+            "--port",
+            str(port),
+            "--username",
+            power_user,
+            "--password",
+            power_pass,
             "--noverifypeer",
             "--noverifyhost",
+            "--non-interactive",
+            extra_environ={},
         )
         self.assertEqual(result, "wsman")
+
+    def test_get_amt_command_sets_openssl_conf_when_legacy_allowed(self):
+        amt_power_driver = AMTPowerDriver()
+        mock_run_command = self.patch_run_command(
+            stdout=WSMAN_IDENTIFY_OUTPUT % b"10.0.47",
+            decode=True,
+        )
+
+        amt_power_driver._get_amt_command(
+            factory.make_ipv4_address(),
+            factory.make_name("power_user"),
+            factory.make_name("power_pass"),
+            factory.pick_port(),
+            allow_legacy_renegotiation=True,
+        )
+
+        self.assertEqual(
+            mock_run_command.call_args.kwargs["extra_environ"],
+            {"OPENSSL_CONF": amt_module.AMT_OPENSSL_CONF},
+        )
 
     def test_get_amt_command_crashes_when_amttool_has_no_output(self):
         amt_power_driver = AMTPowerDriver()
@@ -923,6 +1121,7 @@ class TestAMTPowerDriver(MAASTestCase):
         context = make_context()
         context["power_user"] = None
         context["port"] = None
+        del context["allow_legacy_renegotiation"]
         _get_amt_command_mock = self.patch(
             amt_power_driver, "_get_amt_command"
         )
@@ -940,18 +1139,21 @@ class TestAMTPowerDriver(MAASTestCase):
             AMT_DEFAULT_USER,
             context["power_pass"],
             AMT_DEFAULT_PORT,
+            allow_legacy_renegotiation=False,
         )
         amttool_query_state_mock.assert_called_once_with(
             context["ip_address"],
             AMT_DEFAULT_USER,
             context["power_pass"],
             AMT_DEFAULT_PORT,
+            allow_legacy_renegotiation=False,
         )
         amttool_restart_mock.assert_called_once_with(
             context["ip_address"],
             AMT_DEFAULT_USER,
             context["power_pass"],
             AMT_DEFAULT_PORT,
+            allow_legacy_renegotiation=False,
         )
 
     def test_power_on_powers_on_with_amttool_when_already_on(self):
@@ -974,18 +1176,21 @@ class TestAMTPowerDriver(MAASTestCase):
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         amttool_query_state_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         amttool_restart_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
 
     def test_power_on_powers_on_with_amttool_when_already_off(self):
@@ -1010,18 +1215,21 @@ class TestAMTPowerDriver(MAASTestCase):
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         amttool_query_state_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         amttool_power_on_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
 
     def test_power_on_powers_on_with_wsman_when_already_on(self):
@@ -1044,12 +1252,14 @@ class TestAMTPowerDriver(MAASTestCase):
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         wsman_query_state_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         wsman_power_on_mock.assert_called_once_with(
             context["ip_address"],
@@ -1057,6 +1267,7 @@ class TestAMTPowerDriver(MAASTestCase):
             context["power_pass"],
             context["port"],
             restart=True,
+            allow_legacy_renegotiation=True,
         )
 
     def test_power_on_powers_on_with_wsman_when_already_off(self):
@@ -1079,18 +1290,21 @@ class TestAMTPowerDriver(MAASTestCase):
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         wsman_query_state_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         wsman_power_on_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
 
     def test_power_off_powers_off_with_amttool(self):
@@ -1114,18 +1328,21 @@ class TestAMTPowerDriver(MAASTestCase):
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         amttool_query_state_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         amttool_power_off_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
 
     def test_power_off_powers_off_with_wsman(self):
@@ -1147,18 +1364,21 @@ class TestAMTPowerDriver(MAASTestCase):
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         wsman_query_state_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         wsman_power_off_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
 
     def test_power_query_queries_with_amttool(self):
@@ -1180,12 +1400,14 @@ class TestAMTPowerDriver(MAASTestCase):
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         amttool_query_state_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         self.assertEqual(state, "off")
 
@@ -1208,11 +1430,13 @@ class TestAMTPowerDriver(MAASTestCase):
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         wsman_query_state_mock.assert_called_once_with(
             context["ip_address"],
             context["power_user"],
             context["power_pass"],
             context["port"],
+            allow_legacy_renegotiation=True,
         )
         self.assertEqual(state, "on")

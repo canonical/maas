@@ -356,51 +356,6 @@ $$;
 
 
 --
--- Name: dhcpsnippet_create_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.dhcpsnippet_create_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('dhcpsnippet_create',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: dhcpsnippet_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.dhcpsnippet_delete_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('dhcpsnippet_delete',CAST(OLD.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: dhcpsnippet_update_notify(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.dhcpsnippet_update_notify() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-  PERFORM pg_notify('dhcpsnippet_update',CAST(NEW.id AS text));
-  RETURN NEW;
-END;
-$$;
-
-
---
 -- Name: dnsdata_domain_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -4841,23 +4796,25 @@ ALTER TABLE public.maasserver_bootsourceselection ALTER COLUMN id ADD GENERATED 
 --
 
 CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
- WITH sync_subq AS (
+ WITH file_sync_stats AS (
          SELECT file.id AS file_id,
             file.size AS file_size,
-            sum(file_sync.size) AS total_size
-           FROM (public.maasserver_bootresourcefilesync file_sync
-             JOIN public.maasserver_bootresourcefile file ON ((file.id = file_sync.file_id)))
+            COALESCE(sum(file_sync.size), (0)::numeric) AS total_size
+           FROM (public.maasserver_bootresourcefile file
+             LEFT JOIN public.maasserver_bootresourcefilesync file_sync ON ((file_sync.file_id = file.id)))
           GROUP BY file.id, file.size
         ), sync_stats AS (
          SELECT rset.resource_id,
             rset.id AS set_id,
             rset.version,
-            COALESCE((((sum(sync_subq.total_size) * (100)::numeric) / sum(sync_subq.file_size)) / (NULLIF(( SELECT count(*) AS count
+            count(*) OVER (PARTITION BY rset.resource_id) AS set_count,
+            count(file_sync_stats.file_id) AS file_count,
+            COALESCE((((sum(file_sync_stats.total_size) * (100)::numeric) / NULLIF(sum(file_sync_stats.file_size), (0)::numeric)) / (NULLIF(( SELECT count(*) AS count
                    FROM public.maasserver_node
-                  WHERE (maasserver_node.node_type = ANY (ARRAY[3, 4]))), 0))::numeric), (0)::numeric) AS sync_percentage
-           FROM ((sync_subq
-             JOIN public.maasserver_bootresourcefile file ON ((file.id = sync_subq.file_id)))
-             JOIN public.maasserver_bootresourceset rset ON ((rset.id = file.resource_set_id)))
+                  WHERE (maasserver_node.node_type = ANY (ARRAY[3, 4]))), 0))::numeric), 0.0) AS sync_percentage
+           FROM ((public.maasserver_bootresourceset rset
+             LEFT JOIN public.maasserver_bootresourcefile file ON ((file.resource_set_id = rset.id)))
+             LEFT JOIN file_sync_stats ON ((file_sync_stats.file_id = file.id)))
           GROUP BY rset.resource_id, rset.id, rset.version
         ), latest_versions AS (
          SELECT res.id AS resource_id,
@@ -4866,11 +4823,6 @@ CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
              JOIN public.maasserver_bootsource source ON ((source.id = cache.boot_source_id)))
              JOIN public.maasserver_bootsourceselection sel ON ((sel.boot_source_id = source.id)))
              JOIN public.maasserver_bootresource res ON (((res.selection_id = sel.id) AND ((res.name)::text = (((cache.os)::text || '/'::text) || (cache.release)::text)) AND ((res.kflavor)::text = (cache.kflavor)::text) AND (((res.architecture)::text = (((cache.arch)::text || '/'::text) || (cache.subarch)::text)) OR ((res.architecture)::text = (((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text)) OR ((res.architecture)::text = ((((((cache.arch)::text || '/'::text) || (cache.subarch)::text) || '-'::text) || (cache.kflavor)::text) || '-edge'::text))))))
-        ), resource_set_counts AS (
-         SELECT sync_stats.resource_id,
-            count(*) AS set_count
-           FROM sync_stats
-          GROUP BY sync_stats.resource_id
         ), resource_status AS (
          SELECT DISTINCT ON (ss.resource_id) ss.resource_id,
             ss.set_id,
@@ -4878,21 +4830,21 @@ CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
             lv.latest_version,
             ss.sync_percentage,
                 CASE
-                    WHEN ((rsc.set_count = 1) AND (ss.sync_percentage = (0)::numeric)) THEN 'Waiting for download'::text
-                    WHEN ((rsc.set_count = 1) AND (ss.sync_percentage < (100)::numeric)) THEN 'Downloading'::text
-                    WHEN ((rsc.set_count = 1) AND (ss.sync_percentage = (100)::numeric)) THEN 'Ready'::text
-                    WHEN (rsc.set_count = 2) THEN 'Ready'::text
+                    WHEN (ss.set_count = 2) THEN 'Ready'::text
+                    WHEN ((ss.file_count = 0) OR (ss.sync_percentage = 0.0)) THEN 'Waiting for download'::text
+                    WHEN (ss.sync_percentage < (100)::numeric) THEN 'Downloading'::text
+                    WHEN (ss.sync_percentage = (100)::numeric) THEN 'Ready'::text
                     ELSE 'Waiting for download'::text
                 END AS status,
                 CASE
-                    WHEN (rsc.set_count = 2) THEN 'Downloading'::text
+                    WHEN ((ss.set_count = 2) AND (ss.sync_percentage = 0.0)) THEN 'Waiting for download'::text
+                    WHEN ((ss.set_count = 2) AND (ss.sync_percentage < (100)::numeric)) THEN 'Downloading'::text
                     WHEN (lv.latest_version IS NULL) THEN 'No updates available'::text
                     WHEN ((ss.version)::text >= (lv.latest_version)::text) THEN 'No updates available'::text
                     WHEN ((ss.version)::text < (lv.latest_version)::text) THEN 'Update available'::text
                     ELSE 'No updates available'::text
                 END AS update_status
-           FROM ((sync_stats ss
-             JOIN resource_set_counts rsc ON ((rsc.resource_id = ss.resource_id)))
+           FROM (sync_stats ss
              LEFT JOIN latest_versions lv ON ((lv.resource_id = ss.resource_id)))
           ORDER BY ss.resource_id, ss.set_id DESC
         ), selection_resources AS (
@@ -4907,33 +4859,35 @@ CREATE VIEW public.maasserver_bootsourceselectionstatus_view AS
         ), selection_rank AS (
          SELECT sel.id AS selection_id,
             source.priority,
-            row_number() OVER (PARTITION BY sel.os, sel.arch, sel.release ORDER BY source.priority DESC) AS rank
+            source.enabled,
+            row_number() OVER (PARTITION BY sel.os, sel.arch, sel.release ORDER BY source.enabled DESC, source.priority DESC) AS rank
            FROM (public.maasserver_bootsourceselection sel
              JOIN public.maasserver_bootsource source ON ((source.id = sel.boot_source_id)))
         )
  SELECT selection_resources.selection_id AS id,
         CASE
             WHEN (count(selection_resources.resource_id) = 0) THEN 'Waiting for download'::text
-            WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Waiting for download'::text)) = count(*)) THEN 'Waiting for download'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Downloading'::text)) > 0) THEN 'Downloading'::text
+            WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Waiting for download'::text)) > 0) THEN 'Waiting for download'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.status = 'Ready'::text)) = count(*)) THEN 'Ready'::text
             ELSE 'Waiting for download'::text
         END AS status,
         CASE
             WHEN (count(selection_resources.resource_id) = 0) THEN 'No updates available'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'Downloading'::text)) > 0) THEN 'Downloading'::text
+            WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'Waiting for download'::text)) > 0) THEN 'Waiting for download'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'Update available'::text)) > 0) THEN 'Update available'::text
             WHEN (count(*) FILTER (WHERE (selection_resources.update_status = 'No updates available'::text)) = count(*)) THEN 'No updates available'::text
             ELSE 'No updates available'::text
         END AS update_status,
     COALESCE((avg(selection_resources.sync_percentage))::numeric(10,2), 0.00) AS sync_percentage,
         CASE
-            WHEN (selection_rank.rank = 1) THEN true
+            WHEN ((selection_rank.rank = 1) AND selection_rank.enabled) THEN true
             ELSE false
         END AS selected
    FROM (selection_resources
      JOIN selection_rank ON ((selection_rank.selection_id = selection_resources.selection_id)))
-  GROUP BY selection_resources.selection_id, selection_rank.rank;
+  GROUP BY selection_resources.selection_id, selection_rank.rank, selection_rank.enabled;
 
 
 --
@@ -5072,43 +5026,6 @@ CREATE SEQUENCE public.maasserver_defaultresource_id_seq
 --
 
 ALTER SEQUENCE public.maasserver_defaultresource_id_seq OWNED BY public.maasserver_defaultresource.id;
-
-
---
--- Name: maasserver_dhcpsnippet; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_dhcpsnippet (
-    id bigint NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    name character varying(255) NOT NULL,
-    description text NOT NULL,
-    enabled boolean NOT NULL,
-    node_id bigint,
-    subnet_id bigint,
-    value_id bigint NOT NULL,
-    iprange_id bigint
-);
-
-
---
--- Name: maasserver_dhcpsnippet_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maasserver_dhcpsnippet_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_dhcpsnippet_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_dhcpsnippet_id_seq OWNED BY public.maasserver_dhcpsnippet.id;
 
 
 --
@@ -8622,13 +8539,6 @@ ALTER TABLE ONLY public.maasserver_defaultresource ALTER COLUMN id SET DEFAULT n
 
 
 --
--- Name: maasserver_dhcpsnippet id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet ALTER COLUMN id SET DEFAULT nextval('public.maasserver_dhcpsnippet_id_seq'::regclass);
-
-
---
 -- Name: maasserver_dnsdata id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -9173,7 +9083,7 @@ COPY openfga.tuple (store, object_type, object_id, relation, _user, user_type, u
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0042
+0046
 \.
 
 
@@ -9982,14 +9892,6 @@ COPY public.maasserver_controllerinfo (created, updated, node_id, version, snap_
 
 COPY public.maasserver_defaultresource (id, created, updated, zone_id) FROM stdin;
 1	2024-03-06 03:31:14.232149+00	2024-03-06 03:31:14.232149+00	1
-\.
-
-
---
--- Data for Name: maasserver_dhcpsnippet; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.maasserver_dhcpsnippet (id, created, updated, name, description, enabled, node_id, subnet_id, value_id, iprange_id) FROM stdin;
 \.
 
 
@@ -11146,13 +11048,6 @@ SELECT pg_catalog.setval('public.maasserver_defaultresource_id_seq', 1, true);
 
 
 --
--- Name: maasserver_dhcpsnippet_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.maasserver_dhcpsnippet_id_seq', 1, false);
-
-
---
 -- Name: maasserver_dnsdata_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -12158,14 +12053,6 @@ ALTER TABLE ONLY public.maasserver_controllerinfo
 
 ALTER TABLE ONLY public.maasserver_defaultresource
     ADD CONSTRAINT maasserver_defaultresource_pkey PRIMARY KEY (id);
-
-
---
--- Name: maasserver_dhcpsnippet maasserver_dhcpsnippet_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet
-    ADD CONSTRAINT maasserver_dhcpsnippet_pkey PRIMARY KEY (id);
 
 
 --
@@ -13884,34 +13771,6 @@ CREATE INDEX maasserver_defaultresource_zone_id_29a5153a ON public.maasserver_de
 
 
 --
--- Name: maasserver_dhcpsnippet_iprange_id_6a257e4d; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_dhcpsnippet_iprange_id_6a257e4d ON public.maasserver_dhcpsnippet USING btree (iprange_id);
-
-
---
--- Name: maasserver_dhcpsnippet_node_id_8f31c564; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_dhcpsnippet_node_id_8f31c564 ON public.maasserver_dhcpsnippet USING btree (node_id);
-
-
---
--- Name: maasserver_dhcpsnippet_subnet_id_f626b848; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_dhcpsnippet_subnet_id_f626b848 ON public.maasserver_dhcpsnippet USING btree (subnet_id);
-
-
---
--- Name: maasserver_dhcpsnippet_value_id_58a6a467; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_dhcpsnippet_value_id_58a6a467 ON public.maasserver_dhcpsnippet USING btree (value_id);
-
-
---
 -- Name: maasserver_dnsdata_dnsresource_id_9a9b5788; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15284,27 +15143,6 @@ CREATE TRIGGER controllerinfo_controllerinfo_update_notify AFTER UPDATE ON publi
 
 
 --
--- Name: maasserver_dhcpsnippet dhcpsnippet_dhcpsnippet_create_notify; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER dhcpsnippet_dhcpsnippet_create_notify AFTER INSERT ON public.maasserver_dhcpsnippet FOR EACH ROW EXECUTE FUNCTION public.dhcpsnippet_create_notify();
-
-
---
--- Name: maasserver_dhcpsnippet dhcpsnippet_dhcpsnippet_delete_notify; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER dhcpsnippet_dhcpsnippet_delete_notify AFTER DELETE ON public.maasserver_dhcpsnippet FOR EACH ROW EXECUTE FUNCTION public.dhcpsnippet_delete_notify();
-
-
---
--- Name: maasserver_dhcpsnippet dhcpsnippet_dhcpsnippet_update_notify; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER dhcpsnippet_dhcpsnippet_update_notify AFTER UPDATE ON public.maasserver_dhcpsnippet FOR EACH ROW EXECUTE FUNCTION public.dhcpsnippet_update_notify();
-
-
---
 -- Name: maasserver_dnsdata dnsdata_dnsdata_domain_delete_notify; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -16419,38 +16257,6 @@ ALTER TABLE ONLY public.maasserver_controllerinfo
 
 ALTER TABLE ONLY public.maasserver_defaultresource
     ADD CONSTRAINT maasserver_defaultre_zone_id_29a5153a_fk_maasserve FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_dhcpsnippet maasserver_dhcpsnippet_iprange_id_6a257e4d_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet
-    ADD CONSTRAINT maasserver_dhcpsnippet_iprange_id_6a257e4d_fk FOREIGN KEY (iprange_id) REFERENCES public.maasserver_iprange(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_dhcpsnippet maasserver_dhcpsnippet_node_id_8f31c564_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet
-    ADD CONSTRAINT maasserver_dhcpsnippet_node_id_8f31c564_fk FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_dhcpsnippet maasserver_dhcpsnippet_subnet_id_f626b848_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet
-    ADD CONSTRAINT maasserver_dhcpsnippet_subnet_id_f626b848_fk FOREIGN KEY (subnet_id) REFERENCES public.maasserver_subnet(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_dhcpsnippet maasserver_dhcpsnippet_value_id_58a6a467_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_dhcpsnippet
-    ADD CONSTRAINT maasserver_dhcpsnippet_value_id_58a6a467_fk FOREIGN KEY (value_id) REFERENCES public.maasserver_versionedtextfile(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --

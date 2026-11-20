@@ -17,6 +17,7 @@ from twisted import web
 from twisted.application.internet import TimerService
 from twisted.internet import error, reactor
 from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
+from twisted.internet.endpoints import TCP6ClientEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.task import Clock
 from twisted.internet.testing import StringTransportWithDisconnection
@@ -59,17 +60,13 @@ from provisioningserver.rpc.clusterservice import (
     get_scan_all_networks_args,
     spawnProcessAndNullifyStdout,
 )
-from provisioningserver.rpc.common import Client
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing import (
     call_responder,
     MockLiveClusterToRegionRPCFixture,
 )
-from provisioningserver.rpc.testing.doubles import (
-    FakeBusyConnectionToRegion,
-    FakeConnection,
-)
-from provisioningserver.security import fernet_encrypt_psk
+from provisioningserver.rpc.testing.doubles import FakeConnection
+from provisioningserver.security import calculate_digest, fernet_encrypt_psk
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import env as utils_env
 from provisioningserver.utils.env import MAAS_ID, MAAS_SECRET, MAAS_UUID
@@ -134,37 +131,14 @@ class TestClusterProtocol_Authenticate(MAASTestCase):
         salt = response["salt"]
 
         self.assertEqual(len(salt), 16)
-        expected_digest = HMAC(secret, message + salt, sha256).digest()
+        expected_digest = HMAC(
+            secret, message + b"region-to-rack" + salt, sha256
+        ).digest()
         self.assertEqual(expected_digest, digest)
 
 
-class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def test_describe_power_types_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.DescribePowerTypes.commandName
-        )
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_describe_power_types_returns_jsonized_schema(self):
-        response = yield call_responder(
-            Cluster(), cluster.DescribePowerTypes, {}
-        )
-
-        self.assertEqual(response.keys(), {"power_types"})
-        self.assertEqual(
-            PowerDriverRegistry.get_schema(detect_missing_packages=False),
-            response["power_types"],
-        )
-
-
-def make_inert_client_service(max_idle_conns=1, max_conns=1, keepalive=1):
-    service = ClusterClientService(
-        Clock(), max_idle_conns, max_conns, keepalive
-    )
+def make_inert_client_service():
+    service = ClusterClientService(Clock())
     # ClusterClientService's superclass, TimerService, creates a
     # LoopingCall with now=True. We neuter it here to allow
     # observation of the behaviour of _update_interval() for
@@ -216,11 +190,11 @@ class TestClusterClientService(MAASTestCase):
         )
 
         # Fake some connections.
-        service.connections.connections = {
-            ipv4client.eventloop: [ipv4client],
-            ipv6client.eventloop: [ipv6client],
-            ipv6mapped.eventloop: [ipv6mapped],
-            hostclient.eventloop: [hostclient],
+        service.connections = {
+            ipv4client.eventloop: ipv4client,
+            ipv6client.eventloop: ipv6client,
+            ipv6mapped.eventloop: ipv6mapped,
+            hostclient.eventloop: hostclient,
         }
 
         # Update the RPC state to the filesystem and info cache.
@@ -230,11 +204,7 @@ class TestClusterClientService(MAASTestCase):
         # Ensure that the info state is set.
         self.assertEqual(
             service._rpc_info_state,
-            {
-                client.address[0]
-                for _, clients in service.connections.items()
-                for client in clients
-            },
+            {client.address[0] for _, client in service.connections.items()},
         )
 
         # Check that the written rpc state is valid.
@@ -702,9 +672,9 @@ class TestClusterClientService(MAASTestCase):
     def test_update_connections_initially(self):
         service = ClusterClientService(Clock())
         mock_client = Mock()
-        _make_connection = self.patch(service.connections, "connect")
+        _make_connection = self.patch(service, "_make_connection")
         _make_connection.side_effect = lambda *args: succeed(mock_client)
-        _drop_connection = self.patch(service.connections, "disconnect")
+        _drop_connection = self.patch(service, "_drop_connection")
 
         info = json.loads(self.example_rpc_info_view_response.decode("ascii"))
         yield service._update_connections(info["eventloops"])
@@ -723,7 +693,7 @@ class TestClusterClientService(MAASTestCase):
                 "host1:pid=2002": mock_client,
                 "host2:pid=3003": mock_client,
             },
-            service.connections.try_connections,
+            service.try_connections,
         )
 
         self.assertEqual([], _drop_connection.mock_calls)
@@ -741,7 +711,7 @@ class TestClusterClientService(MAASTestCase):
             for address in addresses:
                 client = Mock()
                 client.address = address
-                service.connections.connections[eventloop] = [client]
+                service.connections[eventloop] = client
 
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -758,7 +728,7 @@ class TestClusterClientService(MAASTestCase):
     @inlineCallbacks
     def test_update_connections_connect_error_is_logged_tersely(self):
         service = ClusterClientService(Clock())
-        _make_connection = self.patch(service.connections, "connect")
+        _make_connection = self.patch(service, "_make_connection")
         _make_connection.side_effect = error.ConnectionRefusedError()
 
         logger = self.useFixture(TwistedLoggerFixture())
@@ -781,7 +751,7 @@ class TestClusterClientService(MAASTestCase):
     @inlineCallbacks
     def test_update_connections_unknown_error_is_logged_with_stack(self):
         service = ClusterClientService(Clock())
-        _make_connection = self.patch(service.connections, "connect")
+        _make_connection = self.patch(service, "_make_connection")
         _make_connection.side_effect = RuntimeError("Something went wrong.")
 
         logger = self.useFixture(TwistedLoggerFixture())
@@ -807,8 +777,8 @@ class TestClusterClientService(MAASTestCase):
 
     def test_update_connections_when_there_are_existing_connections(self):
         service = ClusterClientService(Clock())
-        _connect = self.patch(service.connections, "connect")
-        _disconnect = self.patch(service.connections, "disconnect")
+        _connect = self.patch(service, "_make_connection")
+        _disconnect = self.patch(service, "_drop_connection")
 
         host1client = ClusterClient(
             ("::ffff:1.1.1.1", 1111), "host1:pid=1", service
@@ -821,9 +791,9 @@ class TestClusterClientService(MAASTestCase):
         )
 
         # Fake some connections.
-        service.connections.connections = {
-            host1client.eventloop: [host1client],
-            host2client.eventloop: [host2client],
+        service.connections = {
+            host1client.eventloop: host1client,
+            host2client.eventloop: host2client,
         }
 
         # Request a new set of connections that overlaps with the
@@ -841,6 +811,53 @@ class TestClusterClientService(MAASTestCase):
             host3client.eventloop, host3client.address
         )
         _disconnect.assert_called_once_with(host2client)
+
+    @inlineCallbacks
+    def test_update_connections_replaces_connection_when_address_changes(
+        self,
+    ):
+        service = ClusterClientService(Clock())
+        old_client = ClusterClient(
+            ("::ffff:1.1.1.1", 1111), "host1:pid=1", service
+        )
+        new_client = Mock(address=("::ffff:2.2.2.2", 2222))
+        _connect = self.patch(service, "_make_connection")
+        _connect.return_value = succeed(new_client)
+        # The old connection stays open until connectionLost fires later.
+        _disconnect = self.patch(service, "_drop_connection")
+        service.connections = {old_client.eventloop: old_client}
+
+        yield service._update_connections(
+            {old_client.eventloop: [new_client.address]}
+        )
+
+        _disconnect.assert_called_once_with(old_client)
+        _connect.assert_called_once_with(
+            old_client.eventloop, new_client.address
+        )
+        self.assertEqual({}, service.connections)
+        self.assertEqual(
+            {old_client.eventloop: new_client}, service.try_connections
+        )
+
+    @inlineCallbacks
+    def test_update_connections_drops_both_tracked_and_pending_connections(
+        self,
+    ):
+        service = ClusterClientService(Clock())
+        _disconnect = self.patch(service, "_drop_connection")
+        connected = Mock(address=("::ffff:1.1.1.1", 1111))
+        pending = Mock(address=("::ffff:1.1.1.1", 1111))
+        service.connections = {"host1:pid=1": connected}
+        service.try_connections = {"host1:pid=1": pending}
+
+        yield service._update_connections({})
+
+        self.assertCountEqual(
+            [call(connected), call(pending)], _disconnect.mock_calls
+        )
+        self.assertEqual({}, service.connections)
+        self.assertEqual({}, service.try_connections)
 
     @inlineCallbacks
     def test_update_only_updates_interval_when_eventloops_are_unknown(self):
@@ -875,15 +892,44 @@ class TestClusterClientService(MAASTestCase):
             logger.dump(),
         )
 
+    def test_make_connection(self):
+        service = ClusterClientService(Clock())
+        connectProtocol = self.patch(clusterservice, "connectProtocol")
+        service._make_connection("an-event-loop", ("a.example.com", 1111))
+        connectProtocol.assert_called_once()
+        endpoint, protocol = connectProtocol.call_args.args
+        self.assertIsInstance(endpoint, TCP6ClientEndpoint)
+        self.assertIs(endpoint._reactor, service.clock)
+        self.assertEqual(endpoint._host, "a.example.com")
+        self.assertEqual(endpoint._port, 1111)
+        self.assertIsInstance(protocol, ClusterClient)
+        self.assertEqual(protocol.address, ("a.example.com", 1111))
+        self.assertEqual(protocol.eventloop, "an-event-loop")
+        self.assertIs(protocol.service, service)
+
+    def test_drop_connection(self):
+        connection = Mock()
+        service = make_inert_client_service()
+        service.startService()
+        service._drop_connection(connection)
+        connection.transport.loseConnection.assert_called_once_with()
+
+    def test_drop_connection_if_connection_already_dropped(self):
+        connection = Mock()
+        connection.transport = None
+        service = make_inert_client_service()
+        service.startService()
+        self.assertIsNone(service._drop_connection(connection))
+
     def test_add_connection_removes_from_try_connections(self):
         service = make_inert_client_service()
         service.startService()
         endpoint = Mock()
         connection = Mock()
         connection.address = (":::ffff", 2222)
-        service.connections.try_connections[endpoint] = connection
+        service.try_connections[endpoint] = connection
         service.add_connection(endpoint, connection)
-        self.assertEqual({}, service.connections.try_connections)
+        self.assertEqual({}, service.try_connections)
 
     def test_add_connection_adds_to_connections(self):
         service = make_inert_client_service()
@@ -892,7 +938,7 @@ class TestClusterClientService(MAASTestCase):
         connection = Mock()
         connection.address = (":::ffff", 2222)
         service.add_connection(endpoint, connection)
-        self.assertEqual(service.connections, {endpoint: [connection]})
+        self.assertEqual(service.connections, {endpoint: connection})
 
     def test_add_connection_calls__update_saved_rpc_info_state(self):
         service = make_inert_client_service()
@@ -904,52 +950,21 @@ class TestClusterClientService(MAASTestCase):
         service.add_connection(endpoint, connection)
         service._update_saved_rpc_info_state.assert_called_once_with()
 
-    @inlineCallbacks
-    def test_add_connection_creates_max_idle_connections(self):
-        service = make_inert_client_service(max_idle_conns=2)
-        service.startService()
-        endpoint = Mock()
-        connection = Mock()
-        connection.eventloop = endpoint
-        connection.address = (":::ffff", 2222)
-
-        @inlineCallbacks
-        def mock_connect(ev, addr):
-            new_conn = Mock()
-            new_conn.eventloop = ev
-            new_conn.address = addr
-            yield service.add_connection(ev, new_conn)
-            return new_conn
-
-        self.patch(service.connections, "connect").side_effect = mock_connect
-        self.patch_autospec(service, "_update_saved_rpc_info_state")
-        yield service.add_connection(endpoint, connection)
-        self.assertEqual(
-            len(
-                [
-                    conn
-                    for conns in service.connections.values()
-                    for conn in conns
-                ]
-            ),
-            service.connections._max_idle_connections,
-        )
-
     def test_remove_connection_removes_from_try_connections(self):
         service = make_inert_client_service()
         service.startService()
         endpoint = Mock()
         connection = Mock()
-        service.connections.try_connections[endpoint] = connection
+        service.try_connections[endpoint] = connection
         service.remove_connection(endpoint, connection)
-        self.assertEqual(service.connections.try_connections, {})
+        self.assertEqual(service.try_connections, {})
 
     def test_remove_connection_removes_from_connections(self):
         service = make_inert_client_service()
         service.startService()
         endpoint = Mock()
         connection = Mock()
-        service.connections[endpoint] = {connection}
+        service.connections[endpoint] = connection
         service.remove_connection(endpoint, connection)
         self.assertEqual({}, service.connections)
 
@@ -958,123 +973,39 @@ class TestClusterClientService(MAASTestCase):
         service.startService()
         endpoint = Mock()
         connection = Mock()
-        service.connections[endpoint] = {connection}
+        service.connections[endpoint] = connection
         service.remove_connection(endpoint, connection)
         self.assertEqual(service.step, service.INTERVAL_LOW)
 
     def test_getClient(self):
         service = ClusterClientService(Clock())
-        service.connections.connections = {
-            sentinel.eventloop01: [FakeConnection()],
-            sentinel.eventloop02: [FakeConnection()],
-            sentinel.eventloop03: [FakeConnection()],
+        service.connections = {
+            sentinel.eventloop01: FakeConnection(),
+            sentinel.eventloop02: FakeConnection(),
+            sentinel.eventloop03: FakeConnection(),
         }
         self.assertIn(
             service.getClient(),
-            {
-                common.Client(conn)
-                for conns in service.connections.values()
-                for conn in conns
-            },
+            {common.Client(conn) for conn in service.connections.values()},
         )
 
     def test_getClient_when_there_are_no_connections(self):
         service = ClusterClientService(Clock())
-        service.connections.connections = {}
+        service.connections = {}
         self.assertRaises(exceptions.NoConnectionsAvailable, service.getClient)
-
-    def test_getClient_returns_a_busy_connection_when_busy_ok_is_True(self):
-        service = ClusterClientService(Clock(), max_conns=1)
-        service.connections.connections = {
-            sentinel.eventloop01: [FakeBusyConnectionToRegion()],
-            sentinel.eventloop02: [FakeBusyConnectionToRegion()],
-            sentinel.eventloop03: [FakeBusyConnectionToRegion()],
-        }
-        client = service.getClient(busy_ok=True)
-        self.assertTrue(client._conn.in_use)
-        self.assertIn(
-            client,
-            {
-                common.Client(conn)
-                for conns in service.connections.values()
-                for conn in conns
-            },
-        )
-
-    @inlineCallbacks
-    def test_getClientNow_scales_connections_when_busy(self):
-        service = ClusterClientService(Clock(), max_conns=2)
-        service.connections.connections = {
-            sentinel.eventloop01: [FakeBusyConnectionToRegion()],
-            sentinel.eventloop02: [FakeBusyConnectionToRegion()],
-            sentinel.eventloop03: [FakeBusyConnectionToRegion()],
-        }
-        self.patch(service.connections, "connect").return_value = succeed(
-            FakeConnection()
-        )
-
-        # skip the connectionMade logic for this test
-        @inlineCallbacks
-        def mock_scale_up_connections():
-            for ev, conns in service.connections.items():
-                if len(conns) < service.connections._max_connections:
-                    conn = yield service.connections.connect()
-                    service.connections[ev].append(conn)
-                    return Client(conn)
-
-        scale_up = self.patch(service.connections, "scale_up_connections")
-        scale_up.side_effect = mock_scale_up_connections
-
-        original_conns = [
-            conn for conns in service.connections.values() for conn in conns
-        ]
-        new_client = yield service.getClientNow()
-        new_conn = new_client._conn
-        scale_up.assert_called_once()
-        self.assertIsNotNone(new_conn)
-        self.assertNotIn(new_conn, original_conns)
-        self.assertIn(
-            new_conn,
-            [conn for conns in service.connections.values() for conn in conns],
-        )
-
-    @inlineCallbacks
-    def test_getClientNow_returns_an_existing_connection_when_max_are_open(
-        self,
-    ):
-        service = ClusterClientService(Clock(), max_conns=1)
-        service.connections.connections = {
-            sentinel.eventloop01: [FakeBusyConnectionToRegion()],
-            sentinel.eventloop02: [FakeBusyConnectionToRegion()],
-            sentinel.eventloop03: [FakeBusyConnectionToRegion()],
-        }
-        self.patch(service, "_make_connection").return_value = succeed(
-            FakeConnection()
-        )
-        original_conns = [
-            conn for conns in service.connections.values() for conn in conns
-        ]
-        new_client = yield service.getClientNow()
-        new_conn = new_client._conn
-        self.assertIsNotNone(new_conn)
-        self.assertIn(new_conn, original_conns)
 
     @inlineCallbacks
     def test_getClientNow_returns_current_connection(self):
         service = ClusterClientService(Clock())
-        service.connections.connections = {
-            sentinel.eventloop01: [FakeConnection()],
-            sentinel.eventloop02: [FakeConnection()],
-            sentinel.eventloop03: [FakeConnection()],
+        service.connections = {
+            sentinel.eventloop01: FakeConnection(),
+            sentinel.eventloop02: FakeConnection(),
+            sentinel.eventloop03: FakeConnection(),
         }
         client = yield service.getClientNow()
         self.assertIn(
             client,
-            [
-                common.Client(conn)
-                for conns in service.connections.values()
-                for conn in conns
-            ],
+            [common.Client(conn) for conn in service.connections.values()],
         )
 
     @inlineCallbacks
@@ -1082,10 +1013,10 @@ class TestClusterClientService(MAASTestCase):
         service = ClusterClientService(Clock())
 
         def addConnections():
-            service.connections.connections = {
-                sentinel.eventloop01: [FakeConnection()],
-                sentinel.eventloop02: [FakeConnection()],
-                sentinel.eventloop03: [FakeConnection()],
+            service.connections = {
+                sentinel.eventloop01: FakeConnection(),
+                sentinel.eventloop02: FakeConnection(),
+                sentinel.eventloop03: FakeConnection(),
             }
             return succeed(None)
 
@@ -1093,11 +1024,7 @@ class TestClusterClientService(MAASTestCase):
         client = yield service.getClientNow()
         self.assertIn(
             client,
-            {
-                common.Client(conn)
-                for conns in service.connections.values()
-                for conn in conns
-            },
+            {common.Client(conn) for conn in service.connections.values()},
         )
 
     def test_getClientNow_raises_exception_when_no_clients(self):
@@ -1140,10 +1067,10 @@ class TestClusterClientService(MAASTestCase):
         service = ClusterClientService(Clock())
         uuid1 = factory.make_UUID()
         c1 = FakeConnection()
-        service.connections[uuid1] = {c1}
+        service.connections[uuid1] = c1
         uuid2 = factory.make_UUID()
         c2 = FakeConnection()
-        service.connections[uuid2] = {c2}
+        service.connections[uuid2] = c2
         clients = service.getAllClients()
         self.assertEqual(clients, [common.Client(c1), common.Client(c2)])
 
@@ -1376,7 +1303,7 @@ class TestClusterClient(TestClusterClientBase):
 
     def test_connecting(self):
         client = self.make_running_client()
-        client.service.connections.try_connections[client.eventloop] = client
+        client.service.try_connections[client.eventloop] = client
         self.patch_authenticate_for_success(client)
         self.patch_register_for_success(client)
         self.assertEqual(client.service.connections, {})
@@ -1392,11 +1319,36 @@ class TestClusterClient(TestClusterClientBase):
         self.assertTrue(extract_result(wait_for_authenticated))
         # ready has been set with the name of the event-loop.
         self.assertEqual(client.eventloop, extract_result(wait_for_ready))
-        self.assertEqual(len(client.service.connections.try_connections), 0)
+        self.assertEqual(len(client.service.try_connections), 0)
         self.assertEqual(
-            client.service.connections.connections,
-            {client.eventloop: [client]},
+            client.service.connections, {client.eventloop: client}
         )
+
+    def test_disconnects_when_there_is_an_existing_connection(self):
+        client = self.make_running_client()
+
+        # Pretend that a connection already exists for this address.
+        client.service.connections[client.eventloop] = sentinel.connection
+
+        # Connect via an in-memory transport.
+        transport = StringTransportWithDisconnection()
+        transport.protocol = client
+        client.makeConnection(transport)
+
+        # authenticated was set to None to signify that authentication was not
+        # attempted.
+        self.assertIsNone(extract_result(client.authenticated.get()))
+        # ready was set with KeyError to signify that a connection to the
+        # same event-loop already existed.
+        self.assertRaises(KeyError, extract_result, client.ready.get())
+
+        # The connections list is unchanged because the new connection
+        # immediately disconnects.
+        self.assertEqual(
+            client.service.connections, {client.eventloop: sentinel.connection}
+        )
+        self.assertFalse(client.connected)
+        self.assertIsNone(client.transport)
 
     def test_disconnects_when_service_is_not_running(self):
         client = self.make_running_client()
@@ -1438,7 +1390,7 @@ class TestClusterClient(TestClusterClientBase):
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
-        self.assertEqual(client.service.connections.connections, {})
+        self.assertEqual(client.service.connections, {})
         self.assertFalse(client.connected)
 
     def test_disconnects_when_authentication_errors(self):
@@ -1549,23 +1501,37 @@ class TestClusterClient(TestClusterClientBase):
         MAAS_SECRET.set(factory.make_bytes())
         client = self.make_running_client()
 
-        def calculate_digest(_, message):
-            # Use the cluster's own authentication responder.
-            response = Cluster().authenticate(message)
-            return succeed(response)
+        def respond_as_region(_, message):
+            salt = os.urandom(16)
+            digest = calculate_digest(
+                MAAS_SECRET.get(), message, b"rack-to-region", salt
+            )
+            return succeed({"digest": digest, "salt": salt})
 
         callRemote = self.patch_autospec(client, "callRemote")
-        callRemote.side_effect = calculate_digest
+        callRemote.side_effect = respond_as_region
 
         d = client.authenticateRegion()
         self.assertTrue(extract_result(d))
+
+    def test_authenticateRegion_rejects_cross_role_digest(self):
+        MAAS_SECRET.set(factory.make_bytes())
+        client = self.make_running_client()
+
+        def respond_with_cluster_digest(_, message):
+            return succeed(Cluster().authenticate(message))
+
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = respond_with_cluster_digest
+
+        d = client.authenticateRegion()
+        self.assertFalse(extract_result(d))
 
     def test_authenticateRegion_rejects_non_matching_digests(self):
         MAAS_SECRET.set(factory.make_bytes())
         client = self.make_running_client()
 
-        def calculate_digest(_, message):
-            # Return some nonsense.
+        def respond_with_invalid_digest(_, message):
             response = {
                 "digest": factory.make_bytes(),
                 "salt": factory.make_bytes(),
@@ -1573,7 +1539,7 @@ class TestClusterClient(TestClusterClientBase):
             return succeed(response)
 
         callRemote = self.patch_autospec(client, "callRemote")
-        callRemote.side_effect = calculate_digest
+        callRemote.side_effect = respond_with_invalid_digest
 
         d = client.authenticateRegion()
         self.assertFalse(extract_result(d))
@@ -2575,203 +2541,32 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             fake_error,
         )
 
-    def test_chassis_type_mscm_calls_probe_mscm_and_enlist(self):
+    def test_removed_chassis_types_are_not_probed(self):
         mock_deferToThread = self.patch_autospec(
             clusterservice, "deferToThread"
         )
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "mscm",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "accept_all": accept_all,
-                "domain": domain,
-            },
-        )
-        mock_deferToThread.assert_called_once_with(
-            clusterservice.probe_and_enlist_mscm,
-            user,
-            hostname,
-            username,
-            password,
-            accept_all,
-            domain,
-        )
-
-    def test_chassis_type_mscm_logs_error_to_maaslog(self):
-        fake_error = factory.make_name("error")
-        self.patch(clusterservice, "maaslog")
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
-        )
-        mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "mscm",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "accept_all": accept_all,
-                "domain": domain,
-            },
-        )
-        clusterservice.maaslog.error.assert_any_call(
-            "Failed to probe and enlist %s nodes: %s",
-            "Moonshot",
-            fake_error,
-        )
-
-    def test_chassis_type_msftocs_calls_probe_msftocs_and_enlist(self):
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
-        )
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        port = random.randint(2000, 4000)
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "msftocs",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "accept_all": accept_all,
-                "domain": domain,
-                "port": port,
-            },
-        )
-        mock_deferToThread.assert_called_once_with(
-            clusterservice.probe_and_enlist_msftocs,
-            user,
-            hostname,
-            port,
-            username,
-            password,
-            accept_all,
-            domain,
-        )
-
-    def test_chassis_type_msftocs_logs_error_to_maaslog(self):
-        fake_error = factory.make_name("error")
-        self.patch(clusterservice, "maaslog")
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
-        )
-        mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        port = random.randint(2000, 4000)
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "msftocs",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "accept_all": accept_all,
-                "domain": domain,
-                "port": port,
-            },
-        )
-        clusterservice.maaslog.error.assert_any_call(
-            "Failed to probe and enlist %s nodes: %s",
-            "MicrosoftOCS",
-            fake_error,
-        )
-
-    def test_chassis_type_ucsm_calls_probe_ucsm_and_enlist(self):
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
-        )
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "ucsm",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "accept_all": accept_all,
-                "domain": domain,
-            },
-        )
-        mock_deferToThread.assert_called_once_with(
-            clusterservice.probe_and_enlist_ucsm,
-            user,
-            hostname,
-            username,
-            password,
-            accept_all,
-            domain,
-        )
-
-    def test_chassis_type_ucsm_logs_error_to_maaslog(self):
-        fake_error = factory.make_name("error")
-        self.patch(clusterservice, "maaslog")
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
-        )
-        mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "ucsm",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "accept_all": accept_all,
-                "domain": domain,
-            },
-        )
-        clusterservice.maaslog.error.assert_any_call(
-            "Failed to probe and enlist %s nodes: %s", "UCS", fake_error
-        )
+        maaslog = self.patch(clusterservice, "maaslog")
+        for chassis_type in (
+            "dli",
+            "eaton",
+            "mscm",
+            "msftocs",
+            "openbmc",
+            "ucsm",
+        ):
+            call_responder(
+                Cluster(),
+                cluster.AddChassis,
+                {
+                    "user": factory.make_name("user"),
+                    "chassis_type": chassis_type,
+                    "hostname": factory.make_hostname(),
+                },
+            )
+            maaslog.error.assert_called_with(
+                f"Unknown chassis type {chassis_type}"
+            )
+        mock_deferToThread.assert_not_called()
 
     def test_chassis_type_unknown_logs_error_to_maaslog(self):
         self.patch(clusterservice, "maaslog")

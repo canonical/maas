@@ -420,20 +420,6 @@ Count of full DNS zone rewrite operations
    | zone | DNS zone name |
    [/details]
 
-### maas_rpc_pool_exhaustion_count
-
-number of occurrences of the RPC connection pool allocate its maximum number of connections
-
-* Type: Counter
-* Unit: None
-* [details="Labels"]
-
-   | Label | Description |
-   | --- | --- |
-   | host | controller IP address |
-   | maas_id | MAAS cluster UUID |
-   [/details]
-
 ### maas_lxd_fetch_machine_failure
 
 Total number of failures for fetching LXD machines

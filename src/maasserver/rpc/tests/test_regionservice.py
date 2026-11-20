@@ -5,6 +5,7 @@
 
 from collections import defaultdict
 import json
+from os import urandom
 import random
 import re
 from unittest import skip
@@ -20,6 +21,7 @@ from twisted.internet.defer import (
     DeferredList,
     fail,
     inlineCallbacks,
+    maybeDeferred,
     succeed,
 )
 from twisted.internet.endpoints import TCP4ServerEndpoint
@@ -42,6 +44,7 @@ from maasserver.rpc.regionservice import (
 )
 from maasserver.rpc.testing.doubles import HandshakingRegionServer
 from maasserver.secrets import SecretManager
+from maasserver.security import get_shared_secret
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
@@ -65,7 +68,7 @@ from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import RegisterRackController
 from provisioningserver.rpc.testing import call_responder
 from provisioningserver.rpc.testing.doubles import DummyConnection
-from provisioningserver.security import fernet_decrypt_psk
+from provisioningserver.security import calculate_digest, fernet_decrypt_psk
 from provisioningserver.utils import events
 from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.version import get_running_version
@@ -215,8 +218,8 @@ class TestRegionServer(MAASTransactionServerTestCase):
         # The log was written to.
         self.assertEqual(
             "Rack controller 'None' could not be authenticated; dropping "
-            "connection. Check that /var/lib/maas/secret on the controller "
-            "contains the correct shared key.",
+            "connection. Check that /var/snap/maas/common/maas/secret on "
+            "the controller contains the correct shared key.",
             logger.dump(),
         )
 
@@ -242,21 +245,38 @@ class TestRegionServer(MAASTransactionServerTestCase):
     def test_authenticateCluster_accepts_matching_digests(self):
         server = self.make_running_server()
 
-        def calculate_digest(_, message):
-            # Use the region's own authentication responder.
-            return Region().authenticate(message)
+        def respond_as_rack(_, message):
+            def got_secret(secret):
+                salt = urandom(16)
+                digest = calculate_digest(
+                    secret, message, b"region-to-rack", salt
+                )
+                return {"digest": digest, "salt": salt}
+
+            return maybeDeferred(get_shared_secret).addCallback(got_secret)
 
         callRemote = self.patch_autospec(server, "callRemote")
-        callRemote.side_effect = calculate_digest
+        callRemote.side_effect = respond_as_rack
 
         d = server.authenticateCluster()
         self.assertTrue(extract_result(d))
 
+    def test_authenticateCluster_rejects_cross_role_digest(self):
+        server = self.make_running_server()
+
+        def respond_with_region_digest(_, message):
+            return Region().authenticate(message)
+
+        callRemote = self.patch_autospec(server, "callRemote")
+        callRemote.side_effect = respond_with_region_digest
+
+        d = server.authenticateCluster()
+        self.assertFalse(extract_result(d))
+
     def test_authenticateCluster_rejects_non_matching_digests(self):
         server = self.make_running_server()
 
-        def calculate_digest(_, message):
-            # Return some nonsense.
+        def respond_with_invalid_digest(_, message):
             response = {
                 "digest": factory.make_bytes(),
                 "salt": factory.make_bytes(),
@@ -264,7 +284,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             return succeed(response)
 
         callRemote = self.patch_autospec(server, "callRemote")
-        callRemote.side_effect = calculate_digest
+        callRemote.side_effect = respond_with_invalid_digest
 
         d = server.authenticateCluster()
         self.assertFalse(extract_result(d))
@@ -538,74 +558,6 @@ class TestRegionServer(MAASTransactionServerTestCase):
 
 
 class TestRackClient(MAASTestCase):
-    def test_defined_cache_calls(self):
-        self.assertEqual(
-            [cluster.DescribePowerTypes],
-            RackClient.cache_calls,
-        )
-
-    def test_getCallCache_adds_new_call_cache(self):
-        conn = DummyConnection()
-        cache = {}
-        client = RackClient(conn, cache)
-        call_cache = client._getCallCache()
-        self.assertIs(call_cache, cache["call_cache"])
-
-    def test_getCallCache_returns_existing(self):
-        conn = DummyConnection()
-        cache = {}
-        client = RackClient(conn, cache)
-        call_cache = client._getCallCache()
-        call_cache2 = client._getCallCache()
-        self.assertIs(call_cache, cache["call_cache"])
-        self.assertIs(call_cache2, cache["call_cache"])
-        self.assertIs(call_cache2, call_cache)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_call__returns_cache_value(self):
-        conn = DummyConnection()
-        conn.ident = factory.make_name("ident")
-        client = RackClient(conn, {})
-        call_cache = client._getCallCache()
-        power_types = {"power_types": [{"name": "ipmi"}, {"name": "wedge"}]}
-        call_cache[cluster.DescribePowerTypes] = power_types
-        result = yield client(cluster.DescribePowerTypes)
-        # The result is a copy. It should equal the result but not be
-        # the same object.
-        self.assertEqual(power_types, result)
-        self.assertIsNot(power_types, result)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_call__adds_result_to_cache(self):
-        conn = DummyConnection()
-        conn.ident = factory.make_name("ident")
-        self.patch(conn, "callRemote").return_value = succeed(
-            sentinel.power_types
-        )
-        client = RackClient(conn, {})
-        call_cache = client._getCallCache()
-        result = yield client(cluster.DescribePowerTypes)
-        self.assertIs(sentinel.power_types, result)
-        self.assertIs(
-            sentinel.power_types, call_cache[cluster.DescribePowerTypes]
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_call__doesnt_add_result_to_cache_for_not_cache_call(self):
-        conn = DummyConnection()
-        conn.ident = factory.make_name("ident")
-        self.patch(conn, "callRemote").return_value = succeed(
-            sentinel.boot_images
-        )
-        client = RackClient(conn, {})
-        call_cache = client._getCallCache()
-        result = yield client(cluster.PowerDriverCheck)
-        self.assertIs(sentinel.boot_images, result)
-        self.assertNotIn(cluster.PowerDriverCheck, call_cache)
-
     @wait_for_reactor
     @inlineCallbacks
     def test_call__records_latency_metric(self):
@@ -615,7 +567,7 @@ class TestRackClient(MAASTestCase):
         self.patch(conn, "callRemote").return_value = succeed(
             sentinel.boot_images
         )
-        client = RackClient(conn, {})
+        client = RackClient(conn)
         yield client(cluster.PowerDriverCheck)
         mock_metrics.assert_called_with(
             "maas_region_rack_rpc_call_latency",
@@ -989,8 +941,7 @@ class TestRegionService(MAASTestCase):
         self.patch(random, "choice", check_choice)
 
         def check(client):
-            self.assertEqual(RackClient(chosen, {}), client)
-            self.assertIs(client.cache, service.connectionsCache[client._conn])
+            self.assertEqual(RackClient(chosen), client)
 
         return service.getClientFor(uuid).addCallback(check)
 
@@ -1033,10 +984,10 @@ class TestRegionService(MAASTestCase):
         self.assertIn(
             (one, two),
             [
-                (RackClient(c1, {}), RackClient(c3, {})),
-                (RackClient(c1, {}), RackClient(c4, {})),
-                (RackClient(c2, {}), RackClient(c3, {})),
-                (RackClient(c2, {}), RackClient(c4, {})),
+                (RackClient(c1), RackClient(c3)),
+                (RackClient(c1), RackClient(c4)),
+                (RackClient(c2), RackClient(c3)),
+                (RackClient(c2), RackClient(c4)),
             ],
         )
 

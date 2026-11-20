@@ -23,6 +23,10 @@ def get_effective_filesystem(model):
 
     assert isinstance(model, (BlockDevice, Partition))
 
+    # Cached by `maasserver.api.nodes.prepare_nodes_for_listing`.
+    if hasattr(model, "_effective_filesystem"):
+        return model._effective_filesystem
+
     node = model.get_node()
     filesystems = list(model.filesystem_set.all())
     if node.is_in_allocated_state():

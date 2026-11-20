@@ -689,6 +689,9 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         This comes from looking at the DISCOVERED IP addresses assigned to the
         related interfaces.
         """
+        # Cached by `maasserver.api.nodes.prepare_nodes_for_listing`.
+        if hasattr(self, "_related_discovered_ip"):
+            return self._related_discovered_ip
         return (
             StaticIPAddress.objects.filter(
                 interface__in=self.interface_set.all(),
