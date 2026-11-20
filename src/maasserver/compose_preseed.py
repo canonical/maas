@@ -494,15 +494,7 @@ def get_old_archive_config():
 
 def get_base_preseed(node=None):
     """Return the base preseed config used by all ephemeral environments."""
-    cloud_config = {
-        # The ephemeral environment doesn't have a domain search path set which
-        # causes sudo to fail to resolve itself and print out a warning
-        # message. These messages are caught when logging during commissioning
-        # and testing. Allow /etc/hosts to be managed by cloud-init so the
-        # lookup works. This may cause LP:1087183 to come back if anyone tries
-        # to JuJu deploy in an ephemeral environment.
-        "manage_etc_hosts": True
-    }
+    cloud_config = {}
 
     if node is not None and node.status == NODE_STATUS.DEPLOYING:
         # python3-packaging is a dependency of curtin which might or might not
@@ -638,6 +630,12 @@ def _compose_cloud_init_preseed(
             "rsyslog": {
                 "remotes": {"maas": get_rsyslog_host_port(request, node)}
             },
+            # The ephemeral environment has no domain search path, so sudo
+            # fails to resolve the local hostname and logs a warning during
+            # commissioning/testing. Let cloud-init manage /etc/hosts so the
+            # lookup works. Deployed systems keep cloud-init's default
+            # (see LP:2088179, LP:1087183).
+            "manage_etc_hosts": True,
         }
     )
     # This configures reporting for the ephemeral environment
@@ -809,6 +807,9 @@ def compose_enlistment_preseed(request, rack_controller, context):
                 },
             },
             "rsyslog": {"remotes": {"maas": context["syslog_host_port"]}},
+            # Enlistment runs in the ephemeral environment; manage /etc/hosts
+            # so the node can resolve its own hostname (see LP:2088179).
+            "manage_etc_hosts": True,
             "power_state": {
                 "delay": "now",
                 "mode": "poweroff",
