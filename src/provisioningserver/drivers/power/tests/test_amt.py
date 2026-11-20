@@ -15,6 +15,7 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import amt as amt_module
 from provisioningserver.drivers.power import (
     PowerActionError,
+    PowerAuthError,
     PowerConnError,
     PowerFatalError,
 )
@@ -183,6 +184,17 @@ class TestAMTPowerDriver(MAASTestCase):
         self.patch_run_command(returncode=1)
         self.assertRaises(
             PowerActionError,
+            amt_power_driver._run,
+            (),
+            factory.make_name("power-pass"),
+            None,
+        )
+
+    def test_run_raises_power_auth_error(self):
+        amt_power_driver = AMTPowerDriver()
+        self.patch_run_command(returncode=1, stderr=b"401 Unauthorized")
+        self.assertRaises(
+            PowerAuthError,
             amt_power_driver._run,
             (),
             factory.make_name("power-pass"),

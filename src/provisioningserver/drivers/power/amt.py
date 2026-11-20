@@ -204,9 +204,15 @@ class AMTPowerDriver(PowerDriver):
             decode=False,
         )
         if result.returncode != 0:
+            stderr = result.stderr.decode("utf-8", "replace")
+            for error, error_info in AMT_ERRORS.items():
+                if (
+                    error_info["exception"] == PowerAuthError
+                    and error in stderr
+                ):
+                    raise PowerAuthError(error_info["message"])
             raise PowerActionError(
-                "Failed to run command: %s with error: %s"
-                % (command, result.stderr.decode("utf-8", "replace"))
+                "Failed to run command: %s with error: %s" % (command, stderr)
             )
         return result.stdout
 
