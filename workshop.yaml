@@ -6,6 +6,17 @@ sdks:
     channel: "1.26/stable"
   - name: uv
   - name: project-maas-py
+  - name: omp
+    channel: 18/edge
+  - name: system
+    slots:
+      omp-gateway:
+        interface: tunnel
+        endpoint: localhost:4000
+      omp-gateway-token:
+        interface: secret
+        attributes:
+          service: omp-gateway
 actions:
   build: cd /project && make build
   lint: cd /project && make lint
