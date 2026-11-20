@@ -3,27 +3,49 @@
 
 """Tests for the nodes API."""
 
+from datetime import timedelta
 import http.client
 import json
+import logging
 import random
 
 from django.conf import settings
 from django.http import QueryDict
 from django.urls import reverse
+from django.utils import timezone
 
 from maasserver.api import nodes as nodes_module
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import (
+    FILESYSTEM_GROUP_TYPE,
+    FILESYSTEM_TYPE,
     INTERFACE_TYPE,
+    IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_TYPE,
     NODE_TYPE_CHOICES,
 )
 from maasserver.exceptions import MAASAPIValidationError
+from maasserver.models import (
+    ControllerInfo,
+    Device,
+    Machine,
+    RackController,
+    RegionController,
+)
+from maasserver.models import node as node_module
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.utils.orm import reload_object
+from maasserver.testing.testclient import MAASSensibleOAuthClient
+from maasserver.utils.orm import post_commit_hooks, reload_object
+from metadataserver.enum import (
+    HARDWARE_TYPE,
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+    SCRIPT_TYPE,
+)
 
 
 class TestIsRegisteredAnonAPI(APITestCase.ForAnonymousAndUserAndAdmin):
@@ -789,3 +811,422 @@ class TestPowersMixin(APITestCase.ForUser):
             for machine in expected_machines
         }
         self.assertEqual(expected, parsed)
+
+
+class RenderedNodesMixin:
+    """Creates nodes populating every field rendered by the node listings."""
+
+    clientfactories = {"oauth": MAASSensibleOAuthClient}
+
+    def setUp(self):
+        super().setUp()
+        self.patch(node_module, "stop_workflow")
+        fabric = factory.make_Fabric()
+        self.untagged_vlan = fabric.get_default_vlan()
+        self.tagged_vlan = factory.make_VLAN(
+            fabric=fabric,
+            name="tagged",
+            dhcp_on=True,
+            space=factory.make_Space(),
+            primary_rack=factory.make_RackController(),
+            secondary_rack=factory.make_RackController(),
+        )
+        self.relayed_vlan = factory.make_VLAN(
+            fabric=factory.make_Fabric(), relay_vlan=self.tagged_vlan
+        )
+        self.ipv4_subnet = factory.make_Subnet(
+            vlan=self.untagged_vlan, version=4, space=None
+        )
+        self.ipv6_subnet = factory.make_Subnet(
+            vlan=self.untagged_vlan, version=6, space=None
+        )
+        self.tagged_subnet = factory.make_Subnet(
+            vlan=self.tagged_vlan, version=4, space=None
+        )
+        self.relayed_subnet = factory.make_Subnet(
+            vlan=self.relayed_vlan, version=4, space=None
+        )
+        self.info_event_type = factory.make_EventType(level=logging.INFO)
+        self.debug_event_type = factory.make_EventType(level=logging.DEBUG)
+
+    def make_ip(self, interface, subnet, alloc_type=IPADDRESS_TYPE.STICKY):
+        return factory.make_StaticIPAddress(
+            alloc_type=alloc_type,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet,
+            interface=interface,
+        )
+
+    def make_interfaces(self, node):
+        eth0, eth1, eth2 = (
+            factory.make_Interface(node=node, vlan=self.untagged_vlan)
+            for _ in range(3)
+        )
+        bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            node=node,
+            vlan=self.untagged_vlan,
+            parents=[eth1, eth2],
+        )
+        br0 = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            node=node,
+            vlan=self.untagged_vlan,
+            parents=[bond0],
+        )
+        br0_vlan = factory.make_Interface(
+            INTERFACE_TYPE.VLAN,
+            node=node,
+            vlan=self.tagged_vlan,
+            parents=[br0],
+        )
+        br1 = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            node=node,
+            vlan=self.tagged_vlan,
+            parents=[br0_vlan],
+            params={"mtu": 9000},
+        )
+        eth3 = factory.make_Interface(node=node, vlan=self.relayed_vlan)
+        factory.make_Interface(node=node, link_connected=False)
+
+        self.make_ip(eth0, self.ipv4_subnet)
+        self.make_ip(br0, self.ipv6_subnet)
+        gateway_link = self.make_ip(br1, self.tagged_subnet)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip="",
+            subnet=self.ipv4_subnet,
+            interface=br1,
+        )
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip="",
+            subnet=self.tagged_subnet,
+            interface=br1,
+        )
+        self.make_ip(eth3, self.relayed_subnet, IPADDRESS_TYPE.DISCOVERED)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP,
+            ip="",
+            subnet=self.relayed_subnet,
+            interface=eth3,
+        )
+        node.boot_interface = eth0
+        node.gateway_link_ipv4 = gateway_link
+        with post_commit_hooks:
+            node.save()
+
+    def make_storage(self, machine):
+        volume_group = factory.make_VolumeGroup(node=machine)
+        factory.make_Filesystem(
+            block_device=factory.make_VirtualBlockDevice(
+                filesystem_group=volume_group, node=machine
+            ),
+            fstype=FILESYSTEM_TYPE.EXT4,
+            mount_point="/srv",
+            acquired=True,
+        )
+        raid = factory.make_FilesystemGroup(
+            node=machine, group_type=FILESYSTEM_GROUP_TYPE.RAID_1
+        )
+        factory.make_Filesystem(
+            partition=factory.make_Partition(
+                partition_table=factory.make_PartitionTable(
+                    block_device=raid.virtual_device
+                )
+            ),
+            fstype=FILESYSTEM_TYPE.XFS,
+            mount_point="/data",
+            acquired=True,
+        )
+        for cache_set in (
+            factory.make_CacheSet(
+                block_device=factory.make_PhysicalBlockDevice(node=machine),
+                node=machine,
+            ),
+            factory.make_CacheSet(
+                partition=factory.make_Partition(node=machine), node=machine
+            ),
+        ):
+            factory.make_FilesystemGroup(
+                node=machine,
+                group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+                cache_set=cache_set,
+            )
+        factory.make_VMFS(node=machine)
+        factory.make_Filesystem(
+            node_config=machine.current_config,
+            fstype=FILESYSTEM_TYPE.RAMFS,
+            mount_point="/ram",
+        )
+        numa_node = factory.make_NUMANode(node=machine)
+        factory.make_NUMANodeHugepages(numa_node=numa_node)
+        factory.make_PhysicalBlockDevice(node=machine, numa_node=numa_node)
+
+    def make_events(self, node):
+        now = timezone.now()
+        for minutes, event_type, description in (
+            (1, self.info_event_type, "older"),
+            (2, self.info_event_type, "latest"),
+            (3, self.debug_event_type, "debug"),
+        ):
+            factory.make_Event(
+                node=node,
+                type=event_type,
+                description=description,
+                created=now + timedelta(minutes=minutes),
+            )
+
+    def make_script_result(self, script_set, hardware_type, status, **kwargs):
+        script = factory.make_Script(
+            script_type=(
+                SCRIPT_TYPE.COMMISSIONING
+                if script_set.result_type == RESULT_TYPE.COMMISSIONING
+                else SCRIPT_TYPE.TESTING
+            ),
+            hardware_type=hardware_type,
+        )
+        return factory.make_ScriptResult(
+            script_set=script_set, script=script, status=status, **kwargs
+        )
+
+    def make_script_results(self, node):
+        commissioning, testing, installation = (
+            factory.make_ScriptSet(node=node, result_type=result_type)
+            for result_type in (
+                RESULT_TYPE.COMMISSIONING,
+                RESULT_TYPE.TESTING,
+                RESULT_TYPE.INSTALLATION,
+            )
+        )
+        self.make_script_result(
+            commissioning, HARDWARE_TYPE.NODE, SCRIPT_STATUS.PASSED
+        )
+        self.make_script_result(
+            commissioning, HARDWARE_TYPE.CPU, SCRIPT_STATUS.FAILED
+        )
+        superseded = self.make_script_result(
+            testing, HARDWARE_TYPE.CPU, SCRIPT_STATUS.FAILED
+        )
+        factory.make_ScriptResult(
+            script_set=testing,
+            script=superseded.script,
+            status=SCRIPT_STATUS.PASSED,
+        )
+        self.make_script_result(
+            testing,
+            HARDWARE_TYPE.MEMORY,
+            SCRIPT_STATUS.FAILED,
+            suppressed=True,
+        )
+        self.make_script_result(
+            testing,
+            HARDWARE_TYPE.STORAGE,
+            SCRIPT_STATUS.RUNNING,
+            physical_blockdevice=node.physicalblockdevice_set.first(),
+        )
+        self.make_script_result(
+            testing,
+            HARDWARE_TYPE.NETWORK,
+            SCRIPT_STATUS.FAILED,
+            interface=node.current_config.interface_set.first(),
+        )
+        self.make_script_result(
+            testing, HARDWARE_TYPE.NODE, SCRIPT_STATUS.PASSED
+        )
+        self.make_script_result(
+            testing, HARDWARE_TYPE.NODE, SCRIPT_STATUS.ABORTED
+        )
+        self.make_script_result(
+            installation, HARDWARE_TYPE.NODE, SCRIPT_STATUS.FAILED
+        )
+
+    def populate_node(self, node):
+        self.make_interfaces(node)
+        self.make_events(node)
+        self.make_script_results(node)
+        node.tags.add(factory.make_Tag(), factory.make_Tag())
+        factory.make_NodeMetadata(node=node, key="cpu_model", value="cpu")
+
+    def make_rich_machine(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED,
+            owner=self.user,
+            owner_data={"key": "value"},
+        )
+        self.make_storage(machine)
+        self.populate_node(machine)
+        return machine
+
+    def make_machine_with_fallbacks(self, parent):
+        domain = factory.make_Domain()
+        factory.make_DNSResource(domain=domain)
+        machine = factory.make_Node(
+            status=NODE_STATUS.READY,
+            with_boot_disk=False,
+            parent=parent,
+            domain=domain,
+        )
+        factory.make_PhysicalBlockDevice(
+            node=machine, size=MIN_BLOCK_DEVICE_SIZE
+        )
+        partition = factory.make_Partition(
+            partition_table=factory.make_PartitionTable(
+                block_device=factory.make_PhysicalBlockDevice(node=machine)
+            )
+        )
+        for fstype, acquired in (
+            (FILESYSTEM_TYPE.EXT4, False),
+            (FILESYSTEM_TYPE.XFS, True),
+        ):
+            factory.make_Filesystem(
+                partition=partition,
+                fstype=fstype,
+                mount_point="/",
+                acquired=acquired,
+            )
+        eth0 = factory.make_Interface(node=machine, vlan=self.tagged_vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.VLAN,
+            node=machine,
+            vlan=factory.make_VLAN(fabric=self.tagged_vlan.fabric),
+            parents=[eth0],
+        )
+        return machine
+
+    def make_machines(self):
+        machine = self.make_rich_machine()
+        return [
+            machine,
+            self.make_machine_with_fallbacks(parent=machine),
+            factory.make_Node(
+                status=NODE_STATUS.ALLOCATED,
+                owner=self.user,
+                with_boot_disk=False,
+            ),
+            self.make_rich_machine(),
+        ]
+
+    def make_rich_device(self, parent):
+        device = factory.make_Device(
+            owner=self.user,
+            parent=parent,
+            domain=factory.make_Domain(),
+            owner_data={"key": "value"},
+        )
+        eth0 = factory.make_Interface(node=device, vlan=self.tagged_vlan)
+        self.make_ip(eth0, self.tagged_subnet)
+        self.make_ip(eth0, self.relayed_subnet, IPADDRESS_TYPE.DISCOVERED)
+        device.tags.add(factory.make_Tag())
+        return device
+
+    def make_rich_controller(self, make_controller):
+        controller = make_controller()
+        self.populate_node(controller)
+        ControllerInfo.objects.set_version(controller, "3.7.0")
+        return controller
+
+    def make_nodes(self):
+        machines = self.make_machines()
+        return [
+            *machines,
+            self.make_rich_device(parent=machines[0]),
+            factory.make_Device(owner=self.user),
+            self.make_rich_controller(factory.make_RackController),
+            self.make_rich_controller(factory.make_RegionController),
+            self.make_rich_controller(factory.make_RegionRackController),
+        ]
+
+    def get_json(self, path, params=None):
+        response = self.client.get(path, params)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        return response.json()
+
+    def assertListedLikeDetails(self, listing, detail_handler, partial=False):
+        self.assertNotEqual([], listing)
+        for listed in listing:
+            details = self.get_json(
+                reverse(detail_handler, args=[listed["system_id"]])
+            )
+            if partial:
+                details = {key: details[key] for key in listed}
+            # Tags are rendered in database order, which isn't stable.
+            for rendered in (details, listed):
+                rendered["tag_names"].sort()
+            self.assertEqual(details, listed)
+
+
+class TestNodesListingsMatchDetails(RenderedNodesMixin, APITestCase.ForAdmin):
+    def setUp(self):
+        super().setUp()
+        self.make_nodes()
+
+    def test_GET_nodes(self):
+        listing = self.get_json(reverse("nodes_handler"))
+
+        regions_only = RegionController.objects.filter(
+            node_type=NODE_TYPE.REGION_CONTROLLER
+        )
+        self.assertEqual(
+            [
+                node.system_id
+                for nodes in (
+                    Device.objects.all(),
+                    Machine.objects.all(),
+                    RackController.objects.all(),
+                    regions_only,
+                )
+                for node in nodes.order_by("id")
+            ],
+            extract_system_ids(listing),
+        )
+        self.assertListedLikeDetails(listing, "node_handler")
+
+    def test_GET_machines(self):
+        self.assertListedLikeDetails(
+            self.get_json(reverse("machines_handler")), "machine_handler"
+        )
+
+    def test_GET_devices(self):
+        self.assertListedLikeDetails(
+            self.get_json(reverse("devices_handler")), "device_handler"
+        )
+
+    def test_GET_rackcontrollers(self):
+        self.assertListedLikeDetails(
+            self.get_json(reverse("rackcontrollers_handler")),
+            "rackcontroller_handler",
+        )
+
+    def test_GET_regioncontrollers(self):
+        listing = self.get_json(reverse("regioncontrollers_handler"))
+
+        for listed in listing:
+            self.assertEqual(
+                reverse(
+                    "regioncontroller_handler", args=[listed["system_id"]]
+                ),
+                listed["resource_uri"],
+            )
+        self.assertListedLikeDetails(
+            [
+                listed
+                for listed in listing
+                if listed["node_type"] == NODE_TYPE.REGION_CONTROLLER
+            ],
+            "regioncontroller_handler",
+        )
+        # Region+rack controllers details are rendered as rack controllers.
+        region_racks = [
+            listed
+            for listed in listing
+            if listed["node_type"] == NODE_TYPE.REGION_AND_RACK_CONTROLLER
+        ]
+        for listed in region_racks:
+            del listed["resource_uri"]
+        self.assertListedLikeDetails(
+            region_racks, "regioncontroller_handler", partial=True
+        )
