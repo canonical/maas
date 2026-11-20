@@ -2525,6 +2525,48 @@ class TestResolveBindAddresses(MAASTestCase):
         )
         self.assertEqual(["10.0.0.1", "127.0.0.1", "::1"], result)
 
+    def test_unbindable_loopback_family_is_skipped(self):
+        # IPv6 disabled at the OS level: binding ::1 fails with
+        # EADDRNOTAVAIL, and a failed listen bind aborts the service.
+        self.patch(network_module, "_loopback_bind_available").side_effect = (
+            lambda version: version == 4
+        )
+
+        result = resolve_bind_addresses(
+            ["10.0.0.1"],
+            "http://10.0.0.1:5240/MAAS",
+            hardening_active=True,
+        )
+        self.assertEqual(["10.0.0.1", "127.0.0.1"], result)
+
+    def test_unbindable_loopback_derivation_fallback_is_skipped(self):
+        # IPv6 disabled and nothing derivable: the "::1" fallback would
+        # abort the service at startup, so no v6 default is derived.
+        self.patch(
+            network_module, "get_source_address_for_url"
+        ).return_value = None
+        self.patch(network_module, "_loopback_bind_available").side_effect = (
+            lambda version: version == 4
+        )
+
+        result = resolve_bind_addresses(
+            [],
+            "http://unreachable:5240/MAAS",
+            hardening_active=True,
+            family=AF_INET6,
+        )
+        self.assertEqual(["127.0.0.1"], result)
+
+    def test_non_canonical_loopback_does_not_suppress_canonical(self):
+        # Binding 127.0.0.5 does not accept connections dialled to
+        # 127.0.0.1, so the canonical loopback is still appended.
+        result = resolve_bind_addresses(
+            ["127.0.0.5"],
+            "http://10.0.0.1:5240/MAAS",
+            hardening_active=True,
+        )
+        self.assertEqual(["127.0.0.5", "127.0.0.1", "::1"], result)
+
 
 class TestResolveServiceBind(MAASTestCase):
     def test_reads_configured_list_and_maas_url(self):

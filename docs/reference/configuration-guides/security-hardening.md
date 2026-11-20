@@ -147,9 +147,11 @@ Derivation rules:
 - "Per address family" means MAAS derives an IPv4 and an IPv6 address independently. If you set only one family explicitly, MAAS still derives the other.
 - An explicit value always takes precedence.
 - `api_int_bind` and `dns_bind` are never derived. DNS must serve every managed subnet, not only the interface that reaches `maas_url`.
-- While hardening is active, every list-valued key also binds both loopback addresses (`127.0.0.1` and `::1`), whether its addresses were derived or set explicitly. A bound address covers only the interface it names, while same-host clients dial loopback. The scalar keys `temporal_bind` and `prometheus_bind` take no extra loopback address: Temporal's `bindOnIP` accepts exactly one address, and `prometheus_bind` already defaults to loopback.
+- While hardening is active, every list-valued key also binds both loopback addresses (`127.0.0.1` and `::1`), whether its addresses were derived or set explicitly. A bound address covers only the interface it names, while same-host clients dial loopback. On hosts with IPv6 disabled at the OS level (common under STIG/CIS hardening), `::1` cannot be bound and is skipped. The scalar keys `temporal_bind` and `prometheus_bind` take no extra loopback address: Temporal's `bindOnIP` accepts exactly one address, and `prometheus_bind` already defaults to loopback.
 
 Rack controllers are told about the non-loopback RPC addresses only. If the region binds loopback alone, that address is advertised instead, so a co-located rack controller can still connect. When `rpc_bind` is set, rack controllers connect to exactly those addresses, loopback excluded on the same terms.
+
+When `maas_url` points at a floating virtual IP (for example one managed by Pacemaker) or at a load balancer, derivation follows runtime routing at service start: on the node currently holding the VIP the derived address is the VIP itself; on the standby nodes it is their own interface address. After a failover, services are not re-bound, so the newly active node does not listen on the VIP until its services restart. Similarly, if the path from a region controller to the load balancer uses a different interface than the path the load balancer (or rack controllers) use to reach the region controller, the derived address names the wrong interface. In these topologies, set the bind keys explicitly to the addresses clients actually dial, and restart the MAAS services on the standby node after a failover.
 
 ### DNS server options
 

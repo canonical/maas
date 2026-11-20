@@ -5,6 +5,7 @@
 
 import codecs
 from collections import namedtuple
+from functools import lru_cache
 import json
 from operator import attrgetter, itemgetter
 import random
@@ -961,6 +962,26 @@ def resolve_bind_address(
 LOOPBACK_BIND_ADDRESSES = ((4, "127.0.0.1"), (6, "::1"))
 
 
+@lru_cache(maxsize=None)
+def _loopback_bind_available(version: int) -> bool:
+    """Whether this host can bind the loopback address for `version`.
+
+    IPv6 is commonly disabled on STIG/CIS-hardened hosts (sysctl
+    ``net.ipv6.conf.all.disable_ipv6=1``): a wildcard ``::`` bind still
+    succeeds there, but binding ``::1`` fails with EADDRNOTAVAIL, and a
+    failed listen bind aborts nginx/squid/regiond startup. Probe once
+    and skip the unusable family's loopback.
+    """
+    family = AF_INET6 if version == 6 else AF_INET
+    loopback = "::1" if version == 6 else "127.0.0.1"
+    try:
+        with socket.socket(family, socket.SOCK_STREAM) as sock:
+            sock.bind((loopback, 0))
+    except OSError:
+        return False
+    return True
+
+
 def _with_loopback_addresses(addresses: List[str]) -> List[str]:
     """Append whichever loopback addresses `addresses` is missing.
 
@@ -970,6 +991,11 @@ def _with_loopback_addresses(addresses: List[str]) -> List[str]:
     pre-hardening wildcard bind used to cover. Both families are added
     regardless of which family the service otherwise binds, so a bind
     list never depends on which family happened to be configured.
+
+    Presence is an exact match: another loopback of the same family
+    (e.g. 127.0.0.5) doesn't accept connections dialled to 127.0.0.1.
+    A family whose loopback isn't bindable on this host (IPv6 disabled)
+    is skipped.
     """
     present = set()
     for addr in addresses:
@@ -977,12 +1003,13 @@ def _with_loopback_addresses(addresses: List[str]) -> List[str]:
             ip = IPAddress(addr)
         except AddrFormatError:
             continue
-        if ip.is_loopback():
-            present.add(ip.version)
+        for version, loopback in LOOPBACK_BIND_ADDRESSES:
+            if ip == IPAddress(loopback):
+                present.add(version)
     return addresses + [
         loopback
         for version, loopback in LOOPBACK_BIND_ADDRESSES
-        if version not in present
+        if version not in present and _loopback_bind_available(version)
     ]
 
 
@@ -993,14 +1020,19 @@ def _derived_bind_defaults(
 
     Empty outside hardening: an unset bind key then means "all
     interfaces", which callers render as their existing wildcard bind.
+    Also empty when derivation fell back to a loopback address this
+    host cannot bind (IPv6 disabled): advertising ``::1`` there would
+    abort the service at startup.
     """
     if not hardening_active:
         return []
-    return [
-        resolve_bind_address(
-            "", maas_url, hardening_active=True, family=family
-        )
-    ]
+    address = resolve_bind_address(
+        "", maas_url, hardening_active=True, family=family
+    )
+    ip = IPAddress(address)
+    if ip.is_loopback() and not _loopback_bind_available(ip.version):
+        return []
+    return [address]
 
 
 def resolve_bind_addresses(

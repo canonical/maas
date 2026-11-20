@@ -46,34 +46,47 @@ class ProvisioningServiceMaker:
     def _makeHTTPService(self):
         """Create the HTTP service."""
         from twisted.application.internet import StreamServerEndpointService
+        from twisted.application.service import MultiService
         from twisted.internet.endpoints import AdoptedStreamServerEndpoint
 
         from provisioningserver.rackdservices.http import HTTPResource
+        from provisioningserver.utils.network import (
+            _loopback_bind_available,
+            LOOPBACK_BIND_ADDRESSES,
+        )
         from provisioningserver.utils.twisted import SiteNoLog
 
         port = 5249
-        # Only reached via the rack's local nginx reverse proxy; loopback-only.
-        s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        except socket_error as e:
-            if e.errno != ENOPROTOOPT:
-                raise e
-        s.bind(("::1", port))
-        # Use a backlog of 50, which seems to be fairly common.
-        s.listen(50)
-        # Adopt this socket into Twisted's reactor.
-        site_endpoint = AdoptedStreamServerEndpoint(
-            reactor, s.fileno(), s.family
-        )
-        site_endpoint.port = port  # Make it easy to get the port number.
-        site_endpoint.socket = s  # Prevent garbage collection.
-
-        http_service = StreamServerEndpointService(
-            site_endpoint, SiteNoLog(HTTPResource())
-        )
+        # Only reached via the rack's local nginx reverse proxy;
+        # loopback-only. Bind every loopback family the host supports:
+        # clients dialling 127.0.0.1 are not served by a ::1 socket, and
+        # on hosts with IPv6 disabled the ::1 bind itself would fail.
+        site = SiteNoLog(HTTPResource())
+        http_service = MultiService()
         http_service.setName("http_service")
+        for version, address in LOOPBACK_BIND_ADDRESSES:
+            if not _loopback_bind_available(version):
+                continue
+            family = socket.AF_INET6 if version == 6 else socket.AF_INET
+            s = socket.socket(family, socket.SOCK_STREAM)
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            except socket_error as e:
+                if e.errno != ENOPROTOOPT:
+                    raise e
+            s.bind((address, port))
+            # Use a backlog of 50, which seems to be fairly common.
+            s.listen(50)
+            # Adopt this socket into Twisted's reactor.
+            site_endpoint = AdoptedStreamServerEndpoint(
+                reactor, s.fileno(), s.family
+            )
+            site_endpoint.port = port  # Make it easy to get the port number.
+            site_endpoint.socket = s  # Prevent garbage collection.
+            StreamServerEndpointService(site_endpoint, site).setServiceParent(
+                http_service
+            )
         return http_service
 
     def _makeTFTPService(
