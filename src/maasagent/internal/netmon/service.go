@@ -209,9 +209,7 @@ func isValidBinding(b Binding) bool {
 		return false
 	}
 
-	zeroMAC := make(net.HardwareAddr, 6)
-
-	return !bytes.Equal(b.MAC, zeroMAC)
+	return !bytes.Equal(b.MAC, net.HardwareAddr{0, 0, 0, 0, 0, 0})
 }
 
 func isValidARPPacket(pkt *ethernet.ARPPacket) bool {
