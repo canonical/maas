@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Fail when the workshop apt package list drifts from snap/snapcraft.yaml.
+
+Every runtime package staged by the snap must be listed in the workshop
+apt-packages file, and the apt PPAs must match. Extra dev/test packages in
+the file are allowed.
+
+Entries must also be free of surrounding whitespace: setup-base selects them
+with grep and hands them straight to apt-get, which would not tolerate it.
+"""
+
+from pathlib import Path
+import sys
+
+import yaml
+
+ROOT = Path(__file__).resolve().parent.parent
+SNAPCRAFT_YAML = ROOT / "snap" / "snapcraft.yaml"
+APT_PACKAGES = ROOT / ".workshop" / "maas-deps" / "files" / "apt-packages"
+# python-runtime is excluded on purpose: it stages the interpreter the snap
+# ships, while the workshop uses the one from its own base image.
+SNAP_PARTS = ("maas", "maas-slices")
+
+
+def snap_runtime_packages(snapcraft: dict) -> set[str]:
+    # Slice names such as "bind9_core" resolve to the real package "bind9".
+    return {
+        package.split("_", 1)[0]
+        for part in SNAP_PARTS
+        for package in snapcraft["parts"][part].get("stage-packages", [])
+    }
+
+
+def snap_ppas(snapcraft: dict) -> set[str]:
+    return {
+        f"ppa:{repository['ppa']}"
+        for repository in snapcraft.get("package-repositories", [])
+        if repository["type"] == "apt"
+    }
+
+
+def listed_packages_and_ppas(
+    text: str,
+) -> tuple[set[str], set[str], list[int]]:
+    packages: set[str] = set()
+    ppas: set[str] = set()
+    padded: list[int] = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        if not line or line.startswith("#"):
+            continue
+        if line != line.strip():
+            padded.append(number)
+            continue
+        (ppas if line.startswith("ppa:") else packages).add(line)
+    return packages, ppas, padded
+
+
+def main() -> int:
+    snapcraft = yaml.safe_load(SNAPCRAFT_YAML.read_text())
+    listed_packages, listed_ppas, padded = listed_packages_and_ppas(
+        APT_PACKAGES.read_text()
+    )
+
+    missing = sorted(snap_runtime_packages(snapcraft) - listed_packages)
+    ppa_drift = sorted(snap_ppas(snapcraft) ^ listed_ppas)
+
+    if missing:
+        print(f"missing from {APT_PACKAGES.name}: {', '.join(missing)}")
+    if ppa_drift:
+        print(f"PPA mismatch with snapcraft.yaml: {', '.join(ppa_drift)}")
+    if padded:
+        lines = ", ".join(str(number) for number in padded)
+        print(f"whitespace around entry in {APT_PACKAGES.name}: {lines}")
+    return 1 if missing or ppa_drift or padded else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

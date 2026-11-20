@@ -6,27 +6,24 @@ on:
 
 permissions:
   contents: write
-  packages: read
 
 
 jobs:
   update-sql:
     runs-on: ubuntu-24.04
-    container:
-      image: ghcr.io/${{ github.repository }}-build-env:master
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
     - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
       with:
         token: ${{ secrets.LANDER_GH_TOKEN }}
-    - uses: ./.github/actions/ci-setup
+    - uses: canonical/launch-workshop@b9e184e38f49808ced78e25de19483fe02484c46 # v1.0.1
+      with:
+        cache: |
+          go:mod-cache
+          uv:cache
 
     - name: Update and Commit
       run: |
-        su ubuntu -c "make update-initial-sql"
+        workshop run -- update-initial-sql
         git config user.name "${{ vars.LANDER_USERNAME }}"
         git config user.email "${{ vars.LANDER_EMAIL }}"
         git add src/maasserver/testing/initial.maas_test.sql
