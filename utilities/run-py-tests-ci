@@ -36,14 +36,29 @@ if [ "$RUN_TESTS" = true ]; then
     echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
     echo "MAX_PROCESSES=${MAX_PROCESSES}"
 
+    # Optional coverage mode: when PY_COV_DIR is set, run each leg under
+    # pytest-cov (which covers the xdist workers too), writing one
+    # combined-per-leg data file into that directory.
+    COV_ARGS=()
+    RACK_COV=()
+    REGION_COV=()
+    MAIN_COV=()
+    if [ -n "${PY_COV_DIR:-}" ]; then
+        mkdir -p "${PY_COV_DIR}"
+        COV_ARGS=(--cov=src --cov-branch --cov-report=)
+        RACK_COV=("COVERAGE_FILE=${PY_COV_DIR}/coverage-rack-legacy.py.cover")
+        REGION_COV=("COVERAGE_FILE=${PY_COV_DIR}/coverage-region-legacy.py.cover")
+        MAIN_COV=("COVERAGE_FILE=${PY_COV_DIR}/coverage-main.py.cover")
+    fi
+
     # Rack-legacy leg: the 39 MAASTwistedRunTest files (idea 004), which
     # need the process free of the always-on crochet reactor. Runs the
     # whole src/provisioningserver tree (nose's --select-dir walk finds
     # exactly these 39 after F05 relocated the rest to src/tests/).
-    MAAS_PYTEST_NO_CROCHET=1 \
+    MAAS_PYTEST_NO_CROCHET=1 env "${RACK_COV[@]}" \
         bin/pytest src/provisioningserver \
         -n auto --maxprocesses="${MAX_PROCESSES}" --dist=load \
-        --junit-xml=junit-rack-legacy.xml
+        --junit-xml=junit-rack-legacy.xml "${COV_ARGS[@]}"
     res1=$?
 
     # Region-legacy leg: the 10 legacy-tagged classes (idea 002), which
@@ -53,14 +68,16 @@ if [ "$RUN_TESTS" = true ]; then
     mapfile -t LEGACY_FILES < <(grep -rl \
         'MAASLegacyServerTestCase\|MAASLegacyTransactionServerTestCase\|DjangoTestCase\|DjangoTransactionTestCase' \
         src/maasserver src/metadataserver --include='test_*.py')
-    MAAS_PREVENT_MIGRATIONS=1 \
+    MAAS_PREVENT_MIGRATIONS=1 env "${REGION_COV[@]}" \
         bin/pytest "${LEGACY_FILES[@]}" \
         -n auto --maxprocesses="${MAX_PROCESSES}" --dist=load \
-        --junit-xml=junit-region-legacy.xml
+        --junit-xml=junit-region-legacy.xml "${COV_ARGS[@]}"
     res2=$?
 
     # Main suite: everything under src/tests/.
-    bin/pytest -n auto --maxprocesses="${MAX_PROCESSES}" --dist=load --junit-xml=junit-pytest.xml
+    env "${MAIN_COV[@]}" \
+        bin/pytest -n auto --maxprocesses="${MAX_PROCESSES}" --dist=load \
+        --junit-xml=junit-pytest.xml "${COV_ARGS[@]}"
     res3=$?
     exit $((res1 + res2 + res3))
 else

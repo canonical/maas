@@ -159,6 +159,12 @@ test-py: bin/pytest
 	@utilities/run-py-tests-ci
 .PHONY: test-py
 
+# Run the Python suites under pytest-cov, writing one coverage data file
+# per leg into .coverage/ (consumed by the TiCS coverage workflow).
+test-py-cover: bin/pytest
+	@PY_COV_DIR=.coverage utilities/run-py-tests-ci
+.PHONY: test-py-cover
+
 test-go:
 	@find src -maxdepth 3 -type f -name go.mod -execdir sh -c "make test" {} +
 .PHONY: test-go
