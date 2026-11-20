@@ -10,7 +10,7 @@ clients:
 scrape_configs:
   - job_name: maas-audit
     syslog:
-      listen_address: 127.0.0.1:${PROMTAIL_LISTEN_PORT:5238}
+      listen_address: "127.0.0.1:${PROMTAIL_LISTEN_PORT:-5238}"
       labels:
         job: "maas-audit"
         host: ${HOSTNAME}
