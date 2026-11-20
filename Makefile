@@ -353,7 +353,6 @@ clean: clean-ui clean-go-bins
 	$(RM) -r .run
 	$(RM) junit*.xml
 	$(RM) xunit.*.xml
-	$(RM) .noseids
 	$(RM) .failed
 	$(RM) -r $(VENV)
 	$(RM) -r .tox

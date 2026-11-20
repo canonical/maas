@@ -20,7 +20,7 @@
 ## Testing / Verification
 
 - Lint: `make lint`
-- Test (Python): `make test`; region-specific: `bin/test.region`
+- Test (Python): `make test`; a subset directly: `bin/pytest <path>`
 - Test (Go): `cd src/maasagent && make test`; `cd src/host-info && go test ./...`
 
 ## Constraints

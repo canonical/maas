@@ -265,7 +265,7 @@ Key points:
     - Follow Django model conventions for existing models
     - Maintain backward compatibility with existing APIs
     - Add new functionality to service layer when possible
-- **Testing**: Use Django test fixtures and `testtools`. Run tests with `bin/test.region`
+- **Testing**: Use Django test fixtures and `testtools` (the legacy-style test base). Run tests with `bin/pytest` (or `make test`)
 - **Notes**: This is legacy code; prefer adding new features to the v3 API when feasible
 
 ### `src/maasapiserver`

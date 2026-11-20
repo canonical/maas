@@ -118,20 +118,24 @@ To run the whole suite::
 
     $ make test
 
-To run tests at a lower level of granularity::
+To run tests at a lower level of granularity, pass a path to `pytest`::
 
-    $ ./bin/test.region src/maasserver/tests/test_api.py
-    $ ./bin/test.region src/maasserver/tests/test_api.py:AnonymousEnlistmentAPITest
+    $ ./bin/pytest src/tests/maasserver/api/test_api.py
+    $ ./bin/pytest src/tests/maasserver/api/test_api.py::AnonymousEnlistmentAPITest
 
-Tests within provisioningserver are run with `test.rack` not `test.region` e.g.::
+Most tests live under ``src/tests/``, mirroring the source package layout.
 
-    $ ./bin/test.rack src/provisioningserver/drivers/power/tests/test_mscm.py
+A small set of legacy tests cannot run in the main process and instead run
+in dedicated legs via ``utilities/run-py-tests-ci``: the
+``MAASTwistedRunTest``-based rack tests (which need the process free of the
+always-on crochet reactor) and the Django-``TestCase``-based region tests
+(which need ``MAAS_PREVENT_MIGRATIONS=1``).
 
-The test runner is `nose`_, so you can pass in options like ``--nocapture``
-(short option: ``-s``). This option is essential when using ``pdb`` so that
-stdout is not adulterated.
+The test runner is `pytest`_, so you can pass in options like ``-s``
+(disable output capture). This option is essential when using ``pdb`` so
+that stdout is not adulterated.
 
-.. _nose: http://readthedocs.org/docs/nose/en/latest/
+.. _pytest: https://docs.pytest.org/
 
 .. Note::
 
@@ -143,16 +147,15 @@ stdout is not adulterated.
    server will solve the issue.
 
 
-Emitting subunit
-^^^^^^^^^^^^^^^^
+Emitting JUnit XML
+^^^^^^^^^^^^^^^^^^
 
-Pass the ``--with-subunit`` flag to any of the test runners (e.g.
-``bin/test.rack``) to produce a `subunit`_ stream of test results. This
-may be useful for parallelising test runs, or to allow later analysis of
-a test run. The optional ``--subunit-fd`` flag can be used to direct the
-results to a different file descriptor, to ensure a clean stream.
+Pass pytest's ``--junit-xml`` flag to write test results as `JUnit XML`_
+for later analysis or reporting. ``utilities/run-py-tests-ci`` uses this
+to produce one report per leg (``junit-pytest.xml``,
+``junit-rack-legacy.xml``, ``junit-region-legacy.xml``).
 
-.. _subunit: https://launchpad.net/subunit/
+.. _JUnit XML: https://docs.pytest.org/en/stable/how-to/output.html#creating-junitxml-format-files
 
 
 Development MAAS server setup

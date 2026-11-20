@@ -2,7 +2,7 @@
 #
 # Helpers to run tests in CI.
 #
-# This runs both nose- and pytest-based tests, and fails if any of the
+# This runs the pytest test suite, and fails if any of the
 # processes fails. If PARENT is set and the git diff with the parent is
 # only about docs changes, then we skip the tests.
 
