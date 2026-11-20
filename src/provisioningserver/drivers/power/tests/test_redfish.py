@@ -26,6 +26,7 @@ import provisioningserver.drivers.power.redfish as redfish_module
 from provisioningserver.drivers.power.redfish import (
     REDFISH_POWER_CONTROL_ENDPOINT,
     RedfishPowerDriver,
+    RedfishRequestRejectedError,
     WebClientContextFactory,
 )
 from provisioningserver.enum import POWER_STATE
@@ -502,11 +503,12 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_readBody = self.patch(redfish_module, "readBody")
 
         with self.assertRaisesRegex(
-            PowerActionError,
-            r"^Redfish request failed with response status code: HTTPStatus.BAD_REQUEST\.$",
+            RedfishRequestRejectedError,
+            rf"^Redfish request failed with response status code: {HTTPStatus.BAD_REQUEST}\.$",
         ):
             yield driver.redfish_request(b"GET", uri, headers)
         mock_readBody.assert_not_called()
+        mock_agent.return_value.request.assert_called_once()
 
     @inlineCallbacks
     def test_power_issues_power_reset(self):
@@ -697,7 +699,6 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
         mock_file_body_producer.return_value = payload
         boot_endpoint = join(b"redfish/v1/Systems", b"%s" % node_id)
-        self.patch(driver, "get_boot_endpoint").return_value = boot_endpoint
         mock_redfish_request = self.patch(driver, "redfish_request")
         mock_get_etag = self.patch(driver, "get_etag")
         mock_get_etag.return_value = None
@@ -743,7 +744,6 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
         mock_file_body_producer.return_value = payload
         boot_endpoint = join(b"redfish/v1/Systems", b"%s" % node_id)
-        self.patch(driver, "get_boot_endpoint").return_value = boot_endpoint
         mock_redfish_request = self.patch(driver, "redfish_request")
         mock_get_etag = self.patch(driver, "get_etag")
         mock_get_etag.return_value = b"1631210000"
@@ -815,33 +815,49 @@ class TestRedfishPowerDriver(MAASTestCase):
         self.assertEqual(b"redfish/v1/Systems/1", endpoint)
 
     @inlineCallbacks
-    def test_set_pxe_boot_executes_patch_on_discovered_endpoint(self):
+    def test_set_pxe_boot_falls_back_to_settings_object_when_rejected(self):
         driver = RedfishPowerDriver()
         context = make_context()
         url = driver.get_url(context)
         node_id = b"1"
         headers = driver.make_auth_headers(**context)
-
-        self.patch(redfish_module, "FileBodyProducer").return_value = None
         self.patch(driver, "get_etag").return_value = None
-
-        # Force get_boot_endpoint to return our targeted Settings URL
         self.patch(
             driver, "get_boot_endpoint"
         ).return_value = b"redfish/v1/Systems/1/Settings"
-
         mock_redfish_request = self.patch(driver, "redfish_request")
-        mock_redfish_request.return_value = (b"", {})
+        mock_redfish_request.side_effect = [
+            RedfishRequestRejectedError("BOOM"),
+            succeed((None, None)),
+        ]
 
         yield driver.set_pxe_boot(url, node_id, headers)
 
-        # Assert the PATCH is issued directly to the endpoint returned by get_boot_endpoint
-        self.assertEqual(1, len(mock_redfish_request.mock_calls))
-        self.assertEqual(b"PATCH", mock_redfish_request.mock_calls[0].args[0])
         self.assertEqual(
-            join(url, b"redfish/v1/Systems/1/Settings"),
-            mock_redfish_request.mock_calls[0].args[1],
+            [
+                (b"PATCH", join(url, b"redfish/v1/Systems/1")),
+                (b"PATCH", join(url, b"redfish/v1/Systems/1/Settings")),
+            ],
+            [c.args[:2] for c in mock_redfish_request.mock_calls],
         )
+
+    @inlineCallbacks
+    def test_set_pxe_boot_raises_when_rejected_without_settings_object(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        node_id = b"1"
+        headers = driver.make_auth_headers(**context)
+        self.patch(driver, "get_etag").return_value = None
+        self.patch(
+            driver, "get_boot_endpoint"
+        ).return_value = b"redfish/v1/Systems/1"
+        mock_redfish_request = self.patch(driver, "redfish_request")
+        mock_redfish_request.side_effect = RedfishRequestRejectedError("BOOM")
+
+        with self.assertRaisesRegex(RedfishRequestRejectedError, "^BOOM$"):
+            yield driver.set_pxe_boot(url, node_id, headers)
+        mock_redfish_request.assert_called_once()
 
     @inlineCallbacks
     def test_redfish_request_retry_refreshed_etag(self):
