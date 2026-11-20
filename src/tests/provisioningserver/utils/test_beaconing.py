@@ -260,8 +260,7 @@ class TestObserveBeaconsCommand(MAASTestCase):
         add_arguments(parser)
         args = parser.parse_args(["--input-file", "-"])
         output = io.StringIO()
-        stdin = self.patch(beaconing_module.sys, "stdin")
-        stdin.return_value.fileno = Mock()
+        stdin = Mock()
         fstat = self.patch(beaconing_module.os, "fstat")
         fstat.return_value.st_mode = None
         stat = self.patch(beaconing_module.stat, "S_ISFIFO")
@@ -269,21 +268,20 @@ class TestObserveBeaconsCommand(MAASTestCase):
         with self.assertRaisesRegex(
             ActionScriptError, "Expected stdin to be a pipe"
         ):
-            run(args, output=output)
+            run(args, output=output, stdin=stdin)
 
     def test_allows_pipe_input(self):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args(["--input-file", "-"])
         output = io.StringIO()
-        stdin = self.patch(beaconing_module.sys, "stdin")
-        stdin.return_value.fileno = Mock()
+        stdin = Mock()
         fstat = self.patch(beaconing_module.os, "fstat")
         fstat.return_value.st_mode = None
         stat = self.patch(beaconing_module.stat, "S_ISFIFO")
         stat.return_value = True
         stdin_buffer = io.BytesIO(BEACON_PCAP)
-        run(args, output=output, stdin_buffer=stdin_buffer)
+        run(args, output=output, stdin=stdin, stdin_buffer=stdin_buffer)
 
     def test_allows_file_input(self):
         with NamedTemporaryFile("wb") as f:
