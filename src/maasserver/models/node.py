@@ -4251,7 +4251,8 @@ class Node(CleanSave, TimestampedModel):
             else:
                 if power_state == POWER_STATE.OFF:
                     self.update_status(self.previous_status)
-                    self.owner = None
+                    if self.previous_status not in ALLOCATED_NODE_STATUSES:
+                        self.owner = None
                     # Create a status message for EXITED_RESCUE_MODE.
                     Event.objects.create_node_event(
                         self, EVENT_TYPES.EXITED_RESCUE_MODE
@@ -6580,7 +6581,7 @@ class Node(CleanSave, TimestampedModel):
         # If the power state cannot be queried(manual power type) transition
         # to the previous state right away.
         if not self.get_effective_power_info().can_be_queried:
-            if self.previous_status != NODE_STATUS.DEPLOYED:
+            if self.previous_status not in ALLOCATED_NODE_STATUSES:
                 self.owner = None
             self.update_status(self.previous_status)
             self.save()
