@@ -5,6 +5,7 @@ from typing import Callable, Self
 
 from maasservicelayer.context import Context
 from maasservicelayer.db.repositories.agents import AgentsRepository
+from maasservicelayer.db.repositories.bmcs import BmcsRepository
 from maasservicelayer.db.repositories.bootresourcefiles import (
     BootResourceFilesRepository,
 )
@@ -130,6 +131,7 @@ from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.base import ServiceCache
+from maasservicelayer.services.bmcs import BmcsService
 from maasservicelayer.services.boot_sources import BootSourcesService
 from maasservicelayer.services.bootresourcefiles import (
     BootResourceFilesService,
@@ -145,6 +147,7 @@ from maasservicelayer.services.bootsourceselections import (
     BootSourceSelectionStatusService,
 )
 from maasservicelayer.services.bootstraptoken import BootstrapTokensService
+from maasservicelayer.services.commissioning import CommissioningService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.consumers import ConsumersService
 from maasservicelayer.services.database_configurations import (
@@ -271,6 +274,7 @@ class ServiceCollectionV3:
     boot_source_selection_status: BootSourceSelectionStatusService
     bootstraptokens: BootstrapTokensService
     database_configurations: DatabaseConfigurationsService
+    commissioning: CommissioningService
     configurations: ConfigurationsService
     consumers: ConsumersService
     dhcp: DHCPService
@@ -278,6 +282,7 @@ class ServiceCollectionV3:
     django_session: DjangoSessionService
     dnsdata: DNSDataService
     dnspublications: DNSPublicationsService
+    bmcs: BmcsService
     dnsresources: DNSResourcesService
     domains: DomainsService
     events: EventsService
@@ -550,10 +555,15 @@ class ServiceCollectionV3:
             dnspublications_service=services.dnspublications,
             dnsresource_repository=DNSResourceRepository(context),
         )
+        services.bmcs = BmcsService(
+            context=context,
+            bmcs_repository=BmcsRepository(context),
+        )
         services.staticipaddress = StaticIPAddressService(
             context=context,
             temporal_service=services.temporal,
             dnsresources_service=services.dnsresources,
+            bmcs_service=services.bmcs,
             staticipaddress_repository=StaticIPAddressRepository(context),
         )
         services.ipranges = IPRangesService(
@@ -794,5 +804,11 @@ class ServiceCollectionV3:
         services.nodeuserdata = NodeUserDataService(
             context=context,
             nodeuserdata_repository=NodeUserDataRepository(context),
+        )
+        services.commissioning = CommissioningService(
+            context=context,
+            interfaces_service=services.interfaces,
+            nodes_service=services.nodes,
+            staticipaddress_service=services.staticipaddress,
         )
         return services

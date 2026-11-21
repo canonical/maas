@@ -17,6 +17,7 @@ class BmcBuilder(ResourceBuilder):
     """
 
     created: datetime | Unset = Field(default=UNSET)
+    ip_address_id: int | None | Unset = Field(default=UNSET)
     power_parameters: dict | Unset = Field(default=UNSET)
     power_type: PowerTypeEnum | Unset = Field(default=UNSET)
     updated: datetime | Unset = Field(default=UNSET)

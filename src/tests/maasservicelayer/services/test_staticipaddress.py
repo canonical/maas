@@ -12,9 +12,11 @@ from maascommon.workflows.dhcp import (
     CONFIGURE_DHCP_WORKFLOW_NAME,
     merge_configure_dhcp_param,
 )
+from maasservicelayer.builders.bmc import BmcBuilder
 from maasservicelayer.builders.staticipaddress import StaticIPAddressBuilder
 from maasservicelayer.context import Context
 from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.bmcs import BmcClauseFactory
 from maasservicelayer.db.repositories.staticipaddress import (
     StaticIPAddressRepository,
 )
@@ -23,11 +25,13 @@ from maasservicelayer.models.interfaces import Interface
 from maasservicelayer.models.staticipaddress import StaticIPAddress
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services.base import BaseService
+from maasservicelayer.services.bmcs import BmcsService
 from maasservicelayer.services.dnsresources import DNSResourcesService
 from maasservicelayer.services.staticipaddress import StaticIPAddressService
 from maasservicelayer.services.temporal import TemporalService
 from maasservicelayer.utils.date import utcnow
 from maastemporalworker.workflow.dhcp import ConfigureDHCPParam
+from tests.fixtures.factories.bmc import create_test_bmc_entry
 from tests.fixtures.factories.dnsdata import create_test_dnsdata_entry
 from tests.fixtures.factories.dnsresource import create_test_dnsresource_entry
 from tests.fixtures.factories.domain import create_test_domain_entry
@@ -43,10 +47,13 @@ from tests.maasservicelayer.services.base import ServiceCommonTests
 class TestCommonStaticIPAddressService(ServiceCommonTests):
     @pytest.fixture
     def service_instance(self) -> BaseService:
+        bmcs_service = Mock(BmcsService)
+        bmcs_service.exists.return_value = False
         return StaticIPAddressService(
             context=Context(),
             temporal_service=Mock(TemporalService),
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=bmcs_service,
             staticipaddress_repository=Mock(StaticIPAddressRepository),
         )
 
@@ -114,6 +121,7 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=Mock(BmcsService),
             staticipaddress_repository=repository_mock,
         )
 
@@ -161,6 +169,7 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=Mock(BmcsService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -203,6 +212,7 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=Mock(BmcsService),
             staticipaddress_repository=repository_mock,
         )
 
@@ -248,6 +258,7 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=Mock(BmcsService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -306,6 +317,7 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=Mock(BmcsService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -360,6 +372,7 @@ class TestStaticIPAddressService:
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=Mock(BmcsService),
         )
 
         await staticipaddress_service.update_by_id(
@@ -402,6 +415,7 @@ class TestStaticIPAddressService:
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=Mock(BmcsService),
         )
 
         await staticipaddress_service.update_by_id(
@@ -441,6 +455,7 @@ class TestStaticIPAddressService:
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=Mock(BmcsService),
         )
 
         await staticipaddress_service.update_by_id(
@@ -479,6 +494,7 @@ class TestStaticIPAddressService:
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=Mock(BmcsService),
         )
 
         await staticipaddress_service.update_by_id(
@@ -519,6 +535,7 @@ class TestStaticIPAddressService:
             temporal_service=mock_temporal,
             staticipaddress_repository=mock_staticipaddress_repository,
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=Mock(BmcsService),
         )
 
         await staticipaddress_service.update_by_id(
@@ -560,6 +577,7 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=Mock(BmcsService),
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -603,6 +621,8 @@ class TestStaticIPAddressService:
         mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
         mock_staticipaddress_repository.get_by_id.return_value = sip
         mock_staticipaddress_repository.delete_by_id.return_value = sip
+        mock_bmcs_service = Mock(BmcsService)
+        mock_bmcs_service.exists.return_value = False
         mock_dnsresources_service = Mock(DNSResourcesService)
         mock_dnsresources_service.get_dnsresources_for_ip.return_value = []
 
@@ -612,6 +632,7 @@ class TestStaticIPAddressService:
             context=Context(),
             temporal_service=mock_temporal,
             dnsresources_service=mock_dnsresources_service,
+            bmcs_service=mock_bmcs_service,
             staticipaddress_repository=mock_staticipaddress_repository,
         )
 
@@ -635,6 +656,63 @@ class TestStaticIPAddressService:
             ),
             parameter_merge_func=merge_configure_dhcp_param,
             wait=False,
+        )
+
+    async def test_delete_recreates_sticky_ip_for_bmcs(self) -> None:
+        now = utcnow()
+        sip = StaticIPAddress(
+            id=2,
+            ip="10.0.0.2",
+            lease_time=30,
+            subnet_id=1,
+            alloc_type=IpAddressType.AUTO,
+            created=now,
+            updated=now,
+        )
+        recreated_sip = StaticIPAddress(
+            id=3,
+            ip="10.0.0.2",
+            lease_time=0,
+            subnet_id=1,
+            alloc_type=IpAddressType.STICKY,
+            created=now,
+            updated=now,
+        )
+
+        mock_staticipaddress_repository = Mock(StaticIPAddressRepository)
+        mock_staticipaddress_repository.get_by_id.return_value = sip
+        mock_staticipaddress_repository.delete_by_id.return_value = sip
+        mock_staticipaddress_repository.create.return_value = recreated_sip
+        mock_bmcs_service = Mock(BmcsService)
+        mock_bmcs_service.exists.return_value = True
+        mock_dnsresources_service = Mock(DNSResourcesService)
+        mock_dnsresources_service.get_dnsresources_for_ip.return_value = []
+
+        staticipaddress_service = StaticIPAddressService(
+            context=Context(),
+            temporal_service=Mock(TemporalService),
+            dnsresources_service=mock_dnsresources_service,
+            bmcs_service=mock_bmcs_service,
+            staticipaddress_repository=mock_staticipaddress_repository,
+        )
+
+        await staticipaddress_service.delete_by_id(id=sip.id)
+
+        mock_staticipaddress_repository.create.assert_called_once_with(
+            builder=StaticIPAddressBuilder(
+                ip=sip.ip,
+                alloc_type=IpAddressType.STICKY,
+                subnet_id=sip.subnet_id,
+                lease_time=0,
+            )
+        )
+        bmcs_using_ip = QuerySpec(
+            where=BmcClauseFactory.with_ip_address_id(sip.id)
+        )
+        mock_bmcs_service.exists.assert_called_once_with(query=bmcs_using_ip)
+        mock_bmcs_service.update_many.assert_called_once_with(
+            query=bmcs_using_ip,
+            builder=BmcBuilder(ip_address_id=recreated_sip.id),
         )
 
 
@@ -843,6 +921,43 @@ class TestStaticIPAddressServiceIntegration:
         assert len(ips_after) == 1
         assert ips_after[0].id == sip2["id"]
 
+    @pytest.mark.allow_transactions
+    async def test_delete_recreates_sticky_ip_for_bmc_integration(
+        self, services, fixture, db_connection
+    ):
+        subnet = await create_test_subnet_entry(fixture, cidr="10.0.0.0/24")
+        [shared_ip] = await create_test_staticipaddress_entry(
+            fixture, subnet=subnet, alloc_type=IpAddressType.AUTO
+        )
+        bmc = await create_test_bmc_entry(
+            fixture, ip_address_id=shared_ip["id"]
+        )
+        await create_test_interface_entry(fixture, ips=[shared_ip])
+        # Commit the setup so the commit below checks only the delete.
+        await db_connection.commit()
+
+        await services.staticipaddress.delete_by_id(shared_ip["id"])
+        # The BMC foreign key is deferred, so a BMC still pointing at the
+        # deleted address only fails here, at commit.
+        await db_connection.commit()
+
+        assert (
+            await services.staticipaddress.get_by_id(shared_ip["id"]) is None
+        )
+
+        # The BMC keeps an address so MAAS can still reach it for power
+        updated_bmc = await services.bmcs.get_by_id(bmc["id"])
+        assert updated_bmc is not None
+        assert updated_bmc.ip_address_id is not None
+        new_ip = await services.staticipaddress.get_by_id(
+            updated_bmc.ip_address_id
+        )
+        assert new_ip is not None
+        # A fresh STICKY address for the same IP and subnet.
+        assert new_ip.alloc_type == IpAddressType.STICKY
+        assert str(new_ip.ip) == str(shared_ip["ip"])
+        assert new_ip.subnet_id == subnet["id"]
+
     async def test_get_ips_for_interfaces_without_other_links(self) -> None:
         """Test getting IP addresses that would be orphaned."""
         repository_mock = Mock(StaticIPAddressRepository)
@@ -874,6 +989,7 @@ class TestStaticIPAddressServiceIntegration:
             context=Context(),
             temporal_service=Mock(TemporalService),
             dnsresources_service=Mock(DNSResourcesService),
+            bmcs_service=Mock(BmcsService),
             staticipaddress_repository=repository_mock,
         )
 
