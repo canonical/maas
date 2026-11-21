@@ -1,41 +1,18 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test custom field types."""
+"""Test custom field types.
 
-from base64 import b64encode
+Legacy-tagged (`MAASLegacyTransactionServerTestCase`): these classes
+need a Django-migrate test DB and run in the dedicated region-legacy
+pytest leg (`MAAS_PREVENT_MIGRATIONS=1`, see utilities/run-py-tests-ci).
+The gap-free `TestBin` class has already been relocated to
+`src/tests/metadataserver/test_fields.py`.
+"""
 
-from maasserver.testing.testcase import (
-    MAASLegacyTransactionServerTestCase,
-    MAASServerTestCase,
-)
-from maastesting.factory import factory
+from maasserver.testing.testcase import MAASLegacyTransactionServerTestCase
 from metadataserver.fields import Bin, BinaryField
 from metadataserver.tests.models import BinaryFieldModel
-
-
-class TestBin(MAASServerTestCase):
-    """Test Bin helper class."""
-
-    def test_is_basically_bytes(self):
-        self.assertEqual(b"Hello", Bin(b"Hello"))
-
-    def test_refuses_to_construct_from_unicode(self):
-        self.assertRaises(AssertionError, Bin, "Hello")
-
-    def test_refuses_to_construct_from_None(self):
-        self.assertRaises(AssertionError, Bin, None)
-
-    def test_emits_base64(self):
-        # Piston hooks onto an __emittable__() method, if present.
-        # Bin() returns a base-64 encoded string so that it can be
-        # transmitted in JSON.
-        self.assertEqual("", Bin(b"").__emittable__())
-        example_bytes = factory.make_bytes()
-        self.assertEqual(
-            b64encode(example_bytes).decode("ascii"),
-            Bin(example_bytes).__emittable__(),
-        )
 
 
 class TestBinaryField(MAASLegacyTransactionServerTestCase):
@@ -51,28 +28,28 @@ class TestBinaryField(MAASLegacyTransactionServerTestCase):
 
     def test_stores_and_retrieves_empty_data(self):
         binary_item = BinaryFieldModel(data=Bin(b""))
-        self.assertEqual(b"", binary_item.data)
         binary_item.save()
         self.assertEqual(
-            b"", BinaryFieldModel.objects.get(id=binary_item.id).data
+            Bin(b""),
+            BinaryFieldModel.objects.get(id=binary_item.id).data,
         )
 
     def test_does_not_truncate_at_zero_bytes(self):
         data = b"BEFORE THE ZERO\x00AFTER THE ZERO"
         binary_item = BinaryFieldModel(data=Bin(data))
-        self.assertEqual(data, binary_item.data)
         binary_item.save()
         self.assertEqual(
-            data, BinaryFieldModel.objects.get(id=binary_item.id).data
+            data,
+            BinaryFieldModel.objects.get(id=binary_item.id).data,
         )
 
     def test_stores_and_retrieves_binary_data(self):
         data = b"\x01\x02\xff\xff\xfe\xff\xff\xfe"
         binary_item = BinaryFieldModel(data=Bin(data))
-        self.assertEqual(data, binary_item.data)
         binary_item.save()
         self.assertEqual(
-            data, BinaryFieldModel.objects.get(id=binary_item.id).data
+            data,
+            BinaryFieldModel.objects.get(id=binary_item.id).data,
         )
 
     def test_returns_bytes_not_text(self):
@@ -86,7 +63,8 @@ class TestBinaryField(MAASLegacyTransactionServerTestCase):
         binary_item = BinaryFieldModel(data=Bin(data))
         binary_item.save()
         self.assertEqual(
-            binary_item, BinaryFieldModel.objects.get(data=Bin(data))
+            binary_item,
+            BinaryFieldModel.objects.get(data=Bin(data)),
         )
 
     def test_get_default_returns_None(self):

@@ -1,17 +1,14 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from random import randint
 
 from django.db import transaction
 from django.utils import timezone
 
 from maasserver.models.timestampedmodel import now
-from maasserver.testing.testcase import (
-    MAASLegacyTransactionServerTestCase,
-    MAASServerTestCase,
-)
+from maasserver.testing.testcase import MAASLegacyTransactionServerTestCase
 from maasserver.tests.models import (
     GenericTestModel,
     TimestampedModelTestModel,
@@ -116,8 +113,3 @@ class TestTimestampedModel(MAASLegacyTransactionServerTestCase):
         ts_1to1.save()
         self.assertIsNotNone(ts_1to1.created)
         self.assertIsNotNone(ts_1to1.updated)
-
-
-class TestUtilities(MAASServerTestCase):
-    def test_now_returns_datetime(self):
-        self.assertIsInstance(now(), datetime)

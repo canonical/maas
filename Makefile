@@ -48,14 +48,7 @@ bin/postgresfixture \
 bin/pyright \
 bin/pytest \
 bin/rackd \
-bin/regiond \
-bin/subunit-1to2 \
-bin/subunit2junitxml \
-bin/subunit2pyunit \
-bin/test.parallel \
-bin/test.rack \
-bin/test.region \
-bin/test.region.legacy
+bin/regiond
 endef
 
 UI_BUILD := src/maasui/build
@@ -159,17 +152,15 @@ build-openfga:
 test: test-py test-go
 .PHONY: test
 
-test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyunit bin/pytest
-	@utilities/run-py-tests-ci all
+test-py: bin/pytest
+	@utilities/run-py-tests-ci
 .PHONY: test-py
 
-test-py-legacy: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyunit
-	@utilities/run-py-tests-ci legacy
-.PHONY: test-py-legacy
-
-test-py-pytest: bin/pytest
-	@utilities/run-py-tests-ci pytest
-.PHONY: test-py-pytest
+# Run the Python suites under pytest-cov, writing one coverage data file
+# per leg into .coverage/ (consumed by the TiCS coverage workflow).
+test-py-cover: bin/pytest
+	@PY_COV_DIR=.coverage utilities/run-py-tests-ci
+.PHONY: test-py-cover
 
 test-go:
 	@find src -maxdepth 3 -type f -name go.mod -execdir sh -c "make test" {} +
@@ -365,7 +356,6 @@ clean: clean-ui clean-go-bins
 	$(RM) -r .run
 	$(RM) junit*.xml
 	$(RM) xunit.*.xml
-	$(RM) .noseids
 	$(RM) .failed
 	$(RM) -r $(VENV)
 	$(RM) -r .tox

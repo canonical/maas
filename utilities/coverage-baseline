@@ -1,0 +1,321 @@
+#!/usr/bin/env python3
+
+# Copyright 2026 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Capture and check per-package branch-coverage baselines.
+
+Used during the coverage-gated pytest cutover to gate deleting or
+relocating a legacy nose-based package's tests: a package's post-cutover
+pytest-only branch coverage must meet or exceed its pre-cutover baseline,
+within a small tolerance band.
+
+Usage:
+    $ utilities/coverage-baseline capture provisioningserver
+    $ utilities/coverage-baseline check provisioningserver
+
+This is a migration-duration tool, not a permanent CI gate: it is run
+manually by the engineer performing each package cutover, not wired into
+utilities/run-py-tests-ci or any PR-triggered workflow.
+"""
+
+import argparse
+from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+VENV_BIN = REPO_ROOT / ".ve" / "bin"
+BASELINES_DIR = REPO_ROOT / "utilities" / "coverage-baselines"
+
+TOLERANCE_PP = 1.0
+
+# Bumped whenever _package_totals' filter changes, since that makes
+# previously-captured baselines non-comparable. Baselines without this
+# key predate the production-only filter (they counted test files as
+# measured source) and must be recaptured before their numbers mean
+# anything. Version 2 omits test files.
+METRIC_VERSION = 2
+
+
+# The two remaining nose carve-outs now run under pytest in dedicated
+# legs: the MAASTwistedRunTest files under MAAS_PYTEST_NO_CROCHET=1, and
+# the legacy-tagged classes under MAAS_PREVENT_MIGRATIONS=1 with a
+# Django-migrate DB. The legacy files are computed so the list stays
+# correct as the carve-out shrinks.
+def _legacy_files() -> list:
+    result = subprocess.run(
+        [
+            "grep",
+            "-rl",
+            "MAASLegacyServerTestCase\\|MAASLegacyTransactionServerTestCase"
+            "\\|DjangoTestCase\\|DjangoTransactionTestCase",
+            "src/maasserver",
+            "src/metadataserver",
+            "--include=test_*.py",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.split()
+
+
+LEGACY_SUITE_COMMANDS = {
+    "provisioningserver": [str(VENV_BIN / "pytest"), "src/provisioningserver"],
+    "metadataserver": [str(VENV_BIN / "pytest"), *_legacy_files()],
+    "maasserver": [str(VENV_BIN / "pytest"), *_legacy_files()],
+}
+LEGACY_SUITE_ENV = {
+    "provisioningserver": {"MAAS_PYTEST_NO_CROCHET": "1"},
+    "metadataserver": {"MAAS_PREVENT_MIGRATIONS": "1"},
+    "maasserver": {"MAAS_PREVENT_MIGRATIONS": "1"},
+}
+PACKAGES = tuple(LEGACY_SUITE_COMMANDS)
+
+PYTEST_SUITE_COMMAND = [str(VENV_BIN / "pytest"), "src/tests"]
+
+
+def _run_suite(package: str, legacy: bool, coverage_file: Path) -> None:
+    """Run `package`'s test suite(s) under `coverage run`, writing data
+    to `coverage_file`.
+
+    `legacy=True` runs the package's nose suite only (used by `capture`,
+    combined separately with a pytest run). `legacy=False` runs the full
+    pytest suite only (used by both `capture` and `check`).
+
+    A non-zero exit from a suite that still produced coverage data is
+    tolerated: both pytest and nose/Django's `manage.py test` exit 1 on
+    ordinary test failures, and the repo has pre-existing, unrelated
+    failures that must not block every package's baseline. A suite that
+    produced no coverage data at all (crash before any test ran, DB
+    unreachable, binary missing) aborts with exit 2.
+    """
+    command = (
+        LEGACY_SUITE_COMMANDS[package] if legacy else (PYTEST_SUITE_COMMAND)
+    )
+    env = {"COVERAGE_FILE": str(coverage_file)}
+    if legacy:
+        env.update(LEGACY_SUITE_ENV[package])
+    result = subprocess.run(
+        [
+            str(VENV_BIN / "python"),
+            "-m",
+            "coverage",
+            "run",
+            "--rcfile",
+            "pyproject.toml",
+            *command,
+        ],
+        cwd=REPO_ROOT,
+        env={**_base_env(), **env},
+    )
+    if not coverage_file.exists() or coverage_file.stat().st_size == 0:
+        sys.exit(2)
+    if result.returncode != 0:
+        print(
+            f"note: {package} suite (legacy={legacy}) exited "
+            f"{result.returncode} but produced coverage data; "
+            "tolerating (pre-existing unrelated failures)",
+            file=sys.stderr,
+        )
+
+
+def _base_env() -> dict:
+    return dict(os.environ)
+
+
+def _combine(coverage_files: list[Path], into: Path) -> None:
+    """Combine `coverage_files` into a single data file at `into`."""
+    result = subprocess.run(
+        [
+            str(VENV_BIN / "python"),
+            "-m",
+            "coverage",
+            "combine",
+            "--keep",
+            *(str(f) for f in coverage_files),
+        ],
+        cwd=REPO_ROOT,
+        env={**_base_env(), "COVERAGE_FILE": str(into)},
+    )
+    if result.returncode != 0:
+        sys.exit(2)
+
+
+def _package_totals(coverage_file: Path, package: str) -> dict:
+    """Return coverage.py's `totals` dict for `package`'s production
+    source, attributed from the combined `coverage_file` via an
+    `--include` filter (not by scoping which tests ran).
+
+    Test files are omitted. coverage.py expands a trailing `/*`
+    recursively, so `--include` alone counts a package's own test files
+    as measured source — they are ~100% self-covered while their suite
+    runs, and drop to 0% once it stops, which swamps the production
+    signal the baseline exists to protect. For `provisioningserver`,
+    test files were 14,231 of 28,549 counted statements.
+    """
+    result = subprocess.run(
+        [
+            str(VENV_BIN / "python"),
+            "-m",
+            "coverage",
+            "json",
+            "--data-file",
+            str(coverage_file),
+            f"--include=src/{package}/*",
+            "--omit=*/tests/*,*/test_*.py",
+            "-o",
+            "-",
+        ],
+        cwd=REPO_ROOT,
+        env=_base_env(),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        print(result.stderr, file=sys.stderr)
+        sys.exit(2)
+    return json.loads(result.stdout)["totals"]
+
+
+def _capture_one_pass(package: str, workdir: Path) -> dict:
+    """Run the legacy + pytest suites once, combined, and return that
+    package's coverage totals."""
+    legacy_file = workdir / "legacy.coverage"
+    pytest_file = workdir / "pytest.coverage"
+    combined_file = workdir / "combined.coverage"
+    _run_suite(package, legacy=True, coverage_file=legacy_file)
+    _run_suite(package, legacy=False, coverage_file=pytest_file)
+    _combine([legacy_file, pytest_file], into=combined_file)
+    return _package_totals(combined_file, package)
+
+
+def cmd_capture(package: str) -> int:
+    with tempfile.TemporaryDirectory() as tmp:
+        workdir = Path(tmp)
+        run1_dir = workdir / "run1"
+        run2_dir = workdir / "run2"
+        run1_dir.mkdir()
+        run2_dir.mkdir()
+
+        print(f"capturing {package}: pass 1/2...")
+        totals1 = _capture_one_pass(package, run1_dir)
+        print(f"capturing {package}: pass 2/2...")
+        totals2 = _capture_one_pass(package, run2_dir)
+
+    pct1 = totals1["percent_covered"]
+    pct2 = totals2["percent_covered"]
+    delta = abs(pct1 - pct2)
+    if delta > TOLERANCE_PP:
+        print(
+            f"UNSTABLE: {package} coverage varied by {delta:.2f}pp "
+            f"across two runs ({pct1:.2f}% vs {pct2:.2f}%), exceeding "
+            f"the {TOLERANCE_PP}pp tolerance. Baseline not written.",
+            file=sys.stderr,
+        )
+        return 2
+
+    accepted = min(pct1, pct2)
+    totals = totals1 if accepted == pct1 else totals2
+    baseline = {
+        "package": package,
+        "metric_version": METRIC_VERSION,
+        "captured_at": datetime.now(timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z"),
+        "percent_covered": accepted,
+        "num_statements": totals["num_statements"],
+        "num_branches": totals["num_branches"],
+        "stability_runs": [pct1, pct2],
+        "tolerance_pp": TOLERANCE_PP,
+    }
+    BASELINES_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = BASELINES_DIR / f"{package}.json"
+    out_path.write_text(json.dumps(baseline, indent=2) + "\n")
+    print(f"baseline written: {out_path} ({accepted:.2f}%)")
+    return 0
+
+
+def cmd_check(package: str) -> int:
+    baseline_path = BASELINES_DIR / f"{package}.json"
+    if not baseline_path.exists():
+        print(
+            f"no baseline for {package} — run "
+            f"'utilities/coverage-baseline capture {package}' first",
+            file=sys.stderr,
+        )
+        return 2
+    baseline = json.loads(baseline_path.read_text())
+    found_version = baseline.get("metric_version", 1)
+    if found_version != METRIC_VERSION:
+        print(
+            f"stale baseline for {package}: captured under metric "
+            f"version {found_version}, but this tool measures version "
+            f"{METRIC_VERSION}. Version 1 counted test files as "
+            "measured source, so its percentage is not comparable. "
+            f"Recapture with 'utilities/coverage-baseline capture "
+            f"{package}' before relying on this check.",
+            file=sys.stderr,
+        )
+        return 2
+
+    with tempfile.TemporaryDirectory() as tmp:
+        pytest_file = Path(tmp) / "pytest.coverage"
+        _run_suite(package, legacy=False, coverage_file=pytest_file)
+        totals = _package_totals(pytest_file, package)
+
+    current_pct = totals["percent_covered"]
+    baseline_pct = baseline["percent_covered"]
+    delta = current_pct - baseline_pct
+    verdict = "PASS" if delta >= -TOLERANCE_PP else "FAIL"
+
+    print(f"package:    {package}")
+    print(f"baseline:   {baseline_pct:.2f}%")
+    print(f"current:    {current_pct:.2f}%")
+    print(f"delta:      {delta:+.2f}pp")
+    print(f"tolerance:  {TOLERANCE_PP}pp")
+    print(f"verdict:    {verdict}")
+
+    return 0 if verdict == "PASS" else 1
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Capture and check per-package branch-coverage baselines "
+            "for the coverage-gated pytest cutover."
+        )
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    capture_parser = subparsers.add_parser(
+        "capture",
+        help=(
+            "Run a package's legacy + pytest suites twice, and commit "
+            "a baseline if both runs agree within tolerance."
+        ),
+    )
+    capture_parser.add_argument("package", choices=PACKAGES)
+
+    check_parser = subparsers.add_parser(
+        "check",
+        help=(
+            "Run a package's pytest suite and compare against its "
+            "committed baseline."
+        ),
+    )
+    check_parser.add_argument("package", choices=PACKAGES)
+
+    args = parser.parse_args()
+    if args.command == "capture":
+        return cmd_capture(args.package)
+    return cmd_check(args.package)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

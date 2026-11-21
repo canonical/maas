@@ -31,10 +31,6 @@ prevent_migrations = StringBool().to_python(
 if prevent_migrations:
     INSTALLED_APPS += ("maasserver.tests", "metadataserver.tests")
 
-# Use our custom test runner, which makes sure that a local database
-# cluster is running in the branch.
-TEST_RUNNER = "maastesting.djangoloader.MAASDjangoTestRunner"
-
 # Don't connect to the DNS server in development because bind is not running
 # and no access to write into the required directories.
 DNS_CONNECT = False
@@ -114,15 +110,6 @@ PASSWORD_HASHERS = (
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
 )
 
-# This tells django-nose to load the given Nose plugins.
-NOSE_PLUGINS = [
-    "maastesting.noseplug.Crochet",
-    "maastesting.noseplug.Resources",
-    "maastesting.noseplug.Scenarios",
-    "maastesting.noseplug.Select",
-    "maastesting.noseplug.SelectBucket",
-    "maastesting.noseplug.Subunit",
-]
 
 # Fix crooked settings.
 fix_up_databases(DATABASES)

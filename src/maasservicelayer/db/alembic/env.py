@@ -12,10 +12,17 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-# this allows lint-py-imports to pass
-sys.path.insert(0, str(Path(sys.path[0]) / "src"))
+# This allows lint-py-imports to pass. Anchored on __file__ rather than
+# sys.path[0]: alembic execs this file fresh from disk on every
+# migration run (load_module_py deliberately bypasses sys.modules), so
+# deriving the path from the mutable sys.path[0] appended another
+# "/src" segment per run, growing sys.path without bound in processes
+# that run many migrations (e.g. a full test session).
+_src_path = str(Path(__file__).resolve().parents[3])
+if _src_path not in sys.path:
+    sys.path.insert(0, _src_path)
 
-from maasservicelayer.db.tables import METADATA
+from maasservicelayer.db.tables import METADATA  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

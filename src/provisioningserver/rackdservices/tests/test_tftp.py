@@ -37,7 +37,6 @@ from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver import boot
 from provisioningserver.boot import BytesReader
 from provisioningserver.boot.pxe import PXEBootMethod
-from provisioningserver.boot.tests.test_pxe import compose_config_path
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.prometheus.metrics import METRICS_DEFINITIONS
 from provisioningserver.prometheus.utils import create_metrics
@@ -54,7 +53,10 @@ from provisioningserver.rackdservices.tftp import (
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.rpc.region import GetBootConfig
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
+from tests.provisioningserver.boot.test_pxe import compose_config_path
+from tests.provisioningserver.test_kernel_opts import (
+    make_kernel_parameters,
+)
 
 TIMEOUT = get_testing_timeout()
 

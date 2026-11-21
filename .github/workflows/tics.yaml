@@ -47,21 +47,9 @@ jobs:
 
       - name: Run Python tests with coverage
         run: |
-          apt update
-          apt install -y python3-coverage
-
-          declare -A py_tests=(
-              [legacy]=".ve/bin/python -m coverage run bin/test.region.legacy"
-              [region]=".ve/bin/python -m coverage run bin/test.region"
-              [rack]=".ve/bin/python -m coverage run bin/test.rack"
-              [pytest]=".ve/bin/coverage run -m pytest -n auto --dist=load"
-          )
-
-          # Run all suites and generate per-suite XML
-          for mod in "${!py_tests[@]}"; do
-              sudo -u ubuntu bash -lc \
-              "COVERAGE_FILE=$GITHUB_WORKSPACE/.coverage/coverage-$mod.py.cover ${py_tests[$mod]}"
-          done
+          # Runs all legs (main, rack-legacy, region-legacy) under
+          # pytest-cov, writing coverage-<leg>.py.cover into .coverage/.
+          su ubuntu -c "cd '$GITHUB_WORKSPACE' && make test-py-cover"
 
           ls -lah "$GITHUB_WORKSPACE/.coverage"
 

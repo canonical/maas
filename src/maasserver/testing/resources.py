@@ -15,7 +15,8 @@ from postgresfixture import ClusterFixture
 import psycopg2
 from psycopg2.errorcodes import DUPLICATE_DATABASE
 from psycopg2.errors import ObjectInUse
-from testresources import TestResourceManager
+
+from maastesting.resources import TestResourceManager
 
 here = Path(__file__).parent
 

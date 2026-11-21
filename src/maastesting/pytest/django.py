@@ -1,8 +1,20 @@
 import os
 import pathlib
+import tempfile
 
 from django.db import reset_queries, transaction
 import pytest
+
+# MAAS_ROOT must be set before maasserver.djangosettings is imported
+# below: the settings module reads regiond.conf at import time inside a
+# try/except that, on failure (RegionConfiguration falling back to an
+# unreadable /etc/maas), silently skips config-derived values such as
+# USE_JSON_LOGGING. The per-test environment fixture sets MAAS_ROOT too
+# late for this once-per-process import. Point it at a throwaway dir so
+# the import succeeds; the per-test fixture overrides it for actual
+# test bodies via monkeypatch.
+if os.environ.get("MAAS_ROOT") is None:
+    os.environ["MAAS_ROOT"] = tempfile.mkdtemp(prefix="maas-root-")
 
 from maasserver.djangosettings import development
 from maasserver.sqlalchemy import service_layer
@@ -37,12 +49,77 @@ def pytest_load_initial_conftests(early_config, parser, args):
             "maasserver.djangosettings.development"
         )
 
+    # MAAS_ROOT must be set before the settings module is imported:
+    # maasserver.djangosettings.settings reads regiond.conf at import
+    # time inside a try/except that, on failure (e.g. RegionConfiguration
+    # falling back to an unreadable /etc/maas), silently skips setting
+    # USE_JSON_LOGGING and other config-derived values. The per-test
+    # environment fixture sets MAAS_ROOT too late for this import. Point
+    # it at a throwaway dir so the import succeeds; the per-test fixture
+    # overrides it for actual test bodies via monkeypatch.
+    if os.environ.get("MAAS_ROOT") is None:
+        import tempfile
+
+        os.environ["MAAS_ROOT"] = tempfile.mkdtemp(prefix="maas-root-")
+
     import django
     from django.conf import settings
 
     database = settings.DATABASES["default"]
     database["NAME"] = "no_such_db"
     django.setup()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _legacy_django_db(pytestconfig, worker_id):
+    """Build the region-legacy leg's Django-migrate DB, once per worker.
+
+    The legacy classes (those based on `MAASLegacyServerTestCase` and
+    friends) cannot use the main suite's `dbupgrade`-built pristine
+    template: that seeds `PackageRepository` rows these tests recreate
+    via `factory.make_default_PackageRepositories`, causing
+    `validate_unique` failures. They instead need a Django-native
+    `migrate`-built DB, mirroring `manage.py test`. This fixture
+    activates only for the region-legacy leg
+    (`MAAS_PREVENT_MIGRATIONS=1`, set before `django.setup()`).
+
+    A per-worker DB is required under xdist: a single shared DB makes
+    `TransactionTestCase`'s per-test flush truncate another worker's
+    live tables. The `cluster.lock.exclusive` guard serializes the
+    drop+create+migrate across workers.
+    """
+    if not os.environ.get("MAAS_PREVENT_MIGRATIONS"):
+        yield
+        return
+
+    from django.conf import settings
+    from django.core.management import call_command
+    import psycopg2
+
+    cluster = pytestconfig.stash[cluster_stash]
+    dbname = f"maas_legacy_{worker_id}"
+    with cluster.lock.exclusive:
+        admin = psycopg2.connect(
+            "postgresql:///postgres", host=cluster.datadir
+        )
+        admin.autocommit = True
+        with admin.cursor() as cur:
+            cur.execute(f"DROP DATABASE IF EXISTS {dbname}")
+            cur.execute(f"CREATE DATABASE {dbname}")
+        admin.close()
+        settings.DATABASES["default"]["NAME"] = dbname
+        call_command("migrate", run_syncdb=True, verbosity=0)
+    yield
+    # Drop the per-worker DB so repeated runs don't accumulate them.
+    close_all_connections()
+    with cluster.lock.exclusive:
+        admin = psycopg2.connect(
+            "postgresql:///postgres", host=cluster.datadir
+        )
+        admin.autocommit = True
+        with admin.cursor() as cur:
+            cur.execute(f"DROP DATABASE IF EXISTS {dbname}")
+        admin.close()
 
 
 @pytest.fixture
