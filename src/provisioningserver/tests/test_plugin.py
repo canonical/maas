@@ -14,6 +14,7 @@ from twisted.application.internet import StreamServerEndpointService
 from twisted.application.service import MultiService
 from twisted.internet.task import Clock
 
+import maascommon.hardening as hardening_module
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
@@ -284,6 +285,23 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options, clock=None)
         http_service = service.getServiceNamed("http_service")
         self.assertIsInstance(http_service, StreamServerEndpointService)
+
+    def _make_http_socket(self, hardening_enabled):
+        self.patch(
+            hardening_module, "is_hardening_enabled"
+        ).return_value = hardening_enabled
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        s = service_maker._makeHTTPService().endpoint.socket
+        self.addCleanup(s.close)
+        return s
+
+    def test_http_service_binds_all_interfaces_outside_hardening(self):
+        s = self._make_http_socket(hardening_enabled=False)
+        self.assertEqual(s.getsockname()[:2], ("::", 5249))
+
+    def test_http_service_binds_ipv6_loopback_under_hardening(self):
+        s = self._make_http_socket(hardening_enabled=True)
+        self.assertEqual(s.getsockname()[:2], ("::1", 5249))
 
     def test_tftp_service(self):
         """A TFTP service is configured and added to the top-level service."""

@@ -48,11 +48,13 @@ class ProvisioningServiceMaker:
         from twisted.application.internet import StreamServerEndpointService
         from twisted.internet.endpoints import AdoptedStreamServerEndpoint
 
+        from maascommon.hardening import is_hardening_enabled
         from provisioningserver.rackdservices.http import HTTPResource
         from provisioningserver.utils.twisted import SiteNoLog
 
         port = 5249
-        # Only reached via the rack's local nginx reverse proxy; loopback-only.
+        # Only bind to loopback if hardening is enabled
+        address = "::1" if is_hardening_enabled() else "::"
         s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
@@ -60,7 +62,7 @@ class ProvisioningServiceMaker:
         except socket_error as e:
             if e.errno != ENOPROTOOPT:
                 raise e
-        s.bind(("::1", port))
+        s.bind((address, port))
         # Use a backlog of 50, which seems to be fairly common.
         s.listen(50)
         # Adopt this socket into Twisted's reactor.
