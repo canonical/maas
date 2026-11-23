@@ -89,6 +89,7 @@ from provisioningserver.rpc.testing.doubles import (
     FakeConnection,
 )
 from provisioningserver.security import calculate_digest, fernet_encrypt_psk
+from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import env as utils_env
 from provisioningserver.utils.env import MAAS_ID, MAAS_SECRET, MAAS_UUID
