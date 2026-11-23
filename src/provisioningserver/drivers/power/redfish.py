@@ -44,6 +44,10 @@ from provisioningserver.utils.twisted import asynchronous, pause
 maaslog = get_maas_logger("drivers.power.redfish")
 
 
+class RedfishRequestRejectedError(PowerActionError, PowerFatalError):
+    """The BMC rejected the request itself; retrying it cannot succeed."""
+
+
 # no trailing slashes
 REDFISH_POWER_CONTROL_ENDPOINT = (
     b"redfish/v1/Systems/%s/Actions/ComputerSystem.Reset"
@@ -249,6 +253,13 @@ class RedfishPowerDriverBase(PowerDriver):
                     raise PowerAuthError(
                         f"Redfish request failed with response status code: {response.code}."
                     )
+                elif response.code in (
+                    HTTPStatus.BAD_REQUEST,
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                ):
+                    raise RedfishRequestRejectedError(
+                        f"Redfish request failed with response status code: {response.code}."
+                    )
                 else:
                     raise PowerActionError(
                         "Redfish request failed with response status code:"
@@ -389,25 +400,31 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
                 )
             )
 
-        # 1. Discover the correct endpoint dynamically
-        target_endpoint = yield self.get_boot_endpoint(url, node_id, headers)
-
-        # 2. Retrieve context-aware ETag for our discovered target endpoint
-        @inlineCallbacks
-        def _get_target_etag():
-            result = yield self.get_etag(
-                url, node_id, headers, endpoint=target_endpoint
+        def _patch(endpoint):
+            return self.redfish_request(
+                b"PATCH",
+                join(url, endpoint),
+                headers,
+                _get_bodyProducer,
+                lambda: self.get_etag(
+                    url, node_id, headers, endpoint=endpoint
+                ),
             )
-            return result
 
-        # 3. Perform the PATCH operation
-        yield self.redfish_request(
-            b"PATCH",
-            join(url, target_endpoint),
-            headers,
-            _get_bodyProducer,
-            _get_target_etag,
-        )
+        system_endpoint = join(REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
+        try:
+            yield _patch(system_endpoint)
+        except PowerAuthError:
+            raise
+        except PowerActionError as error:
+            # iDRAC10 only accepts boot overrides through the settings object,
+            # while all others advertise one that rejects them.
+            settings_endpoint = yield self.get_boot_endpoint(
+                url, node_id, headers
+            )
+            if settings_endpoint == system_endpoint:
+                raise error
+            yield _patch(settings_endpoint)
 
     @inlineCallbacks
     def power(self, power_change: PowerChange, url, node_id, headers):
