@@ -40,8 +40,25 @@ add_user_group(){
     local user="maas"
     local group="maas"
     local home="/var/lib/maas"
+    local passwd_entry
     addgroup --quiet --system "$group" || true
-    adduser --quiet --system --group --home "$home" "$user" || true
+    adduser --quiet --system --group --home "$home" \
+        --shell /usr/sbin/nologin "$user" || true
+
+    # The maas account only runs MAAS services and never needs an
+    # interactive login (CIS 5.5.2). adduser leaves an existing account
+    # untouched, so fix accounts that were pre-created or changed later.
+    if ! passwd_entry="$(getent passwd "$user")"; then
+        return 0
+    fi
+    case "${passwd_entry##*:}" in
+        /usr/sbin/nologin|/sbin/nologin|/bin/false|/usr/bin/false)
+            ;;
+        *)
+            usermod --shell /usr/sbin/nologin "$user" || \
+                echo "WARNING: could not set nologin shell for $user" >&2
+            ;;
+    esac
 }
 
 configure_maas_syslog(){
