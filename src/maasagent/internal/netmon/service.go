@@ -143,6 +143,10 @@ func (s *Service) updateBindings(pkt *ethernet.ARPPacket, vid *uint16, timestamp
 	prefix := strconv.Itoa(vidLabel) + "_"
 
 	for _, discoveredBinding := range discoveredBindings {
+		if !isValidBinding(discoveredBinding) {
+			continue
+		}
+
 		key := prefix + discoveredBinding.IP.String()
 
 		binding, ok := s.bindings[key]
@@ -182,6 +186,30 @@ func (s *Service) updateBindings(pkt *ethernet.ARPPacket, vid *uint16, timestamp
 	}
 
 	return res
+}
+
+// isValidBinding reports whether a binding identifies a real host.
+// ARP probes carry an unspecified sender IP, requests carry an all-zero
+// target MAC, and gratuitous ARP replies may carry the broadcast MAC as
+// target. None of these are host bindings.
+func isValidBinding(b Binding) bool {
+	if !b.IP.IsValid() || b.IP.IsUnspecified() {
+		return false
+	}
+
+	if len(b.MAC) != 6 {
+		return false
+	}
+
+	// The least significant bit of the first octet is the IEEE 802
+	// Individual/Group bit. When set, the address is a multicast or
+	// broadcast (ff:ff:ff:ff:ff:ff) group address, which is never assigned
+	// to a single interface.
+	if b.MAC[0]&0x01 != 0 {
+		return false
+	}
+
+	return !bytes.Equal(b.MAC, net.HardwareAddr{0, 0, 0, 0, 0, 0})
 }
 
 func isValidARPPacket(pkt *ethernet.ARPPacket) bool {
