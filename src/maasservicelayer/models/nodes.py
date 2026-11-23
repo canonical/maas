@@ -21,6 +21,8 @@ class Node(MaasTimestampedBaseModel):
     power_state_updated: datetime | None = None
     owner_id: int | None = None
     error_description: str = ""
+    gateway_link_ipv4_id: int | None = None
+    gateway_link_ipv6_id: int | None = None
     current_commissioning_script_set_id: int | None = None
     current_testing_script_set_id: int | None = None
     current_installation_script_set_id: int | None = None

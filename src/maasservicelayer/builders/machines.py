@@ -40,6 +40,8 @@ class MachineBuilder(ResourceBuilder):
     domain_id: int | None | Unset = Field(default=UNSET)
     error_description: str | Unset = Field(default=UNSET)
     fqdn: str | Unset = Field(default=UNSET)
+    gateway_link_ipv4_id: int | None | Unset = Field(default=UNSET)
+    gateway_link_ipv6_id: int | None | Unset = Field(default=UNSET)
     hostname: str | Unset = Field(default=UNSET)
     hwe_kernel: str | None | Unset = Field(default=UNSET)
     locked: bool | Unset = Field(default=UNSET)

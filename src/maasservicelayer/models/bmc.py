@@ -12,3 +12,4 @@ from maasservicelayer.models.base import (
 class Bmc(MaasTimestampedBaseModel):
     power_type: PowerTypeEnum
     power_parameters: dict
+    ip_address_id: int | None = None
