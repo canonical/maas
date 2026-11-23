@@ -176,6 +176,7 @@ class DiscoveredMachineInterface:
     attach_name = attr.ib(
         converter=converter_obj(str, optional=True), default=None
     )
+    name = attr.ib(converter=converter_obj(str, optional=True), default=None)
 
 
 @attr.s

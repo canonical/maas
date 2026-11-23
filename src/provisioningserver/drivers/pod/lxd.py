@@ -718,6 +718,7 @@ class LXDPodDriver(PodDriver):
                 boot=boot,
                 attach_type=attach_type,
                 attach_name=attach_name,
+                name=name,
             )
 
         extra_block_devices = 0
