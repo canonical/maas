@@ -46,7 +46,8 @@ def commission_activities(
     )
 
 
-async def _create_machine_with_linked_ip(fixture: Fixture) -> dict:
+@pytest.fixture
+async def machine_with_linked_ip(fixture: Fixture) -> dict:
     machine = await create_test_machine_entry(fixture)
     config = await create_test_node_config_entry(fixture, node=machine)
     machine["current_config_id"] = config["id"]
@@ -61,28 +62,35 @@ async def _create_machine_with_linked_ip(fixture: Fixture) -> dict:
 @pytest.mark.asyncio
 class TestPrepareCommissioning:
     async def test_clears_networking_configuration(
-        self, fixture: Fixture, commission_activities: CommissionActivity
+        self,
+        fixture: Fixture,
+        commission_activities: CommissionActivity,
+        machine_with_linked_ip: dict,
     ) -> None:
-        machine = await _create_machine_with_linked_ip(fixture)
-        assert len(await fixture.get(InterfaceIPAddressTable.name)) == 1
-
-        await ActivityEnvironment().run(
-            commission_activities.prepare_commissioning,
-            PrepareCommissioningParam(system_id=machine["system_id"]),
-        )
-
-        assert len(await fixture.get(InterfaceIPAddressTable.name)) == 0
-
-    async def test_skip_networking_keeps_links(
-        self, fixture: Fixture, commission_activities: CommissionActivity
-    ) -> None:
-        machine = await _create_machine_with_linked_ip(fixture)
         assert len(await fixture.get(InterfaceIPAddressTable.name)) == 1
 
         await ActivityEnvironment().run(
             commission_activities.prepare_commissioning,
             PrepareCommissioningParam(
-                system_id=machine["system_id"], skip_networking=True
+                system_id=machine_with_linked_ip["system_id"]
+            ),
+        )
+
+        assert len(await fixture.get(InterfaceIPAddressTable.name)) == 0
+
+    async def test_skip_networking_keeps_links(
+        self,
+        fixture: Fixture,
+        commission_activities: CommissionActivity,
+        machine_with_linked_ip: dict,
+    ) -> None:
+        assert len(await fixture.get(InterfaceIPAddressTable.name)) == 1
+
+        await ActivityEnvironment().run(
+            commission_activities.prepare_commissioning,
+            PrepareCommissioningParam(
+                system_id=machine_with_linked_ip["system_id"],
+                skip_networking=True,
             ),
         )
 

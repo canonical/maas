@@ -58,6 +58,8 @@ class CommissioningService(Service):
             )
             if ip.alloc_type != IpAddressType.DISCOVERED
         }
+        # TODO: replace this loop with delete_many once StaticIPAddressService has
+        # pre/post-delete-many hooks.
         for ip in ips_to_clear.values():
             logger.info(
                 f"{node.hostname}: IP address automatically unlinked: {ip.ip}"
