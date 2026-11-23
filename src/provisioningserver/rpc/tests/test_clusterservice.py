@@ -79,8 +79,6 @@ from provisioningserver.rpc.testing.doubles import (
     FakeBusyConnectionToRegion,
     FakeConnection,
 )
-from provisioningserver.security import fernet_encrypt_psk
-from provisioningserver.rpc.testing.doubles import FakeConnection
 from provisioningserver.security import calculate_digest, fernet_encrypt_psk
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import env as utils_env
