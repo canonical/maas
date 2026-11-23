@@ -217,6 +217,59 @@ func TestUpdateBindings(t *testing.T) {
 				},
 			},
 		},
+		"gratuitous reply with broadcast target MAC does not move binding": {
+			in: in{
+				p: func(p *ethernet.ARPPacket) {
+					p.OpCode = ethernet.OpReply
+					p.SendHwAddr = net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01}
+					p.TgtIPAddr = netip.MustParseAddr("10.0.0.1")
+					p.TgtHwAddr = net.HardwareAddr{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+				},
+				time: timestamp,
+				bindingsFixture: map[string]Binding{
+					"0_10.0.0.1": {
+						IP:   netip.MustParseAddr("10.0.0.1"),
+						MAC:  net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01},
+						Time: timestamp,
+					},
+				},
+			},
+		},
+		"reply with zero target MAC records only sender": {
+			in: in{
+				p: func(p *ethernet.ARPPacket) {
+					p.OpCode = ethernet.OpReply
+					p.SendHwAddr = net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01}
+					p.TgtHwAddr = net.HardwareAddr{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+				},
+				time: timestamp,
+			},
+			out: []Result{
+				{
+					IP:    "10.0.0.1",
+					MAC:   "c0:ff:ee:15:c0:01",
+					Time:  timestamp.Unix(),
+					Event: EventNew,
+				},
+			},
+		},
+		"probe with unspecified sender IP": {
+			in: in{
+				p: func(p *ethernet.ARPPacket) {
+					p.SendIPAddr = netip.MustParseAddr("0.0.0.0")
+					p.SendHwAddr = net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01}
+				},
+				time: timestamp,
+			},
+		},
+		"multicast sender MAC": {
+			in: in{
+				p: func(p *ethernet.ARPPacket) {
+					p.SendHwAddr = net.HardwareAddr{0x01, 0x00, 0x5e, 0x00, 0x00, 0x01}
+				},
+				time: timestamp,
+			},
+		},
 	}
 
 	for name, tc := range testcases {
@@ -236,9 +289,7 @@ func TestUpdateBindings(t *testing.T) {
 			}
 
 			res := svc.updateBindings(packet, tc.in.vid, tc.in.time)
-			for i, expected := range tc.out {
-				assert.Equal(t, expected, res[i])
-			}
+			assert.Equal(t, tc.out, res)
 		})
 	}
 }
