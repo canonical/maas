@@ -122,9 +122,61 @@ def test_is_idempotent(layout: SnapLayout) -> None:
     (layout.maas_dir / "agent_uuid").write_text("uuid\n")
     (layout.common_certs / "agent.crt").write_text("cert")
     (layout.config_dir / "agent.yaml").write_text(OLD_CONFIG)
+    (layout.data / "regiond.conf").write_text(
+        "agent_api_bind:\n- 10.0.0.5\nmaas_url: http://10.0.0.5:5240/MAAS\n"
+    )
 
     layout.run()
     after_first_run = layout.files()
     layout.run()
 
     assert layout.files() == after_first_run
+
+
+def test_renames_agent_api_bind_in_regiond_conf(layout: SnapLayout) -> None:
+    (layout.data / "regiond.conf").write_text(
+        "agent_api_bind:\n"
+        "- 10.0.0.5\n"
+        "- fd00::5\n"
+        "maas_url: http://10.0.0.5:5240/MAAS\n"
+    )
+
+    layout.run()
+
+    assert layout.files() == {
+        "data/regiond.conf": "rack_ctrl_api_bind:\n"
+        "- 10.0.0.5\n"
+        "- fd00::5\n"
+        "maas_url: http://10.0.0.5:5240/MAAS\n"
+    }
+
+
+def test_drops_agent_api_bind_when_rack_ctrl_api_bind_exists(
+    layout: SnapLayout,
+) -> None:
+    (layout.data / "regiond.conf").write_text(
+        "agent_api_bind:\n"
+        "- 10.0.0.5\n"
+        "maas_url: http://10.0.0.5:5240/MAAS\n"
+        "rack_ctrl_api_bind:\n"
+        "- 10.0.0.6\n"
+    )
+
+    layout.run()
+
+    assert layout.files() == {
+        "data/regiond.conf": "maas_url: http://10.0.0.5:5240/MAAS\n"
+        "rack_ctrl_api_bind:\n"
+        "- 10.0.0.6\n"
+    }
+
+
+def test_keeps_regiond_conf_without_agent_api_bind(
+    layout: SnapLayout,
+) -> None:
+    config = "api_bind:\n- 10.0.0.5\nmaas_url: http://10.0.0.5:5240/MAAS\n"
+    (layout.data / "regiond.conf").write_text(config)
+
+    layout.run()
+
+    assert layout.files() == {"data/regiond.conf": config}

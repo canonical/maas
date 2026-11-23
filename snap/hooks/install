@@ -32,7 +32,8 @@ mkdir -p "$SNAP_DATA/var/cache/maas/httpproxy"
 mkdir -p "$SNAP_COMMON/var/lib/maas/certificates"
 mkdir -p "$SNAP_COMMON/etc/maas"
 
-# Rename files left by the MAAS agent (<= 3.8) to their rack controller names.
+# Rename files and configuration keys left by the pre-4.0 MAAS agent to their
+# rack controller names.
 "$SNAP/usr/bin/migrate-rack-controller-files"
 
 # Always overwrite sample preseeds to ensure samples are up-to-date in case we

@@ -2,9 +2,9 @@
 #  Copyright 2026 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 #
-# Renames files left by the pre-4.0 MAAS agent to their rack controller
-# names. Safe to run repeatedly and when none of the old files exist
-# (e.g. on 4.0 -> 4.1 refreshes).
+# Renames files and configuration keys left by the pre-4.0 MAAS agent to
+# their rack controller names. Safe to run repeatedly and when none of the
+# old files or keys exist (e.g. on 4.0 -> 4.1 refreshes).
 
 move() {
     local old="$1" new="$2"
@@ -29,4 +29,22 @@ move "$config_dir/agent.yaml" "$config_dir/rackcontroller.yaml"
 if [ -f "$config_dir/rackcontroller.yaml" ]; then
     sed -i -E 's#/agent\.(crt|key)\b#/rackcontroller.\1#g' \
         "$config_dir/rackcontroller.yaml"
+fi
+
+# regiond.conf is YAML written with block style, so a list value continues
+# on the following lines indented or prefixed with "- ".
+regiond_conf="$SNAP_DATA/regiond.conf"
+if [ -f "$regiond_conf" ] && grep -q '^agent_api_bind:' "$regiond_conf"; then
+    if grep -q '^rack_ctrl_api_bind:' "$regiond_conf"; then
+        regiond_conf_tmp="$(mktemp)"
+        awk '
+            /^agent_api_bind:/ { skip = 1; next }
+            skip && /^([[:space:]]|- )/ { next }
+            { skip = 0; print }
+        ' "$regiond_conf" > "$regiond_conf_tmp"
+        cat "$regiond_conf_tmp" > "$regiond_conf"
+        rm -f "$regiond_conf_tmp"
+    else
+        sed -i 's/^agent_api_bind:/rack_ctrl_api_bind:/' "$regiond_conf"
+    fi
 fi
