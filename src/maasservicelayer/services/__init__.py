@@ -264,7 +264,6 @@ class ServiceCollectionV3:
     """Provide all v3 services."""
 
     # Keep them in alphabetical order, please
-    rack_controllers: RackControllersService
     auth: AuthService
     boot_resources: BootResourceService
     boot_resource_sets: BootResourceSetsService
@@ -312,6 +311,7 @@ class ServiceCollectionV3:
     operations: OperationsService
     package_repositories: PackageRepositoriesService
     power_types: PowerTypesService
+    rack_controllers: RackControllersService
     racks: RacksService
     rdns: RDNSService
     refresh_tokens: RefreshTokenService
