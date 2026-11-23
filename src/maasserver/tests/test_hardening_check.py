@@ -245,10 +245,10 @@ class TestHardeningIdentLength(MAASServerTestCase):
 
     def test_scoped_ident_can_be_stored_and_retrieved(self):
         """An ident at the expected maximum length round-trips through the DB."""
-        # prometheus_bind and http_proxy_bind tie for the longest ident
-        # (15 chars each); verify one of them persists.
+        # rack_ctrl_api_bind is the longest key (18 chars) and produces an
+        # ident of exactly 40 chars; verify it persists.
         system_id = "abc123"
-        config_key = "http_proxy_bind"
+        config_key = "rack_ctrl_api_bind"
         ident = _ctrl_ident(system_id, config_key)
         v = _make_bind_violation(config_key=config_key)
         sync_hardening_notifications([v], controller_id=system_id)

@@ -826,7 +826,7 @@ class TestRackSyslog(MAASTestCase):
         self.assertEqual("", logger.output)
 
 
-class TestRackRackController(MAASTestCase):
+class TestRackControllerExternalService(MAASTestCase):
     """Tests for `RackControllerExternalService` for `RackExternalService`."""
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
