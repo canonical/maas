@@ -235,32 +235,19 @@ def update_physical_interface(
     PhysicalInterface.objects.filter(
         node_config=node.current_config, name=name
     ).exclude(mac_address=mac_address).delete()
-    interface, created = PhysicalInterface.objects.get_or_create(
-        mac_address=mac_address,
-        defaults={
-            "node_config": node.current_config,
-            "name": name,
-            "enabled": True,
-            # actual physical interfaces are to be considered non-acquired in hw sync to be preserved on release
-            "acquired": not (
-                node.is_commissioning()
-                or (node.enable_hw_sync and port is not None)
-            ),
-        },
+
+    acquired = not (
+        node.is_commissioning() or (node.enable_hw_sync and port is not None)
+    )
+
+    interface, created = PhysicalInterface.objects.get_or_create_on_node(
+        node, name, mac_address, [], acquired=acquired
     )
     if created:
         _hardware_sync_network_device_notify(
             node, interface, HARDWARE_SYNC_ACTIONS.ADDED
         )
 
-    if not created and interface.node_config_id != node.current_config_id:
-        # MAC address was on a different node. We need to move
-        # it to its new owner. In the process we delete all of its
-        # current links because they are completely wrong.
-        PhysicalInterface.objects.filter(id=interface.id).delete()
-        return update_physical_interface(
-            node, name, network, links, card=card, port=port, hints=hints
-        )
     # Don't update the VLAN unless:
     # (1) The interface's VLAN wasn't previously known.
     # (2) The interface is connected
@@ -272,17 +259,6 @@ def update_physical_interface(
         if new_vlan is not None:
             interface.vlan = new_vlan
             update_fields.add("vlan")
-    if not created:
-        if interface.node_config_id != node.current_config_id:
-            # MAC address was on a different node. We need to move
-            # it to its new owner. In the process we delete all of its
-            # current links because they are completely wrong.
-            interface.ip_addresses.all().delete()
-            interface.node_config = node.current_config
-            update_fields.add("node_config")
-        if interface.name != name:
-            interface.name = name
-            update_fields.add("name")
     if interface.link_connected != is_connected:
         interface.link_connected = is_connected
         update_fields.add("link_connected")
@@ -474,7 +450,7 @@ def update_child_interface(node, name, network, links):
         return None
 
     mac_address = network["hwaddr"]
-    interface = child_type.objects.get_or_create_on_node(
+    interface, _ = child_type.objects.get_or_create_on_node(
         node,
         name,
         mac_address,
