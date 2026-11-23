@@ -34,13 +34,22 @@ def to_bin(u: str) -> bytes:
     return a2b_hex(u.encode("ascii").strip())
 
 
-def calculate_digest(secret, message, salt):
-    """Calculate a SHA-256 HMAC digest for the given data."""
+def calculate_digest(
+    secret: bytes, message: bytes, direction: bytes, salt: bytes
+) -> bytes:
+    """Calculate a SHA-256 HMAC digest for the given data.
+
+    `direction` binds the digest to the authentication direction (e.g.
+    b"region-to-rack"), so a digest produced for one direction cannot be
+    replayed for the other.
+    """
     assert isinstance(secret, bytes), f"{secret!r} is not a byte string."
     assert isinstance(message, bytes), f"{message!r} is not byte string."
+    assert isinstance(direction, bytes), f"{direction!r} is not byte string."
     assert isinstance(salt, bytes), f"{salt!r} is not a byte string."
     hmacr = HMAC(secret, digestmod=sha256)
     hmacr.update(message)
+    hmacr.update(direction)
     hmacr.update(salt)
     return hmacr.digest()
 
