@@ -124,17 +124,7 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
     def test_returns_processes_running_on_host_not_container(self):
         command = factory.make_name("command")
 
-        ps_output = (
-            "  PID COMMAND\n"
-            "   1 init\n"
-            "   malformedline\n"
-            "   malformed line\n"
-            "   10 othercmd\n"
-            "   20 %s\n"
-            "   30 %s\n"
-            "   40 %s\n"
-            "   50 anothercmd\n" % (command, command, command)
-        )
+        ps_output = "     20\n   malformedline\n     30\n     40\n"
 
         mock_run_command = self.patch(ps_module, "run_command")
         mock_run_command.return_value = Mock(stdout=ps_output, returncode=0)
@@ -153,19 +143,14 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
 
         self.assertCountEqual(result, [20, 40])
 
-        mock_run_command.assert_called_once_with("ps", "-eo", "pid,comm")
+        mock_run_command.assert_called_once_with(
+            "ps", "-C", command, "-o", "pid="
+        )
 
     def test_returns_processes_when_running_in_container(self):
         command = factory.make_name("command")
 
-        ps_output = (
-            "  PID COMMAND\n"
-            "   10 %s\n"
-            "   20 %s\n"
-            "   30 %s\n"
-            "   40 othercmd\n"
-            "   50 anothercmd\n" % (command, command, command)
-        )
+        ps_output = "     10\n     20\n     30\n"
 
         mock_run_command = self.patch(ps_module, "run_command")
         mock_run_command.return_value = Mock(stdout=ps_output, returncode=0)
@@ -181,5 +166,16 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
 
         self.assertCountEqual(result, [10, 20, 30])
 
-        mock_run_command.assert_called_once_with("ps", "-eo", "pid,comm")
+        mock_run_command.assert_called_once_with(
+            "ps", "-C", command, "-o", "pid="
+        )
         mock_is_pid_in_container.assert_not_called()
+
+    def test_returns_empty_list_when_no_process_matches(self):
+        mock_run_command = self.patch(ps_module, "run_command")
+        mock_run_command.return_value = Mock(stdout="", returncode=1)
+        self.patch(ps_module, "running_in_container").return_value = False
+
+        result = get_running_pids_with_command(factory.make_name("command"))
+
+        self.assertEqual(result, [])
