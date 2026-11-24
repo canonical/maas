@@ -123,7 +123,9 @@ class TestRegionProtocol_Authenticate(MAASTransactionServerTestCase):
         digest = response["digest"]
         salt = response["salt"]
 
-        expected_digest = HMAC(secret, message + salt, sha256).digest()
+        expected_digest = HMAC(
+            secret, message + b"rack-to-region" + salt, sha256
+        ).digest()
         self.assertEqual(expected_digest, digest)
         self.assertEqual(len(salt), 16)
 
