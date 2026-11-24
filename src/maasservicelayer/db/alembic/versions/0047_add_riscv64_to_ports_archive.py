@@ -4,7 +4,7 @@
 """Add riscv64 to the default ports package repository
 
 Revision ID: 0047
-Revises: 0041
+Revises: 0045
 Create Date: 2026-11-23 00:00:00.000000+00:00
 
 """
@@ -15,7 +15,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0047"
-down_revision: str | None = "0041"
+down_revision: str | None = "0045"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
