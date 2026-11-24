@@ -32,8 +32,8 @@ from provisioningserver.rpc.common import (
     ConnectionAuthStatus,
     SecuredRPCProtocol,
 )
-from provisioningserver.security import calculate_digest
 from provisioningserver.rpc.testing.tls import get_tls_parameters_for_region
+from provisioningserver.security import calculate_digest
 from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.twisted import asynchronous, callOut
 
