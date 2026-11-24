@@ -68,13 +68,11 @@ def get_running_pids_with_command(
     :param exclude_container_processes: Excludes processes that are running
         in an LXC container on the host.
     """
-    result = run_command("ps", "-eo", "pid,comm")
+    result = run_command("ps", "-C", command, "-o", "pid=")
     pids = []
-    for line in result.stdout.splitlines()[1:]:
+    for line in result.stdout.splitlines():
         try:
-            pid_str, cmd = line.strip().split(None, 1)
-            if cmd == command:
-                pids.append(int(pid_str))
+            pids.append(int(line))
         except ValueError:  # malformed line
             continue
 
