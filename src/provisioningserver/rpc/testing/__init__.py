@@ -5,7 +5,7 @@
 
 from abc import ABCMeta, abstractmethod
 import itertools
-from os import path
+from os import path, urandom
 from unittest.mock import Mock
 
 import fixtures
@@ -25,7 +25,6 @@ from maastesting.twisted import always_succeed_with
 import provisioningserver
 from provisioningserver.rpc import region
 from provisioningserver.rpc.clusterservice import (
-    Cluster,
     ClusterClient,
     ClusterClientService,
 )
@@ -33,6 +32,7 @@ from provisioningserver.rpc.common import (
     ConnectionAuthStatus,
     SecuredRPCProtocol,
 )
+from provisioningserver.security import calculate_digest
 from provisioningserver.rpc.testing.tls import get_tls_parameters_for_region
 from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.twisted import asynchronous, callOut
@@ -258,7 +258,11 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         This ought to always return the correct digest because it'll be using
         the same shared-secret as the cluster.
         """
-        return Cluster().authenticate(message)
+        salt = urandom(16)
+        digest = calculate_digest(
+            MAAS_SECRET.get(), message, b"rack-to-region", salt
+        )
+        return {"digest": digest, "salt": salt}
 
 
 class MockClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
