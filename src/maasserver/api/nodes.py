@@ -369,18 +369,26 @@ def _prepare_script_results(nodes):
 
 def _prepare_status_events(nodes):
     """Cache the latest status event of `nodes`, see `Node.status_event`."""
-    latest_event = (
-        Event.objects.filter(
-            node_id=OuterRef("node_id"), type__level__gte=logging.INFO
+    # Correlate on the nodes rather than on the events, so the subquery runs
+    # once per node using the (node_id, -created, -id) index, instead of
+    # once for every event of the nodes.
+    latest_event_ids = (
+        Node.objects.filter(id__in=[node.id for node in nodes])
+        .annotate(
+            latest_event_id=Subquery(
+                Event.objects.filter(
+                    node_id=OuterRef("id"), type__level__gte=logging.INFO
+                )
+                .order_by("-created", "-id")
+                .values("id")[:1]
+            )
         )
-        .order_by("-created", "-id")
-        .values("id")[:1]
+        .values("latest_event_id")
     )
     events = {
         event.node_id: event
         for event in Event.objects.filter(
-            node_id__in=[node.id for node in nodes],
-            id=Subquery(latest_event),
+            id__in=latest_event_ids
         ).select_related("type")
     }
     for node in nodes:
