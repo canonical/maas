@@ -70,9 +70,12 @@ class MAASAPIClient:
     ):
         headers = {}
         self._oauth.sign_request(url, headers)
+        # The UNIX socket serves plain HTTP. An https maas_url (e.g. MAAS
+        # behind a TLS proxy) would otherwise start a TLS handshake on it.
+        socket_url = httpx.URL(url).copy_with(scheme="http")
         response = await self.unix_client.request(
             method,
-            url,
+            socket_url,
             params=params,
             data=data,
             headers=headers,

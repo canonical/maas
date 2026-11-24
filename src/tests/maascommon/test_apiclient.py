@@ -110,6 +110,25 @@ class TestMAASAPIClient:
 
     @pytest.mark.asyncio
     @patch("maascommon.apiclient.MAASOAuth")
+    async def test_request_async_uses_http_over_socket_for_https_url(
+        self, mock_oauth, dummy_token
+    ):
+        client = MAASAPIClient("https://maas.example.com/MAAS", dummy_token)
+        client._unix_client = AsyncMock()
+        client._unix_client.request.return_value = MagicMock()
+
+        await client.request_async(
+            "GET", f"{client.url}/api/2.0/agents/abc/services/dhcp/config/"
+        )
+
+        args, _ = client._unix_client.request.call_args
+        assert str(args[1]) == (
+            "http://maas.example.com/MAAS/api/2.0/agents/abc/services/dhcp/"
+            "config/"
+        )
+
+    @pytest.mark.asyncio
+    @patch("maascommon.apiclient.MAASOAuth")
     async def test_request_async_raises_http_error(
         self, mock_oauth, dummy_token
     ):
