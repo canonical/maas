@@ -4,6 +4,7 @@
 """Tests for the region's RPC implementation."""
 from collections import defaultdict
 import json
+from os import urandom
 import random
 import re
 from unittest import skip
@@ -19,6 +20,7 @@ from twisted.internet.defer import (
     DeferredList,
     fail,
     inlineCallbacks,
+    maybeDeferred,
     succeed,
 )
 from twisted.internet.endpoints import TCP4ServerEndpoint
@@ -40,6 +42,7 @@ from maasserver.rpc.regionservice import (
 )
 from maasserver.rpc.testing.doubles import HandshakingRegionServer
 from maasserver.secrets import SecretManager
+from maasserver.security import get_shared_secret
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
@@ -63,7 +66,7 @@ from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import RegisterRackController
 from provisioningserver.rpc.testing import call_responder
 from provisioningserver.rpc.testing.doubles import DummyConnection
-from provisioningserver.security import fernet_decrypt_psk
+from provisioningserver.security import calculate_digest, fernet_decrypt_psk
 from provisioningserver.utils import events
 from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.version import get_running_version
@@ -240,21 +243,38 @@ class TestRegionServer(MAASTransactionServerTestCase):
     def test_authenticateCluster_accepts_matching_digests(self):
         server = self.make_running_server()
 
-        def calculate_digest(_, message):
-            # Use the region's own authentication responder.
-            return Region().authenticate(message)
+        def respond_as_rack(_, message):
+            def got_secret(secret):
+                salt = urandom(16)
+                digest = calculate_digest(
+                    secret, message, b"region-to-rack", salt
+                )
+                return {"digest": digest, "salt": salt}
+
+            return maybeDeferred(get_shared_secret).addCallback(got_secret)
 
         callRemote = self.patch_autospec(server, "callRemote")
-        callRemote.side_effect = calculate_digest
+        callRemote.side_effect = respond_as_rack
 
         d = server.authenticateCluster()
         self.assertTrue(extract_result(d))
 
+    def test_authenticateCluster_rejects_cross_role_digest(self):
+        server = self.make_running_server()
+
+        def respond_with_region_digest(_, message):
+            return Region().authenticate(message)
+
+        callRemote = self.patch_autospec(server, "callRemote")
+        callRemote.side_effect = respond_with_region_digest
+
+        d = server.authenticateCluster()
+        self.assertFalse(extract_result(d))
+
     def test_authenticateCluster_rejects_non_matching_digests(self):
         server = self.make_running_server()
 
-        def calculate_digest(_, message):
-            # Return some nonsense.
+        def respond_with_invalid_digest(_, message):
             response = {
                 "digest": factory.make_bytes(),
                 "salt": factory.make_bytes(),
@@ -262,7 +282,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             return succeed(response)
 
         callRemote = self.patch_autospec(server, "callRemote")
-        callRemote.side_effect = calculate_digest
+        callRemote.side_effect = respond_with_invalid_digest
 
         d = server.authenticateCluster()
         self.assertFalse(extract_result(d))
