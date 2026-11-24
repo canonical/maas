@@ -99,7 +99,7 @@ class Region(SecuredRPCProtocol):
 
         def got_secret(secret):
             salt = urandom(16)  # 16 bytes of high grade noise.
-            digest = calculate_digest(secret, message, salt)
+            digest = calculate_digest(secret, message, b"rack-to-region", salt)
             return {"digest": digest, "salt": salt}
 
         return d.addCallback(got_secret)
@@ -634,7 +634,9 @@ class RegionServer(Region):
         message = urandom(16)  # 16 bytes of the finest.
         response = yield self.callRemote(cluster.Authenticate, message=message)
         salt, digest = response["salt"], response["digest"]
-        digest_local = calculate_digest(secret, message, salt)
+        digest_local = calculate_digest(
+            secret, message, b"region-to-rack", salt
+        )
         returnValue(digest == digest_local)
 
     @region.RegisterRackController.responder
