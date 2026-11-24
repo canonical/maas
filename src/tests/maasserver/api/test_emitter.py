@@ -14,7 +14,7 @@ from piston3.utils import Mimer
 
 from maasserver.api.machines import MachinesHandler
 from maasserver.api.support import method_fields_reserved_fields_patch
-from maasserver.api.tests.test_nodes import RenderedNodesMixin
+from tests.maasserver.api.test_nodes import RenderedNodesMixin
 from maasserver.api.zones import ZoneHandler
 from maasserver.models import Zone
 from maasserver.testing.api import APITestCase
