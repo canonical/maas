@@ -233,7 +233,11 @@ class BlockDeviceHandler(OperationsHandler):
     @classmethod
     def partitions(cls, block_device):
         partition_table = block_device.get_partitiontable()
-        return partition_table.partitions.all() if partition_table else []
+        return (
+            sorted(partition_table.partitions.all(), key=lambda p: p.index)
+            if partition_table
+            else []
+        )
 
     @classmethod
     def storage_pool(cls, block_device):
