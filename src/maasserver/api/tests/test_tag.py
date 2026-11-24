@@ -450,8 +450,11 @@ class TestTagAPI(APITestCase.ForUser):
         self.become_admin()
 
         tag = factory.make_Tag()
+        # Pin a Space so the VLAN/Space prefetch query always runs, see
+        # `test_GET_machines_query_count`.
+        vlan = factory.make_VLAN(space=factory.make_Space())
         for _ in range(3):
-            region = factory.make_RegionController()
+            region = factory.make_RegionController(vlan=vlan)
             region.tags.add(tag)
         num_queries1, response1 = count_queries(
             self.client.get,
