@@ -1056,6 +1056,7 @@ def _update_node_physical_block_devices(
             block_device.size = size
             block_device.block_size = block_size
             block_device.firmware_version = firmware_version
+            block_device.numa_node = numa_nodes[numa_index]
             block_device.tags = tags
             block_device.save()
             _hardware_sync_block_device_notify(
