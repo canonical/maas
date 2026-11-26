@@ -81,6 +81,7 @@ class ImageStatus(StrEnum):
 
 
 class ImageUpdateStatus(StrEnum):
+    WAITING_FOR_DOWNLOAD = "Waiting for download"
     DOWNLOADING = "Downloading"
     UPDATE_AVAILABLE = "Update available"
     NO_UPDATES_AVAILABLE = "No updates available"
