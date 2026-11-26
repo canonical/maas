@@ -3702,6 +3702,37 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         ]
         self.assertCountEqual(device_names, created_names)
 
+    def test_updates_numa_node_of_existing_block_device(self):
+        node = factory.make_Node()
+        numa_nodes = create_numa_nodes(node)
+        _update_node_physical_block_devices(
+            node, SAMPLE_LXD_RESOURCES, numa_nodes
+        )
+        device_ids = {
+            device.serial: device.id
+            for device in node.physicalblockdevice_set.all()
+        }
+        SWAPPED_NUMA = deepcopy(SAMPLE_LXD_RESOURCES)
+        disks = SWAPPED_NUMA["storage"]["disks"]
+        disks[0]["numa_node"], disks[1]["numa_node"] = (
+            disks[1]["numa_node"],
+            disks[0]["numa_node"],
+        )
+        _update_node_physical_block_devices(node, SWAPPED_NUMA, numa_nodes)
+        self.assertEqual(
+            {
+                disk["serial"]: (
+                    device_ids[disk["serial"]],
+                    numa_nodes[disk["numa_node"]].id,
+                )
+                for disk in disks
+            },
+            {
+                device.serial: (device.id, device.numa_node_id)
+                for device in node.physicalblockdevice_set.all()
+            },
+        )
+
     def test_handles_new_block_device_in_front(self):
         # First simulate a node being commissioned with two disks. For
         # this test, there need to be at least two disks in order to
