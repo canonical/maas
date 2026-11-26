@@ -45,7 +45,7 @@ flowchart LR
 ### Components
 
 * **Region controller**: serves the web UI and the API, and orchestrates the rest of MAAS. It also runs the Temporal server, which orchestrates MAAS workflows. See [Region controllers](/explanation/controllers.md#region-controllers).
-* **Rack controller**: provides DHCP, TFTP, HTTP boot, and power management to the machines on its fabrics. It also runs the MAAS Agent, which connects to the region controller. See [Rack controllers](/explanation/controllers.md#rack-controllers).
+* **Rack controller**: provides DHCP, TFTP, HTTP boot, and power management to the machines on its fabrics. Its `maas-rack-controller` service connects to the region controller. See [Rack controllers](/explanation/controllers.md#rack-controllers).
 * **PostgreSQL**: stores the state of MAAS, including credentials. See [PostgreSQL security](#postgresql-security).
 * **HashiCorp Vault**: optionally stores MAAS secrets outside the database. See [HashiCorp Vault](#hashicorp-vault).
 * **Load balancer**: optionally distributes web UI and API requests across region controllers, and can terminate TLS. See [Highly available API with HAProxy](/how-to-guides/manage-high-availability.md#highly-available-api-with-haproxy).
@@ -63,7 +63,7 @@ The region controller downloads boot images from image repositories and verifies
 
 ### Communication between controllers
 
-Rack controllers have no direct access to the database. They communicate with the region controller over RPC, authenticated with the [shared secret](#shared-secrets), and the MAAS Agent connects to the internal API of the region controller on port 5242.
+Rack controllers have no direct access to the database. They communicate with the region controller over RPC, authenticated with the [shared secret](#shared-secrets), and the `maas-rack-controller` service connects to the internal API of the region controller on port 5242.
 
 ### Provisioning network
 

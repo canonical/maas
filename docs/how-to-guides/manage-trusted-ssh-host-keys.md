@@ -117,7 +117,7 @@ curl -s --cacert ca.pem -X DELETE "https://<maas-host>:5443/MAAS/a/v3/ssh-host-k
 If power actions fail for a machine with an SSH-based driver, search the controller logs for `fips_crypto_error`:
 
 ```bash
-journalctl -t maas-rackd -t maas-agent | grep fips_crypto_error
+journalctl -t maas-rackd -t maas-rack-controller | grep fips_crypto_error
 ```
 
 | `operation` | Cause | Action |

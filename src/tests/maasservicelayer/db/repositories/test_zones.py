@@ -20,7 +20,7 @@ from maasservicelayer.models.zones import Zone
 from tests.fixtures.factories.node import (
     create_test_device_entry,
     create_test_machine_entry,
-    create_test_rack_controller_entry,
+    create_test_rack_controller_node_entry,
 )
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
@@ -118,7 +118,9 @@ class TestZonesRepository(RepositoryCommonTests[Zone]):
 
         # 3 controllers
         [
-            await create_test_rack_controller_entry(fixture, zone_id=zone.id)
+            await create_test_rack_controller_node_entry(
+                fixture, zone_id=zone.id
+            )
             for _ in range(3)
         ]
 

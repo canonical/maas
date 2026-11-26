@@ -53,7 +53,7 @@ class RackWithSummaryResponse(HalResponse[BaseHal]):
     kind: str = Field(default="RackWithSummary")
     id: int
     name: str
-    registered_agents_system_ids: List[str]
+    registered_rack_controllers_system_ids: List[str]
 
     @classmethod
     def from_model(
@@ -62,7 +62,7 @@ class RackWithSummaryResponse(HalResponse[BaseHal]):
         return cls(
             id=rack.id,
             name=rack.name,
-            registered_agents_system_ids=rack.registered_agents_system_ids,
+            registered_rack_controllers_system_ids=rack.registered_rack_controllers_system_ids,
             hal_links=BaseHal(  # pyright: ignore [reportCallIssue]
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{rack.id}"

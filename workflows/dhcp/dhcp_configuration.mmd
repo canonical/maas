@@ -2,13 +2,13 @@
 title: DHCP Configuration Workflow
 ---
 flowchart TD
-    A[maas-agent connects the temporal server in the region] --> B(executes DHCP Configuration Workflow)
+    A[maas-rack-controller connects the temporal server in the region] --> B(executes DHCP Configuration Workflow)
     C[A VLAN / Subnet / static IP address is created / updated / deleted] --> B(executes DHCP Configuration Workflow)
     B --> D(fetch all VLANs, subnets and static IPs within said subnets from DB)
     D --> E{success?}
-    E -->|yes| F(determine what data needs to propogate to which maas-agent)
+    E -->|yes| F(determine what data needs to propogate to which rack controller)
     E -->|no| D
-    F -->|execute per maas-agent| G(execute child workflow for specific maas-agent)
+    F -->|execute per rack controller| G(execute child workflow for specific rack controller)
     G --> H(structure VLANs, subnets and hosts for templating)
     H --> I(write configuration file for dhcpd)
     H --> J(write configuration file for dhcpd6)

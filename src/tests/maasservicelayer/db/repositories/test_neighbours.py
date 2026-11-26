@@ -15,7 +15,7 @@ from maasservicelayer.db.repositories.neighbours import (
 from maasservicelayer.models.fields import MacAddress
 from maasservicelayer.models.neighbours import Neighbour
 from tests.fixtures.factories.discoveries import (
-    create_test_rack_controller_entry,
+    create_test_rack_controller_node_entry,
 )
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.neighbours import create_test_neighbour_entry
@@ -58,7 +58,7 @@ class TestNeighboursRepository(RepositoryCommonTests[Neighbour]):
     async def _setup_test_list(
         self, fixture: Fixture, num_objects: int
     ) -> list[Neighbour]:
-        rack_controller = await create_test_rack_controller_entry(fixture)
+        rack_controller = await create_test_rack_controller_node_entry(fixture)
         interface = await create_test_interface_entry(
             fixture, node=rack_controller
         )
@@ -72,7 +72,7 @@ class TestNeighboursRepository(RepositoryCommonTests[Neighbour]):
 
     @pytest.fixture
     async def created_instance(self, fixture: Fixture) -> Neighbour:
-        rack_controller = await create_test_rack_controller_entry(fixture)
+        rack_controller = await create_test_rack_controller_node_entry(fixture)
         interface = await create_test_interface_entry(
             fixture, node=rack_controller
         )

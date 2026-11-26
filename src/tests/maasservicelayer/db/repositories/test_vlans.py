@@ -17,7 +17,9 @@ from maasservicelayer.db.tables import VlanTable
 from maasservicelayer.models.vlans import Vlan
 from tests.fixtures.factories.fabric import create_test_fabric_entry
 from tests.fixtures.factories.interface import create_test_interface_entry
-from tests.fixtures.factories.node import create_test_rack_controller_entry
+from tests.fixtures.factories.node import (
+    create_test_rack_controller_node_entry,
+)
 from tests.fixtures.factories.node_config import create_test_node_config_entry
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
@@ -112,7 +114,7 @@ class TestVlansRepository(RepositoryCommonTests[Vlan]):
         self, fixture: Fixture, repository_instance: VlansRepository
     ):
         subnet = await create_test_subnet_entry(fixture)
-        rack_controller = await create_test_rack_controller_entry(fixture)
+        rack_controller = await create_test_rack_controller_node_entry(fixture)
         [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
         await create_test_interface_entry(
             fixture, node=rack_controller, ips=[ip]
@@ -139,7 +141,7 @@ class TestVlansRepository(RepositoryCommonTests[Vlan]):
         vlan2 = await create_test_vlan_entry(fixture)
         subnet1 = await create_test_subnet_entry(fixture, vlan_id=vlan1["id"])
         subnet2 = await create_test_subnet_entry(fixture, vlan_id=vlan2["id"])
-        rack_controller = await create_test_rack_controller_entry(fixture)
+        rack_controller = await create_test_rack_controller_node_entry(fixture)
         current_node_config = await create_test_node_config_entry(
             fixture, node=rack_controller
         )

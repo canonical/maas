@@ -18,4 +18,4 @@ class Rack(MaasTimestampedBaseModel):
 class RackWithSummary(BaseModel):
     id: int
     name: str
-    registered_agents_system_ids: List[str]
+    registered_rack_controllers_system_ids: List[str]

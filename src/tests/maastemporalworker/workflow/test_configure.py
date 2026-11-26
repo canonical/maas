@@ -24,7 +24,7 @@ from maasservicelayer.services import CacheForServices
 from maasservicelayer.utils.date import utcnow
 import maastemporalworker.workflow.activity as activity_module
 from maastemporalworker.workflow.configure import (
-    ConfigureAgentActivity,
+    ConfigureRackControllerActivity,
     GetRackControllerVLANsInput,
     GetRackControllerVLANsResult,
     GetRegionControllerEndpointsResult,
@@ -33,7 +33,7 @@ from maastemporalworker.workflow.configure import (
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.node import (
     create_test_rack_and_region_controller_entry,
-    create_test_rack_controller_entry,
+    create_test_rack_controller_node_entry,
     create_test_region_controller_entry,
 )
 from tests.fixtures.factories.staticipaddress import (
@@ -46,7 +46,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("maasdb")
-class TestConfigureAgentActivity:
+class TestConfigureRackControllerActivity:
     async def test_get_rack_controller(self, services_mock: Mock, monkeypatch):
         services_mock.vlans.get_node_vlans.return_value = [
             Vlan(
@@ -66,7 +66,7 @@ class TestConfigureAgentActivity:
         )
 
         services_cache = CacheForServices()
-        configure_activities = ConfigureAgentActivity(
+        configure_activities = ConfigureRackControllerActivity(
             Mock(Database),
             services_cache,
             connection=Mock(AsyncConnection),
@@ -125,7 +125,7 @@ class TestConfigureAgentActivity:
         )
 
         services_cache = CacheForServices()
-        configure_activities = ConfigureAgentActivity(
+        configure_activities = ConfigureRackControllerActivity(
             Mock(Database),
             services_cache,
             connection=Mock(AsyncConnection),
@@ -181,7 +181,7 @@ class TestConfigureAgentActivity:
         )
 
         services_cache = CacheForServices()
-        configure_activities = ConfigureAgentActivity(
+        configure_activities = ConfigureRackControllerActivity(
             Mock(Database),
             services_cache,
             connection=Mock(AsyncConnection),
@@ -199,12 +199,12 @@ class TestConfigureAgentActivity:
     ):
         env = ActivityEnvironment()
 
-        agent_node = await create_test_rack_and_region_controller_entry(
-            fixture
+        rack_controller_node = (
+            await create_test_rack_and_region_controller_entry(fixture)
         )
 
         services_cache = CacheForServices()
-        activities = ConfigureAgentActivity(
+        activities = ConfigureRackControllerActivity(
             db,
             services_cache,
             connection=db_connection,
@@ -214,7 +214,7 @@ class TestConfigureAgentActivity:
         result = await env.run(
             activities.get_resolver_config,
             GetResolverConfigInput(
-                system_id=agent_node["system_id"],
+                system_id=rack_controller_node["system_id"],
             ),
         )
 
@@ -227,10 +227,12 @@ class TestConfigureAgentActivity:
     ):
         env = ActivityEnvironment()
 
-        agent_node = await create_test_region_controller_entry(fixture)
+        rack_controller_node = await create_test_region_controller_entry(
+            fixture
+        )
 
         services_cache = CacheForServices()
-        activities = ConfigureAgentActivity(
+        activities = ConfigureRackControllerActivity(
             db,
             services_cache,
             connection=db_connection,
@@ -240,7 +242,7 @@ class TestConfigureAgentActivity:
         result = await env.run(
             activities.get_resolver_config,
             GetResolverConfigInput(
-                system_id=agent_node["system_id"],
+                system_id=rack_controller_node["system_id"],
             ),
         )
 
@@ -278,8 +280,10 @@ class TestConfigureAgentActivity:
             for i, sip in enumerate(sips)
         ]
 
-        agent_node = await create_test_rack_controller_entry(fixture)
-        agent_ips = [
+        rack_controller_node = await create_test_rack_controller_node_entry(
+            fixture
+        )
+        rack_controller_ips = [
             (await create_test_staticipaddress_entry(fixture, subnet=subnet))[
                 0
             ]
@@ -287,13 +291,13 @@ class TestConfigureAgentActivity:
         ]
         [
             await create_test_interface_entry(
-                fixture, node=agent_node, ips=[sip]
+                fixture, node=rack_controller_node, ips=[sip]
             )
-            for sip in agent_ips
+            for sip in rack_controller_ips
         ]
 
         services_cache = CacheForServices()
-        activities = ConfigureAgentActivity(
+        activities = ConfigureRackControllerActivity(
             db,
             services_cache,
             connection=db_connection,
@@ -303,7 +307,7 @@ class TestConfigureAgentActivity:
         result = await env.run(
             activities.get_resolver_config,
             GetResolverConfigInput(
-                system_id=agent_node["system_id"],
+                system_id=rack_controller_node["system_id"],
             ),
         )
 
@@ -311,7 +315,7 @@ class TestConfigureAgentActivity:
         assert set(result.bind_ips) == set(
             [
                 str(sip["ip"])
-                for sip in agent_ips
+                for sip in rack_controller_ips
                 if sip["subnet_id"] == dns_subnet["id"]
             ]
         )

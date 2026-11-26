@@ -104,7 +104,7 @@ async def create_test_device_entry(
     )
 
 
-async def create_test_rack_controller_entry(
+async def create_test_rack_controller_node_entry(
     fixture: Fixture,
     **extra_details: Any,
 ) -> dict[str, Any]:

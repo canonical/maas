@@ -7,7 +7,7 @@ from enum import Enum
 class ServiceName(str, Enum):
     """Service names"""
 
-    AGENT = "agent"
+    RACK_CONTROLLER = "rack-controller"
     BIND9 = "bind9"
     DHCPD6 = "dhcpd6"
     DHCPD = "dhcpd"

@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 # Workflows names
-CONFIGURE_DHCP_FOR_AGENT_WORKFLOW_NAME = "configure-dhcp-for-agent"
+CONFIGURE_DHCP_FOR_RACK_CONTROLLER_WORKFLOW_NAME = (
+    "configure-dhcp-for-rack-controller"
+)
 CONFIGURE_DHCP_WORKFLOW_NAME = "configure-dhcp"
 
 
@@ -21,7 +23,7 @@ class ConfigureDHCPParam:
 
 
 @dataclass
-class ConfigureDHCPForAgentParam:
+class ConfigureDHCPForRackControllerParam:
     system_id: str
     full_reload: bool
     static_ip_addr_ids: list[int] | None = None

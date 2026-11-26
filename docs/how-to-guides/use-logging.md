@@ -23,13 +23,13 @@ journalctl -u snap.maas.pebble -t maas-regiond
 ### Rack controller logs
 
 ```
+journalctl -u snap.maas.pebble -t maas-rack-controller
+```
+
+### Legacy rack controller daemon (rackd) logs
+
+```
 journalctl -u snap.maas.pebble -t maas-rackd
-```
-
-### Agent logs
-
-```
-journalctl -u snap.maas.pebble -t maas-agent
 ```
 
 ### API server logs

@@ -498,7 +498,7 @@ class DeployWorkflow:
             raise InvalidMachineStateException("no boot order found")
 
     async def _power(self, params: DeployParam, activity_name: str) -> None:
-        """Run a power activity (on/off) on the agent for this machine."""
+        """Run a power activity (on/off) on the rack controller for this machine."""
         await workflow.execute_activity(
             activity_name,
             params.power_params,

@@ -218,9 +218,9 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
             if_missing=[],
         ),
     )
-    agent_api_bind = ConfigurationOption(
-        "agent_api_bind",
-        "Address(es) the internal API server (dialed by maas-agent on "
+    rack_ctrl_api_bind = ConfigurationOption(
+        "rack_ctrl_api_bind",
+        "Address(es) the internal API server (dialed by maas-rack-controller on "
         "rack controllers, port 5242) binds to; empty derives a "
         "specific address per family from maas_url. May be a list "
         "mixing IPv4 and IPv6 addresses.",
@@ -385,7 +385,7 @@ def build_hardening_validation_kwargs(
         "prometheus_bind": str(cfg.prometheus_bind),
         "temporal_bind": str(cfg.temporal_bind),
         "rpc_bind": list(cfg.rpc_bind),
-        "agent_api_bind": list(cfg.agent_api_bind),
+        "rack_ctrl_api_bind": list(cfg.rack_ctrl_api_bind),
         "dns_bind": list(cfg.dns_bind),
         "syslog_bind": list(cfg.syslog_bind),
         "http_proxy_bind": list(cfg.http_proxy_bind),

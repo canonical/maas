@@ -1782,12 +1782,12 @@ class TestConfirmPoweredOn:
             system_id="abc",
             ephemeral_deploy=False,
             can_set_boot_order=True,
-            task_queue="agent:1",
+            task_queue="rack-controller:1",
             power_params=PowerParam(
                 system_id="abc",
                 driver_type="hmcz",
                 driver_opts={},
-                task_queue="agent:1",
+                task_queue="rack-controller:1",
                 is_dpu=False,
             ),
         )

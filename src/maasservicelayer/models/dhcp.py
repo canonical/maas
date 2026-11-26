@@ -66,7 +66,7 @@ class KeaHAConfig:
 
 
 @dataclass
-class DHCPDataForAgent:
+class DHCPDataForRackController:
     vlans: list[VlanData]
     subnets: list[SubnetData]
     ipranges: list[IPRangeData]

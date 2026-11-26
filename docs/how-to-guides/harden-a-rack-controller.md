@@ -89,9 +89,9 @@ On a `region+rack` host, `maas config-hardening` manages the region side only. E
 
 The region validation command does not check `rackd.conf`.
 
-## Point MAAS Agent at Temporal
+## Point the rack controller at Temporal
 
-MAAS Agent on the rack controller connects to Temporal on the region controllers. By default, it uses the host from the MAAS URL. If the region controllers bind Temporal to a different address, for example because you pinned `temporal_bind`, set `temporal_server` so that MAAS Agent can reach it.
+The rack controller service (`maas-rack-controller`) connects to Temporal on the region controllers. By default, it uses the host from the MAAS URL. If the region controllers bind Temporal to a different address, for example because you pinned `temporal_bind`, set `temporal_server` so that the rack controller can reach it.
 
 1. Open `/var/snap/maas/current/rackd.conf` with a text editor as root.
 

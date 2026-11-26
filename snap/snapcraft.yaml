@@ -361,9 +361,9 @@ parts:
     prime:
       - usr/share/maas/machine-resources
 
-  maas-agent:
+  maas-rack-controller:
     plugin: make
-    source: src/maasagent
+    source: src/maasrackcontroller
     build-packages:
       - golang-go
     build-environment:
