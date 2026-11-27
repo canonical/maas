@@ -1,0 +1,8 @@
+#!/bin/bash
+#  Copyright 2026 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
+# Re-runs at every launch and refresh; the .ve target depends on pyproject.toml.
+set -euo pipefail
+
+make .ve
