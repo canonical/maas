@@ -283,7 +283,31 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options, clock=None)
         http_service = service.getServiceNamed("http_service")
-        self.assertIsInstance(http_service, StreamServerEndpointService)
+        self.assertIsInstance(http_service, MultiService)
+        # One endpoint service per bindable loopback family.
+        self.assertTrue(
+            all(
+                isinstance(child, StreamServerEndpointService)
+                for child in http_service
+            )
+        )
+        self.assertGreaterEqual(len(list(http_service)), 1)
+
+    def test_http_service_with_ipv6_disabled(self):
+        options = Options()
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        from provisioningserver.utils import network
+
+        loopback_bind_available = self.patch(
+            network, "loopback_bind_available"
+        )
+        loopback_bind_available.side_effect = lambda version: version == 4
+        service = service_maker.makeService(options, clock=None)
+        http_service = service.getServiceNamed("http_service")
+
+        self.assertEqual(len(list(http_service)), 1)
+        endpoint = list(http_service)[0].endpoint
+        self.assertEqual(endpoint.socket.getsockname()[0], "127.0.0.1")
 
     def test_tftp_service(self):
         """A TFTP service is configured and added to the top-level service."""
