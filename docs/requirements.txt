@@ -23,7 +23,6 @@ sphinx-youtube-links==0.1.0
 sphinxcontrib-mermaid==2.0.2
 
 # Vale
-rst2html==2020.7.4
 vale==3.13.0.0
 
 # Bare minimum MAAS dependencies for API documentation generation
