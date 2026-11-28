@@ -9,8 +9,6 @@ __all__ = [
 
 from typing import Optional
 
-from django.db.models import Q
-
 from maasserver import locks, worker_user
 from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.models import (
@@ -195,17 +193,28 @@ def find(system_id: Optional[str], hostname: str, interfaces: dict):
     :type interfaces: dict
     :return: An instance of :class:`Node` or `None`
     """
+    # Try the strongest identifier first. A MAC address can be shared
+    # between hosts (e.g. the virtual USB NIC of some BMCs uses the same
+    # MAC on every board), so a MAC match must never win over the node's
+    # own system_id or hostname.
+    if system_id:
+        node = Node.objects.filter(system_id=system_id).first()
+        if node is not None:
+            return node
+    if hostname:
+        node = Node.objects.filter(hostname=hostname).first()
+        if node is not None:
+            return node
     mac_addresses = {
         interface["mac_address"]
         for interface in interfaces.values()
         if "mac_address" in interface
     }
-    query = (
-        Q(system_id=system_id)
-        | Q(hostname=hostname)
-        | Q(current_config__interface__mac_address__in=mac_addresses)
-    )
-    return Node.objects.filter(query).first()
+    if not mac_addresses:
+        return None
+    return Node.objects.filter(
+        current_config__interface__mac_address__in=mac_addresses
+    ).first()
 
 
 @transactional

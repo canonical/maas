@@ -77,6 +77,40 @@ class TestRegisterRackController(MAASServerTestCase):
             rack_registered = register(interfaces=interfaces)
         self.assertEqual(node.system_id, rack_registered.system_id)
 
+    def _interfaces_with_mac(self, mac_address):
+        return {
+            "eth0": {
+                "type": "physical",
+                "mac_address": mac_address,
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            }
+        }
+
+    def test_prefers_system_id_over_shared_mac(self):
+        other_rack = factory.make_RackController()
+        shared_nic = factory.make_Interface(node=other_rack)
+        rack = factory.make_RackController()
+        with post_commit_hooks:
+            rack_registered = register(
+                system_id=rack.system_id,
+                hostname=rack.hostname,
+                interfaces=self._interfaces_with_mac(shared_nic.mac_address),
+            )
+        self.assertEqual(rack.system_id, rack_registered.system_id)
+
+    def test_prefers_hostname_over_shared_mac(self):
+        other_rack = factory.make_RackController()
+        shared_nic = factory.make_Interface(node=other_rack)
+        rack = factory.make_RackController()
+        with post_commit_hooks:
+            rack_registered = register(
+                hostname=rack.hostname,
+                interfaces=self._interfaces_with_mac(shared_nic.mac_address),
+            )
+        self.assertEqual(rack.system_id, rack_registered.system_id)
+
     def test_find_existing_keeps_type(self):
         node_type = random.choice(
             (NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER)
